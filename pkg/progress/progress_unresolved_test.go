@@ -10,9 +10,11 @@ func TestSkippedUnresolvedCounter(t *testing.T) {
 	p, err := NewStatsTicker(-1, false, false, false, 0)
 	require.NoError(t, err)
 	p.Init(1, 1, 10)
-	require.Equal(t, uint64(0), p.SkippedUnresolved())
+	counter, ok := p.(UnresolvedCounter)
+	require.True(t, ok)
+	require.Equal(t, uint64(0), counter.SkippedUnresolved())
 
-	p.IncrementSkippedUnresolved(1)
-	p.IncrementSkippedUnresolved(2)
-	require.Equal(t, uint64(3), p.SkippedUnresolved())
+	counter.IncrementSkippedUnresolved(1)
+	counter.IncrementSkippedUnresolved(2)
+	require.Equal(t, uint64(3), counter.SkippedUnresolved())
 }

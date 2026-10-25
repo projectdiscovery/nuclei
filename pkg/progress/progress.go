@@ -32,6 +32,12 @@ type Progress interface {
 	// IncrementFailedRequestsBy increments the number of requests counter by count
 	// along with errors.
 	IncrementFailedRequestsBy(count int64)
+}
+
+// UnresolvedCounter is implemented by a Progress that also counts requests
+// skipped because template variables could not be resolved. It is separate
+// from Progress so that custom Progress implementations keep compiling.
+type UnresolvedCounter interface {
 	// IncrementSkippedUnresolved increments the count of requests skipped because
 	// template variables could not be resolved.
 	IncrementSkippedUnresolved(count int64)
@@ -52,8 +58,9 @@ type TaskTracker interface {
 }
 
 var (
-	_ Progress    = &StatsTicker{}
-	_ TaskTracker = &StatsTicker{}
+	_ Progress          = &StatsTicker{}
+	_ TaskTracker       = &StatsTicker{}
+	_ UnresolvedCounter = &StatsTicker{}
 )
 
 // StatsTicker is a progress instance for showing program stats

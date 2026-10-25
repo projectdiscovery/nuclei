@@ -2,12 +2,17 @@ package expressions
 
 import (
 	"errors"
+	"fmt"
 	"regexp"
 	"strings"
 
 	"github.com/projectdiscovery/govaluate"
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators/common/dsl"
 )
+
+// ErrUnresolvedVariables is wrapped by every error that reports unresolved
+// template variables, so callers can classify it with errors.Is.
+var ErrUnresolvedVariables = errors.New("unresolved variables")
 
 var (
 	numericalExpressionRegex = regexp.MustCompile(`^[0-9+\-/\W]+$`)
@@ -38,7 +43,7 @@ func ContainsUnresolvedVariables(items ...string) error {
 			unresolvedVariables = append(unresolvedVariables, match[1])
 		}
 		if len(unresolvedVariables) > 0 {
-			return errors.New("unresolved variables found: " + strings.Join(unresolvedVariables, ","))
+			return fmt.Errorf("%w found: %s", ErrUnresolvedVariables, strings.Join(unresolvedVariables, ","))
 		}
 	}
 
@@ -72,7 +77,7 @@ func ContainsVariablesWithNames(names map[string]interface{}, items ...string) e
 			}
 		}
 		if len(unresolvedVariables) > 0 {
-			return errors.New("unresolved variables with values found: " + strings.Join(unresolvedVariables, ","))
+			return fmt.Errorf("%w with values found: %s", ErrUnresolvedVariables, strings.Join(unresolvedVariables, ","))
 		}
 	}
 
@@ -109,7 +114,7 @@ func ContainsVariablesWithIgnoreList(skipNames map[string]interface{}, items ...
 	}
 
 	if len(unresolvedVariables) > 0 {
-		return errors.New("unresolved variables with values found: " + strings.Join(unresolvedVariables, ","))
+		return fmt.Errorf("%w with values found: %s", ErrUnresolvedVariables, strings.Join(unresolvedVariables, ","))
 	}
 
 	return nil

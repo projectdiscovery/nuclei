@@ -910,7 +910,8 @@ func (r *Runner) RunEnumeration() error {
 	r.progress.Stop()
 	timeTaken := time.Since(now)
 
-	if skipped := r.progress.SkippedUnresolved(); skipped > 0 {
+	if counter, ok := r.progress.(progress.UnresolvedCounter); ok && counter.SkippedUnresolved() > 0 {
+		skipped := counter.SkippedUnresolved()
 		msg := fmt.Sprintf("Skipped %d request(s) due to unresolved variables", skipped)
 		if !r.options.LogUnresolved {
 			msg += " (use -log-unresolved to see details)"
