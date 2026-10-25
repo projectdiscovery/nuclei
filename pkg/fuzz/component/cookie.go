@@ -3,9 +3,10 @@ package component
 import (
 	"context"
 	"fmt"
-	"net/http"
+	"strings"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/fuzz/dataformat"
+	httputil "github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils/http"
 	"github.com/projectdiscovery/retryablehttp-go"
 	mapsutil "github.com/projectdiscovery/utils/maps"
 )
@@ -85,14 +86,17 @@ func (c *Cookie) Rebuild() (*retryablehttp.Request, error) {
 	cloned := c.req.Clone(context.Background())
 
 	cloned.Header.Del("Cookie")
+	var fields []string
 	c.value.parsed.Iterate(func(key string, value any) bool {
-		cookie := &http.Cookie{
-			Name:  key,
-			Value: fmt.Sprint(value), // Assume the value is always a string for cookies
-		}
-		cloned.AddCookie(cookie)
+		fields = append(fields, key+"="+fmt.Sprint(value)) // Assume the value is always a string for cookies
 		return true
 	})
+	// Cookie.String sanitizes bytes that can be intentional fuzzing payloads.
+	// Header validation still applies when the HTTP transport sends the request.
+	if len(fields) > 0 {
+		cloned.Header.Set("Cookie", strings.Join(fields, "; "))
+	}
+	httputil.SetCookieFields(cloned.Request, fields)
 	return cloned, nil
 }
 

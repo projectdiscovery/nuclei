@@ -15,7 +15,9 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/helpers/writer"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/replacer"
+	httpprotocol "github.com/projectdiscovery/nuclei/v3/pkg/protocols/http"
 	"github.com/projectdiscovery/nuclei/v3/pkg/scan"
+	"github.com/projectdiscovery/nuclei/v3/pkg/templates"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	"github.com/projectdiscovery/utils/env"
 	"github.com/projectdiscovery/utils/errkit"
@@ -37,25 +39,30 @@ func GetAuthTmplStore(opts *types.Options, catalog catalog.Catalog, execOpts *pr
 		}
 		tmpls = append(tmpls, data...)
 	}
-	opts.Templates = tmpls
-	opts.Workflows = nil
-	opts.RemoteTemplateDomainList = nil
-	opts.TemplateURLs = nil
-	opts.WorkflowURLs = nil
-	opts.ExcludedTemplates = nil
-	opts.Tags = nil
-	opts.ExcludeTags = nil
-	opts.IncludeTemplates = nil
-	opts.Authors = nil
-	opts.Severities = nil
-	opts.ExcludeSeverities = nil
-	opts.IncludeTags = nil
-	opts.IncludeIds = nil
-	opts.ExcludeIds = nil
-	opts.Protocols = nil
-	opts.ExcludeProtocols = nil
-	opts.IncludeConditions = nil
-	cfg := loader.NewConfig(opts, catalog, execOpts)
+	// The auth store only wants the secret-file templates. Copy first so
+	// this scoping cannot clear Templates, ExcludeTags, or the other filters
+	// on the caller's options. The CLI already copies; the SDK passes the
+	// engine options directly.
+	scoped := opts.Copy()
+	scoped.Templates = tmpls
+	scoped.Workflows = nil
+	scoped.RemoteTemplateDomainList = nil
+	scoped.TemplateURLs = nil
+	scoped.WorkflowURLs = nil
+	scoped.ExcludedTemplates = nil
+	scoped.Tags = nil
+	scoped.ExcludeTags = nil
+	scoped.IncludeTemplates = nil
+	scoped.Authors = nil
+	scoped.Severities = nil
+	scoped.ExcludeSeverities = nil
+	scoped.IncludeTags = nil
+	scoped.IncludeIds = nil
+	scoped.ExcludeIds = nil
+	scoped.Protocols = nil
+	scoped.ExcludeProtocols = nil
+	scoped.IncludeConditions = nil
+	cfg := loader.NewConfig(scoped, catalog, execOpts)
 	cfg.StoreId = loader.AuthStoreId
 	store, err := loader.New(cfg)
 	if err != nil {
@@ -79,6 +86,8 @@ func GetLazyAuthFetchCallback(opts *AuthLazyFetchOptions) authx.LazyFetchSecret 
 		}
 		data := map[string]interface{}{}
 		tmpl := tmpls[0]
+		restore := skipSecretFileOnAuthTemplate(tmpl)
+		defer restore()
 		// add args to tmpl here
 		vars := map[string]interface{}{}
 		mainCtx := context.Background()
@@ -147,5 +156,48 @@ func GetLazyAuthFetchCallback(opts *AuthLazyFetchOptions) authx.LazyFetchSecret 
 			opts.OnError(finalErr)
 		}
 		return finalErr
+	}
+}
+
+// skipSecretFileOnAuthTemplate disables secret-file auth on the login template for
+// the duration of the fetch. Login requests that hit the same domain as the
+// secret would otherwise ApplyAuth → Fetch and deadlock on sync.Once (#7639).
+// Previous SkipSecretFile values are restored so a cached template is unchanged.
+func skipSecretFileOnAuthTemplate(tmpl *templates.Template) func() {
+	if tmpl == nil {
+		return func() {}
+	}
+	var reqs []*httpprotocol.Request
+	seen := make(map[*httpprotocol.Request]struct{})
+	add := func(r *httpprotocol.Request) {
+		if r == nil {
+			return
+		}
+		if _, ok := seen[r]; ok {
+			return
+		}
+		seen[r] = struct{}{}
+		reqs = append(reqs, r)
+	}
+	for _, r := range tmpl.RequestsHTTP {
+		add(r)
+	}
+	for _, r := range tmpl.RequestsWithHTTP {
+		add(r)
+	}
+	for _, req := range tmpl.RequestsQueue {
+		if r, ok := req.(*httpprotocol.Request); ok {
+			add(r)
+		}
+	}
+	prev := make([]bool, len(reqs))
+	for i, r := range reqs {
+		prev[i] = r.SkipSecretFile
+		r.SkipSecretFile = true
+	}
+	return func() {
+		for i, r := range reqs {
+			r.SkipSecretFile = prev[i]
+		}
 	}
 }

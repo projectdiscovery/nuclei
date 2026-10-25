@@ -16,6 +16,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/julienschmidt/httprouter"
@@ -43,6 +44,7 @@ var httpTestcases = []integrationCase{
 	{Path: "protocols/http/post-json-body.yaml", TestCase: &httpPostJSONBody{}},
 	{Path: "protocols/http/post-multipart-body.yaml", TestCase: &httpPostMultipartBody{}},
 	{Path: "protocols/http/raw-cookie-reuse.yaml", TestCase: &httpRawCookieReuse{}},
+	{Path: "protocols/http/disable-cookie-reuse.yaml", TestCase: &httpDisableCookieReuse{}},
 	{Path: "protocols/http/raw-dynamic-extractor.yaml", TestCase: &httpRawDynamicExtractor{}},
 	{Path: "protocols/http/raw-get-query.yaml", TestCase: &httpRawGetQuery{}},
 	{Path: "protocols/http/raw-get.yaml", TestCase: &httpRawGet{}},
@@ -95,6 +97,8 @@ var httpTestcases = []integrationCase{
 	{Path: "protocols/http/response-data-literal-reuse.yaml", TestCase: &httpResponseDataLiteralReuse{}},
 	{Path: "protocols/http/raw-path-single-slash.yaml", TestCase: &httpRawPathSingleSlash{}},
 	{Path: "protocols/http/raw-unsafe-path-single-slash.yaml", TestCase: &httpRawUnsafePathSingleSlash{}},
+	{Path: "protocols/http/disable-http-cache.yaml", TestCase: &httpDisableCache{}},
+	{Path: "protocols/http/http-cache.yaml", TestCase: &httpCache{}},
 }
 
 type httpMultiVarSharing struct{}
@@ -901,6 +905,29 @@ func (h *httpPaths) Execute(filepath string) error {
 }
 
 type httpRawCookieReuse struct{}
+
+type httpDisableCookieReuse struct{}
+
+func (h *httpDisableCookieReuse) Execute(filePath string) error {
+	router := httprouter.New()
+	router.GET("/login", func(w http.ResponseWriter, _ *http.Request, _ httprouter.Params) {
+		http.SetCookie(w, &http.Cookie{Name: "nuclei", Value: "test"})
+		_, _ = fmt.Fprint(w, "logged in")
+	})
+	router.GET("/anonymous", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+		if _, err := r.Cookie("nuclei"); errors.Is(err, http.ErrNoCookie) {
+			_, _ = fmt.Fprint(w, "anonymous")
+		}
+	})
+	ts := httptest.NewServer(router)
+	defer ts.Close()
+
+	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, ts.URL, debug)
+	if err != nil {
+		return err
+	}
+	return expectResultsCount(results, 1)
+}
 
 // Execute executes a test case and returns an error if occurred
 func (h *httpRawCookieReuse) Execute(filePath string) error {
@@ -1823,5 +1850,69 @@ func (h *httpRawUnsafePathSingleSlash) Execute(filepath string) error {
 	if actual != expectedPath {
 		return fmt.Errorf("expected: %v\n\nactual: %v", expectedPath, actual)
 	}
+	return nil
+}
+
+type httpCache struct{}
+
+func (h *httpCache) Execute(filePath string) error {
+	router := httprouter.New()
+	var requestCount int32
+	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+		atomic.AddInt32(&requestCount, 1)
+		w.Header().Set("Cache-Control", "max-age=2")
+		w.WriteHeader(http.StatusOK)
+		_, _ = fmt.Fprint(w, requestCount)
+	})
+	ts := httptest.NewServer(router)
+	defer ts.Close()
+
+	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, ts.URL, debug, "-http-cache")
+	if err != nil {
+		return err
+	}
+
+	// We expect 2 results because we made 2 requests and both should match
+	if err := expectResultsCount(results, 2); err != nil {
+		return err
+	}
+
+	// We expect only 1 actual request to the server because of caching
+	if count := atomic.LoadInt32(&requestCount); count != 1 {
+		return fmt.Errorf("expected 1 request to server, got %d", count)
+	}
+
+	return nil
+}
+
+type httpDisableCache struct{}
+
+func (h *httpDisableCache) Execute(filePath string) error {
+	var requestCount int32
+	router := httprouter.New()
+	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+		atomic.AddInt32(&requestCount, 1)
+		w.Header().Set("Cache-Control", "max-age=2")
+		w.WriteHeader(http.StatusOK)
+		_, _ = fmt.Fprint(w, requestCount)
+	})
+	ts := httptest.NewServer(router)
+	defer ts.Close()
+
+	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, ts.URL, debug, "-http-cache")
+	if err != nil {
+		return err
+	}
+
+	// We expect 2 results because we made 2 requests and both should match
+	if err := expectResultsCount(results, 2); err != nil {
+		return err
+	}
+
+	// We expect 2 actual requests to the server because cache is disabled
+	if count := atomic.LoadInt32(&requestCount); count != 2 {
+		return fmt.Errorf("expected 2 requests to server, got %d", count)
+	}
+
 	return nil
 }

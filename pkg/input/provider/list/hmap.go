@@ -20,6 +20,10 @@ import (
 	"github.com/projectdiscovery/hmap/filekv"
 	"github.com/projectdiscovery/hmap/store/hybrid"
 	"github.com/projectdiscovery/mapcidr/asn"
+	"github.com/projectdiscovery/nuclei/v3/internal/configuration"
+	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
+	"github.com/projectdiscovery/nuclei/v3/pkg/input/normalize"
+	"github.com/projectdiscovery/nuclei/v3/pkg/input/targetprofile"
 	providerTypes "github.com/projectdiscovery/nuclei/v3/pkg/input/types"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
@@ -39,15 +43,23 @@ const DefaultMaxDedupeItemsCount = 10000
 // ListInputProvider is a hmap/filekv backed nuclei ListInputProvider provider
 // it supports list type of input ex: urls,file,stdin,uncover,etc. (i.e just url not complete request/response)
 type ListInputProvider struct {
-	ipOptions         *ipOptions
-	inputCount        int64
-	excludedCount     int64
-	dupeCount         int64
-	skippedCount      int64
-	hostMap           *hybrid.HybridMap
-	excludedHosts     map[string]struct{}
-	hostMapStream     *filekv.FileDB
-	hostMapStreamOnce sync.Once
+	ipOptions           *ipOptions
+	inputCount          int64
+	excludedCount       int64
+	dupeCount           int64
+	skippedCount        int64
+	patternSkippedCount int64
+	hostMap             *hybrid.HybridMap
+	excludedHosts       map[string]struct{}
+	hostMapStream       *filekv.FileDB
+	hostMapStreamOnce   sync.Once
+	profiles            *targetprofile.Registry
+	// normalizeURLs collapses targets that address the same resource onto one
+	// form before they are deduplicated.
+	normalizeURLs bool
+	// patterns caps how many targets of one structural shape are kept. Nil or
+	// disabled keeps every target.
+	patterns *normalize.Fingerprinter
 	sync.Once
 }
 
@@ -71,13 +83,16 @@ func New(opts *Options) (*ListInputProvider, error) {
 	}
 
 	input := &ListInputProvider{
-		hostMap: hm,
+		hostMap:       hm,
+		normalizeURLs: !options.DisableURLNormalization,
+		patterns:      normalize.NewFingerprinter(options.MaxURLsPerPattern),
 		ipOptions: &ipOptions{
 			ScanAllIPs: options.ScanAllIPs,
 			IPV4:       sliceutil.Contains(options.IPVersion, "4"),
 			IPV6:       sliceutil.Contains(options.IPVersion, "6"),
 		},
 		excludedHosts: make(map[string]struct{}),
+		profiles:      targetprofile.NewRegistry(configuration.TemplatesDirectory(options, config.DefaultConfig)),
 	}
 	if options.Stream {
 		fkvOptions := filekv.DefaultOptions
@@ -105,6 +120,9 @@ func New(opts *Options) (*ListInputProvider, error) {
 	if input.skippedCount > 0 {
 		gologger.Info().Msgf("Number of hosts skipped from input due to exclusion: %d", input.skippedCount)
 	}
+	if input.patternSkippedCount > 0 {
+		gologger.Info().Msgf("Supplied input was limited by max urls per pattern (%d removed).", input.patternSkippedCount)
+	}
 	return input, nil
 }
 
@@ -122,9 +140,14 @@ func (i *ListInputProvider) Iterate(callback func(value *contextargs.MetaInput) 
 			}
 		})
 	}
-	callbackFunc := func(k, _ []byte) error {
+	callbackFunc := func(k, v []byte) error {
 		metaInput := contextargs.NewMetaInput()
-		if err := metaInput.Unmarshal(string(k)); err != nil {
+		// v holds the target as supplied when the key is a collapsed form
+		raw := string(k)
+		if len(v) > 0 {
+			raw = string(v)
+		}
+		if err := metaInput.Unmarshal(raw); err != nil {
 			return err
 		}
 		if !callback(metaInput) {
@@ -139,8 +162,18 @@ func (i *ListInputProvider) Iterate(callback func(value *contextargs.MetaInput) 
 	}
 }
 
+// TargetProfiles returns the per-target template selections read from input.
+func (i *ListInputProvider) TargetProfiles() *targetprofile.Registry {
+	return i.profiles
+}
+
 // Set normalizes and stores passed input values
 func (i *ListInputProvider) Set(executionId string, value string) {
+	i.set(executionId, value, nil)
+}
+
+// set stores value bound to selection; a nil selection runs every template.
+func (i *ListInputProvider) set(executionId string, value string, selection *targetprofile.Selection) {
 	URL := strings.TrimSpace(value)
 	if URL == "" {
 		return
@@ -156,7 +189,7 @@ func (i *ListInputProvider) Set(executionId string, value string) {
 		})
 		metaInput := contextargs.NewMetaInput()
 		metaInput.Input = URL
-		i.setItem(metaInput)
+		i.setItem(metaInput, selection)
 		return
 	}
 
@@ -164,7 +197,7 @@ func (i *ListInputProvider) Set(executionId string, value string) {
 	if iputil.IsIP(urlx.Hostname()) {
 		metaInput := contextargs.NewMetaInput()
 		metaInput.Input = URL
-		i.setItem(metaInput)
+		i.setItem(metaInput, selection)
 		return
 	}
 
@@ -172,7 +205,8 @@ func (i *ListInputProvider) Set(executionId string, value string) {
 		// scan all ips
 		dialers := protocolstate.GetDialersWithId(executionId)
 		if dialers == nil {
-			panic("dialers with executionId " + executionId + " not found")
+			gologger.Error().Msgf("dialers with executionId %s not found", executionId)
+			return
 		}
 
 		dnsData, err := dialers.Fastdialer.GetDNSData(urlx.Hostname())
@@ -192,7 +226,7 @@ func (i *ListInputProvider) Set(executionId string, value string) {
 					metaInput := contextargs.NewMetaInput()
 					metaInput.Input = URL
 					metaInput.CustomIP = ip
-					i.setItem(metaInput)
+					i.setItem(metaInput, selection)
 				}
 				return
 			} else {
@@ -209,7 +243,8 @@ func (i *ListInputProvider) Set(executionId string, value string) {
 	if i.ipOptions.IPV6 {
 		dialers := protocolstate.GetDialersWithId(executionId)
 		if dialers == nil {
-			panic("dialers with executionId " + executionId + " not found")
+			gologger.Error().Msgf("dialers with executionId %s not found", executionId)
+			return
 		}
 
 		dnsData, err := dialers.Fastdialer.GetDNSData(urlx.Hostname())
@@ -230,10 +265,10 @@ func (i *ListInputProvider) Set(executionId string, value string) {
 		if ip != "" {
 			metaInput.Input = URL
 			metaInput.CustomIP = ip
-			i.setItem(metaInput)
+			i.setItem(metaInput, selection)
 		} else {
 			metaInput.Input = URL
-			i.setItem(metaInput)
+			i.setItem(metaInput, selection)
 		}
 	}
 }
@@ -281,23 +316,18 @@ func (i *ListInputProvider) initializeInputSources(opts *Options) error {
 
 	// Handle targets flags
 	for _, target := range options.Targets {
-		switch {
-		case iputil.IsCIDR(target):
-			ips := expand.CIDR(target)
-			i.addTargets(options.ExecutionId, ips)
-		case asn.IsASN(target):
-			ips := expand.ASN(target)
-			i.addTargets(options.ExecutionId, ips)
-		default:
-			i.Set(options.ExecutionId, target)
+		if err := i.addInput(options.ExecutionId, target); err != nil {
+			return err
 		}
 	}
 
 	// Handle stdin
 	if options.Stdin {
-		i.scanInputFromReader(
+		if err := i.scanInputFromReader(
 			options.ExecutionId,
-			readerutil.TimeoutReader{Reader: os.Stdin, Timeout: time.Duration(options.InputReadTimeout)})
+			readerutil.TimeoutReader{Reader: os.Stdin, Timeout: time.Duration(options.InputReadTimeout)}); err != nil {
+			return err
+		}
 	}
 
 	// Handle target file
@@ -310,8 +340,11 @@ func (i *ListInputProvider) initializeInputSources(opts *Options) error {
 			}
 		}
 		if input != nil {
-			i.scanInputFromReader(options.ExecutionId, input)
+			err := i.scanInputFromReader(options.ExecutionId, input)
 			_ = input.Close()
+			if err != nil {
+				return err
+			}
 		}
 	}
 	if options.Uncover && options.UncoverQuery != nil {
@@ -356,21 +389,38 @@ func (i *ListInputProvider) initializeInputSources(opts *Options) error {
 }
 
 // scanInputFromReader scans a line of input from reader and passes it for storage
-func (i *ListInputProvider) scanInputFromReader(executionId string, reader io.Reader) {
+func (i *ListInputProvider) scanInputFromReader(executionId string, reader io.Reader) error {
 	scanner := bufio.NewScanner(reader)
 	for scanner.Scan() {
-		item := scanner.Text()
-		switch {
-		case iputil.IsCIDR(item):
-			ips := expand.CIDR(item)
-			i.addTargets(executionId, ips)
-		case asn.IsASN(item):
-			ips := expand.ASN(item)
-			i.addTargets(executionId, ips)
-		default:
-			i.Set(executionId, item)
+		if err := i.addInput(executionId, scanner.Text()); err != nil {
+			return err
 		}
 	}
+	return nil
+}
+
+// addInput stores a plain target or a target line, expanding CIDR and ASN
+// targets. An invalid target line fails the run: skipping it would drop the
+// target, and ignoring its selection would scan it with every template.
+func (i *ListInputProvider) addInput(executionId string, item string) error {
+	var selection *targetprofile.Selection
+	if targetprofile.IsLine(item) {
+		target, parsed, err := i.profiles.ParseLine(item)
+		if err != nil {
+			return errors.Wrap(err, "could not parse target line")
+		}
+		item, selection = target, parsed
+	}
+
+	switch {
+	case iputil.IsCIDR(item):
+		i.addTargets(executionId, expand.CIDR(item), selection)
+	case asn.IsASN(item):
+		i.addTargets(executionId, expand.ASN(item), selection)
+	default:
+		i.set(executionId, item, selection)
+	}
+	return nil
 }
 
 // isExcluded checks if a URL is in the exclusion list
@@ -419,7 +469,8 @@ func (i *ListInputProvider) Del(executionId string, value string) {
 		// scan all ips
 		dialers := protocolstate.GetDialersWithId(executionId)
 		if dialers == nil {
-			panic("dialers with executionId " + executionId + " not found")
+			gologger.Error().Msgf("dialers with executionId %s not found", executionId)
+			return
 		}
 
 		dnsData, err := dialers.Fastdialer.GetDNSData(urlx.Hostname())
@@ -456,7 +507,8 @@ func (i *ListInputProvider) Del(executionId string, value string) {
 	if i.ipOptions.IPV6 {
 		dialers := protocolstate.GetDialersWithId(executionId)
 		if dialers == nil {
-			panic("dialers with executionId " + executionId + " not found")
+			gologger.Error().Msgf("dialers with executionId %s not found", executionId)
+			return
 		}
 
 		dnsData, err := dialers.Fastdialer.GetDNSData(urlx.Hostname())
@@ -486,22 +538,65 @@ func (i *ListInputProvider) Del(executionId string, value string) {
 }
 
 // setItem in the kv store
-func (i *ListInputProvider) setItem(metaInput *contextargs.MetaInput) {
+func (i *ListInputProvider) setItem(metaInput *contextargs.MetaInput, selection *targetprofile.Selection) {
 	key, err := metaInput.MarshalString()
 	if err != nil {
 		gologger.Warning().Msgf("%s\n", err)
 		return
 	}
-	if _, ok := i.hostMap.Get(key); ok {
+	// A crawled list routinely holds the same resource several times over,
+	// differing only by host case, a fragment, a default port, a trailing slash
+	// or a tracking parameter. Those collapse onto one entry, but the target
+	// that is scanned stays exactly as supplied: stripping a parameter from the
+	// request would shrink the attack surface, not just the duplicate count.
+	// Duplicates are removed before the pattern cap, so a repeated URL does not
+	// use up a slot that a later distinct URL still needs.
+	dedupKey := key
+	if i.normalizeURLs {
+		if normalized := i.normalizedKey(metaInput); normalized != "" {
+			dedupKey = normalized
+		}
+	}
+	if _, ok := i.hostMap.Get(dedupKey); ok {
 		i.dupeCount++
+		if i.profiles != nil {
+			i.profiles.Merge(metaInput.Input, selection)
+		}
+		return
+	}
+	// Past the per-pattern cap the shape is already covered by the targets kept
+	// for it, so scanning another of the same shape buys nothing.
+	if i.patterns != nil && !i.patterns.Accept(metaInput.Input) {
+		i.patternSkippedCount++
 		return
 	}
 
+	if i.profiles != nil {
+		i.profiles.Bind(metaInput.Input, selection)
+	}
 	i.inputCount++ // tracks target count
-	_ = i.hostMap.Set(key, nil)
+	// the entry is keyed by the collapsed form and carries the original, which
+	// is what Iterate hands back to the engine
+	_ = i.hostMap.Set(dedupKey, []byte(key))
 	if i.hostMapStream != nil {
 		i.setHostMapStream(key)
 	}
+}
+
+// normalizedKey returns the deduplication key for a target, or "" when the
+// value is not a URL and has no collapsed form.
+func (i *ListInputProvider) normalizedKey(metaInput *contextargs.MetaInput) string {
+	collapsed := normalize.URL(metaInput.Input)
+	if collapsed == metaInput.Input {
+		return ""
+	}
+	clone := *metaInput
+	clone.Input = collapsed
+	key, err := clone.MarshalString()
+	if err != nil {
+		return ""
+	}
+	return key
 }
 
 const removeTargetsChunkSize = 5000
@@ -565,9 +660,9 @@ func (i *ListInputProvider) setHostMapStream(data string) {
 	}
 }
 
-func (i *ListInputProvider) addTargets(executionId string, targets []string) {
+func (i *ListInputProvider) addTargets(executionId string, targets []string, selection *targetprofile.Selection) {
 	for _, target := range targets {
-		i.Set(executionId, target)
+		i.set(executionId, target, selection)
 	}
 }
 

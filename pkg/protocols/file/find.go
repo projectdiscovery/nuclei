@@ -1,6 +1,7 @@
 package file
 
 import (
+	"context"
 	"io"
 	"io/fs"
 	"os"
@@ -16,8 +17,19 @@ import (
 // getInputPaths parses the specified input paths and returns a compiled
 // list of finished absolute paths to the files evaluating any allowlist, denylist,
 // glob, file or folders, etc.
-func (request *Request) getInputPaths(target string, callback func(string)) error {
+func (request *Request) getInputPaths(ctx context.Context, target string, callback func(string)) error {
 	processed := make(map[string]struct{})
+
+	// Remote SMB targets (UNC / smb://) — issue #6142 bridge.
+	if IsSMBPath(target) {
+		return request.enumerateSMBInputs(ctx, target, func(path string) {
+			if _, ok := processed[path]; ok {
+				return
+			}
+			processed[path] = struct{}{}
+			callback(path)
+		})
+	}
 
 	// Template input includes a wildcard
 	if strings.Contains(target, "*") && !request.NoRecursive {
