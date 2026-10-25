@@ -255,14 +255,12 @@ func lineBreakToHTML(text string) string {
 }
 
 // formatConfidence renders the detection-confidence tier and 0-100 score, e.g.
-// "High (85)". The score is omitted when not set.
+// "High (85)".
 func formatConfidence(event *output.ResultEvent) string {
 	tier := event.Confidence
 	if tier != "" {
 		tier = strings.ToUpper(tier[:1]) + tier[1:]
-	}
-	if event.ConfidenceScore > 0 {
 		return fmt.Sprintf("%s (%d)", tier, event.ConfidenceScore)
 	}
-	return tier
+	return ""
 }

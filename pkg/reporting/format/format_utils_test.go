@@ -68,6 +68,11 @@ func TestCreateReportDescription_Confidence(t *testing.T) {
 	require.Contains(t, result, "Confidence")
 	require.Contains(t, result, "High (85)")
 
+	zeroConfidence := *base
+	zeroConfidence.Confidence = "low"
+	zeroResult := CreateReportDescription(&zeroConfidence, &util.MarkdownFormatter{}, true)
+	require.Contains(t, zeroResult, "Low (0)")
+
 	// confidence row is omitted entirely when no score was computed
 	without := CreateReportDescription(base, &util.MarkdownFormatter{}, true)
 	require.NotContains(t, without, "Confidence")

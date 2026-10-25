@@ -195,10 +195,7 @@ func renderFindings(doc *fpdf.Fpdf, results []output.ResultEvent) {
 		doc.CellFormat(30, 5, "Template:", "0", 0, "", false, 0, "")
 		doc.CellFormat(0, 5, safeStr(r.TemplateID), "0", 1, "", false, 0, "")
 		if r.Confidence != "" {
-			confidence := capitalize(r.Confidence)
-			if r.ConfidenceScore > 0 {
-				confidence = fmt.Sprintf("%s (%d)", confidence, r.ConfidenceScore)
-			}
+			confidence := fmt.Sprintf("%s (%d)", capitalize(r.Confidence), r.ConfidenceScore)
 			doc.CellFormat(30, 5, "Confidence:", "0", 0, "", false, 0, "")
 			doc.CellFormat(0, 5, safeStr(confidence), "0", 1, "", false, 0, "")
 		}

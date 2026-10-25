@@ -2,14 +2,18 @@ package http
 
 import (
 	"crypto/rand"
+	"crypto/sha256"
 	"encoding/hex"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
+	"sort"
 	"strings"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/baseline"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/httpclientpool"
 	"github.com/projectdiscovery/retryablehttp-go"
 	httpUtils "github.com/projectdiscovery/utils/http"
 	urlutil "github.com/projectdiscovery/utils/url"
@@ -49,8 +53,12 @@ func (request *Request) baselineMatched(input *contextargs.Context, generatedReq
 	}
 	baseURL := parsed.Scheme + "://" + parsed.Host
 
-	baselineMap, ok := request.options.BaselineCache.GetOrFetch(baseURL, func() (baseline.Map, error) {
-		return request.fetchBaseline(baseURL, parsed.Host)
+	baselineRequest, client, cacheKey, err := request.prepareBaseline(input, baseURL, parsed.Host)
+	if err != nil {
+		return false
+	}
+	baselineMap, ok := request.options.BaselineCache.GetOrFetch(cacheKey, func() (baseline.Map, error) {
+		return request.fetchBaseline(client, baselineRequest, baseURL)
 	})
 	if !ok || baselineMap == nil {
 		return false
@@ -60,25 +68,72 @@ func (request *Request) baselineMatched(input *contextargs.Context, generatedReq
 	return matched && result != nil && result.Matched
 }
 
-// fetchBaseline sends a single control request to a random, almost-certainly
-// non-existent path on the host and converts the response into a DSL map a
-// template's operators can be replayed against. It reuses the same client pool
-// and response decoding as a normal request so the baseline map is keyed
-// identically to real responses.
-func (request *Request) fetchBaseline(baseURL, host string) (baseline.Map, error) {
-	client := request.getHTTPClientForHost(host)
-	if client == nil {
-		return nil, ErrNoClient
-	}
-
+// prepareBaseline creates a control request with the same effective custom
+// headers, authentication, and per-input cookie jar as a normal request.
+func (request *Request) prepareBaseline(input *contextargs.Context, baseURL, host string) (*retryablehttp.Request, *retryablehttp.Client, string, error) {
 	target := strings.TrimRight(baseURL, "/") + "/" + randomBaselinePath()
 	req, err := retryablehttp.NewRequest(http.MethodGet, target, nil)
 	if err != nil {
-		return nil, err
+		return nil, nil, "", err
+	}
+	generated := &generatedRequest{original: request, request: req}
+	request.setCustomHeaders(generated)
+	if !request.SkipSecretFile {
+		generated.ApplyAuth(request.options.AuthProvider)
 	}
 
+	connConfig := request.connConfiguration
+	if input != nil && input.CookieJar != nil && !request.DisableCookie {
+		connConfig = connConfig.Clone()
+		connConfig.Connection.SetCookieJar(input.CookieJar)
+	}
+	client, err := httpclientpool.Get(request.options.Options, connConfig, host)
+	if err != nil {
+		client, err = httpclientpool.Get(request.options.Options, connConfig, "")
+	}
+	if err != nil || client == nil {
+		return nil, nil, "", ErrNoClient
+	}
+	return req, client, baselineContextKey(baseURL, req, input), nil
+}
+
+// baselineContextKey prevents authenticated baselines from being shared across
+// different header, query-auth, host-header, or cookie contexts.
+func baselineContextKey(baseURL string, req *retryablehttp.Request, input *contextargs.Context) string {
+	hash := sha256.New()
+	_, _ = fmt.Fprintf(hash, "host=%q\nquery=%q\n", req.Host, req.RawQuery)
+	keys := make([]string, 0, len(req.Header))
+	for key := range req.Header {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+	for _, key := range keys {
+		values := append([]string(nil), req.Header.Values(key)...)
+		sort.Strings(values)
+		_, _ = fmt.Fprintf(hash, "header=%q:%q\n", key, values)
+	}
+	if input != nil && input.CookieJar != nil && req.Request != nil && req.Request.URL != nil {
+		cookies := input.CookieJar.Cookies(req.Request.URL)
+		values := make([]string, 0, len(cookies))
+		for _, cookie := range cookies {
+			values = append(values, cookie.String())
+		}
+		sort.Strings(values)
+		for _, cookie := range values {
+			_, _ = fmt.Fprintf(hash, "cookie=%q\n", cookie)
+		}
+	}
+	return baseURL + "#" + hex.EncodeToString(hash.Sum(nil))
+}
+
+// fetchBaseline sends the prepared control request and converts the response
+// into a DSL map a template's operators can replay against.
+func (request *Request) fetchBaseline(client *retryablehttp.Client, req *retryablehttp.Request, baseURL string) (baseline.Map, error) {
+
 	// respect user rate limiting for the extra control request
-	request.rateLimitTake(baseURL)
+	if err := request.rateLimitTake(baseURL); err != nil {
+		return nil, err
+	}
 
 	resp, err := client.Do(req)
 	if err != nil {
@@ -103,7 +158,7 @@ func (request *Request) fetchBaseline(baseURL, host string) (baseline.Map, error
 		return nil, err
 	}
 
-	dslMap := request.responseToDSLMap(respChain.Response(), baseURL, target, "", respChain.FullResponseString(), respChain.BodyString(), respChain.HeadersString(), 0, nil)
+	dslMap := request.responseToDSLMap(respChain.Response(), baseURL, req.String(), "", respChain.FullResponseString(), respChain.BodyString(), respChain.HeadersString(), 0, nil)
 	return baseline.Map(dslMap), nil
 }
 

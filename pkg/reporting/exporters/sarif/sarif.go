@@ -156,6 +156,14 @@ func (exporter *Exporter) Export(event *output.ResultEvent) error {
 	}
 
 	location := buildLocation(event, resultTarget)
+	resultProperties := buildResultProperties(event, resultTarget)
+	if event.Confidence != "" {
+		if resultProperties == nil {
+			resultProperties = map[string]interface{}{}
+		}
+		resultProperties["confidence"] = event.Confidence
+		resultProperties["confidence-score"] = event.ConfidenceScore
+	}
 
 	// vulnerability report/result
 	result := &sarif.Result{
@@ -168,15 +176,7 @@ func (exporter *Exporter) Export(event *output.ResultEvent) error {
 		Rule: sarif.ReportingDescriptorReference{
 			Id: ruleID,
 		},
-		Properties: buildResultProperties(event, resultTarget),
-	}
-
-	// detection-confidence tier/score, independent of severity
-	if event.Confidence != "" {
-		result.Properties = map[string]interface{}{
-			"confidence":       event.Confidence,
-			"confidence-score": event.ConfidenceScore,
-		}
+		Properties: resultProperties,
 	}
 
 	exporter.sarif.RegisterResult(*result)

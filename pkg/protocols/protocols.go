@@ -22,6 +22,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/loader/parser"
 	"github.com/projectdiscovery/nuclei/v3/pkg/model"
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators"
+	llmclient "github.com/projectdiscovery/nuclei/v3/pkg/operators/common/llm"
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators/extractors"
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators/matchers"
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
@@ -82,6 +83,10 @@ type ExecutorOptions struct {
 	// Verified reports whether a trusted verifier verified the template's
 	// signature. Code and JavaScript protocols check it at execution time.
 	Verified bool
+	// LLMClient is the scan's llm client, injected into llm matchers and
+	// extractors when a request compiles. Nil unless -llm is set, which makes
+	// those operators fail closed.
+	LLMClient llmclient.Client
 	// TemplateVerificationCallback returns cached verification info for a template path.
 	// If it returns nil, verification should be computed normally.
 	TemplateVerificationCallback func(templatePath string) *TemplateVerification
@@ -105,6 +110,9 @@ type ExecutorOptions struct {
 	Browser *engine.Browser
 	// Interactsh is a client for interactsh oob polling server
 	Interactsh *interactsh.Client
+	// InteractshScope isolates delayed callbacks and cleanup for one execution
+	// when Interactsh is shared by concurrent engines.
+	InteractshScope *interactsh.RequestScope
 	// HostErrorsCache is an optional cache for handling host errors
 	HostErrorsCache hosterrorscache.CacheInterface
 	// BaselineCache is an optional per-host catch-all baseline cache used to
@@ -162,6 +170,35 @@ type ExecutorOptions struct {
 	CustomFastdialer *fastdialer.Dialer
 	// ClusterMappings stores cluster ID to template IDs mapping during execution
 	ClusterMappings *templateTypes.ClusterMappingsMap
+	// TargetScope narrows the templates run on each target (per-target profiles)
+	TargetScope TargetScope
+}
+
+// TargetScope resolves the template selection that applies to a target.
+type TargetScope interface {
+	// For returns the selection for input, or nil when every template applies.
+	For(input *contextargs.MetaInput) TemplateSelection
+}
+
+// TemplateSelection decides which templates run on a target. Implementations
+// must be comparable, such as pointers, since targets are grouped by selection.
+type TemplateSelection interface {
+	// Allows reports whether the template loaded from templatePath is selected.
+	Allows(templatePath string) bool
+}
+
+// RegisterInteractshRequest attaches execution-local output dependencies before
+// registering a delayed OOB callback on a potentially shared Interactsh client.
+func (e *ExecutorOptions) RegisterInteractshRequest(urls []string, data *interactsh.RequestData) {
+	if e == nil || e.Interactsh == nil || data == nil {
+		return
+	}
+	data.Output = e.Output
+	data.Progress = e.Progress
+	data.IssuesClient = e.IssuesClient
+	data.FuzzParamsFrequency = e.FuzzParamsFrequency
+	data.Scope = e.InteractshScope
+	e.Interactsh.RequestEvent(urls, data)
 }
 
 // todo: centralizing components is not feasible with current clogged architecture
@@ -309,6 +346,7 @@ func (e *ExecutorOptions) Copy() *ExecutorOptions {
 		TemplateInfo:                 e.TemplateInfo,
 		TemplateVerifier:             e.TemplateVerifier,
 		Verified:                     e.Verified,
+		LLMClient:                    e.LLMClient,
 		TemplateVerificationCallback: e.TemplateVerificationCallback,
 		RawTemplate:                  e.RawTemplate,
 		Output:                       e.Output,
@@ -320,6 +358,7 @@ func (e *ExecutorOptions) Copy() *ExecutorOptions {
 		ProjectFile:                  e.ProjectFile,
 		Browser:                      e.Browser,
 		Interactsh:                   e.Interactsh,
+		InteractshScope:              e.InteractshScope,
 		HostErrorsCache:              e.HostErrorsCache,
 		BaselineCache:                e.BaselineCache,
 		StopAtFirstMatch:             e.StopAtFirstMatch,
@@ -344,6 +383,7 @@ func (e *ExecutorOptions) Copy() *ExecutorOptions {
 		ExportReqURLPattern:          e.ExportReqURLPattern,
 		GlobalMatchers:               e.GlobalMatchers,
 		Logger:                       e.Logger,
+		TargetScope:                  e.TargetScope,
 	}
 	copy.ClusterMappings = e.ClusterMappings.Copy()
 	copy.CreateTemplateCtxStore()
@@ -544,6 +584,7 @@ func (e *ExecutorOptions) ApplyNewEngineOptions(n *ExecutorOptions) {
 	e.ProjectFile = n.ProjectFile
 	e.Browser = n.Browser
 	e.Interactsh = n.Interactsh
+	e.InteractshScope = n.InteractshScope
 	e.HostErrorsCache = n.HostErrorsCache
 	e.InputHelper = n.InputHelper
 	e.FuzzParamsFrequency = n.FuzzParamsFrequency
