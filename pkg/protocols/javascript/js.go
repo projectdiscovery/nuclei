@@ -450,7 +450,10 @@ func (request *Request) executeWithResults(port string, target *contextargs.Cont
 			results["error"] = outError.Error()
 
 			// generate and return failed event
-			data := request.generateEventData(input, results, hostPort)
+			data, genErr := request.generateEventData(input, results, hostPort)
+			if genErr != nil {
+				return genErr
+			}
 			data = generators.MergeMaps(data, payloadValues)
 			event := eventcreator.CreateEventWithAdditionalOptions(request, data, request.options.Options.Debug || request.options.Options.DebugResponse, func(wrappedEvent *output.InternalWrappedEvent) {
 				allVars := argsCopy.Map()
@@ -662,11 +665,19 @@ func (request *Request) executeRequestWithPayloads(
 
 	// a script's network calls are not visible here, so like progress it is
 	// limited as one request per execution
+	if err := request.options.HostBackoffWait(input.Context(), hostPort); err != nil {
+		return err
+	}
 	if err := request.options.RateLimitTakeContext(input.Context(), hostPort); err != nil {
 		return err
 	}
 
-	results, err := request.options.JsCompiler.ExecuteWithOptions(input.Context(), request.scriptCompiled, argsCopy,
+	ctx := input.Context()
+	if request.options.HostBackoff != nil {
+		// the script's own dials are the only signal: report them as they happen
+		ctx = protocolstate.WithDialObserver(ctx, request.options.HostBackoffObserveDial)
+	}
+	results, err := request.options.JsCompiler.ExecuteWithOptions(ctx, request.scriptCompiled, argsCopy,
 		&compiler.ExecuteOptions{
 			ExecutionId:     requestOptions.Options.ExecutionId,
 			TimeoutVariants: requestOptions.Options.GetTimeouts(),
@@ -703,7 +714,10 @@ func (request *Request) executeRequestWithPayloads(
 
 	values := mapsutil.Merge(payloadValues, results)
 	// generate event data
-	data := request.generateEventData(input, values, hostPort)
+	data, genErr := request.generateEventData(input, values, hostPort)
+	if genErr != nil {
+		return genErr
+	}
 
 	// add and get values from templatectx
 	request.options.AddTemplateVars(input.MetaInput, request.Type(), request.GetID(), data)
@@ -751,10 +765,10 @@ func (request *Request) executeRequestWithPayloads(
 }
 
 // generateEventData generates event data for the request
-func (request *Request) generateEventData(input *contextargs.Context, values map[string]interface{}, matched string) map[string]interface{} {
+func (request *Request) generateEventData(input *contextargs.Context, values map[string]interface{}, matched string) (map[string]interface{}, error) {
 	dialers := protocolstate.GetDialersWithId(request.options.Options.ExecutionId)
 	if dialers == nil {
-		panic(fmt.Sprintf("dialers not initialized for %s", request.options.Options.ExecutionId))
+		return nil, fmt.Errorf("dialers not initialized for %s", request.options.Options.ExecutionId)
 	}
 
 	data := make(map[string]interface{})
@@ -809,7 +823,7 @@ func (request *Request) generateEventData(input *contextargs.Context, values map
 			}
 		}
 	}
-	return data
+	return data, nil
 }
 
 func (request *Request) getArgsCopy(input *contextargs.Context, payloadValues map[string]interface{}, requestOptions *protocols.ExecutorOptions, ignoreErrors bool) (*compiler.ExecuteArgs, []string, error) {

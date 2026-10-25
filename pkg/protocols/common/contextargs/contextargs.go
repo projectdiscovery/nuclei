@@ -295,9 +295,13 @@ func GetCopyIfHostOutdated(ctx *Context, url string) *Context {
 	}
 	orig, _ := urlutil.Parse(ctx.MetaInput.Input)
 	newURL, _ := urlutil.Parse(url)
-	if orig != nil && newURL != nil && orig.Host != newURL.Host {
+	if orig != nil && newURL != nil && (orig.Host != newURL.Host || (orig.Scheme != "" && newURL.Scheme != "" && !strings.EqualFold(orig.Scheme, newURL.Scheme))) {
 		newCtx := ctx.Clone()
-		newCtx.MetaInput.Input = newURL.Host
+		if newURL.Scheme != "" {
+			newCtx.MetaInput.Input = newURL.Scheme + "://" + newURL.Host
+		} else {
+			newCtx.MetaInput.Input = newURL.Host
+		}
 		return newCtx
 	}
 	return ctx
