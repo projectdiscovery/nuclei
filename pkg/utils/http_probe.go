@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"context"
 	"fmt"
 	"net"
 	"net/http"
@@ -27,8 +28,9 @@ var httpFirstSchemes = []string{
 	"https",
 }
 
-// determineSchemeOrder for the input
-func determineSchemeOrder(input string) []string {
+// DetermineSchemeOrder returns the schemes to try for a scheme-less input,
+// most likely first
+func DetermineSchemeOrder(input string) []string {
 	if _, port, err := net.SplitHostPort(input); err == nil {
 		// if input has port that is commonly used for HTTP, return http then https
 		if sliceutil.Contains(commonHttpPorts, port) {
@@ -50,11 +52,16 @@ func determineSchemeOrder(input string) []string {
 // http schemes are selected with heuristics
 // If none succeeds, probing is abandoned for such URLs.
 func ProbeURL(input string, httpxclient *httpx.HTTPX) string {
+	return ProbeURLWithContext(context.Background(), input, httpxclient)
+}
+
+// ProbeURLWithContext is ProbeURL with the probe requests made with ctx.
+func ProbeURLWithContext(ctx context.Context, input string, httpxclient *httpx.HTTPX) string {
 	normalizedInput := normalizeProbeInput(input)
-	schemes := determineSchemeOrder(normalizedInput)
+	schemes := DetermineSchemeOrder(normalizedInput)
 	for _, scheme := range schemes {
 		formedURL := fmt.Sprintf("%s://%s", scheme, normalizedInput)
-		req, err := httpxclient.NewRequest(http.MethodHead, formedURL)
+		req, err := httpxclient.NewRequestWithContext(ctx, http.MethodHead, formedURL)
 		if err != nil {
 			continue
 		}

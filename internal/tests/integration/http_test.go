@@ -6,6 +6,7 @@ package integration_test
 import (
 	"errors"
 	"fmt"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"net/http/httputil"
@@ -16,6 +17,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/julienschmidt/httprouter"
@@ -43,6 +45,7 @@ var httpTestcases = []integrationCase{
 	{Path: "protocols/http/post-json-body.yaml", TestCase: &httpPostJSONBody{}},
 	{Path: "protocols/http/post-multipart-body.yaml", TestCase: &httpPostMultipartBody{}},
 	{Path: "protocols/http/raw-cookie-reuse.yaml", TestCase: &httpRawCookieReuse{}},
+	{Path: "protocols/http/disable-cookie-reuse.yaml", TestCase: &httpDisableCookieReuse{}},
 	{Path: "protocols/http/raw-dynamic-extractor.yaml", TestCase: &httpRawDynamicExtractor{}},
 	{Path: "protocols/http/raw-get-query.yaml", TestCase: &httpRawGetQuery{}},
 	{Path: "protocols/http/raw-get.yaml", TestCase: &httpRawGet{}},
@@ -81,6 +84,8 @@ var httpTestcases = []integrationCase{
 	{Path: "protocols/http/annotation-timeout.yaml", TestCase: &annotationTimeout{}},
 	{Path: "protocols/http/custom-attack-type.yaml", TestCase: &customAttackType{}},
 	{Path: "protocols/http/get-all-ips.yaml", TestCase: &scanAllIPS{}},
+	{Path: "protocols/http/target-line-ip.yaml", TestCase: &httpTargetLineIP{}},
+	{Path: "protocols/http/target-line-ip-pipeline.yaml", TestCase: &httpTargetLineIP{}},
 	{Path: "protocols/http/get-without-scheme.yaml", TestCase: &httpGetWithoutScheme{}},
 	{Path: "protocols/http/cl-body-without-header.yaml", TestCase: &httpCLBodyWithoutHeader{}},
 	{Path: "protocols/http/cl-body-with-header.yaml", TestCase: &httpCLBodyWithHeader{}},
@@ -95,6 +100,8 @@ var httpTestcases = []integrationCase{
 	{Path: "protocols/http/response-data-literal-reuse.yaml", TestCase: &httpResponseDataLiteralReuse{}},
 	{Path: "protocols/http/raw-path-single-slash.yaml", TestCase: &httpRawPathSingleSlash{}},
 	{Path: "protocols/http/raw-unsafe-path-single-slash.yaml", TestCase: &httpRawUnsafePathSingleSlash{}},
+	{Path: "protocols/http/disable-http-cache.yaml", TestCase: &httpDisableCache{}},
+	{Path: "protocols/http/http-cache.yaml", TestCase: &httpCache{}},
 }
 
 type httpMultiVarSharing struct{}
@@ -902,6 +909,29 @@ func (h *httpPaths) Execute(filepath string) error {
 
 type httpRawCookieReuse struct{}
 
+type httpDisableCookieReuse struct{}
+
+func (h *httpDisableCookieReuse) Execute(filePath string) error {
+	router := httprouter.New()
+	router.GET("/login", func(w http.ResponseWriter, _ *http.Request, _ httprouter.Params) {
+		http.SetCookie(w, &http.Cookie{Name: "nuclei", Value: "test"})
+		_, _ = fmt.Fprint(w, "logged in")
+	})
+	router.GET("/anonymous", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+		if _, err := r.Cookie("nuclei"); errors.Is(err, http.ErrNoCookie) {
+			_, _ = fmt.Fprint(w, "anonymous")
+		}
+	})
+	ts := httptest.NewServer(router)
+	defer ts.Close()
+
+	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, ts.URL, debug)
+	if err != nil {
+		return err
+	}
+	return expectResultsCount(results, 1)
+}
+
 // Execute executes a test case and returns an error if occurred
 func (h *httpRawCookieReuse) Execute(filePath string) error {
 	router := httprouter.New()
@@ -1579,6 +1609,70 @@ func (h *scanAllIPS) Execute(filePath string) error {
 	return expectResultsCount(got, 1)
 }
 
+// target lines pin a hostname that does not resolve to the test servers
+type httpTargetLineIP struct{}
+
+// Execute executes a test case and returns an error if occurred
+func (h *httpTargetLineIP) Execute(filePath string) error {
+	serve := func(addr, name string) (*httptest.Server, error) {
+		listener, err := net.Listen("tcp", addr)
+		if err != nil {
+			return nil, err
+		}
+		ts := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			_, _ = fmt.Fprintf(w, "host=%s server=%s", r.Host, name)
+		}))
+		_ = ts.Listener.Close()
+		ts.Listener = listener
+		ts.Start()
+		return ts, nil
+	}
+
+	one, err := serve("127.0.0.1:0", "one")
+	if err != nil {
+		return err
+	}
+	defer one.Close()
+	_, port, err := net.SplitHostPort(one.Listener.Addr().String())
+	if err != nil {
+		return err
+	}
+
+	lines := []string{fmt.Sprintf(`{"target": "http://pinned.test:%s", "ip": "127.0.0.1"}`, port)}
+	want := []string{"one"}
+	// the same host pinned to a second ip, where 127.0.0.2 is available
+	if two, err := serve(net.JoinHostPort("127.0.0.2", port), "two"); err == nil {
+		defer two.Close()
+		lines = append(lines, fmt.Sprintf(`{"target": "http://pinned.test:%s", "ip": "127.0.0.2"}`, port))
+		want = append(want, "two")
+	}
+
+	targets, err := os.CreateTemp("", "target-lines-*.txt")
+	if err != nil {
+		return err
+	}
+	defer func() { _ = os.Remove(targets.Name()) }()
+	if _, err := targets.WriteString(strings.Join(lines, "\n")); err != nil {
+		return err
+	}
+	_ = targets.Close()
+
+	got, err := testutils.RunNucleiBareArgsAndGetResults(debug, nil, "-t", filePath, "-l", targets.Name())
+	if err != nil {
+		return err
+	}
+	if err := expectResultsCount(got, len(want)); err != nil {
+		return err
+	}
+	joined := strings.Join(got, "\n")
+	for _, name := range want {
+		if !strings.Contains(joined, name) {
+			return fmt.Errorf("no result from server %q: %v", name, got)
+		}
+	}
+	return nil
+}
+
 // ensure that ip|host are handled without http|https scheme
 type httpGetWithoutScheme struct{}
 
@@ -1823,5 +1917,69 @@ func (h *httpRawUnsafePathSingleSlash) Execute(filepath string) error {
 	if actual != expectedPath {
 		return fmt.Errorf("expected: %v\n\nactual: %v", expectedPath, actual)
 	}
+	return nil
+}
+
+type httpCache struct{}
+
+func (h *httpCache) Execute(filePath string) error {
+	router := httprouter.New()
+	var requestCount int32
+	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+		atomic.AddInt32(&requestCount, 1)
+		w.Header().Set("Cache-Control", "max-age=2")
+		w.WriteHeader(http.StatusOK)
+		_, _ = fmt.Fprint(w, requestCount)
+	})
+	ts := httptest.NewServer(router)
+	defer ts.Close()
+
+	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, ts.URL, debug, "-http-cache")
+	if err != nil {
+		return err
+	}
+
+	// We expect 2 results because we made 2 requests and both should match
+	if err := expectResultsCount(results, 2); err != nil {
+		return err
+	}
+
+	// We expect only 1 actual request to the server because of caching
+	if count := atomic.LoadInt32(&requestCount); count != 1 {
+		return fmt.Errorf("expected 1 request to server, got %d", count)
+	}
+
+	return nil
+}
+
+type httpDisableCache struct{}
+
+func (h *httpDisableCache) Execute(filePath string) error {
+	var requestCount int32
+	router := httprouter.New()
+	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+		atomic.AddInt32(&requestCount, 1)
+		w.Header().Set("Cache-Control", "max-age=2")
+		w.WriteHeader(http.StatusOK)
+		_, _ = fmt.Fprint(w, requestCount)
+	})
+	ts := httptest.NewServer(router)
+	defer ts.Close()
+
+	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, ts.URL, debug, "-http-cache")
+	if err != nil {
+		return err
+	}
+
+	// We expect 2 results because we made 2 requests and both should match
+	if err := expectResultsCount(results, 2); err != nil {
+		return err
+	}
+
+	// We expect 2 actual requests to the server because cache is disabled
+	if count := atomic.LoadInt32(&requestCount); count != 2 {
+		return fmt.Errorf("expected 2 requests to server, got %d", count)
+	}
+
 	return nil
 }
