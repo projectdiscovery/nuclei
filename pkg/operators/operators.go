@@ -104,7 +104,6 @@ func (operators *Operators) NeedsResponse() bool {
 	return false
 }
 
-
 // Result is a result structure created from operators running on data.
 type Result struct {
 	// Matched is true if any matchers matched

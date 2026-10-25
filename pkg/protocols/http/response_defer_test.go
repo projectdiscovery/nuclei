@@ -91,7 +91,7 @@ func TestNeedsFullResponse(t *testing.T) {
 		require.True(t, req.needsFullResponse(nil))
 	})
 
-	t.Run("matcher with part all needs full response", func(t *testing.T) {
+	t.Run("matcher with part all reads body and headers only", func(t *testing.T) {
 		req := &Request{
 			ID:     "part-all",
 			Method: HTTPMethodTypeHolder{MethodType: HTTPGet},
@@ -105,8 +105,28 @@ func TestNeedsFullResponse(t *testing.T) {
 		}
 		execOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{ID: "part-all"})
 		require.NoError(t, req.Compile(execOpts))
-		require.True(t, req.needsFullResponse(nil))
+		require.False(t, req.needsFullResponse(nil))
 	})
+
+	for _, tc := range []struct {
+		name    string
+		matcher *matchers.Matcher
+	}{
+		{"numbered response part", &matchers.Matcher{Part: "response_1", Type: matchers.MatcherTypeHolder{MatcherType: matchers.WordsMatcher}, Words: []string{"test"}}},
+		{"response placeholder in words", &matchers.Matcher{Part: "body", Type: matchers.MatcherTypeHolder{MatcherType: matchers.WordsMatcher}, Words: []string{"{{response}}"}}},
+		{"request condition", &matchers.Matcher{Type: matchers.MatcherTypeHolder{MatcherType: matchers.DSLMatcher}, DSL: []string{"status_code_1 == 200 && status_code_2 == 200"}}},
+	} {
+		t.Run(tc.name+" needs full response", func(t *testing.T) {
+			req := &Request{
+				ID:        "response-ref",
+				Method:    HTTPMethodTypeHolder{MethodType: HTTPGet},
+				Operators: operators.Operators{Matchers: []*matchers.Matcher{tc.matcher}},
+			}
+			execOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{ID: "response-ref"})
+			require.NoError(t, req.Compile(execOpts))
+			require.True(t, req.needsFullResponse(nil))
+		})
+	}
 
 	t.Run("dsl matcher without response does not need full response", func(t *testing.T) {
 		req := &Request{
@@ -190,7 +210,7 @@ func TestNeedsFullResponse(t *testing.T) {
 	})
 
 	t.Run("debug options require full response", func(t *testing.T) {
-		debugOpts := *testutils.DefaultOptions
+		debugOpts := testutils.DefaultOptions.Copy()
 		debugOpts.Debug = true
 
 		req := &Request{
@@ -204,13 +224,13 @@ func TestNeedsFullResponse(t *testing.T) {
 				}},
 			},
 		}
-		execOpts := testutils.NewMockExecuterOptions(&debugOpts, &testutils.TemplateInfo{ID: "debug-flag"})
+		execOpts := testutils.NewMockExecuterOptions(debugOpts, &testutils.TemplateInfo{ID: "debug-flag"})
 		require.NoError(t, req.Compile(execOpts))
 		require.True(t, req.needsFullResponse(nil))
 	})
 
 	t.Run("http stats option requires full response", func(t *testing.T) {
-		statsOpts := *testutils.DefaultOptions
+		statsOpts := testutils.DefaultOptions.Copy()
 		statsOpts.HTTPStats = true
 
 		req := &Request{
@@ -224,7 +244,7 @@ func TestNeedsFullResponse(t *testing.T) {
 				}},
 			},
 		}
-		execOpts := testutils.NewMockExecuterOptions(&statsOpts, &testutils.TemplateInfo{ID: "http-stats-flag"})
+		execOpts := testutils.NewMockExecuterOptions(statsOpts, &testutils.TemplateInfo{ID: "http-stats-flag"})
 		require.NoError(t, req.Compile(execOpts))
 		require.True(t, req.needsFullResponse(nil))
 	})
@@ -396,4 +416,11 @@ func TestStatusMatcherSnippet_HeaderFallback(t *testing.T) {
 	require.True(t, isMatch)
 	require.Len(t, snippets, 1)
 	require.Equal(t, "HTTP/1.1 200", snippets[0])
+}
+
+func TestEventResponseRebuildsDeferredResponse(t *testing.T) {
+	headers := "HTTP/1.1 200 OK\r\nServer: test\r\n\r\n"
+	require.Equal(t, headers+"body", eventResponse(output.InternalEvent{"response": "", "all_headers": headers, "body": "body"}))
+	require.Equal(t, "full", eventResponse(output.InternalEvent{"response": "full", "all_headers": headers, "body": "body"}))
+	require.Empty(t, eventResponse(output.InternalEvent{}))
 }

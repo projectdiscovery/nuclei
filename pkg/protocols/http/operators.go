@@ -209,7 +209,7 @@ func (request *Request) MakeResultEventItem(wrapped *output.InternalWrappedEvent
 		IP:               fields.Ip,
 		GlobalMatchers:   isGlobalMatchers,
 		Request:          types.ToString(wrapped.InternalEvent["request"]),
-		Response:         request.truncateResponse(wrapped.InternalEvent["response"]),
+		Response:         request.truncateResponse(eventResponse(wrapped.InternalEvent)),
 		CURLCommand:      types.ToString(wrapped.InternalEvent["curl-command"]),
 		TemplateEncoded:  request.options.EncodeTemplate(),
 		Error:            types.ToString(wrapped.InternalEvent["error"]),
@@ -217,6 +217,16 @@ func (request *Request) MakeResultEventItem(wrapped *output.InternalWrappedEvent
 		ReqURLPattern:    reqURLPattern,
 	}
 	return data
+}
+
+// eventResponse returns the full response of event. Events matched after the
+// response chain is released, such as interactsh matches, may not carry it, so
+// it is rebuilt from the headers and body they keep.
+func eventResponse(event output.InternalEvent) string {
+	if response := types.ToString(event["response"]); response != "" {
+		return response
+	}
+	return types.ToString(event["all_headers"]) + types.ToString(event["body"])
 }
 
 func (request *Request) truncateResponse(response interface{}) string {

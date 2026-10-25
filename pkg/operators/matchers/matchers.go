@@ -215,29 +215,39 @@ func (matcher *Matcher) ResultWithMatchedSnippet(data bool, matchedSnippet []str
 	return data, matchedSnippet
 }
 
-// NeedsResponse returns true if the matcher requires the full response or "all" part.
+// NeedsResponse returns true if the matcher reads the full response.
 func (matcher *Matcher) NeedsResponse() bool {
 	if matcher == nil {
 		return false
 	}
-	part := strings.ToLower(matcher.Part)
-	if part == "response" || part == "all" {
+	if IsResponseVar(matcher.Part) {
 		return true
 	}
 	for _, expr := range matcher.dslCompiled {
 		for _, v := range expr.Vars() {
-			vLower := strings.ToLower(v)
-			if vLower == "response" || vLower == "all" || strings.HasPrefix(vLower, "response_") {
+			if IsResponseVar(v) {
 				return true
 			}
 		}
 	}
-	for _, dsl := range matcher.DSL {
-		dLower := strings.ToLower(dsl)
-		if strings.Contains(dLower, "response") || strings.Contains(dLower, "all") {
-			return true
+	return MentionsResponse(matcher.DSL, matcher.Words, matcher.Regex)
+}
+
+// IsResponseVar reports whether name is the full response or a numbered copy of it.
+func IsResponseVar(name string) bool {
+	name = strings.ToLower(name)
+	return name == "response" || strings.HasPrefix(name, "response_")
+}
+
+// MentionsResponse reports whether any value refers to the response by name,
+// either as a DSL variable or as a {{response}} placeholder.
+func MentionsResponse(values ...[]string) bool {
+	for _, list := range values {
+		for _, value := range list {
+			if strings.Contains(strings.ToLower(value), "response") {
+				return true
+			}
 		}
 	}
 	return false
 }
-

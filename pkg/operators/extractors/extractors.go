@@ -2,10 +2,10 @@ package extractors
 
 import (
 	"regexp"
-	"strings"
 
 	"github.com/itchyny/gojq"
 	"github.com/projectdiscovery/govaluate"
+	"github.com/projectdiscovery/nuclei/v3/pkg/operators/matchers"
 )
 
 // Extractor is used to extract part of response using a regex.
@@ -136,35 +136,25 @@ type Extractor struct {
 	llmClient LLMClient
 }
 
-// NeedsResponse returns true if the extractor requires the full response or "all" part.
+// NeedsResponse returns true if the extractor reads the full response.
 func (extractor *Extractor) NeedsResponse() bool {
 	if extractor == nil {
 		return false
 	}
-	part := strings.ToLower(extractor.Part)
-	if part == "response" || part == "all" {
+	if matchers.IsResponseVar(extractor.Part) {
 		return true
 	}
 	for _, k := range extractor.KVal {
-		kLower := strings.ToLower(k)
-		if kLower == "response" || kLower == "all" || strings.HasPrefix(kLower, "response_") {
+		if matchers.IsResponseVar(k) {
 			return true
 		}
 	}
 	for _, expr := range extractor.dslCompiled {
 		for _, v := range expr.Vars() {
-			vLower := strings.ToLower(v)
-			if vLower == "response" || vLower == "all" || strings.HasPrefix(vLower, "response_") {
+			if matchers.IsResponseVar(v) {
 				return true
 			}
 		}
 	}
-	for _, dsl := range extractor.DSL {
-		dLower := strings.ToLower(dsl)
-		if strings.Contains(dLower, "response") || strings.Contains(dLower, "all") {
-			return true
-		}
-	}
-	return false
+	return matchers.MentionsResponse(extractor.DSL, extractor.Regex)
 }
-

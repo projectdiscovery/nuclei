@@ -69,7 +69,6 @@ func (s *Storage) NeedsResponse() bool {
 	return false
 }
 
-
 // Match matches the global matchers against the response
 func (s *Storage) Match(
 	event output.InternalEvent,
