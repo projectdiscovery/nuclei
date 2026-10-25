@@ -25,6 +25,7 @@ func NewCookiesAuthStrategy(data *Secret) *CookiesAuthStrategy {
 
 // Apply applies the cookies auth strategy to the request
 func (s *CookiesAuthStrategy) Apply(req *http.Request) {
+	var names []string
 	for _, cookie := range s.Data.Cookies {
 		if !cookieAppliesToRequest(cookie, req.URL) {
 			continue
@@ -37,7 +38,9 @@ func (s *CookiesAuthStrategy) Apply(req *http.Request) {
 			Secure: cookie.Secure,
 		}
 		req.AddCookie(c)
+		names = append(names, cookie.Key)
 	}
+	markCookieAuth(req, names)
 }
 
 // ApplyOnRR applies the cookies auth strategy to the retryable request
@@ -66,6 +69,7 @@ func (s *CookiesAuthStrategy) ApplyOnRR(req *retryablehttp.Request) {
 		req.AddCookie(cookie)
 	}
 	// Add new cookies that match this request's scope
+	var names []string
 	for _, cookie := range s.Data.Cookies {
 		if !cookieAppliesToRequest(cookie, reqURL) {
 			continue
@@ -77,7 +81,9 @@ func (s *CookiesAuthStrategy) ApplyOnRR(req *retryablehttp.Request) {
 			Path:   cookie.Path,
 			Secure: cookie.Secure,
 		})
+		names = append(names, cookie.Key)
 	}
+	markCookieAuth(req.Request, names)
 }
 
 // cookieAppliesToRequest reports whether a captured/configured cookie should be

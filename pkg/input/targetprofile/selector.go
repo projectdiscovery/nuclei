@@ -2,27 +2,34 @@
 // single scan can run a different profile on each target.
 //
 // A target line is a JSON object whose keys mirror template profiles and CLI
-// flags:
+// flags, and may pin the target to an ip:
 //
 //	{"target": "https://a.example", "tags": ["thinkphp"], "tech": ["php"]}
 //	{"target": "https://b.example", "profile": "wordpress", "severity": ["high"]}
+//	{"target": "https://c.example", "ip": "192.0.2.10"}
 package targetprofile
 
 import (
+	"errors"
 	"fmt"
+	"net/netip"
 	"os"
 	"path/filepath"
 	"slices"
 	"strings"
 
+	"github.com/projectdiscovery/mapcidr/asn"
 	"github.com/projectdiscovery/nuclei/v3/internal/configuration"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils/json"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils/yaml"
+	iputil "github.com/projectdiscovery/utils/ip"
+	urlutil "github.com/projectdiscovery/utils/url"
 )
 
 const (
 	keyTarget  = "target"
 	keyProfile = "profile"
+	keyIP      = "ip"
 
 	keyTemplates       = "templates"
 	keyTags            = "tags"
@@ -54,36 +61,64 @@ func IsLine(line string) bool {
 
 // parseLine decodes a target line. Unknown keys are rejected so that a typo
 // cannot silently widen the scan to every template.
-func parseLine(line string) (target, profile string, sel selector, err error) {
+func parseLine(line string) (target, profile, ip string, sel selector, err error) {
 	var raw map[string]any
 	if err := json.Unmarshal([]byte(line), &raw); err != nil {
-		return "", "", nil, fmt.Errorf("invalid target line %q: %w", line, err)
+		return "", "", "", nil, fmt.Errorf("invalid target line %q: %w", line, err)
 	}
 
 	target, err = stringValue(raw, keyTarget)
 	if err != nil {
-		return "", "", nil, err
+		return "", "", "", nil, err
 	}
 	target = strings.TrimSpace(target)
 	if target == "" {
-		return "", "", nil, fmt.Errorf("target line %q has no %q", line, keyTarget)
+		return "", "", "", nil, fmt.Errorf("target line %q has no %q", line, keyTarget)
 	}
 
 	profile, err = stringValue(raw, keyProfile)
 	if err != nil {
-		return "", "", nil, err
+		return "", "", "", nil, err
+	}
+	ip, err = stringValue(raw, keyIP)
+	if err != nil {
+		return "", "", "", nil, err
+	}
+	if ip != "" {
+		if ip, err = pinnedIP(target, ip); err != nil {
+			return "", "", "", nil, fmt.Errorf("target %q: %w", target, err)
+		}
 	}
 	delete(raw, keyTarget)
 	delete(raw, keyProfile)
+	delete(raw, keyIP)
 
 	sel, ignored, err := toSelector(raw)
 	if err != nil {
-		return "", "", nil, fmt.Errorf("target %q: %w", target, err)
+		return "", "", "", nil, fmt.Errorf("target %q: %w", target, err)
 	}
 	if len(ignored) > 0 {
-		return "", "", nil, fmt.Errorf("target %q: unknown keys %s (supported: target, profile, %s)", target, strings.Join(ignored, ", "), strings.Join(selectorKeys, ", "))
+		return "", "", "", nil, fmt.Errorf("target %q: unknown keys %s (supported: target, ip, profile, %s)", target, strings.Join(ignored, ", "), strings.Join(selectorKeys, ", "))
 	}
-	return target, profile, sel, nil
+	return target, profile, ip, sel, nil
+}
+
+// pinnedIP validates the ip a target is pinned to and returns it in canonical
+// form. Only a target with a hostname can be pinned: the hostname is kept for
+// the Host header, SNI and template variables while connections go to the ip.
+func pinnedIP(target, value string) (string, error) {
+	addr, err := netip.ParseAddr(strings.TrimSpace(value))
+	if err != nil || addr.Zone() != "" || addr.IsUnspecified() {
+		return "", fmt.Errorf("invalid ip %q", value)
+	}
+	if iputil.IsCIDR(target) || asn.IsASN(target) {
+		return "", errors.New("a CIDR or ASN target cannot have an ip")
+	}
+	parsed, err := urlutil.Parse(target)
+	if err != nil || parsed.Hostname() == "" || iputil.IsIP(parsed.Hostname()) {
+		return "", errors.New("a target with an ip must have a hostname")
+	}
+	return addr.Unmap().String(), nil
 }
 
 // loadProfile reads the selection keys of a template profile. Keys that
