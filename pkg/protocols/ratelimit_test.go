@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/hostratelimit"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils"
@@ -80,4 +81,36 @@ func TestRateLimitTakeContextCancelsGlobalWait(t *testing.T) {
 	}
 	cancel()
 	require.ErrorIs(t, <-result, context.Canceled)
+}
+
+func TestHostRateLimitKey(t *testing.T) {
+	require.Equal(t, "example.com:8080", protocols.HostRateLimitKey("http://EXAMPLE.COM:8080/path"))
+	require.Equal(t, "example.com:8080", protocols.HostRateLimitKey("example.com:8080"))
+	require.Equal(t, "example.com:443", protocols.HostRateLimitKey("https://Example.com/a"))
+	require.Equal(t, "example.com:80", protocols.HostRateLimitKey("http://example.com"))
+}
+
+func TestRateLimitTakeHostRateLimiterTakesPriority(t *testing.T) {
+	options := types.DefaultOptions()
+	options.SetExecutionID(t.Name())
+
+	// a global limiter that would block for a long time must not be consulted
+	global := utils.GetRateLimiter(context.Background(), 1, time.Hour)
+	t.Cleanup(global.Stop)
+	pool := hostratelimit.NewPool(context.Background(), hostratelimit.Options{MaxCount: 1, Duration: 300 * time.Millisecond})
+	t.Cleanup(pool.Stop)
+	executor := &protocols.ExecutorOptions{Options: options, RateLimiter: global, HostRateLimiter: pool}
+
+	start := time.Now()
+	for range 3 {
+		require.NoError(t, executor.RateLimitTake("https://example.com/path"))
+	}
+	elapsed := time.Since(start)
+	require.GreaterOrEqual(t, elapsed, 500*time.Millisecond, "one host must be limited")
+	require.Less(t, elapsed, 5*time.Second, "the global limiter must not be consulted")
+	require.Equal(t, 1, pool.Len())
+
+	// a redirect to the same origin shares the bucket of the original request
+	require.NoError(t, executor.RateLimitTake("example.com:443"))
+	require.Equal(t, 1, pool.Len())
 }
