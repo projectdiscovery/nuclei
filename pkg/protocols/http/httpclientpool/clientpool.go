@@ -127,6 +127,7 @@ func (t *connTrackingTransport) RoundTrip(req *http.Request) (*http.Response, er
 	// update both the global counters and the per-host bucket from one trace.
 	host := normalizeHost(req.URL)
 	var used atomic.Pointer[desyncConn]
+	var generation atomic.Uint64
 	trace := &httptrace.ClientTrace{
 		GotConn: func(info httptrace.GotConnInfo) {
 			if info.Reused {
@@ -136,7 +137,7 @@ func (t *connTrackingTransport) RoundTrip(req *http.Request) (*http.Response, er
 			}
 			recordHostConn(host, info.Reused)
 			if tracked, ok := info.Conn.(*desyncConn); ok {
-				tracked.markBusy()
+				generation.Store(tracked.markBusy())
 				used.Store(tracked)
 			}
 		},
@@ -145,7 +146,7 @@ func (t *connTrackingTransport) RoundTrip(req *http.Request) (*http.Response, er
 				return
 			}
 			if tracked := used.Load(); tracked != nil {
-				tracked.markIdle()
+				tracked.markIdle(generation.Load())
 			}
 		},
 	}

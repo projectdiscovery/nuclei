@@ -304,14 +304,40 @@ func TestDesyncConnStartsBusy(t *testing.T) {
 	recorder.requireQuiet(t)
 }
 
+func TestDesyncConnIgnoresStaleIdleAfterReuse(t *testing.T) {
+	client, server := net.Pipe()
+	t.Cleanup(func() { _ = server.Close() })
+
+	recorder := newQuarantineRecorder()
+	tracked := newDesyncConn(client, "stale.test:80", recorder.record).(*desyncConn)
+	t.Cleanup(func() { _ = tracked.Close() })
+
+	first := tracked.markBusy()
+	second := tracked.markBusy()
+	tracked.markIdle(first)
+
+	go func() { _, _ = io.WriteString(server, "HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nok") }()
+
+	buffer := make([]byte, 128)
+	_, err := tracked.Read(buffer)
+	require.NoError(t, err)
+	require.False(t, tracked.poisoned.Load(), "a late idle mark must not poison the request that already took the connection")
+	recorder.requireQuiet(t)
+
+	tracked.markIdle(second)
+	go func() { _, _ = io.WriteString(server, "left") }()
+	_, err = tracked.Read(buffer)
+	require.NoError(t, err)
+	require.Equal(t, "stale.test", recorder.await(t))
+}
+
 func TestDesyncConnPoisonsOnBytesWhileIdleAndClosesConnection(t *testing.T) {
 	client, server := net.Pipe()
 	t.Cleanup(func() { _ = server.Close() })
 
 	recorder := newQuarantineRecorder()
 	tracked := newDesyncConn(client, "idle.test:80", recorder.record).(*desyncConn)
-	tracked.markBusy()
-	tracked.markIdle()
+	tracked.markIdle(tracked.markBusy())
 
 	go func() { _, _ = io.WriteString(server, "HTTP/1.1 200 OK\r\nContent-Length: 5\r\n\r\nstale") }()
 

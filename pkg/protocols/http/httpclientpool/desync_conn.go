@@ -26,9 +26,13 @@ import (
 // Closing and quarantining only stops the host from doing it again.
 type desyncConn struct {
 	net.Conn
-	host      string
-	onPoison  func(host string)
-	idle      atomic.Bool
+	host     string
+	onPoison func(host string)
+	// state packs the request generation in the high bits and the idle bit in
+	// the low bit. markIdle only sets that bit for the generation it was given,
+	// so a PutIdleConn that lands after the next request has taken the
+	// connection cannot mark the live exchange idle.
+	state     atomic.Uint64
 	poisoned  atomic.Bool
 	closeOnce sync.Once
 }
@@ -46,22 +50,39 @@ func newDesyncConn(conn net.Conn, addr string, onPoison func(host string)) net.C
 
 func (c *desyncConn) Read(b []byte) (int, error) {
 	n, err := c.Conn.Read(b)
-	if n > 0 && c.idle.Load() {
+	if n > 0 && c.state.Load()&1 == 1 {
 		c.poison()
 	}
 	return n, err
 }
 
-func (c *desyncConn) markBusy() {
-	c.idle.Store(false)
+// markBusy records that a request now owns the connection and returns that
+// generation. The matching markIdle is the only one allowed to mark it idle.
+func (c *desyncConn) markBusy() uint64 {
+	for {
+		old := c.state.Load()
+		gen := (old >> 1) + 1
+		if c.state.CompareAndSwap(old, gen<<1) {
+			return gen
+		}
+	}
 }
 
-func (c *desyncConn) markIdle() {
-	c.idle.Store(true)
+func (c *desyncConn) markIdle(gen uint64) {
+	idle := (gen << 1) | 1
+	for {
+		old := c.state.Load()
+		if old>>1 != gen {
+			return
+		}
+		if c.state.CompareAndSwap(old, idle) {
+			return
+		}
+	}
 }
 
 func (c *desyncConn) Close() error {
-	c.idle.Store(false)
+	c.state.Store(0)
 	return c.Conn.Close()
 }
 
@@ -85,7 +106,7 @@ func (c *desyncConn) poison() {
 	if !c.poisoned.CompareAndSwap(false, true) {
 		return
 	}
-	c.idle.Store(false)
+	c.state.Store(0)
 	if c.onPoison != nil {
 		c.onPoison(c.host)
 	}
