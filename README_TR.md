@@ -110,7 +110,7 @@ Nuclei'nin tam [**`dokümantasyonuna buradan`**](https://docs.projectdiscovery.i
 
 ### Kurulum
 
-`nuclei` yüklemek için **go >= 1.24.2** gerektirir. Repoyu almak için aşağıdaki komutu çalıştırın:
+`nuclei` yüklemek için **go >= 1.27.3** gerektirir. Repoyu almak için aşağıdaki komutu çalıştırın:
 
 ```sh
 go install -v github.com/projectdiscovery/nuclei/v3/cmd/nuclei@latest

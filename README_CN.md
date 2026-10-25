@@ -110,7 +110,7 @@ _针对安全团队和企业，我们提供了构建在 Nuclei OSS 之上的云�
 
 ### 安装
 
-`nuclei` 需要 **go >= 1.24.2** 才能成功安装。运行以下命令获取仓库：
+`nuclei` 需要 **go >= 1.27.3** 才能成功安装。运行以下命令获取仓库：
 
 ```sh
 go install -v github.com/projectdiscovery/nuclei/v3/cmd/nuclei@latest

@@ -166,12 +166,12 @@ func (e *Engine) executeTemplateWithTargets(ctx context.Context, template *templ
 		currentInfo.Unlock()
 
 		// Skip if the host has had errors
-		if inScope && e.executerOpts.HostErrorsCache != nil && e.executerOpts.HostErrorsCache.Check(e.executerOpts.ProtocolType.String(), contextargs.NewWithMetaInput(ctx, scannedValue)) {
+		if inScope && e.executerOpts.HostErrorsCache != nil && e.executerOpts.HostErrorsCache.Check(template.Type().String(), contextargs.NewWithMetaInput(ctx, scannedValue)) {
 			skipEvent := &output.ResultEvent{
 				TemplateID:    template.ID,
 				TemplatePath:  template.Path,
 				Info:          template.Info,
-				Type:          e.executerOpts.ProtocolType.String(),
+				Type:          template.Type().String(),
 				Host:          scannedValue.Input,
 				MatcherStatus: false,
 				Error:         "host was skipped as it was found unresponsive",
@@ -224,12 +224,12 @@ func (e *Engine) executeTemplatesOnTarget(ctx context.Context, alltemplates []*t
 		// Check whether the target has already been marked as permanently
 		// unresponsive by HostErrorsCache before spawning another goroutine.
 		if e.executerOpts.HostErrorsCache != nil &&
-			e.executerOpts.HostErrorsCache.Check(e.executerOpts.ProtocolType.String(), contextargs.NewWithMetaInput(ctx, target)) {
+			e.executerOpts.HostErrorsCache.Check(tpl.Type().String(), contextargs.NewWithMetaInput(ctx, target)) {
 			skipEvent := &output.ResultEvent{
 				TemplateID:    tpl.ID,
 				TemplatePath:  tpl.Path,
 				Info:          tpl.Info,
-				Type:          e.executerOpts.ProtocolType.String(),
+				Type:          tpl.Type().String(),
 				Host:          target.Input,
 				MatcherStatus: false,
 				Error:         "host was skipped as it was found unresponsive",
