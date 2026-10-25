@@ -21,8 +21,8 @@ func TestAcquireHonoursCancelledContextWhenPoolIsFull(t *testing.T) {
 	}()
 
 	select {
-	case <-done:
-		t.Fatal("Acquire returned while the pool is full")
+	case err := <-done:
+		t.Fatal("Acquire returned while the pool is full", err)
 	case <-time.After(50 * time.Millisecond):
 	}
 
