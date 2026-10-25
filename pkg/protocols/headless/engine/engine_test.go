@@ -9,7 +9,7 @@ import (
 
 func TestLaunchBrowserFallsBackFromChromeShell(t *testing.T) {
 	var paths []string
-	got, err := launchBrowser("/cache/chrome-headless-shell", func(path string) (string, error) {
+	got, err := launchBrowser("/cache/chrome-headless-shell", true, func(path string) (string, error) {
 		paths = append(paths, path)
 		if path != "" {
 			return "", errors.New("shell launch failed")
@@ -25,11 +25,23 @@ func TestLaunchBrowserFallsBackFromChromeShell(t *testing.T) {
 func TestLaunchBrowserDoesNotRetryDefaultBrowser(t *testing.T) {
 	var calls int
 	expected := errors.New("default launch failed")
-	_, err := launchBrowser("", func(string) (string, error) {
+	_, err := launchBrowser("", false, func(string) (string, error) {
 		calls++
 		return "", expected
 	})
 
 	require.ErrorIs(t, err, expected)
 	require.Equal(t, 1, calls)
+}
+
+func TestLaunchBrowserDoesNotRetryInstalledChrome(t *testing.T) {
+	var paths []string
+	expected := errors.New("installed chrome launch failed")
+	_, err := launchBrowser("/usr/bin/google-chrome", false, func(path string) (string, error) {
+		paths = append(paths, path)
+		return "", expected
+	})
+
+	require.ErrorIs(t, err, expected)
+	require.Equal(t, []string{"/usr/bin/google-chrome"}, paths)
 }

@@ -83,7 +83,7 @@ func New(options *types.Options) (*Browser, error) {
 			return configured
 		}
 
-		browserPath, err := browserPath(options)
+		browserPath, isChromeShell, err := browserPath(options)
 		if err != nil {
 			return nil, err
 		}
@@ -91,7 +91,7 @@ func New(options *types.Options) (*Browser, error) {
 		if err != nil {
 			return nil, err
 		}
-		launcherURL, err = launchBrowser(browserPath, func(path string) (string, error) {
+		launcherURL, err = launchBrowser(browserPath, isChromeShell, func(path string) (string, error) {
 			chromeLauncher = newChromeLauncher(path)
 			return chromeLauncher.Launch()
 		})
@@ -142,22 +142,24 @@ func New(options *types.Options) (*Browser, error) {
 	return engine, nil
 }
 
-func browserPath(options *types.Options) (string, error) {
+// browserPath returns the browser binary to launch, empty for the rod default,
+// and whether that binary is chrome-headless-shell.
+func browserPath(options *types.Options) (string, bool, error) {
 	executablePath, err := os.Executable()
 	if err != nil {
-		return "", err
+		return "", false, err
 	}
 
 	// if musl is used, most likely we are on alpine linux which is not supported by go-rod, so we fallback to default chrome
 	useMusl, _ := fileutil.UseMusl(executablePath)
 	if options.UseInstalledChrome || useMusl {
 		if chromePath, hasChrome := launcher.LookPath(); hasChrome {
-			return chromePath, nil
+			return chromePath, false, nil
 		}
-		return "", errors.New("the chrome browser is not installed")
+		return "", false, errors.New("the chrome browser is not installed")
 	}
 	if options.ShowBrowser || !chromeshell.Supported() {
-		return "", nil
+		return "", false, nil
 	}
 
 	// Prefer chrome-headless-shell for local headless templates; skip it when
@@ -167,14 +169,17 @@ func browserPath(options *types.Options) (string, error) {
 	shellPath, err := chromeshell.EnsureContext(ctx)
 	if err != nil {
 		gologger.Warning().Msgf("Could not prepare chrome-headless-shell, using the default browser: %s\n", err)
-		return "", nil
+		return "", false, nil
 	}
-	return shellPath, nil
+	return shellPath, true, nil
 }
 
-func launchBrowser(browserPath string, launch func(string) (string, error)) (string, error) {
+// launchBrowser launches browserPath and, only when it is chrome-headless-shell,
+// retries once with the default browser. An installed Chrome that fails to
+// launch is returned as an error, as before.
+func launchBrowser(browserPath string, isChromeShell bool, launch func(string) (string, error)) (string, error) {
 	launcherURL, err := launch(browserPath)
-	if err == nil || browserPath == "" {
+	if err == nil || !isChromeShell {
 		return launcherURL, err
 	}
 
