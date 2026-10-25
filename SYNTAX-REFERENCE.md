@@ -1011,6 +1011,7 @@ Part Definitions:
 - <code>headers_from_response</code> - HTTP response headers in name:value format
 - <code>tls_version</code> - TLS version negotiated for the HTTP connection
 - <code>cipher</code> - TLS cipher suite negotiated for the HTTP connection
+- <code>key_exchange</code> - TLS key exchange group negotiated for the HTTP connection
 - <code>sni</code> - SNI value used in the TLS handshake
 - <code>subject_cn</code> - Leaf certificate subject common name
 - <code>subject_dn</code> - Leaf certificate subject distinguished name
@@ -4144,6 +4145,7 @@ Part Definitions:
 - <code>issuer_cn</code> - Issuer CN is the common name of the certificate issuer
 - <code>issuer_dn</code> - Issuer DN is the distinguished name of the certificate issuer
 - <code>issuer_org</code> - Issuer organization is the organization of the certificate issuer
+- <code>key_exchange</code> - Key exchange is the TLS key exchange group negotiated in the handshake
 - <code>not_after</code> - Timestamp after which the remote cert expires
 - <code>not_before</code> - Timestamp before which the certificate is not valid
 - <code>probe_status</code> - Probe status indicates if the probe was successful
