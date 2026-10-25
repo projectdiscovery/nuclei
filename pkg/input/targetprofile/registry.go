@@ -22,7 +22,7 @@ type Registry struct {
 	templatesDir string
 
 	mu           sync.RWMutex
-	targets      map[string]*Selection
+	targets      map[targetKey]*Selection
 	selections   map[string]*Selection
 	rules        map[string]*rule
 	profiles     map[string]selector
@@ -38,23 +38,47 @@ var _ protocols.TargetScope = (*Registry)(nil)
 func NewRegistry(templatesDir string) *Registry {
 	return &Registry{
 		templatesDir: templatesDir,
-		targets:      make(map[string]*Selection),
+		targets:      make(map[targetKey]*Selection),
 		selections:   make(map[string]*Selection),
 		rules:        make(map[string]*rule),
 		profiles:     make(map[string]selector),
 	}
 }
 
-// ParseLine parses a target line into its target and selection.
-func (r *Registry) ParseLine(line string) (string, *Selection, error) {
-	target, profile, sel, err := parseLine(line)
+// Line is a parsed target line.
+type Line struct {
+	Target string
+	// IP is the address the target is pinned to, empty when it is not.
+	IP string
+	// Selection is nil when the line selects every template.
+	Selection *Selection
+}
+
+// targetKey identifies a stored input: the same target pinned to different
+// ips is scanned, and selected, separately.
+type targetKey struct {
+	input string
+	ip    string
+}
+
+func keyOf(input *contextargs.MetaInput) targetKey {
+	return targetKey{input: input.Input, ip: input.CustomIP}
+}
+
+// ParseLine parses a target line into its target, ip and selection.
+func (r *Registry) ParseLine(line string) (Line, error) {
+	target, profile, ip, sel, err := parseLine(line)
 	if err != nil {
-		return "", nil, err
+		return Line{}, err
+	}
+	if profile == "" && len(sel) == 0 {
+		// nothing narrows the templates, e.g. a line that only sets an ip
+		return Line{Target: target, IP: ip}, nil
 	}
 	if profile != "" {
 		base, err := r.profile(profile)
 		if err != nil {
-			return "", nil, fmt.Errorf("target %q: %w", target, err)
+			return Line{}, fmt.Errorf("target %q: %w", target, err)
 		}
 		sel = base.merge(sel)
 	}
@@ -64,48 +88,50 @@ func (r *Registry) ParseLine(line string) (string, *Selection, error) {
 
 	compiled, err := r.internRule(sel)
 	if err != nil {
-		return "", nil, fmt.Errorf("target %q: %w", target, err)
+		return Line{}, fmt.Errorf("target %q: %w", target, err)
 	}
-	return target, r.internSelection([]*rule{compiled}), nil
+	return Line{Target: target, IP: ip, Selection: r.internSelection([]*rule{compiled})}, nil
 }
 
 // Bind records the selection of a newly stored input; nil means unrestricted.
-func (r *Registry) Bind(input string, selection *Selection) {
+func (r *Registry) Bind(input *contextargs.MetaInput, selection *Selection) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
+	key := keyOf(input)
 	if selection == nil {
 		r.unrestricted = true
-		if _, ok := r.targets[input]; ok {
-			r.targets[input] = nil
+		if _, ok := r.targets[key]; ok {
+			r.targets[key] = nil
 		}
 		return
 	}
-	current, ok := r.targets[input]
+	current, ok := r.targets[key]
 	switch {
 	case !ok:
-		r.targets[input] = selection
+		r.targets[key] = selection
 	case current != nil:
-		r.targets[input] = r.union(current, selection)
+		r.targets[key] = r.union(current, selection)
 	}
 }
 
 // Merge records the selection of an input that was already stored, so a
 // target listed more than once runs the union of its selections and is
 // scanned once.
-func (r *Registry) Merge(input string, selection *Selection) {
+func (r *Registry) Merge(input *contextargs.MetaInput, selection *Selection) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	current, ok := r.targets[input]
+	key := keyOf(input)
+	current, ok := r.targets[key]
 	switch {
 	case !ok || current == nil:
 		// already unrestricted
 	case selection == nil:
 		r.unrestricted = true
-		r.targets[input] = nil
+		r.targets[key] = nil
 	default:
-		r.targets[input] = r.union(current, selection)
+		r.targets[key] = r.union(current, selection)
 	}
 }
 
@@ -153,7 +179,7 @@ func (r *Registry) Prepare(tpls []*templates.Template) {
 // For returns the selection of input, or nil when every template applies.
 func (r *Registry) For(input *contextargs.MetaInput) protocols.TemplateSelection {
 	r.mu.RLock()
-	selection := r.targets[input.Input]
+	selection := r.targets[keyOf(input)]
 	r.mu.RUnlock()
 
 	// a nil *Selection must not become a non-nil interface

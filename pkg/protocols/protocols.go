@@ -3,6 +3,8 @@ package protocols
 import (
 	"context"
 	"encoding/base64"
+	"errors"
+	"reflect"
 	"sync/atomic"
 
 	"github.com/projectdiscovery/fastdialer/fastdialer"
@@ -22,6 +24,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/loader/parser"
 	"github.com/projectdiscovery/nuclei/v3/pkg/model"
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators"
+	llmclient "github.com/projectdiscovery/nuclei/v3/pkg/operators/common/llm"
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators/extractors"
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators/matchers"
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
@@ -29,7 +32,9 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/projectfile"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/globalmatchers"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/hostbackoff"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/hosterrorscache"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/hostratelimit"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/interactsh"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/utils/excludematchers"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/variables"
@@ -81,6 +86,10 @@ type ExecutorOptions struct {
 	// Verified reports whether a trusted verifier verified the template's
 	// signature. Code and JavaScript protocols check it at execution time.
 	Verified bool
+	// LLMClient is the scan's llm client, injected into llm matchers and
+	// extractors when a request compiles. Nil unless -llm is set, which makes
+	// those operators fail closed.
+	LLMClient llmclient.Client
 	// TemplateVerificationCallback returns cached verification info for a template path.
 	// If it returns nil, verification should be computed normally.
 	TemplateVerificationCallback func(templatePath string) *TemplateVerification
@@ -103,12 +112,15 @@ type ExecutorOptions struct {
 	// Browser is a browser engine for running headless templates
 	Browser *engine.Browser
 	// Interactsh is a client for interactsh oob polling server
-	Interactsh *interactsh.Client
+	Interactsh interactsh.IClient
 	// InteractshScope isolates delayed callbacks and cleanup for one execution
 	// when Interactsh is shared by concurrent engines.
 	InteractshScope *interactsh.RequestScope
 	// HostErrorsCache is an optional cache for handling host errors
 	HostErrorsCache hosterrorscache.CacheInterface
+	// HostBackoff paces a host that signals it is being overloaded, so a scan
+	// slows down for it instead of being blocked outright. Nil disables it.
+	HostBackoff *hostbackoff.Governor
 	// Stop execution once first match is found (Assigned while parsing templates)
 	// Note: this is different from Options.StopAtFirstMatch (Assigned from CLI option)
 	StopAtFirstMatch bool
@@ -194,7 +206,28 @@ func (e *ExecutorOptions) RegisterInteractshRequest(urls []string, data *interac
 // todo: centralizing components is not feasible with current clogged architecture
 // a possible approach could be an internal event bus with pub-subs? This would be less invasive than
 // reworking dep injection from scratch
-func (e *ExecutorOptions) RateLimitTake() {
+// RateLimitTake waits for the rate limit of a request to host: that host's own
+// limiter when per-host rate limiting is on, since the global limiter is then
+// unlimited, and the global limiter otherwise or when host is unknown.
+func (e *ExecutorOptions) RateLimitTake(host string) error {
+	return e.RateLimitTakeContext(context.Background(), host)
+}
+
+// RateLimitTakeContext waits for admission or returns when ctx is canceled.
+func (e *ExecutorOptions) RateLimitTakeContext(ctx context.Context, host string) error {
+	if e.Options != nil && e.Options.PerHostRateLimit && host != "" {
+		limiter, err := hostratelimit.GetPerHostRateLimiter(e.Options, host)
+		if err != nil {
+			return err
+		}
+		if limiter != nil {
+			if err := limiter.Wait(ctx); err != nil {
+				return err
+			}
+			hostratelimit.RecordPerHostRateLimitRequest(e.Options, host)
+			return nil
+		}
+	}
 	// The code below can race and there isn't a great way to fix this without adding an idempotent
 	// function to the rate limiter implementation. For now, stick with whatever rate is already set.
 	/*
@@ -204,8 +237,23 @@ func (e *ExecutorOptions) RateLimitTake() {
 		}
 	*/
 	if e.RateLimiter != nil {
-		e.RateLimiter.Take()
+		return e.RateLimiter.TakeContext(ctx)
 	}
+	return nil
+}
+
+// HostBackoffWait pauses for the delay address has earned with HostBackoff.
+func (e *ExecutorOptions) HostBackoffWait(ctx context.Context, address string) error {
+	return e.HostBackoff.Wait(ctx, hostratelimit.NormalizeHostPort(address))
+}
+
+// HostBackoffObserveDial reports a connection attempt to address to HostBackoff.
+func (e *ExecutorOptions) HostBackoffObserveDial(address string, err error) {
+	// a canceled dial is the scan stopping, not the host asking for less traffic
+	if errors.Is(err, context.Canceled) {
+		return
+	}
+	e.HostBackoff.ObserveDial(hostratelimit.NormalizeHostPort(address), err)
 }
 
 // GetThreadsForNPayloadRequests returns the number of threads to use as default for
@@ -264,7 +312,7 @@ func (e *ExecutorOptions) GetTemplateCtx(input *contextargs.MetaInput) *contexta
 // NewVariablesScope creates a variable evaluation scope with terminal data
 // layers applied in order.
 func (e *ExecutorOptions) NewVariablesScope(values ...map[string]interface{}) *variables.Scope {
-	return variables.NewScope().AddData(values...)
+	return variables.NewScope().WithOptions(e.GetOptions()).AddData(values...)
 }
 
 // AddTemplateCtxToVariablesScope adds template context values to a variable
@@ -336,6 +384,7 @@ func (e *ExecutorOptions) Copy() *ExecutorOptions {
 		TemplateInfo:                 e.TemplateInfo,
 		TemplateVerifier:             e.TemplateVerifier,
 		Verified:                     e.Verified,
+		LLMClient:                    e.LLMClient,
 		TemplateVerificationCallback: e.TemplateVerificationCallback,
 		RawTemplate:                  e.RawTemplate,
 		Output:                       e.Output,
@@ -347,8 +396,9 @@ func (e *ExecutorOptions) Copy() *ExecutorOptions {
 		ProjectFile:                  e.ProjectFile,
 		Browser:                      e.Browser,
 		Interactsh:                   e.Interactsh,
-		InteractshScope:              e.InteractshScope,
 		HostErrorsCache:              e.HostErrorsCache,
+		InteractshScope:              e.InteractshScope,
+		HostBackoff:                  e.HostBackoff,
 		StopAtFirstMatch:             e.StopAtFirstMatch,
 		Variables:                    e.Variables,
 		Constants:                    e.Constants,
@@ -376,6 +426,85 @@ func (e *ExecutorOptions) Copy() *ExecutorOptions {
 	copy.ClusterMappings = e.ClusterMappings.Copy()
 	copy.CreateTemplateCtxStore()
 	return copy
+}
+
+// CloneOperators returns a copy of operators with only template-authored fields.
+// Compiled matcher/extractor state is rebuilt per execution by Request.Compile.
+func CloneOperators(src operators.Operators) operators.Operators {
+	value := cloneExportedValue(reflect.ValueOf(src))
+	cloned := value.Interface().(operators.Operators)
+	cloned.TemplateID = ""
+	cloned.ExcludeMatchers = nil
+	return cloned
+}
+
+// CloneMatchers returns a copy of matcher definitions without compiled matcher
+// state so callers can safely compile them for a single execution.
+func CloneMatchers(src []*matchers.Matcher) []*matchers.Matcher {
+	if src == nil {
+		return nil
+	}
+	value := cloneExportedValue(reflect.ValueOf(src))
+	return value.Interface().([]*matchers.Matcher)
+}
+
+func cloneExportedValue(value reflect.Value) reflect.Value {
+	if !value.IsValid() {
+		return value
+	}
+
+	switch value.Kind() {
+	case reflect.Interface:
+		if value.IsNil() {
+			return reflect.Zero(value.Type())
+		}
+		cloned := cloneExportedValue(value.Elem())
+		result := reflect.New(value.Type()).Elem()
+		result.Set(cloned)
+		return result
+	case reflect.Pointer:
+		if value.IsNil() {
+			return reflect.Zero(value.Type())
+		}
+		cloned := reflect.New(value.Type().Elem())
+		cloned.Elem().Set(cloneExportedValue(value.Elem()))
+		return cloned
+	case reflect.Struct:
+		cloned := reflect.New(value.Type()).Elem()
+		for i := 0; i < value.NumField(); i++ {
+			if value.Type().Field(i).IsExported() {
+				cloned.Field(i).Set(cloneExportedValue(value.Field(i)))
+			}
+		}
+		return cloned
+	case reflect.Slice:
+		if value.IsNil() {
+			return reflect.Zero(value.Type())
+		}
+		cloned := reflect.MakeSlice(value.Type(), value.Len(), value.Len())
+		for i := 0; i < value.Len(); i++ {
+			cloned.Index(i).Set(cloneExportedValue(value.Index(i)))
+		}
+		return cloned
+	case reflect.Map:
+		if value.IsNil() {
+			return reflect.Zero(value.Type())
+		}
+		cloned := reflect.MakeMapWithSize(value.Type(), value.Len())
+		iterator := value.MapRange()
+		for iterator.Next() {
+			cloned.SetMapIndex(cloneExportedValue(iterator.Key()), cloneExportedValue(iterator.Value()))
+		}
+		return cloned
+	case reflect.Array:
+		cloned := reflect.New(value.Type()).Elem()
+		for i := 0; i < value.Len(); i++ {
+			cloned.Index(i).Set(cloneExportedValue(value.Index(i)))
+		}
+		return cloned
+	default:
+		return value
+	}
 }
 
 // Request is an interface implemented any protocol based request generator.
@@ -444,11 +573,19 @@ func MakeDefaultResultEvent(request Request, wrapped *output.InternalWrappedEven
 		data := request.MakeResultEventItem(wrapped)
 		results = append(results, data)
 	}
-	return results
+	// Every protocol builds its results here, so attaching the llm audit at this
+	// one point keeps the verdict on findings from all of them rather than only
+	// the protocol that remembers to ask. It is a no-op when no llm operator ran.
+	return AttachLLMAudits(results, wrapped.InternalEvent)
 }
 
 // MakeDefaultExtractFunc performs extracting operation for an extractor on model and returns true or false.
 func MakeDefaultExtractFunc(data map[string]interface{}, extractor *extractors.Extractor) map[string]struct{} {
+	return MakeDefaultExtractFuncWithOptions(data, extractor, nil)
+}
+
+// MakeDefaultExtractFuncWithOptions extracts using the current scan's DSL policy.
+func MakeDefaultExtractFuncWithOptions(data map[string]interface{}, extractor *extractors.Extractor, options *types.Options) map[string]struct{} {
 	part := extractor.Part
 	if part == "" {
 		part = "response"
@@ -470,13 +607,18 @@ func MakeDefaultExtractFunc(data map[string]interface{}, extractor *extractors.E
 	case extractors.XPathExtractor:
 		return extractor.ExtractXPath(itemStr)
 	case extractors.DSLExtractor:
-		return extractor.ExtractDSL(data)
+		return extractor.ExtractDSLWithOptions(data, options)
 	}
 	return nil
 }
 
 // MakeDefaultMatchFunc performs matching operation for a matcher on model and returns true or false.
 func MakeDefaultMatchFunc(data map[string]interface{}, matcher *matchers.Matcher) (bool, []string) {
+	return MakeDefaultMatchFuncWithOptions(data, matcher, nil)
+}
+
+// MakeDefaultMatchFuncWithOptions matches using the current scan's DSL policy.
+func MakeDefaultMatchFuncWithOptions(data map[string]interface{}, matcher *matchers.Matcher, options *types.Options) (bool, []string) {
 	part := matcher.Part
 	if part == "" {
 		part = "response"
@@ -493,17 +635,49 @@ func MakeDefaultMatchFunc(data map[string]interface{}, matcher *matchers.Matcher
 		result := matcher.Result(matcher.MatchSize(len(item)))
 		return result, nil
 	case matchers.WordsMatcher:
-		return matcher.ResultWithMatchedSnippet(matcher.MatchWords(item, nil))
+		return matcher.ResultWithMatchedSnippet(matcher.MatchWordsWithOptions(item, nil, options))
 	case matchers.RegexMatcher:
 		return matcher.ResultWithMatchedSnippet(matcher.MatchRegex(item))
 	case matchers.BinaryMatcher:
 		return matcher.ResultWithMatchedSnippet(matcher.MatchBinary(item))
 	case matchers.DSLMatcher:
-		return matcher.Result(matcher.MatchDSL(data)), nil
+		return matcher.Result(matcher.MatchDSLWithOptions(data, options)), nil
 	case matchers.XPathMatcher:
 		return matcher.Result(matcher.MatchXPath(item)), []string{}
 	}
 	return false, nil
+}
+
+// MakeDefaultMatchFuncWithExecutorOptions matches using the current scan's DSL
+// policy. It is the entry point a protocol uses when it may carry llm
+// operators, which need the declared values that *types.Options alone does not
+// hold.
+func MakeDefaultMatchFuncWithExecutorOptions(data map[string]interface{}, matcher *matchers.Matcher, e *ExecutorOptions) (bool, []string) {
+	if matcher.GetType() == matchers.LLMMatcher {
+		return MatchLLM(data, matcher, defaultOperatorPart(data, matcher.Part), e)
+	}
+	return MakeDefaultMatchFuncWithOptions(data, matcher, e.GetOptions())
+}
+
+// MakeDefaultExtractFuncWithExecutorOptions is the extractor counterpart of
+// MakeDefaultMatchFuncWithExecutorOptions.
+func MakeDefaultExtractFuncWithExecutorOptions(data map[string]interface{}, extractor *extractors.Extractor, e *ExecutorOptions) map[string]struct{} {
+	if extractor.GetType() == extractors.LLMExtractor {
+		return ExtractLLM(data, extractor, defaultOperatorPart(data, extractor.Part), e)
+	}
+	return MakeDefaultExtractFuncWithOptions(data, extractor, e.GetOptions())
+}
+
+// defaultOperatorPart resolves an operator part against a protocol event whose
+// payload is named "response", matching the default builders above. An llm
+// operator is not rejected when the part is missing: with inputs it compares
+// whole responses instead, and without them an empty corpus is the honest
+// thing to ask about.
+func defaultOperatorPart(data map[string]interface{}, part string) string {
+	if part == "" {
+		part = "response"
+	}
+	return types.ToString(data[part])
 }
 
 func (e *ExecutorOptions) EncodeTemplate() string {
@@ -532,6 +706,7 @@ func (e *ExecutorOptions) ApplyNewEngineOptions(n *ExecutorOptions) {
 	e.Interactsh = n.Interactsh
 	e.InteractshScope = n.InteractshScope
 	e.HostErrorsCache = n.HostErrorsCache
+	e.HostBackoff = n.HostBackoff
 	e.InputHelper = n.InputHelper
 	e.FuzzParamsFrequency = n.FuzzParamsFrequency
 	e.FuzzStatsDB = n.FuzzStatsDB
@@ -548,4 +723,12 @@ func (e *ExecutorOptions) ApplyNewEngineOptions(n *ExecutorOptions) {
 	e.Logger = n.Logger
 	e.CustomFastdialer = n.CustomFastdialer
 	e.ClusterMappings = n.ClusterMappings.Copy()
+}
+
+// GetOptions returns scan options, or nil for an unbound executor.
+func (e *ExecutorOptions) GetOptions() *types.Options {
+	if e == nil {
+		return nil
+	}
+	return e.Options
 }

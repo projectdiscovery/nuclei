@@ -53,6 +53,32 @@ func (h *Helper) Transform(input string, protocol templateTypes.ProtocolType) st
 	return input
 }
 
+// TransformPinned is Transform for an input pinned to ip, which takes the
+// HTTP probe result made through that ip and never the result of the input
+// without an ip, as that one may come from another server.
+func (h *Helper) TransformPinned(input, ip string, protocol templateTypes.ProtocolType) string {
+	if ip == "" || (protocol != templateTypes.HTTPProtocol && protocol != templateTypes.HeadlessProtocol) {
+		return h.Transform(input, protocol)
+	}
+	if h.InputsHTTP != nil {
+		if probed, ok := h.InputsHTTP.Get(ProbeKey(input, ip)); ok {
+			return string(probed)
+		}
+	}
+	// no probe through this ip: convert it as an input that was not probed
+	return (&Helper{}).Transform(input, protocol)
+}
+
+// ProbeKey returns the key of the HTTP probe result of input in InputsHTTP.
+// A target pinned to an ip is probed through that ip, so each ip has its own.
+// The separator cannot occur in an input, which may hold an "@" of its own.
+func ProbeKey(input, ip string) string {
+	if ip == "" {
+		return input
+	}
+	return input + "\x00" + ip
+}
+
 type inputType int
 
 const (

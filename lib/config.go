@@ -367,7 +367,9 @@ func UseOutputWriter(writer OutputWriter) NucleiSDKOptions {
 	}
 }
 
-// StatsWriter
+// StatsWriter receives scan statistics. A writer that also implements
+// progress.TaskTracker is told how many template executions the scan runs
+// and how many are done.
 type StatsWriter progress.Progress
 
 // UseStatsWriter allows setting a custom stats writer

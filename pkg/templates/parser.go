@@ -7,6 +7,8 @@ import (
 	"strings"
 	"sync"
 
+	"golang.org/x/sync/singleflight"
+
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils"
@@ -31,6 +33,8 @@ type Parser struct {
 	// This cache contains references to heap objects and should be purged when
 	// no longer needed.
 	compiledTemplatesCache *Cache
+
+	compiledTemplatesLoadGroup singleflight.Group
 
 	sync.Mutex
 }
@@ -134,6 +138,12 @@ func (p *Parser) LoadTemplate(templatePath string, t any, extraTags []string, ca
 		panic("not a template")
 	}
 
+	return MatchLoadFilters(template, templatePath, tagFilter, extraTags)
+}
+
+// MatchLoadFilters applies the checks LoadTemplate runs after parsing, so a
+// caller holding parsed templates can filter them without parsing again.
+func MatchLoadFilters(template *Template, templatePath string, tagFilter *TagFilter, extraTags []string) (bool, error) {
 	if len(template.Workflows) > 0 {
 		return false, nil
 	}
