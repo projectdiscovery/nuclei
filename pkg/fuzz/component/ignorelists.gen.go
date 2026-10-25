@@ -134,5 +134,8 @@ var defaultIgnoredCookieKeys = map[string]struct{}{
 	"optimizelySegments":         {},
 }
 
-// defaultIgnoredCookiePrefixes matches cookie patterns ending in "*" (from -wappalyzer).
-var defaultIgnoredCookiePrefixes = []string{}
+// defaultIgnoredCookiePrefixes holds cookie patterns ending in "*" (from the seed or -wappalyzer).
+var defaultIgnoredCookiePrefixes = []string{
+	"intercom-session-",
+	"_ga_",
+}

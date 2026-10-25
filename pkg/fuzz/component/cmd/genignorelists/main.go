@@ -5,6 +5,7 @@ import (
 	"embed"
 	"flag"
 	"fmt"
+	"go/format"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -40,7 +41,7 @@ var defaultIgnoredCookieKeys = map[string]struct{}{
 {{- end}}
 }
 
-// defaultIgnoredCookiePrefixes matches cookie patterns ending in "*" (from -wappalyzer).
+// defaultIgnoredCookiePrefixes holds cookie patterns ending in "*" (from the seed or -wappalyzer).
 var defaultIgnoredCookiePrefixes = []string{
 {{- range .CookiePrefixes}}
 	{{printf "%q" .}},
@@ -139,7 +140,12 @@ func main() {
 		fatalf("template: %v", err)
 	}
 
-	if err := os.WriteFile(outPath, buf.Bytes(), 0o644); err != nil {
+	src, err := format.Source(buf.Bytes())
+	if err != nil {
+		fatalf("format: %v", err)
+	}
+
+	if err := os.WriteFile(outPath, src, 0o644); err != nil {
 		fatalf("write %s: %v", outPath, err)
 	}
 

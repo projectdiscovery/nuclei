@@ -1,3 +1,6 @@
+# Source of truth for headers the fuzzer never mutates.
+# Initial content is the defaultIgnoredHeaderKeys list that was hardcoded in pkg/fuzz/component/headers.go.
+# Edit this file, then run `make fuzz-ignorelists` (or `go generate ./pkg/fuzz/component`) and commit ignorelists.gen.go.
 Accept-Charset
 Accept-Datetime
 Accept-Encoding

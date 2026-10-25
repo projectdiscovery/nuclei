@@ -118,6 +118,15 @@ func TestCookieComponentSkipsIgnored(t *testing.T) {
 	require.Equal(t, []string{"session"}, names)
 }
 
+func TestIsIgnoredCookieKeyPrefixes(t *testing.T) {
+	for _, name := range []string{"_ga", "_ga_ABC123", "intercom-session", "intercom-session-app1"} {
+		require.True(t, isIgnoredCookieKey(name), name)
+	}
+	for _, name := range []string{"session", "_gax", "intercom-sessionx"} {
+		require.False(t, isIgnoredCookieKey(name), name)
+	}
+}
+
 func BenchmarkCookieComponentRebuild(b *testing.B) {
 	req, err := retryablehttp.NewRequest(http.MethodGet, "https://example.com", nil)
 	require.NoError(b, err)
