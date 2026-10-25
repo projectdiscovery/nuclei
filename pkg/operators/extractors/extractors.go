@@ -117,7 +117,11 @@ type Extractor struct {
 	// description: |
 	//   Prompt is the natural-language instruction for an llm extractor. The
 	//   model reads the response part and returns the values named by Schema.
-	Prompt string `yaml:"prompt,omitempty" json:"prompt,omitempty" jsonschema:"title=llm extraction prompt,description=Natural language instruction describing what to extract"`
+	//
+	//   {{...}} placeholders are interpolated from the template variables,
+	//   -var and target. Response derived values are not interpolated, since
+	//   the response is attacker controlled.
+	Prompt string `yaml:"prompt,omitempty" json:"prompt,omitempty" jsonschema:"title=llm extraction prompt,description=Natural language instruction describing what to extract; supports {{...}} interpolation of variables and target values"`
 	// description: |
 	//   Schema names the fields an llm extractor returns, mapping each field to
 	//   its type (string, number, boolean). It shapes both the prompt and the

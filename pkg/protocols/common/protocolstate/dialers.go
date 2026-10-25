@@ -14,7 +14,7 @@ type Dialers struct {
 	RawHTTPClient              *rawhttp.Client
 	DefaultHTTPClient          *retryablehttp.Client
 	HTTPClientPool             *HTTPPool
-	PerHostRateLimitPool       any // *httpclientpool.PerHostRateLimitPool
+	PerHostRateLimitPool       any // *hostratelimit.PerHostRateLimitPool
 	HTTPToHTTPSPortTracker     any // *httpclientpool.HTTPToHTTPSPortTracker
 	HTTPDesyncHosts            *ExpiringSet
 	NetworkPolicy              *networkpolicy.NetworkPolicy

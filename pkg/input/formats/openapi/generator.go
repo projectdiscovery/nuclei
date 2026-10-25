@@ -345,7 +345,7 @@ func generateRequestsFromOp(opts *generateReqOptions) error {
 					// use two strings
 					str = "string1\nstring2"
 				}
-				if value.Schema != nil && generic.EqualsAny(value.Schema.Value.Format, "bindary", "byte") {
+				if value.Schema != nil && generic.EqualsAny(value.Schema.Value.Format, "binary", "byte") {
 					cloned.Body = io.NopCloser(bytes.NewReader([]byte(str)))
 					cloned.ContentLength = int64(len(str))
 					cloned.Header.Set("Content-Type", "application/octet-stream")
