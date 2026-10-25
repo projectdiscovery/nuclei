@@ -747,11 +747,8 @@ func (r *Runner) RunEnumeration() error {
 		loaderConfig.TargetFilter = profiles.LoadFilter()
 	}
 	if r.hasPinnedTargets() {
-		switch {
-		case r.options.AutomaticScan:
-			return errors.New("targets pinned to an ip cannot be combined with automatic scan")
-		case r.options.AliveHttpProxy != "" || r.options.AliveSocksProxy != "":
-			return errors.New("targets pinned to an ip cannot be combined with a proxy, as the proxy resolves the host itself")
+		if err := pinnedTargetConflict(r.options); err != nil {
+			return err
 		}
 	}
 	if (!strings.EqualFold(r.options.InputFileMode, "list") || r.options.DAST) && !r.options.OfflineHTTP {

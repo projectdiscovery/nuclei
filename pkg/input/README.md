@@ -69,7 +69,7 @@ https://d.example
 - A pinned ip excluded with `-eh`, or a local one with `-lna`, is skipped.
 - `-mup` counts the urls of each ip apart, so a url listed with several ips is kept on each of them.
 - HTTP, network, websocket, javascript and ssl templates connect to the ip. Headless templates and `unsafe: true` raw requests do not.
-- Pinned targets cannot be combined with `-proxy` or `-automatic-scan`.
+- Pinned targets cannot be combined with `-proxy`, `-replay-proxy` or `-automatic-scan`.
 - `-u` splits its value on commas unless the value is quoted, so pass target lines in a file (`-l`) or on stdin.
 
 ## Formats
