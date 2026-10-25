@@ -375,6 +375,7 @@ var RequestPartDefinitions = map[string]string{
 	"issuer_cn":        "Issuer CN is the common name of the certificate issuer",
 	"issuer_dn":        "Issuer DN is the distinguished name of the certificate issuer",
 	"issuer_org":       "Issuer organization is the organization of the certificate issuer",
+	"key_exchange":     "Key exchange is the TLS key exchange group negotiated in the handshake",
 	"not_after":        "Timestamp after which the remote cert expires",
 	"not_before":       "Timestamp before which the certificate is not valid",
 	"probe_status":     "Probe status indicates if the probe was successful",

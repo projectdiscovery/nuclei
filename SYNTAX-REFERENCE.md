@@ -4000,6 +4000,7 @@ Part Definitions:
 - <code>issuer_cn</code> - Issuer CN is the common name of the certificate issuer
 - <code>issuer_dn</code> - Issuer DN is the distinguished name of the certificate issuer
 - <code>issuer_org</code> - Issuer organization is the organization of the certificate issuer
+- <code>key_exchange</code> - Key exchange is the TLS key exchange group negotiated in the handshake
 - <code>not_after</code> - Timestamp after which the remote cert expires
 - <code>not_before</code> - Timestamp before which the certificate is not valid
 - <code>probe_status</code> - Probe status indicates if the probe was successful
