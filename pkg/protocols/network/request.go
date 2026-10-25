@@ -243,6 +243,7 @@ func (request *Request) executeAddress(variables map[string]interface{}, actualA
 			return err
 		}
 
+	payloadLoop:
 		for {
 			value, ok := iterator.Value()
 			if !ok {
@@ -251,7 +252,7 @@ func (request *Request) executeAddress(variables map[string]interface{}, actualA
 
 			select {
 			case <-input.Context().Done():
-				return input.Context().Err()
+				break payloadLoop
 			default:
 			}
 
@@ -283,7 +284,9 @@ func (request *Request) executeAddress(variables map[string]interface{}, actualA
 				continue
 			}
 
-			swg.Add()
+			if err := swg.AddWithContext(input.Context()); err != nil {
+				break payloadLoop
+			}
 			go func(vars map[string]interface{}, urls []string) {
 				defer swg.Done()
 
@@ -301,6 +304,9 @@ func (request *Request) executeAddress(variables map[string]interface{}, actualA
 		}
 
 		swg.Wait()
+		if err := input.Context().Err(); err != nil {
+			return err
+		}
 
 		if multiErr != nil {
 			return multiErr
@@ -482,7 +488,11 @@ func (request *Request) executeRequestWithPayloads(variables map[string]interfac
 	if request.options.HasTemplateCtx(input.MetaInput) {
 		outputEvent = generators.MergeMaps(outputEvent, request.options.GetTemplateCtx(input.MetaInput).GetAll())
 	}
-	outputEvent["ip"] = request.dialer.GetDialedIP(hostname)
+	if input.MetaInput.CustomIP != "" {
+		outputEvent["ip"] = input.MetaInput.CustomIP
+	} else {
+		outputEvent["ip"] = request.dialer.GetDialedIP(hostname)
+	}
 	if request.options.StopAtFirstMatch {
 		outputEvent["stop-at-first-match"] = true
 	}

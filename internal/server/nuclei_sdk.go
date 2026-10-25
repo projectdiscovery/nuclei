@@ -52,7 +52,7 @@ type NucleiExecutorOptions struct {
 	Catalog            catalog.Catalog
 	IssuesClient       reporting.Client
 	RateLimiter        *ratelimit.Limiter
-	Interactsh         *interactsh.Client
+	Interactsh         interactsh.IClient
 	ProjectFile        *projectfile.ProjectFile
 	Browser            *browserEngine.Browser
 	FuzzStatsDB        *stats.Tracker

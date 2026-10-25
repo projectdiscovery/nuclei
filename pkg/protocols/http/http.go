@@ -161,6 +161,9 @@ type Request struct {
 	// connectionReusePolicy stores the analyzed connection reuse policy
 	// This is set during Compile() based on template analysis
 	connectionReusePolicy ConnectionReusePolicy `yaml:"-" json:"-"`
+	// requireFullResponse is set for a clustered request when a sibling template
+	// reads the full response. Those operators are not on this request.
+	requireFullResponse bool `yaml:"-" json:"-"`
 
 	// description: |
 	//   SkipSecretFile skips the authentication or authorization configured in the secret file.

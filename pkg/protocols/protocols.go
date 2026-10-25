@@ -112,7 +112,7 @@ type ExecutorOptions struct {
 	// Browser is a browser engine for running headless templates
 	Browser *engine.Browser
 	// Interactsh is a client for interactsh oob polling server
-	Interactsh *interactsh.Client
+	Interactsh interactsh.IClient
 	// InteractshScope isolates delayed callbacks and cleanup for one execution
 	// when Interactsh is shared by concurrent engines.
 	InteractshScope *interactsh.RequestScope
@@ -396,8 +396,8 @@ func (e *ExecutorOptions) Copy() *ExecutorOptions {
 		ProjectFile:                  e.ProjectFile,
 		Browser:                      e.Browser,
 		Interactsh:                   e.Interactsh,
-		InteractshScope:              e.InteractshScope,
 		HostErrorsCache:              e.HostErrorsCache,
+		InteractshScope:              e.InteractshScope,
 		HostBackoff:                  e.HostBackoff,
 		StopAtFirstMatch:             e.StopAtFirstMatch,
 		Variables:                    e.Variables,

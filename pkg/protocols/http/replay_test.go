@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	neturl "net/url"
+	"strings"
 	"sync"
 	"testing"
 
@@ -20,6 +21,8 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/globalmatchers"
+	"github.com/projectdiscovery/nuclei/v3/pkg/utils/httpbody"
+	"github.com/projectdiscovery/retryablehttp-go"
 	urlutil "github.com/projectdiscovery/utils/url"
 	"github.com/stretchr/testify/require"
 )
@@ -121,8 +124,34 @@ func TestReplayRequestKeepsBodyWithoutContentLength(t *testing.T) {
 	request := &Request{replayClient: client, options: &protocols.ExecutorOptions{Options: options}}
 
 	// unsafe raw requests are dumped as written, here without Content-Length
-	request.replayRequest([]byte("POST /hit HTTP/1.1\r\nHost: target.example\r\n\r\nx=1"), "http://target.example/hit")
+	request.replayRequest([]byte("POST /hit HTTP/1.1\r\nHost: target.example\r\n\r\nx=1"), nil, "http://target.example/hit")
 	require.Equal(t, replayedRequest{method: http.MethodPost, url: "http://target.example/hit", body: "x=1"}, got)
+}
+
+func TestReplayRequestSendsFullBodyOfTruncatedDump(t *testing.T) {
+	var got replayedRequest
+	proxy := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		body, _ := io.ReadAll(r.Body)
+		got = replayedRequest{method: r.Method, url: r.URL.String(), body: string(body)}
+	}))
+	defer proxy.Close()
+
+	options := testutils.DefaultOptions.Copy()
+	options.ReplayProxy = proxy.URL
+	client, err := newReplayClient(options)
+	require.NoError(t, err)
+	request := &Request{replayClient: client, options: &protocols.ExecutorOptions{Options: options}}
+
+	body := strings.Repeat("A", 2*1024*1024)
+	req, err := retryablehttp.NewRequest(http.MethodPost, "http://target.example/hit", nil)
+	require.NoError(t, err)
+	httpbody.SetString(req, body)
+	dumped, err := dumpRequest(req, 1024)
+	require.NoError(t, err)
+	require.Positive(t, dumped.truncated)
+
+	request.replayRequest(dumped.data, []byte(body), "http://target.example/hit")
+	require.Equal(t, replayedRequest{method: http.MethodPost, url: "http://target.example/hit", body: body}, got)
 }
 
 func TestReplayProxySendsRedirectChainOnce(t *testing.T) {
@@ -240,7 +269,7 @@ func TestReplayRequestAddsNoHeaders(t *testing.T) {
 	require.NoError(t, err)
 	request := &Request{replayClient: client, options: &protocols.ExecutorOptions{Options: options}}
 
-	request.replayRequest([]byte("GET /hit HTTP/1.1\r\nHost: target.example\r\nUser-Agent: nuclei\r\n\r\n"), "http://target.example/hit")
+	request.replayRequest([]byte("GET /hit HTTP/1.1\r\nHost: target.example\r\nUser-Agent: nuclei\r\n\r\n"), nil, "http://target.example/hit")
 	require.Empty(t, got.Get("Accept-Encoding"))
 }
 

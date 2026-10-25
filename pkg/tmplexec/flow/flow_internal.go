@@ -37,7 +37,7 @@ func (f *FlowExecutor) requestExecutor(runtime *goja.Runtime, reqMap mapsutil.Ma
 			// transform input if required
 			inputItem := f.ctx.Input.Clone()
 			if f.options.InputHelper != nil && f.ctx.Input.MetaInput.Input != "" && !utils.HasOfflineHTTPResponse(f.ctx.Input.MetaInput, req.Type()) {
-				if inputItem.MetaInput.Input = f.options.InputHelper.Transform(inputItem.MetaInput.Input, req.Type()); inputItem.MetaInput.Input == "" {
+				if inputItem.MetaInput.Input = f.options.InputHelper.TransformPinned(inputItem.MetaInput.Input, inputItem.MetaInput.CustomIP, req.Type()); inputItem.MetaInput.Input == "" {
 					f.ctx.LogError(fmt.Errorf("failed to transform input for protocol %s", req.Type()))
 					return false
 				}
@@ -75,7 +75,7 @@ func (f *FlowExecutor) requestExecutor(runtime *goja.Runtime, reqMap mapsutil.Ma
 		// transform input if required
 		inputItem := f.ctx.Input.Clone()
 		if f.options.InputHelper != nil && f.ctx.Input.MetaInput.Input != "" && !utils.HasOfflineHTTPResponse(f.ctx.Input.MetaInput, req.Type()) {
-			if inputItem.MetaInput.Input = f.options.InputHelper.Transform(inputItem.MetaInput.Input, req.Type()); inputItem.MetaInput.Input == "" {
+			if inputItem.MetaInput.Input = f.options.InputHelper.TransformPinned(inputItem.MetaInput.Input, inputItem.MetaInput.CustomIP, req.Type()); inputItem.MetaInput.Input == "" {
 				f.ctx.LogError(fmt.Errorf("failed to transform input for protocol %s", req.Type()))
 				return false
 			}

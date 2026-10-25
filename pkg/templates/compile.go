@@ -437,6 +437,8 @@ func parseCompiledTemplateFromCache(filePath string, preprocessor Preprocessor, 
 	newBase.Flow = tplCopy.Options.Flow
 	newBase.StopAtFirstMatch = tplCopy.Options.StopAtFirstMatch
 	newBase.ProtocolType = tplCopy.Options.ProtocolType
+	newBase.IsMultiProtocol = tplCopy.Options.IsMultiProtocol
+	newBase.Operators = tplCopy.Options.Operators
 
 	cachedVisited := newCloneVisited()
 	if tplCopy.Options.Variables.Len() > 0 {

@@ -110,7 +110,7 @@ Browse the full Nuclei [**`documentation here`**](https://docs.projectdiscovery.
 
 ### Installation
 
-`nuclei` requires **go >= 1.24.2** to install successfully. Run the following command to get the repo:
+`nuclei` requires **go >= 1.27.3** to install successfully. Run the following command to get the repo:
 
 ```sh
 go install -v github.com/projectdiscovery/nuclei/v3/cmd/nuclei@latest
@@ -176,7 +176,7 @@ TEMPLATES:
    -egm, -enable-global-matchers          enable loading global matchers templates
    -file                                  enable loading file templates
    -llm                                   enable llm matchers and extractors (semantic matching)
-   -llm-provider string                   llm provider for semantic matching (openai, ollama, llamacpp, vllm, lmstudio, groq, openrouter, together) (default "openai")
+   -llm-provider string                   llm provider for semantic matching (openai, ollama, llamacpp, vllm, lmstudio, groq, openrouter, together, orcarouter) (default "openai")
    -llm-base-url string                   openai-compatible endpoint for semantic matching (overrides -llm-provider, e.g. a local model)
    -llm-model string                      model used for semantic matching
    -llm-timeout int                       time in seconds to wait for a single llm call (default 30)
@@ -249,9 +249,11 @@ CONFIGURATIONS:
    -lna, -restrict-local-network-access  blocks connections to the local / private network
    -i, -interface string                 network interface to use for network scan
    -at, -attack-type string              type of payload combinations to perform (batteringram,pitchfork,clusterbomb)
+   -pro, -payload-random-order           iterate payload combinations in a random order instead of sequentially
    -sip, -source-ip string               source ip address to use for network scan
    -rsr, -response-size-read int         max response size to read in bytes
    -rss, -response-size-save int         max response size to read in bytes (default 1048576)
+   -rqss, -request-size-save int         max request body size to save in bytes (0 to save the whole body) (default 32768)
    -reset                                reset removes all nuclei configuration and data files (including nuclei-templates)
    -tlsi, -tls-impersonate               enable experimental client hello (ja3) tls randomization
    -hae, -http-api-endpoint string       experimental http api endpoint
@@ -355,10 +357,11 @@ DEBUG:
    -hc, -health-check         run diagnostic check up
 
 UPDATE:
-   -up, -update                      update nuclei engine to the latest released version
-   -ut, -update-templates            update nuclei-templates to latest released version
-   -ud, -update-template-dir string  custom directory to install / update nuclei-templates
-   -duc, -disable-update-check       disable automatic nuclei/templates update check
+   -up, -update                            update nuclei engine to the latest released version
+   -ut, -update-templates                  update nuclei-templates to latest released version
+   -utc, -update-templates-channel string  nuclei-templates update channel (stable, latest) (default "stable")
+   -ud, -update-template-dir string        custom directory to install / update nuclei-templates
+   -duc, -disable-update-check             disable automatic nuclei/templates update check
 
 HONEYPOT:
    -hpd, -honeypot-detect            detect potential honeypot hosts based on match concentration

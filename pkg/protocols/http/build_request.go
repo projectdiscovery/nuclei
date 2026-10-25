@@ -9,7 +9,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/pkg/errors"
 	"github.com/projectdiscovery/useragent"
 
 	"github.com/projectdiscovery/gologger"
@@ -26,6 +25,7 @@ import (
 	protocolutils "github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils"
 	httputil "github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils/http"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
+	"github.com/projectdiscovery/nuclei/v3/pkg/utils/httpbody"
 	"github.com/projectdiscovery/rawhttp"
 	"github.com/projectdiscovery/retryablehttp-go"
 	"github.com/projectdiscovery/utils/errkit"
@@ -452,7 +452,11 @@ func (r *requestGenerator) generateRawRequest(ctx context.Context, rawRequest st
 		}
 
 		if len(r.options.Options.CustomHeaders) > 0 {
-			_ = rawRequestData.TryFillCustomHeaders(r.options.Options.CustomHeaders)
+			customHeaders := make([]string, 0, len(r.options.Options.CustomHeaders))
+			for _, header := range r.options.Options.CustomHeaders {
+				customHeaders = append(customHeaders, evaluateCustomHeaderExpressions(r.options.TemplateID, header, finalVars))
+			}
+			_ = rawRequestData.TryFillCustomHeaders(customHeaders)
 		}
 
 		if rawRequestData.Data != "" && !stringsutil.EqualFoldAny(rawRequestData.Method, http.MethodHead, http.MethodGet) && rawRequestData.Headers["Transfer-Encoding"] != "chunked" {
@@ -474,10 +478,13 @@ func (r *requestGenerator) generateRawRequest(ctx context.Context, rawRequest st
 	if err != nil {
 		return nil, errkit.Wrapf(err, "failed to create request with url %v got %v", rawRequestData.FullURL, err)
 	}
-	req, err := retryablehttp.NewRequestFromURLWithContext(ctx, rawRequestData.Method, urlx, rawRequestData.Data)
+	req, err := retryablehttp.NewRequestFromURLWithContext(ctx, rawRequestData.Method, urlx, nil)
 	if err != nil {
 		return nil, err
 	}
+	// Set the body here rather than through retryablehttp, which copies it
+	// several times over.
+	httpbody.SetString(req, rawRequestData.Data)
 
 	// force transfer encoding if conditions are met
 	if len(rawRequestData.Data) > 0 && req.Header.Get("Transfer-Encoding") != "chunked" && !stringsutil.EqualFoldAny(rawRequestData.Method, http.MethodGet, http.MethodHead) {
@@ -569,9 +576,7 @@ func (r *requestGenerator) fillRequest(req *retryablehttp.Request, values map[st
 			return nil, errkit.Wrap(err, "could not evaluate helper expressions")
 		}
 
-		if err := req.SetBodyString(body); err != nil {
-			return nil, errors.Wrap(err, "failed to set request body")
-		}
+		httpbody.SetString(req, body)
 	}
 
 	if !r.request.Unsafe {

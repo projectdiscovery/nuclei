@@ -242,6 +242,24 @@ func Test_scanallips_normalizeStoreInputValue(t *testing.T) {
 		require.ElementsMatchf(t, tt.expected, got, "could not get correct ips for hostname %v", tt.hostname)
 		input.Close()
 	}
+
+	// -mup 1 keeps the url on each ip, as every ip is a server of its own
+	hm, err := hybrid.New(hybrid.DefaultDiskOptions)
+	require.NoError(t, err)
+	input := &ListInputProvider{
+		hostMap:   hm,
+		ipOptions: &ipOptions{ScanAllIPs: true, IPV4: true, IPV6: true},
+		patterns:  normalize.NewFingerprinter(1),
+	}
+	defer input.Close()
+	input.Set(defaultOpts.ExecutionId, "https://scanme.sh/user/1")
+	input.Set(defaultOpts.ExecutionId, "https://scanme.sh/user/2")
+	var got []string
+	input.Iterate(func(value *contextargs.MetaInput) bool {
+		got = append(got, value.Input+" "+value.CustomIP)
+		return true
+	})
+	require.ElementsMatch(t, []string{"https://scanme.sh/user/1 128.199.158.128", "https://scanme.sh/user/1 2400:6180:0:d0::91:1001"}, got)
 }
 
 func Test_expandASNInputValue(t *testing.T) {
