@@ -66,8 +66,10 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata,
 		return err
 	}
 
-	err = request.getInputPaths(input.MetaInput.Input, func(data string) {
-		wg.Add()
+	err = request.getInputPaths(input.Context(), input.MetaInput.Input, func(data string) error {
+		if err := wg.AddWithContext(input.Context()); err != nil {
+			return err
+		}
 
 		go func(data string) {
 			defer wg.Done()
@@ -103,8 +105,12 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata,
 				return
 			}
 		}(data)
+		return nil
 	})
 	wg.Wait()
+	if err := input.Context().Err(); err != nil {
+		return err
+	}
 	if err != nil {
 		request.options.Output.Request(request.options.TemplatePath, input.MetaInput.Input, "file", err)
 		request.options.Progress.IncrementFailedRequestsBy(1)

@@ -126,7 +126,7 @@ func (e *Engine) executeTemplateSpray(ctx context.Context, templatesList []*temp
 		}
 
 		// resize check point - nop if there are no changes
-		wp.RefreshWithConfig(e.GetWorkPoolConfig())
+		wp.RefreshWithConfigContext(ctx, e.GetWorkPoolConfig())
 
 		templateType := template.Type()
 		var wg *syncutil.AdaptiveWaitGroup
@@ -173,7 +173,10 @@ func (e *Engine) executeHostSpray(ctx context.Context, templatesList []*template
 		default:
 		}
 
-		wp.Add()
+		if err := wp.AddWithContext(ctx); err != nil {
+			return false
+		}
+
 		go func(targetval *contextargs.MetaInput) {
 			defer wp.Done()
 			e.executeTemplatesOnTarget(ctx, templatesList, targetval, results)

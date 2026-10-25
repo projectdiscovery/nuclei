@@ -209,7 +209,7 @@ func (request *Request) executeRaceRequest(input *contextargs.Context, dynamicVa
 
 	shouldStop := (request.options.Options.StopAtFirstMatch || request.StopAtFirstMatch || request.options.StopAtFirstMatch)
 
-	childCtx, cancel := context.WithCancel(context.Background())
+	childCtx, cancel := context.WithCancel(input.Context())
 	defer cancel()
 
 	spmHandler := httputils.NewNonBlockingSPMHandler[error](childCtx, maxErrorsWhenParallel, shouldStop)
@@ -241,7 +241,9 @@ func (request *Request) executeRaceRequest(input *contextargs.Context, dynamicVa
 			// stop sending more requests condition is met
 			break
 		}
-		spmHandler.Acquire()
+		if err := spmHandler.Acquire(); err != nil {
+			break
+		}
 		// execute http request
 		go func(httpRequest *generatedRequest, requestInput *contextargs.Context) {
 			defer spmHandler.Release()
@@ -346,7 +348,9 @@ func (request *Request) executeParallelHTTP(input *contextargs.Context, dynamicV
 				if spmHandler.FoundFirstMatch() || request.isUnresponsiveAddress(t.updatedInput) || spmHandler.Cancelled() {
 					continue
 				}
-				spmHandler.Acquire()
+				if err := spmHandler.Acquire(); err != nil {
+					continue
+				}
 				if spmHandler.FoundFirstMatch() || request.isUnresponsiveAddress(t.updatedInput) || spmHandler.Cancelled() {
 					spmHandler.Release()
 					continue
@@ -532,7 +536,7 @@ func (request *Request) executeTurboHTTP(input *contextargs.Context, dynamicValu
 	// parallelly using threads
 	shouldStop := (request.options.Options.StopAtFirstMatch || request.StopAtFirstMatch || request.options.StopAtFirstMatch)
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(input.Context())
 	defer cancel()
 
 	spmHandler := httputils.NewBlockingSPMHandler[error](ctx, maxWorkers, maxErrorsWhenParallel, shouldStop)
@@ -589,7 +593,9 @@ func (request *Request) executeTurboHTTP(input *contextargs.Context, dynamicValu
 			return nil
 		}
 		generatedHttpRequest.pipelinedClient = pipeClient
-		spmHandler.Acquire()
+		if err := spmHandler.Acquire(); err != nil {
+			break
+		}
 		go func(httpRequest *generatedRequest, requestInput *contextargs.Context) {
 			defer spmHandler.Release()
 			if spmHandler.FoundFirstMatch() || request.isUnresponsiveAddress(requestInput) {
@@ -1910,7 +1916,24 @@ func (request *Request) isUnresponsiveAddress(input *contextargs.Context) bool {
 }
 
 // needsFullResponse returns true if operators, debug flags, or stats require the full HTTP response.
+// RequireFullResponse keeps the full response when a caller matches this
+// request's event with operators the request does not own. Clustered templates do that.
+func (request *Request) RequireFullResponse() {
+	if request == nil {
+		return
+	}
+	request.requireFullResponse = true
+}
+
+// FullResponseRequired reports whether RequireFullResponse has been set.
+func (request *Request) FullResponseRequired() bool {
+	return request != nil && request.requireFullResponse
+}
+
 func (request *Request) needsFullResponse(generatedRequest *generatedRequest) bool {
+	if request.requireFullResponse {
+		return true
+	}
 	if request.options != nil && request.options.Options != nil {
 		cliOptions := request.options.Options
 		if cliOptions.Debug || cliOptions.DebugResponse || cliOptions.StoreResponse || cliOptions.HTTPStats {

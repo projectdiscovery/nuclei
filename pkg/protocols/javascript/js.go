@@ -595,7 +595,10 @@ func (request *Request) executeRequestParallel(ctxParent context.Context, hostPo
 				break
 			}
 
-			sg.Add()
+			if err := sg.AddWithContext(ctx); err != nil {
+				setRunErr(err)
+				break iteratorLoop
+			}
 			go func(value map[string]interface{}, urls []string) {
 				defer sg.Done()
 				if ctx.Err() != nil {
