@@ -7,6 +7,7 @@ import (
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/input/provider"
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates"
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates/types"
@@ -62,20 +63,6 @@ func (e *Engine) ExecuteScanWithOpts(ctx context.Context, templatesList []*templ
 		return &atomic.Bool{}
 	}
 
-	if e.executerOpts.Progress != nil {
-		// Notes:
-		// workflow requests are not counted as they can be conditional
-		// templateList count is user requested templates count (before clustering)
-		// totalReqAfterClustering is total requests count after clustering
-		e.executerOpts.Progress.Init(target.Count(), len(templatesList), int64(totalReqAfterClustering))
-	}
-
-	if stringsutil.EqualFoldAny(e.options.ScanStrategy, scanstrategy.Auto.String(), "") {
-		// TODO: this is only a placeholder, auto scan strategy should choose scan strategy
-		// based on no of hosts , templates , stream and other optimization parameters
-		e.options.ScanStrategy = scanstrategy.TemplateSpray.String()
-	}
-
 	filtered := []*templates.Template{}
 	selfContained := []*templates.Template{}
 	// Filter Self Contained templates since they are not bound to target
@@ -85,6 +72,23 @@ func (e *Engine) ExecuteScanWithOpts(ctx context.Context, templatesList []*templ
 		} else {
 			filtered = append(filtered, v)
 		}
+	}
+
+	if e.executerOpts.Progress != nil {
+		// Notes:
+		// workflow requests are not counted as they can be conditional
+		// templateList count is user requested templates count (before clustering)
+		// totalReqAfterClustering is total requests count after clustering
+		requests, tasks := e.expectedWork(finalTemplates, filtered, target, totalReqAfterClustering)
+		e.executerOpts.Progress.Init(target.Count(), len(templatesList), requests)
+		// a self-contained template runs once
+		e.addTaskTotal(tasks + int64(len(selfContained)))
+	}
+
+	if stringsutil.EqualFoldAny(e.options.ScanStrategy, scanstrategy.Auto.String(), "") {
+		// TODO: this is only a placeholder, auto scan strategy should choose scan strategy
+		// based on no of hosts , templates , stream and other optimization parameters
+		e.options.ScanStrategy = scanstrategy.TemplateSpray.String()
 	}
 
 	// Execute All SelfContained in parallel
@@ -132,14 +136,26 @@ func (e *Engine) executeTemplateSpray(ctx context.Context, templatesList []*temp
 			wg = wp.Default
 		}
 
-		wg.Add()
-		go func(tpl *templates.Template) {
+		if err := wg.AddWithContext(ctx); err != nil {
+			return results
+		}
+		usesSharedTemplateBudget := templateType != types.HeadlessProtocol
+		if usesSharedTemplateBudget {
+			if err := e.options.AcquireTemplateThread(ctx); err != nil {
+				wg.Done()
+				return results
+			}
+		}
+		go func(tpl *templates.Template, sharedBudget bool) {
 			defer wg.Done()
+			if sharedBudget {
+				defer e.options.ReleaseTemplateThread()
+			}
 			// All other request types are executed here
 			// Note: executeTemplateWithTargets creates goroutines and blocks
 			// given template is executed on all targets
 			e.executeTemplateWithTargets(ctx, tpl, target, results)
-		}(template)
+		}(template, usesSharedTemplateBudget)
 	}
 	return results
 }
@@ -167,13 +183,58 @@ func (e *Engine) executeHostSpray(ctx context.Context, templatesList []*template
 	return results
 }
 
+// expectedWork returns the requests and the tasks the target-bound templates
+// will run. It counts only the template and target pairs that per-target
+// profiles select, so progress reflects the work that will be done. A task is
+// one template, cluster or workflow run on one target.
+func (e *Engine) expectedWork(templatesList, targetBound []*templates.Template, target provider.InputProvider, unscopedRequests int) (requests, tasks int64) {
+	scope := e.executerOpts.TargetScope
+	if scope == nil {
+		return int64(unscopedRequests), target.Count() * int64(len(targetBound))
+	}
+	targets := make(map[protocols.TemplateSelection]int64)
+	target.Iterate(func(value *contextargs.MetaInput) bool {
+		targets[scope.For(value)]++
+		return true
+	})
+	for selection, count := range targets {
+		requests += count * int64(getSelectedRequestCount(templatesList, selection))
+		tasks += count * int64(getSelectedCount(targetBound, selection))
+	}
+	return requests, tasks
+}
+
+// getSelectedCount returns the number of templates selection selects; a nil
+// selection selects every template.
+func getSelectedCount(templates []*templates.Template, selection protocols.TemplateSelection) int {
+	if selection == nil {
+		return len(templates)
+	}
+	count := 0
+	for _, template := range templates {
+		if template.SelectedBy(selection) {
+			count++
+		}
+	}
+	return count
+}
+
 // returns total requests count
 func getRequestCount(templates []*templates.Template) int {
+	return getSelectedRequestCount(templates, nil)
+}
+
+// getSelectedRequestCount returns the requests of the templates selection
+// selects; a nil selection selects every template.
+func getSelectedRequestCount(templates []*templates.Template, selection protocols.TemplateSelection) int {
 	count := 0
 	for _, template := range templates {
 		// ignore requests in workflows as total requests in workflow
 		// depends on what templates will be called in workflow
 		if len(template.Workflows) > 0 {
+			continue
+		}
+		if selection != nil && !template.SelectedBy(selection) {
 			continue
 		}
 		count += template.TotalRequests

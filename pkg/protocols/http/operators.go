@@ -21,7 +21,8 @@ import (
 // TODO: Try to consolidate this in protocols.MakeDefaultMatchFunc to avoid any inconsistencies
 func (request *Request) Match(data map[string]interface{}, matcher *matchers.Matcher) (bool, []string) {
 	item, ok := request.getMatchPart(matcher.Part, data)
-	if !ok && matcher.Type.MatcherType != matchers.DSLMatcher {
+	// an llm matcher with inputs compares whole responses instead of one part
+	if !ok && matcher.Type.MatcherType != matchers.DSLMatcher && len(matcher.Inputs) == 0 {
 		return false, []string{}
 	}
 
@@ -31,25 +32,25 @@ func (request *Request) Match(data map[string]interface{}, matcher *matchers.Mat
 		if !ok {
 			return false, []string{}
 		}
-		// The full response is omitted unless an operator reads it. The status
-		// line still lives in the header dump, which is always stored.
-		snippetSource := types.ToString(data["response"])
-		if snippetSource == "" {
-			snippetSource = types.ToString(data["all_headers"])
+		respSnippet := types.ToString(data["response"])
+		if respSnippet == "" {
+			respSnippet = types.ToString(data["header"])
 		}
-		return matcher.Result(matcher.MatchStatusCode(statusCode)), []string{responsehighlighter.CreateStatusCodeSnippet(snippetSource, statusCode)}
+		return matcher.Result(matcher.MatchStatusCode(statusCode)), []string{responsehighlighter.CreateStatusCodeSnippet(respSnippet, statusCode)}
 	case matchers.SizeMatcher:
 		return matcher.Result(matcher.MatchSize(len(item))), []string{}
 	case matchers.WordsMatcher:
-		return matcher.ResultWithMatchedSnippet(matcher.MatchWords(item, data))
+		return matcher.ResultWithMatchedSnippet(matcher.MatchWordsWithOptions(item, data, request.options.GetOptions()))
 	case matchers.RegexMatcher:
 		return matcher.ResultWithMatchedSnippet(matcher.MatchRegex(item))
 	case matchers.BinaryMatcher:
 		return matcher.ResultWithMatchedSnippet(matcher.MatchBinary(item))
 	case matchers.DSLMatcher:
-		return matcher.Result(matcher.MatchDSL(data)), []string{}
+		return matcher.Result(matcher.MatchDSLWithOptions(data, request.options.GetOptions())), []string{}
 	case matchers.XPathMatcher:
 		return matcher.Result(matcher.MatchXPath(item)), []string{}
+	case matchers.LLMMatcher:
+		return protocols.MatchLLM(data, matcher, item, request.options)
 	}
 	return false, []string{}
 }
@@ -82,7 +83,9 @@ func (request *Request) Extract(data map[string]interface{}, extractor *extracto
 	case extractors.JSONExtractor:
 		return extractor.ExtractJSON(item)
 	case extractors.DSLExtractor:
-		return extractor.ExtractDSL(data)
+		return extractor.ExtractDSLWithOptions(data, request.options.GetOptions())
+	case extractors.LLMExtractor:
+		return protocols.ExtractLLM(data, extractor, item, request.options)
 	}
 	return nil
 }
@@ -206,7 +209,7 @@ func (request *Request) MakeResultEventItem(wrapped *output.InternalWrappedEvent
 		IP:               fields.Ip,
 		GlobalMatchers:   isGlobalMatchers,
 		Request:          types.ToString(wrapped.InternalEvent["request"]),
-		Response:         request.truncateResponse(storedResponse(wrapped.InternalEvent)),
+		Response:         request.truncateResponse(eventResponse(wrapped.InternalEvent)),
 		CURLCommand:      types.ToString(wrapped.InternalEvent["curl-command"]),
 		TemplateEncoded:  request.options.EncodeTemplate(),
 		Error:            types.ToString(wrapped.InternalEvent["error"]),
@@ -216,127 +219,20 @@ func (request *Request) MakeResultEventItem(wrapped *output.InternalWrappedEvent
 	return data
 }
 
-func (request *Request) truncateResponse(response interface{}) string {
-	responseString := types.ToString(response)
-	if len(responseString) > request.options.Options.ResponseSaveSize {
-		return responseString[:request.options.Options.ResponseSaveSize]
-	}
-	return responseString
-}
-
-// OperatorsNeedFullResponse reports whether an operator reads the headers+body
-// concatenation. part:all does not: it is body plus all_headers.
-func OperatorsNeedFullResponse(operator *operators.Operators) bool {
-	if operator == nil {
-		return false
-	}
-	return operatorsNeedFullResponse(operator.Matchers, operator.Extractors)
-}
-
-// RequireFullResponse keeps the headers+body copy for callers that match this
-// request's event after it has been built. Clustered templates do that with
-// operators this request does not own.
-func (request *Request) RequireFullResponse() {
-	if request == nil {
-		return
-	}
-	request.requireFullResponse = true
-}
-
-// FullResponseRequired reports whether RequireFullResponse has been set.
-func (request *Request) FullResponseRequired() bool {
-	return request != nil && request.requireFullResponse
-}
-
-func (request *Request) shouldBuildFullResponse() bool {
-	if request.requireFullResponse || request.needsFullResponse() {
-		return true
-	}
-	if request.options == nil {
-		return false
-	}
-	// Flow and multi-request templates copy this event into the shared context
-	// and the previous-request map. A later step can read http_response or
-	// <id>_response even when this request's own operators never do.
-	if request.options.Flow != "" || request.options.IsMultiProtocol || request.options.FuzzStatsDB != nil {
-		return true
-	}
-	opts := request.options.Options
-	return opts != nil && (opts.Debug || opts.DebugResponse || opts.StoreResponse || opts.ShowVarDump)
-}
-
-// responseForStats is the body handed to WAF detection. The retained event copy
-// stays empty unless something else already built it.
-func responseForStats(fullResponse, headers, body string, httpStats bool) string {
-	if fullResponse != "" || !httpStats {
-		return fullResponse
-	}
-	return headers + body
-}
-
-// needsFullResponse reports whether any operator on this request reads the
-// headers+body concatenation, exposed as the "response" key.
-//
-// Building it costs FullResponseBytes: a make() the size of the entire response
-// plus two copies, allocated for every response on every request. Across the
-// public template corpus only 81 of 11,634 http templates (0.7%) ever read it,
-// so for the rest that allocation is pure waste and is retained for as long as
-// the event is (the interactsh cache holds events until their OAST callback).
-func (request *Request) needsFullResponse() bool {
-	if operatorsNeedFullResponse(request.Matchers, request.Extractors) {
-		return true
-	}
-	if request.CompiledOperators != nil && operatorsNeedFullResponse(request.CompiledOperators.Matchers, request.CompiledOperators.Extractors) {
-		return true
-	}
-	if request.options == nil || request.options.GlobalMatchers == nil {
-		return false
-	}
-	// Global matchers run against this request's event, so a response or
-	// part:all operator registered elsewhere still needs the concatenation.
-	return request.options.GlobalMatchers.Any(func(operator *operators.Operators) bool {
-		return operatorsNeedFullResponse(operator.Matchers, operator.Extractors)
-	})
-}
-
-func operatorsNeedFullResponse(matchers []*matchers.Matcher, extractors []*extractors.Extractor) bool {
-	for _, matcher := range matchers {
-		if matcher != nil && (partNeedsFullResponse(matcher.Part) || dslNeedsFullResponse(matcher.DSL)) {
-			return true
-		}
-	}
-	for _, extractor := range extractors {
-		if extractor != nil && (partNeedsFullResponse(extractor.Part) || dslNeedsFullResponse(extractor.DSL)) {
-			return true
-		}
-	}
-	return false
-}
-
-// storedResponse is the headers+body string written on a finding. Operators
-// that never read it leave the event key empty, and the finding is rebuilt
-// from the header and body copies that are already stored.
-func storedResponse(event output.InternalEvent) string {
+// eventResponse returns the full response of event. Events matched after the
+// response chain is released, such as interactsh matches, may not carry it, so
+// it is rebuilt from the headers and body they keep.
+func eventResponse(event output.InternalEvent) string {
 	if response := types.ToString(event["response"]); response != "" {
 		return response
 	}
 	return types.ToString(event["all_headers"]) + types.ToString(event["body"])
 }
 
-// partNeedsFullResponse covers "response" and its req-condition variants
-// (response_1, response_2, ...). part:all is built from body and all_headers.
-func partNeedsFullResponse(part string) bool {
-	return strings.HasPrefix(part, "response")
-}
-
-// dslNeedsFullResponse is deliberately a substring test: a dsl expression can
-// reach the key by any construction, so anything mentioning it forces the build.
-func dslNeedsFullResponse(expressions []string) bool {
-	for _, expression := range expressions {
-		if strings.Contains(expression, "response") {
-			return true
-		}
+func (request *Request) truncateResponse(response interface{}) string {
+	responseString := types.ToString(response)
+	if len(responseString) > request.options.Options.ResponseSaveSize {
+		return responseString[:request.options.Options.ResponseSaveSize]
 	}
-
-	return false
+	return responseString
 }

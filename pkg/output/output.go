@@ -27,6 +27,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/model"
 	"github.com/projectdiscovery/nuclei/v3/pkg/model/types/severity"
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators"
+	"github.com/projectdiscovery/nuclei/v3/pkg/operators/matchers"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/honeypotdetector"
 	protocolUtils "github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
@@ -175,6 +176,10 @@ type ResultEvent struct {
 	MatcherName string `json:"matcher-name,omitempty"`
 	// ExtractorName is the name of the extractor matched if any.
 	ExtractorName string `json:"extractor-name,omitempty"`
+	// LLM records the model verdict behind this finding, present only when an
+	// llm matcher produced it. An llm verdict is not reproducible the way a
+	// pattern match is, so the finding carries what it takes to audit it.
+	LLM *matchers.LLMAudit `json:"llm,omitempty"`
 	// Type is the type of the result event.
 	Type string `json:"type"`
 	// Host is the host input on which match was found.
@@ -599,7 +604,7 @@ func (w *StandardWriter) WriteFailure(wrappedEvent *InternalWrappedEvent) error 
 		URL:           fields.URL,
 		IP:            fields.Ip,
 		Request:       types.ToString(event["request"]),
-		Response:      responseFromEvent(event),
+		Response:      types.ToString(event["response"]),
 		MatcherStatus: false,
 		Timestamp:     time.Now(),
 		//FIXME: this is workaround to encode the template when no results were found
@@ -607,21 +612,6 @@ func (w *StandardWriter) WriteFailure(wrappedEvent *InternalWrappedEvent) error 
 		Error:           types.ToString(event["error"]),
 	}
 	return w.Write(data)
-}
-
-// responseFromEvent is the response written on a matcher-status failure.
-// HTTP leaves the response key empty unless something matched against it, and
-// rebuilds the same headers+body bytes from the copies already on the event.
-func responseFromEvent(event InternalEvent) string {
-	if response := types.ToString(event["response"]); response != "" {
-		return response
-	}
-	headers := types.ToString(event["all_headers"])
-	body := types.ToString(event["body"])
-	if headers == "" && body == "" {
-		return ""
-	}
-	return headers + body
 }
 
 var maxTemplateFileSizeForEncoding = unitutils.Mega

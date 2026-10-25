@@ -11,6 +11,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -597,6 +599,110 @@ javascript:
 	require.True(t, cached.Options.Verified)
 }
 
+func TestParseReusesSharedParsedTemplateAcrossEngineCaches(t *testing.T) {
+	var sourceReads atomic.Int32
+	templateSource := `id: shared-parsed-template
+
+info:
+  name: Shared parsed template
+  author: pdteam
+  severity: info
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}"
+    body: |
+      first line
+      second line
+`
+	server := httptest.NewServer(netHttp.HandlerFunc(func(w netHttp.ResponseWriter, _ *netHttp.Request) {
+		sourceReads.Add(1)
+		_, _ = w.Write([]byte(templateSource))
+	}))
+	t.Cleanup(server.Close)
+
+	setup()
+	templatePath := server.URL + "/template.yaml"
+	sharedParser := templates.NewParser()
+	_, err := sharedParser.ParseTemplate(templatePath, executerOpts.Catalog)
+	require.NoError(t, err)
+
+	compiledTemplates := make([]*templates.Template, 5)
+	parseErrors := make([]error, len(compiledTemplates))
+	var waitGroup sync.WaitGroup
+	for i := range compiledTemplates {
+		engineOptions := executerOpts.Copy()
+		engineOptions.Parser = templates.NewParserWithParsedCache(sharedParser.Cache())
+		engineOptions.TemplateVerificationCallback = func(string) *protocols.TemplateVerification {
+			return trustedVerificationForTest(templateSource)
+		}
+		waitGroup.Add(1)
+		go func() {
+			defer waitGroup.Done()
+			compiledTemplates[i], parseErrors[i] = templates.Parse(templatePath, nil, engineOptions)
+		}()
+	}
+	waitGroup.Wait()
+
+	for i := range compiledTemplates {
+		require.NoError(t, parseErrors[i])
+		require.True(t, compiledTemplates[i].Verified)
+	}
+
+	require.Equal(t, int32(1), sourceReads.Load())
+	cachedTemplate, err := sharedParser.Cache().Get(templatePath)
+	require.NoError(t, err)
+	require.NotNil(t, cachedTemplate)
+	require.NotContains(t, cachedTemplate.RequestsHTTP[0].Body, "\r\n")
+	for i := 1; i < len(compiledTemplates); i++ {
+		require.NotSame(t, compiledTemplates[0], compiledTemplates[i])
+		require.NotSame(t, compiledTemplates[0].RequestsHTTP[0], compiledTemplates[i].RequestsHTTP[0])
+		require.NotSame(t, compiledTemplates[0].RequestsHTTP[0].Options(), compiledTemplates[i].RequestsHTTP[0].Options())
+	}
+	require.NotSame(t, cachedTemplate.RequestsHTTP[0], compiledTemplates[0].RequestsHTTP[0])
+}
+
+func TestParseSharedTemplatePreservesRuntimePreprocessing(t *testing.T) {
+	var sourceReads int
+	templateSource := `id: shared-preprocessed-template
+
+info:
+  name: Shared preprocessed template
+  author: pdteam
+  severity: info
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/{{randstr}}"
+`
+	server := httptest.NewServer(netHttp.HandlerFunc(func(w netHttp.ResponseWriter, _ *netHttp.Request) {
+		sourceReads++
+		_, _ = w.Write([]byte(templateSource))
+	}))
+	t.Cleanup(server.Close)
+
+	setup()
+	templatePath := server.URL + "/template.yaml"
+	sharedParser := templates.NewParser()
+	_, err := sharedParser.ParseTemplate(templatePath, executerOpts.Catalog)
+	require.NoError(t, err)
+
+	compiledPaths := make([]string, 2)
+	for i := range compiledPaths {
+		engineOptions := executerOpts.Copy()
+		engineOptions.Parser = templates.NewParserWithParsedCache(sharedParser.Cache())
+		compiled, parseErr := templates.Parse(templatePath, nil, engineOptions)
+		require.NoError(t, parseErr)
+		compiledPaths[i] = compiled.RequestsHTTP[0].Path[0]
+		require.NotContains(t, compiledPaths[i], "{{randstr}}")
+	}
+
+	require.Equal(t, 1, sourceReads)
+	require.NotEqual(t, compiledPaths[0], compiledPaths[1])
+}
+
 func Test_WrongTemplate(t *testing.T) {
 	setup()
 
@@ -618,4 +724,99 @@ func TestWrongWorkflow(t *testing.T) {
 	got, err := templates.Parse(filePath, nil, executerOpts)
 	require.Nil(t, got, "could not parse template")
 	require.ErrorContains(t, err, "workflows cannot have other protocols")
+}
+
+// A cache hit rebuilds the template's options from the caller's, so every option
+// derived from the template itself has to be carried back over. Anything that
+// compiles an executer from those options reads Flow; without it, every step
+// runs regardless of the flow expression and the last step's matcher alone
+// decides whether the template reports.
+func TestParseCompiledCachePreservesTemplateDerivedOptions(t *testing.T) {
+	setup()
+
+	path := filepath.Join(t.TempDir(), "flow-cache.yaml")
+	require.NoError(t, os.WriteFile(path, []byte(`id: flow-cache
+info:
+  name: Flow cache
+  author: pdteam
+  severity: info
+stop-at-first-match: true
+flow: http(1) && http(2)
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/precondition"
+    matchers:
+      - type: status
+        status: [200]
+        internal: true
+  - method: GET
+    path:
+      - "{{BaseURL}}/check"
+    matchers:
+      - type: status
+        status: [404]
+`), 0o600))
+
+	first, second := parseTwiceFromCompiledCache(t, path)
+
+	require.NotEmpty(t, first.Options.Flow)
+	require.Equal(t, first.Options.Flow, second.Options.Flow)
+	require.True(t, second.Options.StopAtFirstMatch)
+	require.NotZero(t, second.Options.ProtocolType)
+	require.Equal(t, first.Options.ProtocolType, second.Options.ProtocolType)
+	// A flow template orders its own steps, so it is never multi-protocol.
+	require.False(t, second.Options.IsMultiProtocol)
+}
+
+// IsMultiProtocol is set while compiling the template's requests, and Cluster
+// reads it to keep multi-protocol templates out of clusters.
+func TestParseCompiledCachePreservesMultiProtocol(t *testing.T) {
+	setup()
+
+	first, second := parseTwiceFromCompiledCache(t, "tests/multiproto.yaml")
+
+	require.True(t, first.Options.IsMultiProtocol)
+	require.True(t, second.Options.IsMultiProtocol)
+}
+
+// Offline HTTP keeps the matcher list on Options.Operators. A cache hit rebuilds
+// options from the caller, so that list has to be copied back too.
+func TestParseCompiledCachePreservesOfflineOperators(t *testing.T) {
+	setup()
+
+	previous := executerOpts.Options.OfflineHTTP
+	executerOpts.Options.OfflineHTTP = true
+	t.Cleanup(func() {
+		executerOpts.Options.OfflineHTTP = previous
+	})
+
+	first, second := parseTwiceFromCompiledCache(t, "tests/match-1.yaml")
+
+	require.NotEmpty(t, first.Options.Operators)
+	require.Equal(t, len(first.Options.Operators), len(second.Options.Operators))
+}
+
+// parseTwiceFromCompiledCache parses path twice on one parser and asserts the
+// second parse was served from the compiled cache.
+func parseTwiceFromCompiledCache(t *testing.T, path string) (first, second *templates.Template) {
+	t.Helper()
+
+	parser := templates.NewParser()
+	options := executerOpts.Copy()
+	options.Parser = parser
+
+	first, err := templates.Parse(path, nil, options)
+	require.NoError(t, err)
+	cached, err := parser.CompiledCache().Get(path)
+	require.NoError(t, err)
+	require.NotNil(t, cached)
+
+	second, err = templates.Parse(path, nil, options.Copy())
+	require.NoError(t, err)
+	after, err := parser.CompiledCache().Get(path)
+	require.NoError(t, err)
+	require.Same(t, cached, after, "second parse must be served from the compiled cache")
+
+	return first, second
 }

@@ -13,12 +13,12 @@ import (
 	"github.com/logrusorgru/aurora/v4"
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/gologger"
-	"github.com/projectdiscovery/nuclei/v3/internal/tests/testutils"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/loader"
 	"github.com/projectdiscovery/nuclei/v3/pkg/core"
 	"github.com/projectdiscovery/nuclei/v3/pkg/input/provider"
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
+	"github.com/projectdiscovery/nuclei/v3/pkg/progress"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/helpers/writer"
@@ -126,6 +126,9 @@ func (s *Service) Close() bool {
 // Execute automatic scan on each target with -bs host concurrency
 func (s *Service) Execute() error {
 	gologger.Info().Msgf("Executing Automatic scan on %d target[s]", s.target.Count())
+	if s.opts.Progress != nil {
+		s.opts.Progress.AddToTotal(int64(getRequestCount(s.techTemplates)) * s.target.Count())
+	}
 	// setup host concurrency
 	sg, err := syncutil.New(syncutil.WithSize(s.opts.Options.BulkSize))
 	if err != nil {
@@ -185,12 +188,21 @@ func (s *Service) executeAutomaticScanOnTarget(input *contextargs.MetaInput) {
 	gologger.Info().Msgf("Executing %d templates on %v", len(finalTemplates), input.Input)
 	eng := core.New(s.opts.Options)
 	execOptions := s.opts.Copy()
-	execOptions.Progress = &testutils.MockProgressClient{} // stats are not supported yet due to centralized logic and cannot be reinitialized
+	if s.opts.Progress != nil {
+		s.opts.Progress.AddToTotal(int64(getRequestCount(finalTemplates)))
+		execOptions.Progress = &sharedProgress{Progress: s.opts.Progress}
+	}
 	eng.SetExecuterOptions(execOptions)
 
 	tmp := eng.ExecuteScanWithOpts(context.Background(), finalTemplates, provider.NewSimpleInputProviderWithUrls(s.opts.Options.ExecutionId, input.Input), true)
 	s.hasResults.Store(tmp.Load())
 }
+
+type sharedProgress struct {
+	progress.Progress
+}
+
+func (p *sharedProgress) Init(hostCount int64, rulesCount int, requestCount int64) {}
 
 // getTagsUsingWappalyzer returns tags using wappalyzer by fingerprinting target
 // and utilizing the mapping data

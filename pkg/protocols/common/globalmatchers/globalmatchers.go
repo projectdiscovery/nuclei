@@ -45,22 +45,6 @@ func (s *Storage) AddOperator(item *Item) {
 	s.requests = append(s.requests, item)
 }
 
-// Any reports whether fn accepts one registered operator. fn returning true
-// stops the walk.
-func (s *Storage) Any(fn func(*operators.Operators) bool) bool {
-	if !s.hasStorage() || fn == nil {
-		return false
-	}
-	for _, item := range s.requests {
-		for _, operator := range item.Operators {
-			if operator != nil && fn(operator) {
-				return true
-			}
-		}
-	}
-	return false
-}
-
 // HasMatchers returns true if we have global matchers
 func (s *Storage) HasMatchers() bool {
 	if !s.hasStorage() {
@@ -68,6 +52,21 @@ func (s *Storage) HasMatchers() bool {
 	}
 
 	return len(s.requests) > 0
+}
+
+// NeedsResponse returns true if any global matcher operator requires the full response.
+func (s *Storage) NeedsResponse() bool {
+	if !s.hasStorage() {
+		return false
+	}
+	for _, item := range s.requests {
+		for _, operator := range item.Operators {
+			if operator.NeedsResponse() {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // Match matches the global matchers against the response

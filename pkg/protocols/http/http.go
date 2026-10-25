@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"math"
+	"net/http"
 	"strings"
 	"time"
 
@@ -23,6 +24,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/httpclientpool"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/network/networkclientpool"
+	"github.com/projectdiscovery/nuclei/v3/pkg/types/scanstrategy"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils/json"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils/stats"
 	"github.com/projectdiscovery/rawhttp"
@@ -137,16 +139,14 @@ type Request struct {
 
 	CompiledOperators *operators.Operators `yaml:"-" json:"-"`
 
-	options *protocols.ExecutorOptions
-	// requireFullResponse is set when another template in a cluster matches
-	// this request's event and reads the headers+body concatenation.
-	requireFullResponse bool
-	connConfiguration   *httpclientpool.Configuration
-	totalRequests       int
-	customHeaders       map[string]string
-	generator           *generators.PayloadGenerator // optional, only enabled when using payloads
-	rawhttpClient       *rawhttp.Client
-	dialer              *fastdialer.Dialer
+	options           *protocols.ExecutorOptions
+	connConfiguration *httpclientpool.Configuration
+	totalRequests     int
+	customHeaders     map[string]string
+	generator         *generators.PayloadGenerator // optional, only enabled when using payloads
+	rawhttpClient     *rawhttp.Client
+	replayClient      *http.Client // set when -replay-proxy is given
+	dialer            *fastdialer.Dialer
 
 	// description: |
 	//   SelfContained specifies if the request is self-contained.
@@ -161,6 +161,9 @@ type Request struct {
 	// connectionReusePolicy stores the analyzed connection reuse policy
 	// This is set during Compile() based on template analysis
 	connectionReusePolicy ConnectionReusePolicy `yaml:"-" json:"-"`
+	// requireFullResponse is set for a clustered request when a sibling template
+	// reads the full response. Those operators are not on this request.
+	requireFullResponse bool `yaml:"-" json:"-"`
 
 	// description: |
 	//   SkipSecretFile skips the authentication or authorization configured in the secret file.
@@ -175,6 +178,10 @@ type Request struct {
 	// description: |
 	//   DisableCookie is an optional setting that disables cookie reuse
 	DisableCookie bool `yaml:"disable-cookie,omitempty" json:"disable-cookie,omitempty" jsonschema:"title=optional disable cookie reuse,description=Optional setting that disables cookie reuse"`
+
+	// description: |
+	//   DisableHTTPCache turns off HTTP caching for this request. It cannot turn caching on when -http-cache is unset.
+	DisableHTTPCache bool `yaml:"disable-http-cache,omitempty" json:"disable-http-cache,omitempty" jsonschema:"title=disable HTTP cache,description=Turns off HTTP caching for this request; cannot enable cache when -http-cache is unset"`
 
 	// description: |
 	//   Enables force reading of the entire raw unsafe request body ignoring
@@ -356,10 +363,11 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 	}
 
 	connectionConfiguration := &httpclientpool.Configuration{
-		Threads:       request.Threads,
-		MaxRedirects:  request.MaxRedirects,
-		NoTimeout:     false,
-		DisableCookie: request.DisableCookie,
+		Threads:          request.Threads,
+		MaxRedirects:     request.MaxRedirects,
+		NoTimeout:        false,
+		DisableCookie:    request.DisableCookie,
+		DisableHTTPCache: request.DisableHTTPCache,
 		Connection: &httpclientpool.ConnectionConfiguration{
 			DisableKeepAlive: disableKeepAlive,
 		},
@@ -428,6 +436,13 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 		}
 		request.rawhttpClient = httpclientpool.GetRawHTTP(options)
 	}
+	if options.Options != nil && options.Options.ReplayProxy != "" {
+		client, err := newReplayClient(options.Options)
+		if err != nil {
+			return err
+		}
+		request.replayClient = client
+	}
 	if len(request.Matchers) > 0 || len(request.Extractors) > 0 {
 		compiled := &request.Operators
 		compiled.ExcludeMatchers = options.ExcludeMatchers
@@ -435,6 +450,9 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 		if compileErr := compiled.Compile(); compileErr != nil {
 			return errors.Wrap(compileErr, "could not compile operators")
 		}
+		// llm operators only evaluate once they hold the scan's client; without
+		// it every llm path returns a negative result instead of an error.
+		protocols.BindLLMOperators(compiled, options)
 		request.CompiledOperators = compiled
 	}
 
@@ -561,6 +579,11 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 			request.Threads = options.GetThreadsForNPayloadRequests(request.Requests(), request.Threads)
 		}
 	}
+
+	// Avoid reusing client-side HTTP proxy connections for the legacy non-threaded spray path.
+	if shouldDisableKeepAliveForHTTPProxy(request, options) {
+		request.connConfiguration.Connection.DisableKeepAlive = true
+	}
 	return nil
 }
 
@@ -576,6 +599,11 @@ func (request *Request) RebuildGenerator() error {
 
 // Requests returns the total number of requests the YAML rule will perform
 func (request *Request) Requests() int {
+	// fuzzing requests depend on each input's parameters and add themselves to
+	// the total as they are sent; any path or raw is not sent as such
+	if len(request.Fuzzing) > 0 {
+		return 0
+	}
 	generator := request.newGenerator(false)
 	return generator.Total()
 }
@@ -608,6 +636,15 @@ func (r *Request) UpdateOptions(opts *protocols.ExecutorOptions) {
 // HasFuzzing indicates whether the request has fuzzing rules defined.
 func (request *Request) HasFuzzing() bool {
 	return len(request.Fuzzing) > 0
+}
+
+// shouldDisableKeepAliveForHTTPProxy preserves the pre-pooling behavior only for
+// standard HTTP proxies in non-threaded template/auto spray scans.
+func shouldDisableKeepAliveForHTTPProxy(request *Request, options *protocols.ExecutorOptions) bool {
+	if request == nil || options == nil || options.Options == nil || options.Options.AliveHttpProxy == "" {
+		return false
+	}
+	return request.Threads <= 0 && options.Options.ScanStrategy != scanstrategy.HostSpray.String()
 }
 
 // AnalyzeConnectionReuse determines if a request can safely reuse connections.
@@ -686,4 +723,37 @@ func hasConnectionCloseHeader(raw string) bool {
 		value = value[:newlineIdx]
 	}
 	return strings.Contains(value, "close")
+}
+
+// IsOriginScoped reports whether every request this block makes is fixed by the
+// target's origin, so two targets differing only by path or query produce byte
+// identical requests. Paths built from {{BaseURL}} or {{Path}} carry the
+// target's own path and are therefore not origin scoped, and raw requests,
+// payloads and fuzzing all vary the request independently of the origin.
+func (request *Request) IsOriginScoped() bool {
+	if len(request.Raw) > 0 || len(request.Path) == 0 {
+		return false
+	}
+	if len(request.Payloads) > 0 || request.Fuzzing != nil {
+		return false
+	}
+	for _, path := range request.Path {
+		if !strings.Contains(path, "{{RootURL}}") || carriesTargetPath(path) {
+			return false
+		}
+	}
+	if carriesTargetPath(request.Body) {
+		return false
+	}
+	for _, value := range request.Headers {
+		if carriesTargetPath(value) {
+			return false
+		}
+	}
+	return true
+}
+
+// carriesTargetPath reports whether a value interpolates the target's own path.
+func carriesTargetPath(value string) bool {
+	return strings.Contains(value, "{{BaseURL}}") || strings.Contains(value, "{{Path}}")
 }
