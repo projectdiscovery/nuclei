@@ -1,6 +1,10 @@
 package interactsh
 
-import "regexp"
+import (
+	"regexp"
+
+	"github.com/projectdiscovery/interactsh/pkg/server"
+)
 
 type IClient interface {
 	AlreadyMatched(data *RequestData) bool
@@ -13,4 +17,5 @@ type IClient interface {
 	MakePlaceholders(urls []string, data map[string]interface{})
 	RequestEvent(interactshURLs []string, data *RequestData)
 	GetHostname() string
+	SetInteractionCallback(cb func(interaction *server.Interaction, foundRequest *RequestData))
 }

@@ -173,6 +173,16 @@ func (c *Client) SetInteractionCallback(cb func(interaction *server.Interaction,
 	c.onInteraction = cb
 }
 
+func (c *Client) notifyInteraction(interaction *server.Interaction, request *RequestData, err error) {
+	c.onInteractionMu.RLock()
+	cb := c.onInteraction
+	c.onInteractionMu.RUnlock()
+	if cb == nil || err != nil || request == nil {
+		return
+	}
+	cb(interaction, request)
+}
+
 func (c *Client) initializeCaches() {
 	c.cacheOnce.Do(func() {
 		requests := gcache.New[string, *RequestData](c.options.CacheSize).LRU().Build()
@@ -215,16 +225,9 @@ func (c *Client) poll() error {
 	err = interactsh.StartPolling(c.pollDuration, func(interaction *server.Interaction) {
 		c.requestLifecycleMu.RLock()
 		request, err := c.requests.Get(interaction.UniqueID)
-
-		c.onInteractionMu.RLock()
-		cb := c.onInteraction
-		c.onInteractionMu.RUnlock()
-		if cb != nil {
-			cb(interaction, request)
-		}
-
 		callbackAdmitted := request != nil && request.Scope.beginCallback()
 		c.requestLifecycleMu.RUnlock()
+		c.notifyInteraction(interaction, request, err)
 		// for more context in github actions
 		if strings.EqualFold(os.Getenv("GITHUB_ACTIONS"), "true") && c.options.Debug {
 			gologger.DefaultLogger.Print().Msgf("[Interactsh]: got interaction of %v for request %v and error %v", interaction, request, err)
