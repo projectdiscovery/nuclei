@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -200,6 +201,41 @@ Host: {{Hostname}}`},
 	require.Equal(t, "http", parsedURL.Scheme, "scheme should inherit from input when annotation host has no scheme")
 }
 
+func TestUnsafeRawRequestPreservesAbsoluteRequestTarget(t *testing.T) {
+	options := testutils.DefaultOptions
+
+	testutils.Init(options)
+	const requestLine = "GET http://intranet/foo?request=1 HTTP/1.1"
+	request := &Request{
+		ID:     "testing-http-unsafe-absolute-request-target",
+		Name:   "testing",
+		Unsafe: true,
+		Raw: []string{requestLine + `
+Host: {{Hostname}}`},
+	}
+	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
+		ID:   request.ID,
+		Info: model.Info{SeverityHolder: severity.Holder{Severity: severity.Low}, Name: "test"},
+	})
+	require.NoError(t, request.Compile(executerOpts), "could not compile unsafe raw request")
+
+	generator := request.newGenerator(false)
+	inputData, payloads, _ := generator.nextValue()
+	generated, err := generator.Make(context.Background(), contextargs.NewWithInput(context.Background(), "http://example.com/bar?input=1"), inputData, payloads, map[string]interface{}{})
+	require.NoError(t, err, "could not make unsafe raw request")
+	generatedURL, err := urlutil.ParseAbsoluteURL(generated.URL(), true)
+	require.NoError(t, err, "could not parse generated request URL")
+	require.Equal(t, "example.com", generatedURL.Host, "absolute request target must not override the scan target")
+	require.Equal(t, "/foo", generatedURL.Path, "absolute request target path must not merge with the scan target path")
+	require.Equal(t, "1", generatedURL.Params.Get("request"), "generated URL must include the absolute request target query")
+	require.Empty(t, generatedURL.Params.Get("input"), "generated URL must not include the scan target query")
+
+	requestBytes, err := dump(generated, generated.URL())
+	require.NoError(t, err, "could not dump unsafe raw request")
+	actualRequestLine := strings.TrimSuffix(strings.SplitN(string(requestBytes), "\n", 2)[0], "\r")
+	require.Equal(t, requestLine, actualRequestLine, "unsafe raw request line must remain unchanged")
+}
+
 func TestMakeRequestFromModelUniqueInteractsh(t *testing.T) {
 
 	options := testutils.DefaultOptions
@@ -287,6 +323,32 @@ func TestMakeSelfContainedRequestRendersPayloadInteractshMarker(t *testing.T) {
 	require.Len(t, got.interactshURLs, 1)
 	require.Equal(t, "http://"+got.interactshURLs[0]+"/callback", got.request.String())
 	require.NotContains(t, got.request.String(), "{{interactsh-url}}")
+}
+
+func TestMakeSelfContainedRequestPrefersDynamicValueOverTemplateContext(t *testing.T) {
+	options := testutils.DefaultOptions
+	testutils.Init(options)
+	request := &Request{
+		ID:            "testing-self-contained-dynamic-value",
+		Name:          "testing",
+		SelfContained: true,
+		Path:          []string{"http://example.com/{{token}}"},
+		Method:        HTTPMethodTypeHolder{MethodType: HTTPGet},
+	}
+	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
+		ID:   request.ID,
+		Info: model.Info{SeverityHolder: severity.Holder{Severity: severity.Low}, Name: "test"},
+	})
+	require.NoError(t, request.Compile(executerOpts))
+
+	input := contextargs.NewWithInput(context.Background(), "")
+	executerOpts.GetTemplateCtx(input.MetaInput).Set("token", "stale")
+	generator := request.newGenerator(false)
+	inputData, payloads, ok := generator.nextValue()
+	require.True(t, ok)
+	generated, err := generator.Make(context.Background(), input, inputData, payloads, map[string]interface{}{"token": "current"})
+	require.NoError(t, err)
+	require.Equal(t, "http://example.com/current", generated.request.String())
 }
 
 func TestMakeSelfContainedRequestDoesNotAllocateRuntimeInteractshMarkerFromPayload(t *testing.T) {

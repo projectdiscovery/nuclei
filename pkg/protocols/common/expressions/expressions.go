@@ -29,7 +29,7 @@ func Eval(expression string, values map[string]interface{}) (interface{}, error)
 // The provided keys from finalValues will be used as variable names
 // for substitution inside the expression.
 func Evaluate(data string, base map[string]interface{}) (string, error) {
-	return evaluate(data, base)
+	return evaluate(data, base, nil)
 }
 
 // EvaluateByte checks if the match contains a dynamic variable, for each
@@ -39,11 +39,16 @@ func Evaluate(data string, base map[string]interface{}) (string, error) {
 // The provided keys from finalValues will be used as variable names
 // for substitution inside the expression.
 func EvaluateByte(data []byte, base map[string]interface{}) ([]byte, error) {
-	finalData, err := evaluate(string(data), base)
+	finalData, err := evaluate(string(data), base, nil)
 	return []byte(finalData), err
 }
 
-func evaluate(data string, base map[string]interface{}) (string, error) {
+// EvaluateWithOptions renders expressions using the current scan's network policy.
+func EvaluateWithOptions(data string, base map[string]interface{}, options *types.Options) (string, error) {
+	return evaluate(data, base, options)
+}
+
+func evaluate(data string, base map[string]interface{}, options *types.Options) (string, error) {
 	expressions := FindExpressions(data, marker.ParenthesisOpen, marker.ParenthesisClose, base)
 
 	// replace simple placeholders (key => value) MarkerOpen + key + MarkerClose and General + key + General to value
@@ -66,7 +71,7 @@ func evaluate(data string, base map[string]interface{}) (string, error) {
 			return data, fmt.Errorf("failed to compile expression %q: %w", originalExpression, err)
 		}
 
-		result, err := compiled.Evaluate(base)
+		result, err := dsl.EvalWithOptions(compiled, base, options)
 		if err != nil {
 			return data, fmt.Errorf("failed to evaluate expression %q: %w", originalExpression, err)
 		}

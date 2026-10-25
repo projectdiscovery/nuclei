@@ -64,19 +64,19 @@ func TestZipSlip(t *testing.T) {
 
 		for _, filePathFromZip := range filePathsFromZip {
 			var tmp fs.FileInfo = &tempFileInfo{name: filePathFromZip}
-			writePath := tm.getAbsoluteFilePath(configuredTemplateDirectory, filePathFromZip, tmp)
+			_, writePath := tm.getTemplateOutputLocation(configuredTemplateDirectory, filePathFromZip, tmp)
 			require.Equal(t, "", writePath, filePathFromZip)
 		}
 	})
 
 	t.Run("positive no-slash fallback", func(t *testing.T) {
 		// Entry names with no slash exercise the fallback branch in
-		// getAbsoluteFilePath. Legitimate single-name entries must still be
+		// getTemplateOutputLocation. Legitimate single-name entries must still be
 		// written into templateDir (regression test for the containment check
 		// added to that branch).
 		tm := TemplateManager{}
 		var tmp fs.FileInfo = &tempFileInfo{name: "single-file.yaml"}
-		writePath := tm.getAbsoluteFilePath(configuredTemplateDirectory, "single-file.yaml", tmp)
+		_, writePath := tm.getTemplateOutputLocation(configuredTemplateDirectory, "single-file.yaml", tmp)
 		require.Equal(t, filepath.Join(configuredTemplateDirectory, "single-file.yaml"), writePath)
 	})
 
@@ -89,7 +89,7 @@ func TestZipSlip(t *testing.T) {
 
 		for filePathFromZip, expectedWritePath := range filePathsFromZip {
 			var tmp fs.FileInfo = &tempFileInfo{name: filePathFromZip}
-			writePath := tm.getAbsoluteFilePath(configuredTemplateDirectory, filePathFromZip, tmp)
+			_, writePath := tm.getTemplateOutputLocation(configuredTemplateDirectory, filePathFromZip, tmp)
 			require.Equal(t, expectedWritePath, writePath, filePathFromZip)
 		}
 	})
@@ -101,7 +101,7 @@ func TestZipSlip(t *testing.T) {
 
 		tm := TemplateManager{}
 		var tmp fs.FileInfo = &tempFileInfo{name: "nuclei-templates/cves/test.yaml"}
-		writePath := tm.getAbsoluteFilePath(aliasDir, "nuclei-templates/cves/test.yaml", tmp)
+		_, writePath := tm.getTemplateOutputLocation(aliasDir, "nuclei-templates/cves/test.yaml", tmp)
 		require.Equal(t, filepath.Join(aliasDir, "cves", "test.yaml"), writePath)
 	})
 
@@ -109,7 +109,7 @@ func TestZipSlip(t *testing.T) {
 	// path component is itself a symlink that points outside the configured
 	// templates directory. Because both the entry's leaf and its parent on
 	// disk may be missing, a naive lexical containment check could miss the
-	// escape. canonicalizePath inside IsPathWithinDirectory walks up to the
+		// escape. canonicalizePath inside IsPathWithinDirectory walks up to the
 	// nearest existing ancestor (the symlink) and resolves it, which is what
 	// makes this rejection sound. This test pins that behavior.
 	t.Run("negative symlinked ancestor escapes templateDir", func(t *testing.T) {
@@ -117,7 +117,7 @@ func TestZipSlip(t *testing.T) {
 		outsideDir := t.TempDir()
 		// Plant a symlink "evil" inside templateDir that points outside.
 		// A malicious zip entry that traverses through it must be rejected
-		// before it ever reaches WriteFile / CreateFolder.
+		// before it reaches the root-confined write boundary.
 		require.NoError(t, os.Symlink(outsideDir, filepath.Join(templateDir, "evil")))
 
 		tm := TemplateManager{}
@@ -128,7 +128,7 @@ func TestZipSlip(t *testing.T) {
 		}
 		for _, entry := range entries {
 			var tmp fs.FileInfo = &tempFileInfo{name: entry}
-			writePath := tm.getAbsoluteFilePath(templateDir, entry, tmp)
+			_, writePath := tm.getTemplateOutputLocation(templateDir, entry, tmp)
 			require.Equal(t, "", writePath, entry)
 		}
 	})
