@@ -1916,7 +1916,24 @@ func (request *Request) isUnresponsiveAddress(input *contextargs.Context) bool {
 }
 
 // needsFullResponse returns true if operators, debug flags, or stats require the full HTTP response.
+// RequireFullResponse keeps the full response when a caller matches this
+// request's event with operators the request does not own. Clustered templates do that.
+func (request *Request) RequireFullResponse() {
+	if request == nil {
+		return
+	}
+	request.requireFullResponse = true
+}
+
+// FullResponseRequired reports whether RequireFullResponse has been set.
+func (request *Request) FullResponseRequired() bool {
+	return request != nil && request.requireFullResponse
+}
+
 func (request *Request) needsFullResponse(generatedRequest *generatedRequest) bool {
+	if request.requireFullResponse {
+		return true
+	}
 	if request.options != nil && request.options.Options != nil {
 		cliOptions := request.options.Options
 		if cliOptions.Debug || cliOptions.DebugResponse || cliOptions.StoreResponse || cliOptions.HTTPStats {
