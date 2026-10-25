@@ -6,6 +6,7 @@ package integration_test
 import (
 	"errors"
 	"fmt"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"net/http/httputil"
@@ -83,6 +84,8 @@ var httpTestcases = []integrationCase{
 	{Path: "protocols/http/annotation-timeout.yaml", TestCase: &annotationTimeout{}},
 	{Path: "protocols/http/custom-attack-type.yaml", TestCase: &customAttackType{}},
 	{Path: "protocols/http/get-all-ips.yaml", TestCase: &scanAllIPS{}},
+	{Path: "protocols/http/target-line-ip.yaml", TestCase: &httpTargetLineIP{}},
+	{Path: "protocols/http/target-line-ip-pipeline.yaml", TestCase: &httpTargetLineIP{}},
 	{Path: "protocols/http/get-without-scheme.yaml", TestCase: &httpGetWithoutScheme{}},
 	{Path: "protocols/http/cl-body-without-header.yaml", TestCase: &httpCLBodyWithoutHeader{}},
 	{Path: "protocols/http/cl-body-with-header.yaml", TestCase: &httpCLBodyWithHeader{}},
@@ -1604,6 +1607,70 @@ func (h *scanAllIPS) Execute(filePath string) error {
 	}
 	// limiting test to ipv4 (GH doesn't support ipv6)
 	return expectResultsCount(got, 1)
+}
+
+// target lines pin a hostname that does not resolve to the test servers
+type httpTargetLineIP struct{}
+
+// Execute executes a test case and returns an error if occurred
+func (h *httpTargetLineIP) Execute(filePath string) error {
+	serve := func(addr, name string) (*httptest.Server, error) {
+		listener, err := net.Listen("tcp", addr)
+		if err != nil {
+			return nil, err
+		}
+		ts := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			_, _ = fmt.Fprintf(w, "host=%s server=%s", r.Host, name)
+		}))
+		_ = ts.Listener.Close()
+		ts.Listener = listener
+		ts.Start()
+		return ts, nil
+	}
+
+	one, err := serve("127.0.0.1:0", "one")
+	if err != nil {
+		return err
+	}
+	defer one.Close()
+	_, port, err := net.SplitHostPort(one.Listener.Addr().String())
+	if err != nil {
+		return err
+	}
+
+	lines := []string{fmt.Sprintf(`{"target": "http://pinned.test:%s", "ip": "127.0.0.1"}`, port)}
+	want := []string{"one"}
+	// the same host pinned to a second ip, where 127.0.0.2 is available
+	if two, err := serve(net.JoinHostPort("127.0.0.2", port), "two"); err == nil {
+		defer two.Close()
+		lines = append(lines, fmt.Sprintf(`{"target": "http://pinned.test:%s", "ip": "127.0.0.2"}`, port))
+		want = append(want, "two")
+	}
+
+	targets, err := os.CreateTemp("", "target-lines-*.txt")
+	if err != nil {
+		return err
+	}
+	defer func() { _ = os.Remove(targets.Name()) }()
+	if _, err := targets.WriteString(strings.Join(lines, "\n")); err != nil {
+		return err
+	}
+	_ = targets.Close()
+
+	got, err := testutils.RunNucleiBareArgsAndGetResults(debug, nil, "-t", filePath, "-l", targets.Name())
+	if err != nil {
+		return err
+	}
+	if err := expectResultsCount(got, len(want)); err != nil {
+		return err
+	}
+	joined := strings.Join(got, "\n")
+	for _, name := range want {
+		if !strings.Contains(joined, name) {
+			return fmt.Errorf("no result from server %q: %v", name, got)
+		}
+	}
+	return nil
 }
 
 // ensure that ip|host are handled without http|https scheme

@@ -19,6 +19,11 @@ func (request *Request) NeedsRequestCondition() bool {
 		if checkRequestConditionExpressions(matcher.Part) {
 			return true
 		}
+		// an llm matcher compares responses through inputs, which is where it
+		// references {{body_1}} and friends
+		if checkRequestConditionExpressions(matcher.Inputs...) {
+			return true
+		}
 	}
 	for _, extractor := range request.Extractors {
 		if checkRequestConditionExpressions(extractor.DSL...) {

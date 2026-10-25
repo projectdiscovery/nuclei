@@ -2,13 +2,20 @@ package nuclei_test
 
 import (
 	"context"
+	"fmt"
 	"log"
+	"net"
+	"net/http"
+	"net/http/httptest"
 	"os"
+	"path/filepath"
+	"sync"
 	"testing"
 	"time"
 
 	nuclei "github.com/projectdiscovery/nuclei/v3/lib"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
+	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	"github.com/stretchr/testify/require"
 )
@@ -155,3 +162,168 @@ func TestIgnoreFileFilesSectionIsApplied(t *testing.T) {
 	require.Contains(t, ne.Options().ExcludedTemplates, "http/fuzzing/wordpress-themes-detect.yaml",
 		"files section should reach ExcludedTemplates")
 }
+
+func TestSDKCustomPortTemplateDoesNotPoisonBaseHost(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = fmt.Fprint(w, "server-ok")
+	}))
+	defer ts.Close()
+
+	// Allocate and immediately close a TCP listener to obtain a guaranteed closed local port.
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	require.NoError(t, err)
+	closedPort := ln.Addr().(*net.TCPAddr).Port
+	require.NoError(t, ln.Close())
+
+	tplDir := t.TempDir()
+	closedPortTpl := fmt.Sprintf(`id: closed-port-parallel-probe
+info:
+  name: Closed Port Parallel Probe
+  author: test
+  severity: info
+http:
+  - method: GET
+    path:
+      - "http://{{Hostname}}:%d/probe?p={{val}}"
+    threads: 2
+    payloads:
+      val:
+        - "1"
+        - "2"
+    matchers:
+      - type: word
+        words:
+          - "never-matches"
+`, closedPort)
+	healthyTpl := `id: healthy-base-target-match
+info:
+  name: Healthy Base Target Match
+  author: test
+  severity: high
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/"
+    matchers:
+      - type: word
+        words:
+          - "server-ok"
+`
+	closedPortPath := filepath.Join(tplDir, "01-closed-port.yaml")
+	healthyPath := filepath.Join(tplDir, "02-healthy.yaml")
+	require.NoError(t, os.WriteFile(closedPortPath, []byte(closedPortTpl), 0o600))
+	require.NoError(t, os.WriteFile(healthyPath, []byte(healthyTpl), 0o600))
+
+	for run := 1; run <= 3; run++ {
+		ne, err := nuclei.NewNucleiEngineCtx(
+			context.Background(),
+			nuclei.DisableUpdateCheck(),
+			nuclei.WithTemplatesOrWorkflows(nuclei.TemplateSources{
+				Templates: []string{closedPortPath, healthyPath},
+			}),
+			nuclei.WithConcurrency(nuclei.Concurrency{
+				TemplateConcurrency:           1,
+				HostConcurrency:               1,
+				HeadlessHostConcurrency:       1,
+				HeadlessTemplateConcurrency:   1,
+				JavascriptTemplateConcurrency: 1,
+				TemplatePayloadConcurrency:    2,
+				ProbeConcurrency:              1,
+			}),
+		)
+		require.NoError(t, err)
+		ne.Options().RestrictLocalNetworkAccess = false
+		ne.Options().Timeout = 2
+		ne.Options().Retries = 0
+
+		ne.LoadTargets([]string{ts.URL}, false)
+
+		var (
+			mu         sync.Mutex
+			matched    []string
+			violations []*output.ResultEvent
+		)
+		err = ne.ExecuteCallbackWithCtx(context.Background(), func(event *output.ResultEvent) {
+			mu.Lock()
+			defer mu.Unlock()
+			if !event.MatcherStatus || event.Error != "" {
+				violations = append(violations, event)
+			}
+			matched = append(matched, event.TemplateID)
+		})
+		ne.Close()
+
+		require.NoError(t, err, "run %d failed", run)
+		require.Empty(t, violations, "ExecuteCallbackWithCtx must not emit non-matching or skip events when MatcherStatus is false")
+		require.Equal(t, []string{"healthy-base-target-match"}, matched, "run %d should consistently match healthy base target after custom-port failure", run)
+	}
+}
+
+func TestSDKSkipEventsRespectMatcherStatus(t *testing.T) {
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	require.NoError(t, err)
+	closedAddr := ln.Addr().String()
+	require.NoError(t, ln.Close())
+
+	tplDir := t.TempDir()
+	for i := 1; i <= 3; i++ {
+		tpl := fmt.Sprintf(`id: unreachable-check-%d
+info:
+  name: Unreachable Check %d
+  author: test
+  severity: info
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/path-%d"
+    matchers:
+      - type: word
+        words:
+          - "ok"
+`, i, i, i)
+		require.NoError(t, os.WriteFile(filepath.Join(tplDir, fmt.Sprintf("0%d-tpl.yaml", i)), []byte(tpl), 0o600))
+	}
+
+	runScan := func(matcherStatus bool) []*output.ResultEvent {
+		ne, err := nuclei.NewNucleiEngineCtx(
+			context.Background(),
+			nuclei.DisableUpdateCheck(),
+			nuclei.WithTemplatesOrWorkflows(nuclei.TemplateSources{
+				Templates: []string{tplDir},
+			}),
+			nuclei.WithConcurrency(nuclei.Concurrency{
+				TemplateConcurrency:           1,
+				HostConcurrency:               1,
+				HeadlessHostConcurrency:       1,
+				HeadlessTemplateConcurrency:   1,
+				JavascriptTemplateConcurrency: 1,
+				TemplatePayloadConcurrency:    1,
+				ProbeConcurrency:              1,
+			}),
+		)
+		require.NoError(t, err)
+		ne.Options().RestrictLocalNetworkAccess = false
+		ne.Options().Timeout = 1
+		ne.Options().Retries = 0
+		ne.Options().MatcherStatus = matcherStatus
+
+		ne.LoadTargets([]string{"http://" + closedAddr}, false)
+
+		var (
+			mu     sync.Mutex
+			events []*output.ResultEvent
+		)
+		err = ne.ExecuteCallbackWithCtx(context.Background(), func(event *output.ResultEvent) {
+			mu.Lock()
+			defer mu.Unlock()
+			events = append(events, event)
+		})
+		ne.Close()
+		require.NoError(t, err)
+		return events
+	}
+
+	require.Empty(t, runScan(false), "skip/error events must not be emitted when MatcherStatus is false")
+	require.NotEmpty(t, runScan(true), "skip/error events should be emitted when MatcherStatus is true")
+}
+

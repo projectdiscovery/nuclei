@@ -9,7 +9,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/pkg/errors"
 	"github.com/projectdiscovery/useragent"
 
 	"github.com/projectdiscovery/gologger"
@@ -26,6 +25,7 @@ import (
 	protocolutils "github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils"
 	httputil "github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils/http"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
+	"github.com/projectdiscovery/nuclei/v3/pkg/utils/httpbody"
 	"github.com/projectdiscovery/rawhttp"
 	"github.com/projectdiscovery/retryablehttp-go"
 	"github.com/projectdiscovery/utils/errkit"
@@ -196,9 +196,9 @@ func (r *requestGenerator) Make(ctx context.Context, input *contextargs.Context,
 	// optionvars are vars passed from CLI or env variables
 	optionVars := generators.BuildPayloadFromOptions(r.request.options.Options)
 
-	scope := r.options.NewVariablesScope(dynamicValues)
+	scope := r.options.NewVariablesScope()
 	r.options.AddTemplateCtxToVariablesScope(input.MetaInput, scope)
-	scope.AddData(defaultReqVars, optionVars, r.options.Constants)
+	scope.AddData(dynamicValues, defaultReqVars, optionVars, r.options.Constants)
 	evaluation := r.options.Variables.EvaluateWithInteractshScope(scope, r.options.Interactsh)
 
 	variablesMap, interactURLs := evaluation.Values, evaluation.InteractURLs
@@ -207,13 +207,12 @@ func (r *requestGenerator) Make(ctx context.Context, input *contextargs.Context,
 	}
 
 	// allVars contains all variables from all sources
-	allVars := generators.MergeMaps(dynamicValues)
-
+	allVars := make(map[string]interface{})
 	if r.request.options.HasTemplateCtx(input.MetaInput) {
-		allVars = generators.MergeMaps(allVars, r.request.options.GetTemplateCtx(input.MetaInput).GetAll())
+		allVars = generators.MergeMaps(r.request.options.GetTemplateCtx(input.MetaInput).GetAll())
 	}
 
-	allVars = generators.MergeMaps(allVars, defaultReqVars, optionVars, variablesMap, r.options.Constants)
+	allVars = generators.MergeMaps(allVars, dynamicValues, defaultReqVars, optionVars, variablesMap, r.options.Constants)
 
 	// Evaluate payload variables
 	// eg: payload variables can be username: jon.doe@{{Hostname}}
@@ -275,24 +274,21 @@ func (r *requestGenerator) validateSelfContainedHost(host string) error {
 func (r *requestGenerator) makeSelfContainedRequest(ctx context.Context, input *contextargs.Context, data string, payloads, dynamicValues map[string]interface{}) (*generatedRequest, error) {
 	isRawRequest := r.request.isRaw()
 
-	values := generators.MergeMaps(
-		generators.BuildPayloadFromOptions(r.request.options.Options),
-		dynamicValues,
-		payloads, // payloads should override other variables in case of duplicate vars
-	)
+	optionValues := generators.BuildPayloadFromOptions(r.request.options.Options)
+	values := generators.MergeMaps(optionValues)
+	if r.request.options.HasTemplateCtx(input.MetaInput) {
+		values = generators.MergeMaps(values, r.request.options.GetTemplateCtx(input.MetaInput).GetAll())
+	}
+	values = generators.MergeMaps(values, dynamicValues, payloads)
 	// adds all variables from `variables` section in template
-	scope := r.request.options.NewVariablesScope(generators.BuildPayloadFromOptions(r.request.options.Options), dynamicValues, payloads)
+	scope := r.request.options.NewVariablesScope(optionValues)
 	r.request.options.AddTemplateCtxToVariablesScope(input.MetaInput, scope)
-	scope.AddData(r.options.Constants)
+	scope.AddData(dynamicValues, payloads, r.options.Constants)
 	evaluation := r.request.options.Variables.EvaluateWithInteractshScope(scope, r.request.options.Interactsh)
 
 	variablesMap, interactURLs := evaluation.Values, evaluation.InteractURLs
 	if len(interactURLs) > 0 {
 		r.interactshURLs = append(r.interactshURLs, interactURLs...)
-	}
-
-	if r.request.options.HasTemplateCtx(input.MetaInput) {
-		values = generators.MergeMaps(values, r.request.options.GetTemplateCtx(input.MetaInput).GetAll())
 	}
 
 	values = generators.MergeMaps(variablesMap, values)
@@ -456,7 +452,11 @@ func (r *requestGenerator) generateRawRequest(ctx context.Context, rawRequest st
 		}
 
 		if len(r.options.Options.CustomHeaders) > 0 {
-			_ = rawRequestData.TryFillCustomHeaders(r.options.Options.CustomHeaders)
+			customHeaders := make([]string, 0, len(r.options.Options.CustomHeaders))
+			for _, header := range r.options.Options.CustomHeaders {
+				customHeaders = append(customHeaders, evaluateCustomHeaderExpressions(r.options.TemplateID, header, finalVars))
+			}
+			_ = rawRequestData.TryFillCustomHeaders(customHeaders)
 		}
 
 		if rawRequestData.Data != "" && !stringsutil.EqualFoldAny(rawRequestData.Method, http.MethodHead, http.MethodGet) && rawRequestData.Headers["Transfer-Encoding"] != "chunked" {
@@ -478,10 +478,13 @@ func (r *requestGenerator) generateRawRequest(ctx context.Context, rawRequest st
 	if err != nil {
 		return nil, errkit.Wrapf(err, "failed to create request with url %v got %v", rawRequestData.FullURL, err)
 	}
-	req, err := retryablehttp.NewRequestFromURLWithContext(ctx, rawRequestData.Method, urlx, rawRequestData.Data)
+	req, err := retryablehttp.NewRequestFromURLWithContext(ctx, rawRequestData.Method, urlx, nil)
 	if err != nil {
 		return nil, err
 	}
+	// Set the body here rather than through retryablehttp, which copies it
+	// several times over.
+	httpbody.SetString(req, rawRequestData.Data)
 
 	// force transfer encoding if conditions are met
 	if len(rawRequestData.Data) > 0 && req.Header.Get("Transfer-Encoding") != "chunked" && !stringsutil.EqualFoldAny(rawRequestData.Method, http.MethodGet, http.MethodHead) {
@@ -573,9 +576,7 @@ func (r *requestGenerator) fillRequest(req *retryablehttp.Request, values map[st
 			return nil, errkit.Wrap(err, "could not evaluate helper expressions")
 		}
 
-		if err := req.SetBodyString(body); err != nil {
-			return nil, errors.Wrap(err, "failed to set request body")
-		}
+		httpbody.SetString(req, body)
 	}
 
 	if !r.request.Unsafe {
