@@ -802,6 +802,11 @@ func (r *Runner) RunEnumeration() error {
 	if err := store.Load(); err != nil {
 		return err
 	}
+	// Each template is parsed once per scan, so the compiled cache only holds
+	// pre-compilation snapshots that nothing reads after loading.
+	if parser, ok := r.parser.(*templates.Parser); ok {
+		parser.PurgeCompiled()
+	}
 	if profiles != nil {
 		profiles.Prepare(slices.Concat(store.Templates(), store.Workflows()))
 		executorOpts.TargetScope = profiles

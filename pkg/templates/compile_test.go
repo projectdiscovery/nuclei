@@ -741,8 +741,7 @@ func TestParseCompiledCacheDoesNotRetainExecutionOptions(t *testing.T) {
 	require.Nil(t, cached.Options.Catalog)
 	require.Nil(t, cached.Options.AuthProvider)
 	require.Empty(t, cached.Options.TemporaryDirectory)
-	require.Nil(t, cached.RequestsHTTP[0].Options().Output)
-	require.Nil(t, cached.RequestsHTTP[0].Options().RateLimiter)
+	require.Nil(t, cached.RequestsHTTP[0].Options())
 
 	secondOutput := testutils.NewMockOutputWriter(firstOptions.Options.OmitTemplate)
 	secondOptions := executerOpts.Copy()

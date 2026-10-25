@@ -231,25 +231,23 @@ func parseFromSource(filePath string, preprocessor Preprocessor, options *protoc
 	}
 
 	template.Path = filePath
-	if !options.DoNotCache {
-		if cacheableTemplate == nil {
-			cacheableTemplate = template
-		}
+	if !options.DoNotCache && cacheableTemplate != nil {
 		parser.compiledTemplatesCache.StoreWithoutRaw(filePath, cacheSafeCompiledTemplate(cacheableTemplate), err)
 	}
 
 	return template, nil
 }
 
-// cacheSafeCompiledTemplate removes execution-scoped state before storing a
-// compiled template in the shared cache.
+// cacheSafeCompiledTemplate removes execution-scoped state from the
+// pre-compilation snapshot before storing it in the shared cache. Its requests
+// are uncompiled clones that every cache hit clones and compiles again, so they
+// carry no options of their own.
 func cacheSafeCompiledTemplate(template *Template) *Template {
 	tplCopy := *template
 	tplCopy.Executer = nil
 	tplCopy.CompiledWorkflow = nil
 	tplCopy.Workflows = cloneWorkflowDefinitions(template.Workflows)
 	tplCopy.Options = cacheSafeExecutorOptions(template.Options)
-	updateRequestOptions(&tplCopy)
 
 	return &tplCopy
 }
