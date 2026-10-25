@@ -459,6 +459,44 @@ func newDelayedUpgradeWebsocketServer(delay time.Duration) *httptest.Server {
 	}))
 }
 
+func TestWebSocketCompileHonorsPayloadRandomOrder(t *testing.T) {
+	options := testutils.DefaultOptions.Copy()
+	options.ExecutionId = t.Name()
+	options.PayloadRandomOrder = true
+	testutils.Init(options)
+	t.Cleanup(func() { protocolstate.Close(options.ExecutionId) })
+
+	request := &Request{
+		Address: "ws://127.0.0.1:1",
+		Payloads: map[string]interface{}{
+			"username": []string{"a", "b"},
+		},
+	}
+	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
+		ID:   "testing-websocket-payload-order",
+		Info: model.Info{SeverityHolder: severity.Holder{Severity: severity.Low}, Name: "test"},
+	})
+	require.NoError(t, request.Compile(executerOpts))
+
+	sawShuffle := false
+	for range 24 {
+		iterator := request.generator.NewIterator()
+		var got []string
+		for {
+			value, ok := iterator.Value()
+			if !ok {
+				break
+			}
+			got = append(got, value["username"].(string))
+		}
+		if len(got) == 2 && (got[0] != "a" || got[1] != "b") {
+			sawShuffle = true
+			break
+		}
+	}
+	require.True(t, sawShuffle, "websocket payloads must honor payload random order")
+}
+
 func requireWebsocketDurationField(t *testing.T, event output.InternalEvent, key string) {
 	t.Helper()
 

@@ -110,7 +110,7 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 	request.dialer = client
 
 	if len(request.Payloads) > 0 {
-		request.generator, err = generators.New(request.Payloads, request.AttackType.Value, request.options.TemplatePath, options.Catalog, options.Options.AttackType, types.DefaultOptions())
+		request.generator, err = generators.New(request.Payloads, request.AttackType.Value, request.options.TemplatePath, options.Catalog, options.Options.AttackType, options.Options)
 		if err != nil {
 			return errors.Wrap(err, "could not parse payloads")
 		}
