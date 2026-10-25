@@ -62,7 +62,7 @@ func TestGenerateRequestsSecurityAlternatives(t *testing.T) {
 					require.NoError(t, err)
 					require.Len(t, requests, tc.wantCount)
 					for _, req := range requests {
-						defer req.Body.Close()
+						t.Cleanup(func() { require.NoError(t, req.Body.Close()) })
 						require.Equal(t, tc.wantAuth, req.Header.Get("Authorization"))
 						require.Equal(t, tc.wantKey, req.Header.Get("X-API-Key"))
 					}

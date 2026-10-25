@@ -89,7 +89,7 @@ func TestGenerateRequestsWithSecuritySchemes(t *testing.T) {
 				require.NoError(t, err)
 				require.Len(t, requests, 1)
 				req := requests[0]
-				defer req.Body.Close()
+				t.Cleanup(func() { require.NoError(t, req.Body.Close()) })
 				require.Equal(t, "/protected", req.URL.Path)
 				switch test.in {
 				case "header":
