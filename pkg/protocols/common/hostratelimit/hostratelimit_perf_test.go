@@ -306,7 +306,7 @@ func BenchmarkPool_Take_ManyHosts(b *testing.B) {
 
 // BenchmarkPool_Take_NilPool measures the cost of Take() on a nil *Pool, the
 // path taken when per-host limiting is disabled. This must be effectively
-// free so we can leave RateLimitTakeFor in the hot path unconditionally.
+// free so the per-host lookup can stay in the hot path unconditionally.
 func BenchmarkPool_Take_NilPool(b *testing.B) {
 	var p *Pool
 	const host = "any.example.com"

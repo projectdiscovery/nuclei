@@ -200,16 +200,12 @@ func TestRedirectCallback(t *testing.T) {
 	}
 	_ = resp.Body.Close()
 
-	destinationURL, err := url.Parse(destination.URL)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if gotHost != RateLimitHostKey(destinationURL.Host) {
-		t.Fatalf("redirect callback host = %q, want %q", gotHost, RateLimitHostKey(destinationURL.Host))
+	if want := destination.URL + "/final"; gotHost != want {
+		t.Fatalf("redirect callback url = %q, want %q", gotHost, want)
 	}
 }
 
-func TestRedirectCallbackCanonicalizesHostAndPreservesPort(t *testing.T) {
+func TestRedirectCallbackPreservesSchemeAndPort(t *testing.T) {
 	oldReq, err := http.NewRequest(http.MethodGet, "http://source.example/", nil)
 	if err != nil {
 		t.Fatal(err)
@@ -226,8 +222,8 @@ func TestRedirectCallbackCanonicalizesHostAndPreservesPort(t *testing.T) {
 	if err := makeCheckRedirectFunc(FollowAllRedirect, 10)(newReq, []*http.Request{oldReq}); err != nil {
 		t.Fatal(err)
 	}
-	if gotHost != "example.com:8080" {
-		t.Fatalf("redirect callback host = %q, want %q", gotHost, "example.com:8080")
+	if gotHost != "http://EXAMPLE.COM:8080/final" {
+		t.Fatalf("redirect callback url = %q, want %q", gotHost, "http://EXAMPLE.COM:8080/final")
 	}
 }
 

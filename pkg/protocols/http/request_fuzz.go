@@ -23,7 +23,6 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/interactsh"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/utils/vardump"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/httpclientpool"
 	protocolutils "github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	"github.com/projectdiscovery/retryablehttp-go"
@@ -191,30 +190,16 @@ func (request *Request) executeGeneratedFuzzingRequest(gr fuzz.GeneratedRequest,
 	if request.options.HostErrorsCache != nil && request.options.HostErrorsCache.Check(request.options.ProtocolType.String(), input) {
 		return false, nil
 	}
-	// Extract hostname for per-host rate limiting: prefer the concrete fuzzed
-	// request URL (rules may change host/port), fall back to the input target
-	hostname := input.MetaInput.Input
-	if gr.Request != nil && gr.Request.Request != nil && gr.Request.Request.URL != nil {
-		hostname = gr.Request.Request.URL.String()
-	}
-	if request.options.HostRateLimiter != nil {
-		// key on the concrete fuzzed request URL: input.MetaInput.Input may hold
-		// a raw HTTP request dump (fuzzing from request files) that is not a
-		// parseable URL, which would silently bypass the per-host limiter
-		var rateLimitKey string
-		if gr.Request != nil && gr.Request.URL != nil {
-			rateLimitKey = httpclientpool.RateLimitHostKey(gr.Request.URL.Host)
-		}
-		request.options.RateLimitTakeFor(rateLimitKey)
-	} else if err := request.rateLimitTake(hostname); err != nil {
-		return false, err
-	}
 	req := &generatedRequest{
 		request:              gr.Request,
 		dynamicValues:        gr.DynamicValues,
 		interactshURLs:       gr.InteractURLs,
 		original:             request,
 		fuzzGeneratedRequest: gr,
+	}
+	// Same key executeRequest will observe, including a host or port the fuzz rule rewrote.
+	if err := request.rateLimitTake(input.Context(), hostBackoffKey(req, input)); err != nil {
+		return false, err
 	}
 	var gotMatches bool
 	requestErr := request.executeRequest(input, req, gr.DynamicValues, hasInteractMatchers, func(event *output.InternalWrappedEvent) {
@@ -264,6 +249,9 @@ func (request *Request) executeGeneratedFuzzingRequest(gr fuzz.GeneratedRequest,
 	if request.options.HostErrorsCache != nil {
 		request.options.HostErrorsCache.MarkFailedOrRemove(request.options.ProtocolType.String(), input, requestErr)
 	}
+	// Requests() cannot count fuzzing requests up front since they depend on the
+	// input's parameters, so the total grows with each request actually sent.
+	request.options.Progress.AddToTotal(1)
 	request.options.Progress.IncrementRequests()
 
 	// If this was a match, and we want to stop at first match, skip all further requests.

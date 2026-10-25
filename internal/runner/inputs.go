@@ -9,6 +9,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/hmap/store/hybrid"
 	"github.com/projectdiscovery/httpx/common/httpx"
+	"github.com/projectdiscovery/nuclei/v3/pkg/input"
 	"github.com/projectdiscovery/nuclei/v3/pkg/input/provider"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
@@ -68,12 +69,15 @@ func (r *Runner) initializeTemplatesHTTPInput() (*hybrid.HybridMap, error) {
 		}
 
 		swg.Add()
-		go func(input *contextargs.MetaInput) {
+		go func(target *contextargs.MetaInput) {
 			defer swg.Done()
 
-			if result := utils.ProbeURL(input.Input, httpxClient); result != "" {
+			// a pinned target is probed through its ip, and each ip keeps its
+			// own result, as servers of one host may serve different schemes
+			ctx := contextargs.WithCustomIP(context.Background(), target)
+			if result := utils.ProbeURLWithContext(ctx, target.Input, httpxClient); result != "" {
 				count.Add(1)
-				_ = hm.Set(input.Input, []byte(result))
+				_ = hm.Set(input.ProbeKey(target.Input, target.CustomIP), []byte(result))
 			}
 		}(value)
 		return true
