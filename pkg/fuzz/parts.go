@@ -214,6 +214,7 @@ func (rule *Rule) executeEvaluate(input *ExecuteRuleInput, _, value, payload str
 	}, rule.options.Options.Vars.AsMap(), input.Values)
 
 	result, err := render.Render(render.Input{
+		Options:      rule.options.GetOptions(),
 		Text:         payload,
 		Values:       values,
 		Interactsh:   rule.options.Interactsh,

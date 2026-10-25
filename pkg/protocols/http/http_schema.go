@@ -101,11 +101,13 @@ var httpRequestMetadata = []schema.PropertyMetadata{
 			"```",
 		),
 		Example: schema.PropertyExamples(
-			"User-Agent: Mozilla/5.0",
-			"Authorization: Bearer {{token}}",
-			"X-Forwarded-For: {{Hostname}}",
-			"Origin: {{BaseURL}}",
-			"Referer: {{BaseURL}}/admin",
+			map[string]string{
+				"User-Agent":      "Mozilla/5.0",
+				"Authorization":   "Bearer {{token}}",
+				"X-Forwarded-For": "{{Hostname}}",
+				"Origin":          "{{BaseURL}}",
+				"Referer":         "{{BaseURL}}/admin",
+			},
 		),
 	},
 	{
@@ -489,6 +491,7 @@ var httpRequestMetadata = []schema.PropertyMetadata{
 var httpRequestAnyOfRequired = []schema.RequiredCombos{
 	schema.Require("path"),
 	schema.Require("raw"),
+	schema.Require("fuzzing"),
 	schema.Require("pre-condition", "payloads", "fuzzing"),
 	schema.RequireBase(
 		[]string{"payloads"},

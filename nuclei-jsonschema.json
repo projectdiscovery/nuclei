@@ -534,6 +534,12 @@
           "title": "kval pairs to extract from response",
           "type": "array"
         },
+        "max-input-tokens": {
+          "description": "Approximate cap on response tokens sent to the model",
+          "markdownDescription": "Approximate cap on response tokens sent to the model",
+          "title": "max llm input tokens",
+          "type": "integer"
+        },
         "name": {
           "description": "Optional extractor name used as a variable key\nPrefer lowercase without spaces or underscores",
           "examples": [
@@ -554,6 +560,12 @@
           "title": "part of response to extract data from",
           "type": "string"
         },
+        "prompt": {
+          "description": "Natural language instruction describing what to extract; supports {{...}} interpolation of variables and target values",
+          "markdownDescription": "Natural language instruction describing what to extract; supports {{...}} interpolation of variables and target values",
+          "title": "llm extraction prompt",
+          "type": "string"
+        },
         "regex": {
           "description": "Regular expression patterns used to extract values",
           "examples": [
@@ -567,6 +579,12 @@
           "markdownDescription": "Regular expression patterns used to extract values",
           "title": "regex to extract from part",
           "type": "array"
+        },
+        "schema": {
+          "$ref": "#/$defs/map[string]string",
+          "description": "Fields to extract mapped to their type",
+          "markdownDescription": "Fields to extract mapped to their type",
+          "title": "llm extraction schema"
         },
         "type": {
           "$ref": "#/$defs/extractors.ExtractorTypeHolder",
@@ -607,7 +625,8 @@
         "kval",
         "xpath",
         "json",
-        "dsl"
+        "dsl",
+        "llm"
       ],
       "markdownDescription": "Type of the extractor",
       "title": "type of the extractor",
@@ -1041,6 +1060,11 @@
         },
         {
           "required": [
+            "fuzzing"
+          ]
+        },
+        {
+          "required": [
             "pre-condition",
             "payloads",
             "fuzzing"
@@ -1162,11 +1186,13 @@
         "headers": {
           "description": "Headers contains the HTTP headers to be sent with the request\nExample: \n```yaml\n- headers:\n\tUser-Agent: Mozilla/5.0\n```",
           "examples": [
-            "User-Agent: Mozilla/5.0",
-            "Authorization: Bearer {{token}}",
-            "X-Forwarded-For: {{Hostname}}",
-            "Origin: {{BaseURL}}",
-            "Referer: {{BaseURL}}/admin"
+            {
+              "Authorization": "Bearer {{token}}",
+              "Origin": "{{BaseURL}}",
+              "Referer": "{{BaseURL}}/admin",
+              "User-Agent": "Mozilla/5.0",
+              "X-Forwarded-For": "{{Hostname}}"
+            }
           ],
           "markdownDescription": "Headers contains the HTTP headers to be sent with the request\nExample: \n```yaml\n- headers:\n\tUser-Agent: Mozilla/5.0\n```",
           "patternProperties": {
@@ -1651,6 +1677,12 @@
         }
       ],
       "properties": {
+        "allow-sole": {
+          "description": "Permit an llm matcher to be the only matcher on a high or critical template",
+          "markdownDescription": "Permit an llm matcher to be the only matcher on a high or critical template",
+          "title": "allow llm as sole matcher",
+          "type": "boolean"
+        },
         "binary": {
           "description": "Hex binary patterns that must be present (binary matcher)",
           "examples": [
@@ -1713,6 +1745,12 @@
           "title": "encoding for word field",
           "type": "string"
         },
+        "expect": {
+          "description": "Verdict that counts as a match; defaults to yes",
+          "markdownDescription": "Verdict that counts as a match; defaults to yes",
+          "title": "expected llm verdict",
+          "type": "string"
+        },
         "internal": {
           "description": "Mark matcher as internal (used for flow / internal logic)",
           "examples": [
@@ -1730,6 +1768,18 @@
           "markdownDescription": "Require all values to match instead of any",
           "title": "match all values",
           "type": "boolean"
+        },
+        "max-input-tokens": {
+          "description": "Approximate cap on response tokens sent to the model",
+          "markdownDescription": "Approximate cap on response tokens sent to the model",
+          "title": "max llm input tokens",
+          "type": "integer"
+        },
+        "min-confidence": {
+          "description": "Minimum confidence between 0 and 1 for an llm verdict to match",
+          "markdownDescription": "Minimum confidence between 0 and 1 for an llm verdict to match",
+          "title": "minimum llm confidence",
+          "type": "number"
         },
         "name": {
           "description": "Optional matcher name used for named matching / workflows\nPrefer lowercase without spaces or underscores",
@@ -1749,6 +1799,15 @@
           "title": "negative specifies if match reversed",
           "type": "boolean"
         },
+        "options": {
+          "description": "Fixed set of verdicts the model may return; defaults to yes and no",
+          "items": {
+            "type": "string"
+          },
+          "markdownDescription": "Fixed set of verdicts the model may return; defaults to yes and no",
+          "title": "allowed llm verdicts",
+          "type": "array"
+        },
         "part": {
           "description": "Part of the protocol response to match against\nCommon values: body, header, all, raw (protocol-specific parts also exist)",
           "examples": [
@@ -1759,6 +1818,12 @@
           ],
           "markdownDescription": "Part of the protocol response to match against\nCommon values: body, header, all, raw (protocol-specific parts also exist)",
           "title": "part of response to match",
+          "type": "string"
+        },
+        "prompt": {
+          "description": "Natural language question the model answers about the response part; supports {{...}} interpolation of variables and target values",
+          "markdownDescription": "Natural language question the model answers about the response part; supports {{...}} interpolation of variables and target values",
+          "title": "llm prompt",
           "type": "string"
         },
         "regex": {
@@ -1855,7 +1920,8 @@
         "status",
         "size",
         "dsl",
-        "xpath"
+        "xpath",
+        "llm"
       ],
       "markdownDescription": "Type of the matcher",
       "title": "type of the matcher",
@@ -2126,11 +2192,6 @@
         {
           "required": [
             "host"
-          ]
-        },
-        {
-          "required": [
-            "inputs"
           ]
         }
       ],

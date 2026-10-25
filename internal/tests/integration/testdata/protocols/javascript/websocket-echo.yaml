@@ -1,0 +1,33 @@
+id: websocket-echo
+
+info:
+  name: WebSocket Echo
+  author: pdteam
+  severity: info
+  description: |
+    Exercises the nuclei/websocket javascript library end to end: dial through
+    the network policy, negotiate a subprotocol, read the server greeting and
+    round-trip a text message.
+
+javascript:
+  - code: |
+      const websocket = require('nuclei/websocket');
+      const opts = new websocket.Options();
+      opts.Protocols = ['chat'];
+      const client = new websocket.Client('ws://' + address + '/echo', opts);
+      const greeting = client.Receive();
+      client.Send('nuclei-websocket');
+      const echo = client.Receive();
+      client.Close();
+      greeting + ' ' + client.Protocol + ' ' + echo;
+    args:
+      address: "{{Host}}:{{Port}}"
+    matchers-condition: and
+    matchers:
+      - type: dsl
+        dsl:
+          - "success == true"
+      - type: word
+        part: response
+        words:
+          - "welcome chat nuclei-websocket"

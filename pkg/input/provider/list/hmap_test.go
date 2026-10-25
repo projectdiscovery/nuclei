@@ -36,7 +36,7 @@ func Test_expandCIDR(t *testing.T) {
 		input := &ListInputProvider{hostMap: hm}
 
 		ips := expand.CIDR(tt.cidr)
-		input.addTargets("", ips)
+		input.addTargets("", ips, nil)
 		// scan
 		got := []string{}
 		input.hostMap.Scan(func(k, _ []byte) error {
@@ -200,7 +200,7 @@ func Test_expandASNInputValue(t *testing.T) {
 		input := &ListInputProvider{hostMap: hm}
 		// get the IP addresses for ASN number
 		ips := expand.ASN(tt.asn)
-		input.addTargets("", ips)
+		input.addTargets("", ips, nil)
 		// scan the hmap
 		got := []string{}
 		input.hostMap.Scan(func(k, v []byte) error {

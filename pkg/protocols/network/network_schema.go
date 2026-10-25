@@ -91,7 +91,6 @@ var networkRequestMetadata = []schema.PropertyMetadata{
 
 var networkRequestAnyOfRequired = []schema.RequiredCombos{
 	schema.Require("host"),
-	schema.Require("inputs"),
 }
 
 // JSONSchemaExtend extends the network/TCP request JSON schema.
