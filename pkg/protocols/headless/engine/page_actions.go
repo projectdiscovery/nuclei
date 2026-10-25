@@ -22,6 +22,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/expressions"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/render"
+	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	filepathutil "github.com/projectdiscovery/nuclei/v3/pkg/utils/filepath"
 	contextutil "github.com/projectdiscovery/utils/context"
 	"github.com/projectdiscovery/utils/errkit"
@@ -890,15 +891,14 @@ func (p *Page) WaitEvent(act *Action, out ActionData) (func() error, error) {
 		return nil, err
 	}
 
-	// Just wait the event to happen
-	waitFunc := func() (err error) {
-		// execute actual wait event
+	// subscribe now: the wait runs after the next navigation, and a fast page
+	// can fire the event during that navigation, before a later subscription
+	wait := p.page.WaitEvent(waitEvent)
+	waitFunc := func() error {
 		ctx, cancel := context.WithTimeoutCause(context.Background(), maxDuration, ErrActionExecDeadline)
 		defer cancel()
 
-		err = contextutil.ExecFunc(ctx, p.page.WaitEvent(waitEvent))
-
-		return
+		return contextutil.ExecFunc(ctx, wait)
 	}
 
 	return waitFunc, nil
@@ -1045,7 +1045,12 @@ func (p *Page) getActionArg(action *Action, arg string) (string, error) {
 		return "", errkit.Wrapf(err, "argument %q, value: %q", arg, argValue)
 	}
 
+	var scanOptions *types.Options
+	if p.options != nil {
+		scanOptions = p.options.Options
+	}
 	result, err := render.Render(render.Input{
+		Options:      scanOptions,
 		Text:         argValue,
 		Values:       p.variables,
 		InteractURLs: prepared.InteractURLs,

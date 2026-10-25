@@ -1,7 +1,9 @@
 package network
 
 import (
+	"crypto/tls"
 	"encoding/hex"
+	stderrors "errors"
 	"fmt"
 	"maps"
 	"net"
@@ -70,7 +72,11 @@ func (request *Request) getOpenPorts(target *contextargs.Context) ([]string, err
 			request.dialer, _ = networkclientpool.Get(request.options.Options, &networkclientpool.Configuration{})
 		}
 
+		if err := request.options.HostBackoffWait(target.Context(), addr); err != nil {
+			return nil, err
+		}
 		conn, err := request.dialer.Dial(target.Context(), "tcp", addr)
+		request.options.HostBackoffObserveDial(addr, err)
 		if err != nil {
 			errs = append(errs, err)
 			continue
@@ -238,6 +244,7 @@ func (request *Request) executeAddress(variables map[string]interface{}, actualA
 			return err
 		}
 
+	payloadLoop:
 		for {
 			value, ok := iterator.Value()
 			if !ok {
@@ -246,7 +253,7 @@ func (request *Request) executeAddress(variables map[string]interface{}, actualA
 
 			select {
 			case <-input.Context().Done():
-				return input.Context().Err()
+				break payloadLoop
 			default:
 			}
 
@@ -264,6 +271,7 @@ func (request *Request) executeAddress(variables map[string]interface{}, actualA
 			}
 
 			renderedValue, err := render.RenderMap(render.MapInput{
+				Options:      request.options.GetOptions(),
 				Source:       value,
 				Data:         payloads,
 				Values:       generators.MergeMaps(variables, value, payloads),
@@ -277,7 +285,9 @@ func (request *Request) executeAddress(variables map[string]interface{}, actualA
 				continue
 			}
 
-			swg.Add()
+			if err := swg.AddWithContext(input.Context()); err != nil {
+				break payloadLoop
+			}
 			go func(vars map[string]interface{}, urls []string) {
 				defer swg.Done()
 
@@ -295,6 +305,9 @@ func (request *Request) executeAddress(variables map[string]interface{}, actualA
 		}
 
 		swg.Wait()
+		if err := input.Context().Err(); err != nil {
+			return err
+		}
 
 		if multiErr != nil {
 			return multiErr
@@ -326,11 +339,23 @@ func (request *Request) executeRequestWithPayloads(variables map[string]interfac
 		return nil
 	}
 
+	if err := request.options.HostBackoffWait(input.Context(), actualAddress); err != nil {
+		return err
+	}
+	if err := request.options.RateLimitTakeContext(input.Context(), actualAddress); err != nil {
+		request.options.Output.Request(request.options.TemplatePath, address, request.Type().String(), err)
+		request.options.Progress.IncrementFailedRequestsBy(1)
+		return errors.Wrap(err, "could not take rate limit")
+	}
+
 	if shouldUseTLS {
 		conn, err = request.dialer.DialTLS(input.Context(), "tcp", actualAddress)
 	} else {
 		conn, err = request.dialer.Dial(input.Context(), "tcp", actualAddress)
 	}
+	// DialTLS fails the handshake after TCP has connected. Backoff follows the
+	// TCP result; the request still returns the handshake error.
+	request.options.HostBackoffObserveDial(actualAddress, tcpDialError(err))
 	// adds it to unresponsive address list if applicable
 	request.markHostError(updatedTarget, err)
 	if err != nil {
@@ -358,6 +383,7 @@ func (request *Request) executeRequestWithPayloads(variables map[string]interfac
 
 	for _, input := range request.Inputs {
 		result, err := render.Render(render.Input{
+			Options:      request.options.GetOptions(),
 			Text:         input.Data,
 			Values:       interimValues,
 			Interactsh:   request.options.Interactsh,
@@ -463,7 +489,11 @@ func (request *Request) executeRequestWithPayloads(variables map[string]interfac
 	if request.options.HasTemplateCtx(input.MetaInput) {
 		outputEvent = generators.MergeMaps(outputEvent, request.options.GetTemplateCtx(input.MetaInput).GetAll())
 	}
-	outputEvent["ip"] = request.dialer.GetDialedIP(hostname)
+	if input.MetaInput.CustomIP != "" {
+		outputEvent["ip"] = input.MetaInput.CustomIP
+	} else {
+		outputEvent["ip"] = request.dialer.GetDialedIP(hostname)
+	}
 	if request.options.StopAtFirstMatch {
 		outputEvent["stop-at-first-match"] = true
 	}
@@ -482,7 +512,7 @@ func (request *Request) executeRequestWithPayloads(variables map[string]interfac
 		callback(event)
 	} else if request.options.Interactsh != nil {
 		event = &output.InternalWrappedEvent{InternalEvent: outputEvent}
-		request.options.Interactsh.RequestEvent(interactshURLs, &interactsh.RequestData{
+		request.options.RegisterInteractshRequest(interactshURLs, &interactsh.RequestData{
 			MakeResultFunc: request.MakeResultEvent,
 			Event:          event,
 			Operators:      request.CompiledOperators,
@@ -537,6 +567,23 @@ func displayCompactHexView(event *output.InternalWrappedEvent, response string, 
 		tempOperatorResult := &operators.Result{Matches: map[string][]string{"matchesInHex": allMatches}}
 		gologger.Print().Msgf("\nCompact HEX view:\n%s", responsehighlighter.Highlight(tempOperatorResult, hex.EncodeToString([]byte(response)), noColor, false))
 	}
+}
+
+// tcpDialError reports a failure to open TCP. A TLS handshake error means the
+// port already accepted the connection.
+func tcpDialError(err error) error {
+	if err == nil {
+		return nil
+	}
+	var record tls.RecordHeaderError
+	if stderrors.As(err, &record) {
+		return nil
+	}
+	message := err.Error()
+	if strings.Contains(message, "tls:") || strings.Contains(message, "tls handshake") {
+		return nil
+	}
+	return err
 }
 
 // getAddress returns the address of the host to make request to

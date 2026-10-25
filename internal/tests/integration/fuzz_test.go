@@ -5,9 +5,13 @@ package integration_test
 
 import (
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"os"
+	"path/filepath"
+	"strings"
 
 	"github.com/julienschmidt/httprouter"
 	"github.com/projectdiscovery/nuclei/v3/internal/tests/testutils"
@@ -36,6 +40,55 @@ var fuzzingTestCases = []integrationCase{
 	{Path: "fuzz/fuzz-body-params-sqli.yaml", TestCase: &genericFuzzTestCase{expectedResults: 1}},
 	{Path: "fuzz/fuzz-body-xml-sqli.yaml", TestCase: &genericFuzzTestCase{expectedResults: 1}},
 	{Path: "fuzz/fuzz-body-generic-sqli.yaml", TestCase: &genericFuzzTestCase{expectedResults: 4}},
+	{Path: "fuzz/fuzz-raw-http-input.yaml", TestCase: &rawHttpInputFuzz{}},
+}
+
+// rawHttpInputFuzz seeds the base request from a raw HTTP request file, the
+// shape users have on hand when there is no spec or captured traffic to feed in.
+type rawHttpInputFuzz struct{}
+
+func (h *rawHttpInputFuzz) Execute(filePath string) error {
+	router := httprouter.New()
+	router.POST("/api/login", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+		body, err := io.ReadAll(r.Body)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		w.Header().Set("Content-Type", "text/html")
+		var payload map[string]string
+		if err := json.Unmarshal(body, &payload); err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		// stand in for a backend that interpolates the value into a query
+		if strings.Contains(payload["user"], "'") {
+			_, _ = fmt.Fprint(w, "unrecognized token:")
+			return
+		}
+		_, _ = fmt.Fprintf(w, "welcome %s", payload["user"])
+	})
+	ts := httptest.NewServer(router)
+	defer ts.Close()
+
+	target, err := url.Parse(ts.URL)
+	if err != nil {
+		return err
+	}
+	rawRequest := fmt.Sprintf("POST /api/login HTTP/1.1\r\nHost: %s\r\nContent-Type: application/json\r\n\r\n{\"user\":\"admin\"}", target.Host)
+	targetPath := filepath.Join(os.TempDir(), "nuclei-raw-http-input.http")
+	if err := os.WriteFile(targetPath, []byte(rawRequest), 0644); err != nil {
+		return err
+	}
+	defer func() {
+		_ = os.Remove(targetPath)
+	}()
+
+	results, err := testutils.RunNucleiWithArgsAndGetResults(debug, "-t", filePath, "-l", targetPath, "-im", "http", "-dast")
+	if err != nil {
+		return err
+	}
+	return expectResultsCount(results, 1)
 }
 
 type genericFuzzTestCase struct {
