@@ -16,6 +16,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/types/nucleierr"
 	"github.com/projectdiscovery/utils/errkit"
 	stringsutil "github.com/projectdiscovery/utils/strings"
+	"golang.org/x/net/idna"
 )
 
 // CacheInterface defines the signature of the hosterrorscache so that
@@ -40,10 +41,13 @@ var (
 // It uses an LRU cache internally for skipping unresponsive hosts
 // that remain so for a duration.
 type Cache struct {
-	MaxHostError  int
-	verbose       bool
-	failedTargets gcache.Cache[string, *cacheItem]
-	TrackError    []string
+	MaxHostError    int
+	verbose         bool
+	maxHostsCount   int
+	failedTargets   gcache.Cache[string, *cacheItem]
+	failedTargetsMu sync.RWMutex
+	TrackError      []string
+	closed          atomic.Bool
 }
 
 type cacheItem struct {
@@ -58,13 +62,27 @@ const DefaultMaxHostsCount = 10000
 
 // New returns a new host max errors cache
 func New(maxHostError, maxHostsCount int, trackError []string) *Cache {
-	gc := gcache.New[string, *cacheItem](maxHostsCount).ARC().Build()
-
 	return &Cache{
-		failedTargets: gc,
 		MaxHostError:  maxHostError,
+		maxHostsCount: maxHostsCount,
 		TrackError:    trackError,
 	}
+}
+
+func (c *Cache) getFailedTargets(create bool) gcache.Cache[string, *cacheItem] {
+	c.failedTargetsMu.RLock()
+	cache := c.failedTargets
+	c.failedTargetsMu.RUnlock()
+	if cache != nil || !create || c.closed.Load() {
+		return cache
+	}
+
+	c.failedTargetsMu.Lock()
+	defer c.failedTargetsMu.Unlock()
+	if c.failedTargets == nil && !c.closed.Load() {
+		c.failedTargets = gcache.New[string, *cacheItem](c.maxHostsCount).ARC().Build()
+	}
+	return c.failedTargets
 }
 
 // SetVerbose sets the cache to log at verbose level
@@ -74,13 +92,23 @@ func (c *Cache) SetVerbose(verbose bool) {
 
 // Close closes the host errors cache
 func (c *Cache) Close() {
-	if config.DefaultConfig.IsDebugArgEnabled(config.DebugArgHostErrorStats) {
-		items := c.failedTargets.GetALL(false)
+	if !c.closed.CompareAndSwap(false, true) {
+		return
+	}
+	c.failedTargetsMu.Lock()
+	cache := c.failedTargets
+	c.failedTargets = nil
+	c.failedTargetsMu.Unlock()
+	if cache != nil && config.DefaultConfig.IsDebugArgEnabled(config.DebugArgHostErrorStats) {
+		items := cache.GetALL(false)
 		for k, val := range items {
 			gologger.Info().Label("MaxHostErrorStats").Msgf("Host: %s, Errors: %d", k, val.errors.Load())
 		}
 	}
-	c.failedTargets.Purge()
+	// The cache owns no background resource. Purge rebuilds an empty ARC with
+	// the original capacity, which allocates several megabytes immediately
+	// before callers discard a closed cache. Releasing the reference lets the
+	// garbage collector reclaim both entries and storage without replacement.
 }
 
 // NormalizeCacheValue processes the input value and returns a normalized cache
@@ -127,9 +155,13 @@ func (c *Cache) NormalizeCacheValue(value string) string {
 //   - Host:port type
 //   - host type
 func (c *Cache) Check(protoType string, ctx *contextargs.Context) bool {
+	failedTargets := c.getFailedTargets(false)
+	if failedTargets == nil {
+		return false
+	}
 	finalValue := c.GetKeyFromContext(ctx, nil)
 
-	cache, err := c.failedTargets.GetIFPresent(finalValue)
+	cache, err := failedTargets.GetIFPresent(finalValue)
 	if err != nil {
 		return false
 	}
@@ -156,8 +188,12 @@ func (c *Cache) Check(protoType string, ctx *contextargs.Context) bool {
 
 // Remove removes a host from the cache
 func (c *Cache) Remove(ctx *contextargs.Context) {
+	failedTargets := c.getFailedTargets(false)
+	if failedTargets == nil {
+		return
+	}
 	key := c.GetKeyFromContext(ctx, nil)
-	_ = c.failedTargets.Remove(key) // remove even the cache is not present
+	_ = failedTargets.Remove(key) // remove even the cache is not present
 }
 
 // MarkFailed marks a host as failed previously
@@ -224,7 +260,11 @@ func (c *Cache) MarkFailedOrRemove(protoType string, ctx *contextargs.Context, e
 	}
 
 	cacheKey := c.GetKeyFromContext(ctx, err)
-	cache, cacheErr := c.failedTargets.GetIFPresent(cacheKey)
+	failedTargets := c.getFailedTargets(true)
+	if failedTargets == nil {
+		return
+	}
+	cache, cacheErr := failedTargets.GetIFPresent(cacheKey)
 	if errors.Is(cacheErr, gcache.KeyNotFoundError) {
 		cache = &cacheItem{errors: atomic.Int32{}}
 	}
@@ -239,7 +279,7 @@ func (c *Cache) MarkFailedOrRemove(protoType string, ctx *contextargs.Context, e
 	cache.cause = err
 	cache.errors.Add(1)
 
-	_ = c.failedTargets.Set(cacheKey, cache)
+	_ = failedTargets.Set(cacheKey, cache)
 }
 
 // IsPermanentErr returns true if the error is permanent for the host.
@@ -252,8 +292,12 @@ func (c *Cache) IsPermanentErr(ctx *contextargs.Context, err error) bool {
 		return true
 	}
 
+	failedTargets := c.getFailedTargets(false)
+	if failedTargets == nil {
+		return false
+	}
 	cacheKey := c.GetKeyFromContext(ctx, err)
-	cache, cacheErr := c.failedTargets.GetIFPresent(cacheKey)
+	cache, cacheErr := failedTargets.GetIFPresent(cacheKey)
 	if cacheErr != nil {
 		return false
 	}
@@ -282,10 +326,31 @@ func (c *Cache) GetKeyFromContext(ctx *contextargs.Context, err error) string {
 
 	if address == "" {
 		address = ctx.MetaInput.Address()
+	} else if ctx.MetaInput.CustomIP != "" {
+		address = pinnedAddress(ctx.MetaInput, address)
 	}
 
 	finalValue := c.NormalizeCacheValue(address)
 	return finalValue
+}
+
+// pinnedAddress maps the address of a failed dial to a pinned target, which
+// fastdialer reports with the hostname in ASCII form, to the pinned ip that
+// Check keys the target by. Addresses of other hosts are returned as is.
+func pinnedAddress(input *contextargs.MetaInput, address string) string {
+	host, port, err := net.SplitHostPort(address)
+	if err != nil || !strings.EqualFold(asciiHost(host), asciiHost(input.Hostname())) {
+		return address
+	}
+	return net.JoinHostPort(input.CustomIP, port)
+}
+
+// asciiHost returns the ASCII form of an internationalized hostname.
+func asciiHost(host string) string {
+	if ascii, err := idna.ToASCII(host); err == nil {
+		return ascii
+	}
+	return host
 }
 
 var reCheckError = regexp.MustCompile(`(no address found for host|could not resolve host|connection refused|connection reset by peer|could not connect to any address found for host|timeout awaiting response headers|i/o timeout)`)

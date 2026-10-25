@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	"github.com/projectdiscovery/fasttemplate"
+	convUtil "github.com/projectdiscovery/utils/conversion"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/marker"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
@@ -13,7 +14,9 @@ import (
 func Replace(template string, values map[string]interface{}) string {
 	valuesMap := make(map[string]interface{}, len(values))
 	for k, v := range values {
-		valuesMap[k] = types.ToString(v)
+		// fasttemplate copies string values to []byte on every write, so
+		// pass a read-only []byte view instead
+		valuesMap[k] = convUtil.Bytes(types.ToString(v))
 	}
 	replaced := fasttemplate.ExecuteStringStd(template, marker.ParenthesisOpen, marker.ParenthesisClose, valuesMap)
 	final := fasttemplate.ExecuteStringStd(replaced, marker.General, marker.General, valuesMap)

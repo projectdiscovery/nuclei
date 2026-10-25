@@ -7,6 +7,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v3/pkg/scan"
+	templateTypes "github.com/projectdiscovery/nuclei/v3/pkg/templates/types"
 	"github.com/projectdiscovery/nuclei/v3/pkg/tmplexec/utils"
 	mapsutil "github.com/projectdiscovery/utils/maps"
 )
@@ -53,7 +54,7 @@ func (g *Generic) ExecuteWithResults(ctx *scan.ScanContext) error {
 
 		inputItem := ctx.Input.Clone()
 		if g.options.InputHelper != nil && ctx.Input.MetaInput.Input != "" && !utils.HasOfflineHTTPResponse(ctx.Input.MetaInput, req.Type()) {
-			if inputItem.MetaInput.Input = g.options.InputHelper.Transform(inputItem.MetaInput.Input, req.Type()); inputItem.MetaInput.Input == "" {
+			if inputItem.MetaInput.Input = g.options.InputHelper.TransformPinned(inputItem.MetaInput.Input, inputItem.MetaInput.CustomIP, req.Type()); inputItem.MetaInput.Input == "" {
 				return nil
 			}
 		}
@@ -78,8 +79,12 @@ func (g *Generic) ExecuteWithResults(ctx *scan.ScanContext) error {
 			ctx.LogError(err)
 			gologger.Warning().Msgf("[%s] Could not execute request for %s: %s\n", g.options.TemplateID, ctx.Input.MetaInput.PrettyPrint(), err)
 		}
-		if g.options.HostErrorsCache != nil {
-			g.options.HostErrorsCache.MarkFailedOrRemove(g.options.ProtocolType.String(), ctx.Input, err)
+		// HTTP requests already record per-request host error results against the
+		// effective request URL/host inside http.Request.ExecuteWithResults.
+		// Calling MarkFailedOrRemove here with ctx.Input would double-count failures
+		// or poison the base target when a template probes a custom port or host.
+		if g.options.HostErrorsCache != nil && req.Type() != templateTypes.HTTPProtocol {
+			g.options.HostErrorsCache.MarkFailedOrRemove(req.Type().String(), ctx.Input, err)
 		}
 		// If a match was found and stop at first match is set, break out of the loop and return
 		if g.results.Load() && (g.options.StopAtFirstMatch || g.options.Options.StopAtFirstMatch) {
