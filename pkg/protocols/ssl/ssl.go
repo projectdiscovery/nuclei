@@ -109,9 +109,12 @@ func (request *Request) TmplClusterKey() uint64 {
 	return xxhash.Sum64String(inp)
 }
 
+// IsClusterable returns true if the request is eligible to be clustered.
+// Error matchers are excluded: the cluster executer only shares responses, so
+// a failed request would never reach them.
 func (request *Request) IsClusterable() bool {
 	// nolint
-	return !(len(request.CipherSuites) > 0 || request.MinVersion != "" || request.MaxVersion != "")
+	return !(len(request.CipherSuites) > 0 || request.MinVersion != "" || request.MaxVersion != "" || request.HasErrorMatchers())
 }
 
 // Compile compiles the request generators preparing any requests possible.

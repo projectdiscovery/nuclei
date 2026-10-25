@@ -324,7 +324,9 @@ func (w *StandardWriter) ResultCount() int {
 
 // Write writes the event to file and/or screen.
 func (w *StandardWriter) Write(event *ResultEvent) error {
-	if event.Error != "" && !w.matcherStatus {
+	// failure events (skipped or errored requests) are only written with -ms;
+	// a matched result can carry the request error, e.g. from an error matcher
+	if event.Error != "" && !event.MatcherStatus && !w.matcherStatus {
 		return nil
 	}
 
