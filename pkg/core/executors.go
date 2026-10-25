@@ -9,6 +9,8 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/input/normalize"
 	"github.com/projectdiscovery/nuclei/v3/pkg/input/provider"
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
+	"github.com/projectdiscovery/nuclei/v3/pkg/progress"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v3/pkg/scan"
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates"
@@ -36,6 +38,7 @@ func (e *Engine) executeAllSelfContained(ctx context.Context, alltemplates []*te
 			}
 			finished := e.templateExecutionStarted(template, "")
 			defer func() { finished(ctx.Err()) }()
+			defer e.tasksDone(1)
 			var err error
 			var match bool
 			ctx := scan.NewScanContext(ctx, contextargs.New(ctx))
@@ -166,7 +169,13 @@ func (e *Engine) executeTemplateWithTargets(ctx context.Context, template *templ
 		currentInfo.Unlock()
 
 		// Skip if the host has had errors
-		if inScope && e.executerOpts.HostErrorsCache != nil && e.executerOpts.HostErrorsCache.Check(template.Type().String(), contextargs.NewWithMetaInput(ctx, scannedValue)) {
+		hostDown := inScope && e.executerOpts.HostErrorsCache != nil && e.executerOpts.HostErrorsCache.Check(template.Type().String(), contextargs.NewWithMetaInput(ctx, scannedValue))
+		// in-scope pairs that never reach executeTemplateOnInput are done here:
+		// those done by the resumed scan and those of an unresponsive host
+		if inScope && (skip || hostDown) {
+			e.tasksDone(1)
+		}
+		if hostDown {
 			skipEvent := &output.ResultEvent{
 				TemplateID:    template.ID,
 				TemplatePath:  template.Path,
@@ -210,7 +219,7 @@ func (e *Engine) executeTemplatesOnTarget(ctx context.Context, alltemplates []*t
 	wp := e.GetWorkPool()
 	defer wp.Wait()
 
-	for _, tpl := range alltemplates {
+	for i, tpl := range alltemplates {
 		select {
 		case <-ctx.Done():
 			return
@@ -240,6 +249,8 @@ func (e *Engine) executeTemplatesOnTarget(ctx context.Context, alltemplates []*t
 			} else if e.executerOpts.Output != nil {
 				_ = e.executerOpts.Output.Write(skipEvent)
 			}
+			// the remaining templates are skipped for this target as well
+			e.tasksDone(int64(getSelectedCount(alltemplates[i:], e.selectionFor(target))))
 			break
 		}
 
@@ -279,15 +290,46 @@ func (e *Engine) executeTemplatesOnTarget(ctx context.Context, alltemplates []*t
 
 // inScope reports whether per-target profiles select template for input.
 func (e *Engine) inScope(template *templates.Template, input *contextargs.MetaInput) bool {
-	if e.executerOpts.TargetScope == nil {
-		return true
-	}
-	selection := e.executerOpts.TargetScope.For(input)
+	selection := e.selectionFor(input)
 	return selection == nil || template.SelectedBy(selection)
+}
+
+// selectionFor returns the templates per-target profiles select for input; nil
+// selects every template.
+func (e *Engine) selectionFor(input *contextargs.MetaInput) protocols.TemplateSelection {
+	if e.executerOpts.TargetScope == nil {
+		return nil
+	}
+	return e.executerOpts.TargetScope.For(input)
+}
+
+// taskTracker returns the progress when it counts tasks, nil otherwise.
+func (e *Engine) taskTracker() progress.TaskTracker {
+	if e.executerOpts == nil {
+		return nil
+	}
+	tracker, _ := e.executerOpts.Progress.(progress.TaskTracker)
+	return tracker
+}
+
+// addTaskTotal adds count tasks to the total when the progress counts tasks.
+func (e *Engine) addTaskTotal(count int64) {
+	if tracker := e.taskTracker(); tracker != nil {
+		tracker.AddToTaskTotal(count)
+	}
+}
+
+// tasksDone marks count tasks as done when the progress counts tasks.
+func (e *Engine) tasksDone(count int64) {
+	if tracker := e.taskTracker(); tracker != nil {
+		tracker.IncrementTasksBy(count)
+	}
 }
 
 // executeTemplateOnInput performs template execution for a single input and returns match status and error
 func (e *Engine) executeTemplateOnInput(ctx context.Context, template *templates.Template, value *contextargs.MetaInput) (matched bool, err error) {
+	// a pair skipped as a repeat of its origin is done as well
+	defer e.tasksDone(1)
 	// A template fixed to the target's origin makes the same requests for every
 	// target that shares one, which a crawled list produces by the hundred.
 	// Running it once per origin sends exactly the same traffic, minus the
