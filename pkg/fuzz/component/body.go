@@ -10,6 +10,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/fuzz/dataformat"
+	"github.com/projectdiscovery/nuclei/v3/pkg/utils/httpbody"
 	"github.com/projectdiscovery/retryablehttp-go"
 )
 
@@ -147,10 +148,7 @@ func (b *Body) Rebuild() (*retryablehttp.Request, error) {
 		return nil, errors.Wrap(err, "could not encode body")
 	}
 	cloned := b.req.Clone(context.Background())
-	err = cloned.SetBodyString(encoded)
-	if err != nil {
-		return nil, errors.Wrap(err, "could not set body")
-	}
+	httpbody.SetString(cloned, encoded)
 	cloned.Header.Set("Content-Length", strconv.Itoa(len(encoded)))
 	return cloned, nil
 }

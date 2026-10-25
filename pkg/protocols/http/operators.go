@@ -208,7 +208,7 @@ func (request *Request) MakeResultEventItem(wrapped *output.InternalWrappedEvent
 		MatcherStatus:    true,
 		IP:               fields.Ip,
 		GlobalMatchers:   isGlobalMatchers,
-		Request:          types.ToString(wrapped.InternalEvent["request"]),
+		Request:          request.savedRequest(types.ToString(wrapped.InternalEvent["request"])),
 		Response:         request.truncateResponse(eventResponse(wrapped.InternalEvent)),
 		CURLCommand:      types.ToString(wrapped.InternalEvent["curl-command"]),
 		TemplateEncoded:  request.options.EncodeTemplate(),
@@ -217,6 +217,15 @@ func (request *Request) MakeResultEventItem(wrapped *output.InternalWrappedEvent
 		ReqURLPattern:    reqURLPattern,
 	}
 	return data
+}
+
+// savedRequest caps the request body stored on a result. The event keeps the
+// full request so matchers can read past RequestSaveSize.
+func (request *Request) savedRequest(dump string) string {
+	if request.options == nil || request.options.Options == nil {
+		return dump
+	}
+	return string(capDumpBody([]byte(dump), request.options.Options.RequestSaveSize))
 }
 
 // eventResponse returns the full response of event. Events matched after the

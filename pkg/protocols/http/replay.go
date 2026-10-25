@@ -40,8 +40,9 @@ func newReplayClient(options *types.Options) (*http.Client, error) {
 // replayRequest re-sends a request that produced a finding through the replay
 // proxy, so it lands in a tool such as Burp without routing the whole scan
 // through it. The response is discarded and failures are only logged: a replay
-// must never affect the scan.
-func (request *Request) replayRequest(dumpedRequest []byte, formedURL string) {
+// must never affect the scan. body replaces the body in the dump when the
+// dump holds only part of it.
+func (request *Request) replayRequest(dumpedRequest, body []byte, formedURL string) {
 	if request.replayClient == nil {
 		return
 	}
@@ -51,9 +52,14 @@ func (request *Request) replayRequest(dumpedRequest []byte, formedURL string) {
 		gologger.Debug().Msgf("[%s] could not parse request to replay: %s", request.options.TemplateID, err)
 		return
 	}
-	// unsafe raw requests are dumped as written and may carry a body without
-	// declaring its length; ReadRequest would then treat them as bodyless
-	if replay.ContentLength <= 0 && len(replay.TransferEncoding) == 0 {
+	if body != nil {
+		replay.Body = io.NopCloser(bytes.NewReader(body))
+		if len(replay.TransferEncoding) == 0 {
+			replay.ContentLength = int64(len(body))
+		}
+	} else if replay.ContentLength <= 0 && len(replay.TransferEncoding) == 0 {
+		// unsafe raw requests are dumped as written and may carry a body without
+		// declaring its length; ReadRequest would then treat them as bodyless
 		if rest, _ := io.ReadAll(dump); len(rest) > 0 {
 			replay.Body = io.NopCloser(bytes.NewReader(rest))
 			replay.ContentLength = int64(len(rest))

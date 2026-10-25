@@ -48,6 +48,7 @@ import (
 	templateTypes "github.com/projectdiscovery/nuclei/v3/pkg/templates/types"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types/nucleierr"
+	"github.com/projectdiscovery/nuclei/v3/pkg/utils/httpbody"
 	"github.com/projectdiscovery/rawhttp"
 	"github.com/projectdiscovery/retryablehttp-go"
 	convUtil "github.com/projectdiscovery/utils/conversion"
@@ -176,21 +177,23 @@ func (request *Request) executeRaceRequest(input *contextargs.Context, dynamicVa
 	if !request.SkipSecretFile {
 		requestForDump.ApplyAuth(request.options.AuthProvider)
 	}
-	dumpedRequest, err := dump(requestForDump, reqURL)
+	dumpedRequest, err := dump(requestForDump, reqURL, 0)
 	if err != nil {
 		return err
 	}
+	dumpedRequestString := convUtil.String(dumpedRequest.data)
+	savedRequest := convUtil.String(capDumpBody(dumpedRequest.data, request.options.Options.RequestSaveSize))
 	if request.options.Options.Debug || request.options.Options.DebugRequests || request.options.Options.StoreResponse {
 		msg := fmt.Sprintf("[%s] Dumped HTTP request for %s\n\n", request.options.TemplateID, reqURL)
 		if request.options.Options.Debug || request.options.Options.DebugRequests {
 			gologger.Info().Msg(msg)
-			gologger.Print().Msgf("%s", string(dumpedRequest))
+			gologger.Print().Msgf("%s", savedRequest)
 		}
 		if request.options.Options.StoreResponse {
-			request.options.Output.WriteStoreDebugData(reqURL, request.options.TemplateID, request.Type().String(), fmt.Sprintf("%s\n%s", msg, dumpedRequest))
+			request.options.Output.WriteStoreDebugData(reqURL, request.options.TemplateID, request.Type().String(), fmt.Sprintf("%s\n%s", msg, savedRequest))
 		}
 	}
-	previous["request"] = string(dumpedRequest)
+	previous["request"] = dumpedRequestString
 
 	// Pre-Generate requests
 	for i := 0; i < request.RaceNumberRequests; i++ {
@@ -1019,15 +1022,17 @@ func looksLikeHTTPToHTTPSMismatch(resp *http.Response) bool {
 // post-send dump reads one while the transport may still be writing another.
 // GET, HEAD, and chunked requests keep their existing content length.
 func reuseRequestBody(req *retryablehttp.Request) error {
+	// Bodies set through httpbody already hand out independent copies.
+	if _, ok := req.Body.(*httpbody.Body); ok {
+		return nil
+	}
 	body, err := io.ReadAll(req.Body)
 	if err != nil {
 		return err
 	}
 	keepLength := stringsutil.EqualFoldAny(req.Method, http.MethodGet, http.MethodHead) || req.Header.Get("Transfer-Encoding") == "chunked"
 	contentLength := req.ContentLength
-	if err = req.SetBody(body); err != nil {
-		return err
-	}
+	httpbody.Set(req, body)
 	if keepLength {
 		req.ContentLength = contentLength
 	}
@@ -1074,7 +1079,7 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 	var (
 		resp            *http.Response
 		fromCache       bool
-		dumpedRequest   []byte
+		dumpedRequest   requestDump
 		projectCacheKey []byte
 		// executingClient preserves the request's cookie jar, fuzz protection,
 		// and timeout for network execution and analyzer follow-up requests,
@@ -1103,28 +1108,38 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 
 		var dumpError error
 		// TODO: dump is currently not working with post-processors - somehow it alters the signature
-		dumpedRequest, dumpError = dump(generatedRequest, input.MetaInput.Input)
+		dumpedRequest, dumpError = dump(generatedRequest, input.MetaInput.Input, request.options.Options.RequestSaveSize)
 		if dumpError != nil {
 			return dumpError
 		}
-		maxBodylimit := request.getEffectiveReadLimit()
-		if generatedRequest.request != nil && generatedRequest.request.Request != nil && generatedRequest.request.Request.URL != nil {
-			projectCacheKey = getHTTPProjectCacheScope(dumpedRequest, generatedRequest.request.Scheme, generatedRequest.request.Request.URL.Host)
-		} else {
-			projectCacheKey = dumpedRequest
-		}
-		if maxBodylimit > 0 {
-			projectCacheKey = append(projectCacheKey, []byte(fmt.Sprintf(":limit:%d", maxBodylimit))...)
-		}
-		dumpedRequestString := string(dumpedRequest)
-
-		if ignoreList := GetVariablesNamesSkipList(generatedRequest.original.Signature.Value); ignoreList != nil {
-			if varErr := expressions.ContainsVariablesWithIgnoreList(ignoreList, dumpedRequestString); varErr != nil && !request.SkipVariablesCheck {
-				gologger.Warning().Msgf("[%s] Could not make http request for %s: %v\n", request.options.TemplateID, input.MetaInput.Input, varErr)
-				return ErrMissingVars
+		if request.options.ProjectFile != nil {
+			var scheme, host string
+			if generatedRequest.request != nil && generatedRequest.request.Request != nil && generatedRequest.request.Request.URL != nil {
+				scheme, host = generatedRequest.request.Scheme, generatedRequest.request.Request.URL.Host
 			}
-		} else { // Check if are there any unresolved variables. If yes, skip unless overridden by user.
-			if varErr := expressions.ContainsUnresolvedVariables(dumpedRequestString); varErr != nil && !request.SkipVariablesCheck {
+			projectCacheKey = getHTTPProjectCacheScope(dumpedRequest, generatedRequest.body(), scheme, host)
+			if maxBodylimit := request.getEffectiveReadLimit(); maxBodylimit > 0 {
+				projectCacheKey = append(projectCacheKey, []byte(fmt.Sprintf(":limit:%d", maxBodylimit))...)
+			}
+		}
+
+		// A truncated dump leaves part of the body out, so check the rest
+		// of the body too. Each part is checked on its own since the
+		// checks stop at the first item without variables.
+		checked := []string{convUtil.String(dumpedRequest.data)}
+		if dumpedRequest.truncated > 0 {
+			if body := convUtil.String(generatedRequest.body()); strings.Contains(body, "{{") {
+				checked = append(checked, body)
+			}
+		}
+		for _, item := range checked {
+			var varErr error
+			if ignoreList := GetVariablesNamesSkipList(generatedRequest.original.Signature.Value); ignoreList != nil {
+				varErr = expressions.ContainsVariablesWithIgnoreList(ignoreList, item)
+			} else { // Check if are there any unresolved variables. If yes, skip unless overridden by user.
+				varErr = expressions.ContainsUnresolvedVariables(item)
+			}
+			if varErr != nil && !request.SkipVariablesCheck {
 				gologger.Warning().Msgf("[%s] Could not make http request for %s: %v\n", request.options.TemplateID, input.MetaInput.Input, varErr)
 				return ErrMissingVars
 			}
@@ -1341,14 +1356,20 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 	// converts whitespace and other chars that cannot be printed to url encoded values
 	formedURL = urlutil.URLEncodeWithEscapes(formedURL)
 
-	// Dump the requests containing all headers
-	if !generatedRequest.original.Race {
+	// Dump the requests containing all headers. A race reuses the full dump
+	// stored on previous["request"]; the pre-send dump is capped.
+	if generatedRequest.original != nil && generatedRequest.original.Race {
+		if full, ok := previousEvent["request"].(string); ok && full != "" {
+			dumpedRequest.data = []byte(full)
+			dumpedRequest.truncated = 0
+		}
+	} else {
 		var dumpError error
-		dumpedRequest, dumpError = dump(generatedRequest, input.MetaInput.Input)
+		dumpedRequest, dumpError = dump(generatedRequest, input.MetaInput.Input, 0)
 		if dumpError != nil {
 			return dumpError
 		}
-		dumpedRequestString := string(dumpedRequest)
+		dumpedRequestString := convUtil.String(capDumpBody(dumpedRequest.data, request.options.Options.RequestSaveSize))
 		if request.options.Options.Debug || request.options.Options.DebugRequests || request.options.Options.StoreResponse {
 			msg := fmt.Sprintf("[%s] Dumped HTTP request for %s\n\n", request.options.TemplateID, formedURL)
 
@@ -1384,7 +1405,7 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 		// In case of interactsh markers and request times out, still send
 		// a callback event so in case we receive an interaction, correlation is possible.
 		// Also, to log failed use-cases.
-		outputEvent := request.responseToDSLMap(&http.Response{}, input.MetaInput.Input, formedURL, convUtil.String(dumpedRequest), "", "", "", 0, generatedRequest.meta)
+		outputEvent := request.responseToDSLMap(&http.Response{}, input.MetaInput.Input, formedURL, convUtil.String(dumpedRequest.data), "", "", "", 0, generatedRequest.meta)
 		if i := strings.LastIndex(hostname, ":"); i != -1 {
 			hostname = hostname[:i]
 		}
@@ -1409,13 +1430,23 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 
 	var curlCommand string
 	if !request.Unsafe && resp != nil && generatedRequest.request != nil && resp.Request != nil && !request.Race {
-		bodyBytes, _ := generatedRequest.request.BodyBytes()
+		body := generatedRequest.body()
 		// Use a clone to avoid a race condition with the http transport
 		req := resp.Request.Clone(resp.Request.Context())
-		req.Body = io.NopCloser(bytes.NewReader(bodyBytes))
+		// Large bodies are left out to keep the command readable.
+		omitBody := len(body) > maxCurlBodySize
+		if omitBody {
+			req.Body = nil
+			req.Header.Del("Content-Length")
+		} else {
+			req.Body = io.NopCloser(bytes.NewReader(body))
+		}
 		command, err := http2curl.GetCurlCommand(req)
 		if err == nil && command != nil {
 			curlCommand = command.String()
+			if omitBody {
+				curlCommand += fmt.Sprintf(" # body omitted: %d bytes", len(body))
+			}
 		}
 	}
 
@@ -1437,9 +1468,9 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 	var errx error
 	// Race skips the dumps above because the body is already waiting on the
 	// gate. executeRaceRequest stored those bytes for DSL use.
-	if generatedRequest.original != nil && generatedRequest.original.Race && len(dumpedRequest) == 0 {
+	if generatedRequest.original != nil && generatedRequest.original.Race && len(dumpedRequest.data) == 0 {
 		if raw, ok := previousEvent["request"].(string); ok {
-			dumpedRequest = []byte(raw)
+			dumpedRequest = requestDump{data: []byte(raw)}
 		}
 	}
 	// One executed request is replayed once, even when several responses in
@@ -1555,7 +1586,7 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 			}
 		}
 
-		outputEvent := request.responseToDSLMap(respChain.Response(), input.MetaInput.Input, matchedURL, convUtil.String(dumpedRequest), fullResponseStr, bodyStr, headersStr, duration, generatedRequest.meta)
+		outputEvent := request.responseToDSLMap(respChain.Response(), input.MetaInput.Input, matchedURL, convUtil.String(dumpedRequest.data), fullResponseStr, bodyStr, headersStr, duration, generatedRequest.meta)
 		// add response fields to template context and merge templatectx variables to output event
 		request.options.AddTemplateVars(input.MetaInput, request.Type(), request.ID, outputEvent)
 		if request.options.HasTemplateCtx(input.MetaInput) {
@@ -1629,7 +1660,11 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 		localMatched := event.OperatorsResult != nil && event.OperatorsResult.Matched
 		if !replayed && (localMatched || globalMatched) {
 			replayed = true
-			request.replayRequest(dumpedRequest, formedURL)
+			var replayBody []byte
+			if dumpedRequest.truncated > 0 {
+				replayBody = generatedRequest.body()
+			}
+			request.replayRequest(dumpedRequest.data, replayBody, formedURL)
 		}
 
 		if request.options.FuzzStatsDB != nil && generatedRequest.fuzzGeneratedRequest.Request != nil {
@@ -1641,7 +1676,7 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 				PayloadSent:   generatedRequest.fuzzGeneratedRequest.Value,
 				StatusCode:    respChain.Response().StatusCode,
 				Matched:       event.HasResults(),
-				RawRequest:    string(dumpedRequest),
+				RawRequest:    string(capDumpBody(dumpedRequest.data, request.options.Options.RequestSaveSize)),
 				RawResponse:   getFullResponse(),
 				Severity:      request.options.TemplateInfo.SeverityHolder.Severity.String(),
 			})
