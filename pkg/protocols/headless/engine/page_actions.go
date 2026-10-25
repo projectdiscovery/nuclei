@@ -442,6 +442,7 @@ func (p *Page) NavigateURL(action *Action, out ActionData) error {
 	finalparams.Merge(p.inputURL.Params.Encode())
 	parsedURL.Params = finalparams
 
+	p.prepareAuthForNavigation(parsedURL)
 	if err := p.page.Navigate(parsedURL.String()); err != nil {
 		return errkit.Wrapf(err, "could not navigate to url %s", parsedURL.String())
 	}
@@ -890,15 +891,14 @@ func (p *Page) WaitEvent(act *Action, out ActionData) (func() error, error) {
 		return nil, err
 	}
 
-	// Just wait the event to happen
-	waitFunc := func() (err error) {
-		// execute actual wait event
+	// subscribe now: the wait runs after the next navigation, and a fast page
+	// can fire the event during that navigation, before a later subscription
+	wait := p.page.WaitEvent(waitEvent)
+	waitFunc := func() error {
 		ctx, cancel := context.WithTimeoutCause(context.Background(), maxDuration, ErrActionExecDeadline)
 		defer cancel()
 
-		err = contextutil.ExecFunc(ctx, p.page.WaitEvent(waitEvent))
-
-		return
+		return contextutil.ExecFunc(ctx, wait)
 	}
 
 	return waitFunc, nil

@@ -57,6 +57,12 @@ func (matcher *Matcher) Validate() error {
 	case XPathMatcher:
 		requiredField, valueCount = "xpath", len(matcher.XPath)
 		expectedFields = append(commonExpectedFields, "XPath", "Part")
+	case LLMMatcher:
+		requiredField, valueCount = "prompt", len(matcher.Prompt)
+		expectedFields = append(commonExpectedFields, "Prompt", "Expect", "Options", "MinConfidence", "MaxInputTokens", "AllowSole", "Part")
+		if err := matcher.validateLLM(); err != nil {
+			return err
+		}
 	}
 
 	if err = checkFields(matcher, matcherMap, expectedFields...); err != nil {
@@ -109,4 +115,23 @@ func getFieldNameFromYamlTag(tagName string, object interface{}) (string, error)
 		}
 	}
 	return "", fmt.Errorf("field %s not found", tagName)
+}
+
+// validateLLM rejects llm matcher configurations that cannot be evaluated
+// safely.
+func (matcher *Matcher) validateLLM() error {
+	// Every llm failure path reports "no match", so negating one turns an
+	// unreachable provider, a timeout, or an unparsable answer into a finding on
+	// every target. There is no safe way to invert a verdict that doubles as an
+	// error signal.
+	if matcher.Negative {
+		return fmt.Errorf("llm matcher cannot be negative")
+	}
+	if matcher.MinConfidence < 0 || matcher.MinConfidence > 1 {
+		return fmt.Errorf("llm matcher min-confidence must be between 0 and 1, got %v", matcher.MinConfidence)
+	}
+	if matcher.MaxInputTokens < 0 {
+		return fmt.Errorf("llm matcher max-input-tokens cannot be negative, got %d", matcher.MaxInputTokens)
+	}
+	return nil
 }

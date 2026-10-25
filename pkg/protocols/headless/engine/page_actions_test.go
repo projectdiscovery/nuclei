@@ -816,18 +816,48 @@ func TestActionSleep(t *testing.T) {
 }
 
 func TestActionWaitEventDuration(t *testing.T) {
-	response := `<html><body>loaded</body></html>`
-
 	actions := []*Action{
 		{ActionType: ActionTypeHolder{ActionType: ActionWaitEvent}, Data: map[string]string{"event": "Page.loadEventFired", "max-duration": "5s"}},
 		{ActionType: ActionTypeHolder{ActionType: ActionNavigate}, Data: map[string]string{"url": "{{BaseURL}}"}},
 	}
 
-	testHeadlessSimpleResponse(t, response, actions, 20*time.Second, func(page *Page, err error, out ActionData) {
+	// a slow subresource delays the load event, so the wait is long enough to
+	// measure on platforms with a coarse monotonic clock such as Windows
+	handler := func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/slow" {
+			time.Sleep(300 * time.Millisecond)
+			return
+		}
+		_, _ = fmt.Fprintln(w, `<html><body>loaded<img src="/slow"></body></html>`)
+	}
+
+	testHeadless(t, actions, 20*time.Second, handler, func(page *Page, err error, out ActionData) {
 		require.Nil(t, err, "could not run page actions")
 		require.Len(t, page.ActionDurations, 2)
-		require.Greater(t, page.ActionDurations[0], time.Duration(0))
+		require.GreaterOrEqual(t, page.ActionDurations[0], 100*time.Millisecond)
 		require.Greater(t, page.ActionDurations[1], time.Duration(0))
+	})
+}
+
+func TestActionWaitEventSeesEventFiredBeforeWaiting(t *testing.T) {
+	actions := []*Action{
+		{ActionType: ActionTypeHolder{ActionType: ActionNavigate}, Data: map[string]string{"url": "{{BaseURL}}"}},
+	}
+
+	testHeadlessSimpleResponse(t, `<html><body>loaded</body></html>`, actions, 20*time.Second, func(page *Page, err error, out ActionData) {
+		require.Nil(t, err, "could not run page actions")
+
+		wait, err := page.WaitEvent(&Action{
+			ActionType: ActionTypeHolder{ActionType: ActionWaitEvent},
+			Data:       map[string]string{"event": "Page.loadEventFired", "max-duration": "3s"},
+		}, out)
+		require.Nil(t, err)
+
+		// the load event fires before the wait starts, as it can for a fast
+		// page during the navigation that precedes the deferred wait
+		require.Nil(t, page.page.Reload())
+		require.Nil(t, page.page.WaitLoad())
+		require.Nil(t, wait(), "an event fired after the wait-event action must not be missed")
 	})
 }
 
@@ -982,6 +1012,49 @@ func testHeadless(t *testing.T, actions []*Action, timeout time.Duration, handle
 	if page != nil {
 		page.Close()
 	}
+}
+
+func TestHeadlessRunHonorsParentCancellation(t *testing.T) {
+	opts := &types.Options{AllowLocalFileAccess: true}
+	require.NoError(t, protocolstate.Init(opts))
+
+	browser, err := New(&types.Options{
+		ShowBrowser:        false,
+		UseInstalledChrome: testheadless.HeadlessLocal,
+	})
+	require.NoError(t, err)
+	defer browser.Close()
+
+	instance, err := browser.NewInstance()
+	require.NoError(t, err)
+	defer func() { _ = instance.Close() }()
+
+	requestStarted := make(chan struct{}, 1)
+	server := httptest.NewServer(http.HandlerFunc(func(_ http.ResponseWriter, request *http.Request) {
+		requestStarted <- struct{}{}
+		<-request.Context().Done()
+	}))
+	defer server.Close()
+
+	parent, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go func() {
+		<-requestStarted
+		cancel()
+	}()
+
+	input := contextargs.NewWithInput(parent, server.URL)
+	actions := []*Action{{
+		ActionType: ActionTypeHolder{ActionType: ActionNavigate},
+		Data:       map[string]string{"url": "{{BaseURL}}"},
+	}}
+
+	startedAt := time.Now()
+	_, page, err := instance.Run(input, actions, nil, &Options{Timeout: 5 * time.Second, Options: opts})
+
+	require.ErrorIs(t, err, context.Canceled)
+	require.Nil(t, page)
+	require.Less(t, time.Since(startedAt), 2*time.Second)
 }
 
 func TestContainsAnyModificationActionType(t *testing.T) {
