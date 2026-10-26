@@ -289,7 +289,9 @@ func (request *Request) findMatchesWithReader(reader io.Reader, input *contextar
 		scanner.Buffer(buffer, int(defaultMaxReadSize))
 		scanner.Split(func(data []byte, atEOF bool) (advance int, token []byte, err error) {
 			defaultMaxReadSizeInt := int(defaultMaxReadSize)
-			if len(data) > defaultMaxReadSizeInt {
+			// the scanner buffer never grows past defaultMaxReadSize, so a full
+			// buffer must already yield a chunk or the scan fails as too long
+			if len(data) >= defaultMaxReadSizeInt {
 				return defaultMaxReadSizeInt, data[0:defaultMaxReadSizeInt], nil
 			}
 			if !atEOF {
@@ -314,6 +316,7 @@ func (request *Request) findMatchesWithReader(reader io.Reader, input *contextar
 		gologger.Verbose().Msgf("[%s] Processing file %s chunk %s/%s", request.options.TemplateID, filePath, processedBytes, totalBytesString)
 		dslMap := request.responseToDSLMap(lineContent, input.MetaInput.Input, filePath, totalBytes)
 		maps.Copy(dslMap, previous)
+		dslMap[chunkStartKey] = bytesCount
 		// add vars to template context
 		request.options.AddTemplateVars(input.MetaInput, request.Type(), request.ID, dslMap)
 		// add template context variables to DSL map

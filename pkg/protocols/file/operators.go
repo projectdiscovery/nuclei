@@ -20,15 +20,18 @@ func (request *Request) Match(data map[string]interface{}, matcher *matchers.Mat
 		return false, []string{}
 	}
 
+	// chunkStart keeps matcher offsets absolute when the file is read in chunks
+	chunkStart, _ := data[chunkStartKey].(int)
+
 	switch matcher.GetType() {
 	case matchers.SizeMatcher:
 		return matcher.Result(matcher.MatchSize(len(itemStr))), []string{}
 	case matchers.WordsMatcher:
-		return matcher.ResultWithMatchedSnippet(matcher.MatchWordsWithOptions(itemStr, nil, request.options.GetOptions()))
+		return matcher.ResultWithMatchedSnippet(matcher.MatchWordsAt(itemStr, nil, request.options.GetOptions(), chunkStart))
 	case matchers.RegexMatcher:
-		return matcher.ResultWithMatchedSnippet(matcher.MatchRegex(itemStr))
+		return matcher.ResultWithMatchedSnippet(matcher.MatchRegexAt(itemStr, chunkStart))
 	case matchers.BinaryMatcher:
-		return matcher.ResultWithMatchedSnippet(matcher.MatchBinary(itemStr))
+		return matcher.ResultWithMatchedSnippet(matcher.MatchBinaryAt(itemStr, chunkStart))
 	case matchers.DSLMatcher:
 		return matcher.Result(matcher.MatchDSLWithOptions(data, request.options.GetOptions())), []string{}
 	case matchers.XPathMatcher:

@@ -34,6 +34,10 @@ var (
 	chunkSize, _          = units.FromHumanSize("100Mb")
 )
 
+// chunkStartKey holds the byte position of the current chunk in the file, so
+// matcher offsets are measured from the start of the file
+const chunkStartKey = "file-chunk-start"
+
 // Request contains a File matching mechanism for local disk operations.
 type Request struct {
 	// Operators for the current request go here.
