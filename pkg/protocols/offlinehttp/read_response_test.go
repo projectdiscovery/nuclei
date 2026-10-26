@@ -199,3 +199,44 @@ Server: Google Frontend
 
 	})
 }
+
+
+func TestReadResponse_HTTPInBodyCases(t *testing.T) {
+	tests := []struct {
+		name         string
+		data         string
+		expectedBody string
+		statusCode   int
+	}{
+		{
+			name:         "http2 response without minor version and HTTP/ in body (#7924)",
+			data:         "GET / HTTP/1.1\r\nHost: example.com\r\n\r\nHTTP/2 200 OK\r\nContent-Length: 27\r\n\r\nSupports HTTP/2 and HTTP/3.",
+			expectedBody: "Supports HTTP/2 and HTTP/3.",
+			statusCode:   200,
+		},
+		{
+			name:         "request with body and HTTP/ in response body (#7924)",
+			data:         "POST /search HTTP/1.1\r\nHost: example.com\r\nContent-Length: 3\r\n\r\nq=1HTTP/1.1 200 OK\r\nContent-Length: 27\r\n\r\nSupports HTTP/2 and HTTP/3.",
+			expectedBody: "Supports HTTP/2 and HTTP/3.",
+			statusCode:   200,
+		},
+		{
+			name:         "control http 1.1 with HTTP/ in response body (#7924)",
+			data:         "GET / HTTP/1.1\r\nHost: example.com\r\n\r\nHTTP/1.1 200 OK\r\nContent-Length: 27\r\n\r\nSupports HTTP/2 and HTTP/3.",
+			expectedBody: "Supports HTTP/2 and HTTP/3.",
+			statusCode:   200,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			resp, err := readResponseFromString(tt.data)
+			require.NoError(t, err, "could not read response from string")
+			require.Equal(t, tt.statusCode, resp.StatusCode)
+
+			body, err := io.ReadAll(resp.Body)
+			require.NoError(t, err)
+			require.Equal(t, tt.expectedBody, string(body))
+		})
+	}
+}
