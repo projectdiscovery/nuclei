@@ -70,6 +70,30 @@ func TestUsesResponseCache(t *testing.T) {
 	}
 }
 
+func TestRespCacheKeyIncludesCustomIP(t *testing.T) {
+	req, _ := http.NewRequest(http.MethodGet, "http://example.com/", nil)
+	plain := contextargs.NewWithInput(context.Background(), "http://example.com/")
+	a := contextargs.NewWithInput(context.Background(), "http://example.com/")
+	a.MetaInput.CustomIP = "10.0.0.1"
+	b := contextargs.NewWithInput(context.Background(), "http://example.com/")
+	b.MetaInput.CustomIP = "10.0.0.2"
+	if respCacheKey(a, req) == respCacheKey(b, req) {
+		t.Fatal("inputs that dial different IPs must not share a cache key")
+	}
+	if respCacheKey(plain, req) == respCacheKey(a, req) {
+		t.Fatal("an IP-pinned input must not share the plain input's key")
+	}
+}
+
+func TestIsHTTPToHTTPSMismatch(t *testing.T) {
+	if !isHTTPToHTTPSMismatch(400, "<h1>The plain HTTP request was sent to HTTPS port</h1>") {
+		t.Fatal("expected the mismatch to be recognised")
+	}
+	if isHTTPToHTTPSMismatch(400, "bad request") || isHTTPToHTTPSMismatch(200, "The plain HTTP request was sent to HTTPS port") {
+		t.Fatal("only the 400 with the mismatch message counts")
+	}
+}
+
 // A body read up to a template's max-size may be cut short. The cache must not
 // keep it, or a later template with a larger limit matches against a cut body.
 func TestResponseCacheSkipsTruncatedBody(t *testing.T) {
@@ -82,8 +106,8 @@ func TestResponseCacheSkipsTruncatedBody(t *testing.T) {
 
 	// Other tests change the shared default options, so work on a copy.
 	opts := testutils.DefaultOptions.Copy()
-	// The response cache pins one user agent, so identical requests share a key.
-	opts.DisableResponseCache = false
+	// -response-cache pins one user agent, so identical requests share a key.
+	opts.ResponseCache = true
 	opts.FollowRedirects = false
 	opts.FollowHostRedirects = false
 	opts.ResponseReadSize = 0

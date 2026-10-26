@@ -9,11 +9,22 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 )
 
-func TestAttachScanFeaturesOnByDefault(t *testing.T) {
+func TestAttachScanFeaturesDefaults(t *testing.T) {
 	e := &ExecutorOptions{Options: &types.Options{}}
 	e.AttachScanFeatures()
-	if e.HTTPService == nil || e.HostLimit == nil || e.StreamLimit == nil || e.HTTPResponseCache == nil {
-		t.Fatalf("defaults must attach every feature: %+v", e)
+	if e.HTTPService == nil || e.HostLimit == nil || e.StreamLimit == nil {
+		t.Fatalf("defaults must attach placement and adaptive concurrency: %+v", e)
+	}
+	if e.HTTPResponseCache != nil {
+		t.Fatal("the response cache is opt-in")
+	}
+}
+
+func TestAttachScanFeaturesResponseCacheOptIn(t *testing.T) {
+	e := &ExecutorOptions{Options: &types.Options{ResponseCache: true}}
+	e.AttachScanFeatures()
+	if e.HTTPResponseCache == nil {
+		t.Fatal("-response-cache must attach the cache")
 	}
 }
 
@@ -21,7 +32,6 @@ func TestAttachScanFeaturesHonoursDisable(t *testing.T) {
 	e := &ExecutorOptions{Options: &types.Options{
 		DisableServicePlacement:    true,
 		DisableAdaptiveConcurrency: true,
-		DisableResponseCache:       true,
 	}}
 	e.AttachScanFeatures()
 	if e.HTTPService != nil || e.HostLimit != nil || e.StreamLimit != nil || e.HTTPResponseCache != nil {
@@ -32,7 +42,7 @@ func TestAttachScanFeaturesHonoursDisable(t *testing.T) {
 // A long-lived engine keeps the instances (templates may hold a copy of the
 // options) and only empties their per-scan content.
 func TestResetScanStateEmptiesSharedCache(t *testing.T) {
-	e := &ExecutorOptions{Options: &types.Options{}}
+	e := &ExecutorOptions{Options: &types.Options{ResponseCache: true}}
 	e.AttachScanFeatures()
 	cache := e.HTTPResponseCache
 	req := httptest.NewRequest(http.MethodGet, "http://example.com/", nil)

@@ -629,9 +629,10 @@ func (r *requestGenerator) renderText(text string, values map[string]interface{}
 
 // StableUserAgent is one Chrome user agent, chosen once per process. A random
 // user agent per request makes otherwise identical requests differ, so the
-// scan-scoped response cache can never reuse them. Whenever that cache is
+// scan-scoped response cache can never reuse them. Whenever that cache may be
 // active we send one constant user agent instead, which also makes scans
-// reproducible.
+// reproducible. Anything that seeds the cache sends the same one, so a seeded
+// response is reachable by the templates that follow.
 var StableUserAgent = sync.OnceValue(func() string {
 	if agents, err := useragent.PickWithFilters(1, useragent.Chrome); err == nil && len(agents) > 0 {
 		return agents[0].Raw
@@ -644,7 +645,7 @@ func (r *requestGenerator) userAgent() string {
 	if r.request == nil || r.request.options == nil || r.request.options.Options == nil {
 		return useragent.PickRandom().Raw
 	}
-	if !r.request.options.Options.DisableResponseCache {
+	if r.request.options.Options.UsesResponseCache() {
 		return StableUserAgent()
 	}
 	return useragent.PickRandom().Raw

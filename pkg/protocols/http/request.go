@@ -1559,7 +1559,7 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 		// standard net/http path this is normally already handled by the
 		// immediate self-heal above; this remains the only detection point for
 		// pipeline/unsafe (rawhttp) requests, which bypass that retry.
-		if isHTTPToHTTPSMismatch(statusCode, bodyStr) {
+		if statusCode == 400 && strings.Contains(bodyStr, httpToHTTPSMismatchSignature) {
 			var requestURL string
 			if generatedRequest.request != nil && generatedRequest.request.Request != nil && generatedRequest.request.Request.URL != nil {
 				requestURL = generatedRequest.request.Request.URL.String()
@@ -1981,41 +1981,6 @@ func (request *Request) isUnresponsiveAddress(input *contextargs.Context) bool {
 		return request.options.HostErrorsCache.Check(request.options.ProtocolType.String(), input)
 	}
 	return false
-}
-
-// followsRedirects reports whether this request's client follows redirects,
-// resolving the policy the same way httpclientpool does: the template setting,
-// overridden by the global follow flags, cancelled by -disable-redirects.
-//
-// The scan response cache must stay out of such requests. A redirect chain is
-// several responses, and a cache entry is one: serving it would hide the chain
-// from matchers that walk it. The cache key also does not carry the redirect
-// policy, so a followed and an unfollowed request for the same URL would
-// otherwise share one entry and each see the other's response.
-func (request *Request) followsRedirects() bool {
-	if request.options == nil || request.options.Options == nil {
-		return true // unknown policy: stay out of the cache
-	}
-	opts := request.options.Options
-	if opts.DisableRedirects {
-		return false
-	}
-	if opts.ShouldFollowHTTPRedirects() {
-		return true
-	}
-	return request.connConfiguration == nil ||
-		request.connConfiguration.RedirectFlow != httpclientpool.DontFollowRedirect
-}
-
-// usesResponseCache reports whether this request may be served from, or stored
-// in, the scan response cache. A template's own disable-http-cache opts out,
-// race requests must all reach the server, and redirect-following requests
-// carry a chain the cache cannot represent.
-func (request *Request) usesResponseCache(req *generatedRequest) bool {
-	if request.DisableHTTPCache || request.followsRedirects() {
-		return false
-	}
-	return req == nil || req.original == nil || !req.original.Race
 }
 
 // needsFullResponse returns true if operators, debug flags, or stats require the full HTTP response.

@@ -224,9 +224,6 @@ type Options struct {
 	// DisableAdaptiveConcurrency turns off the per-endpoint limit that adapts
 	// in-flight requests to each endpoint's latency and errors. On by default.
 	DisableAdaptiveConcurrency bool
-	// DisableResponseCache turns off reusing identical safe GET/HEAD responses
-	// inside one scan. On by default.
-	DisableResponseCache bool
 	// HostBackoff slows a host down when it signals it is being overloaded
 	// (429, a run of 403s, or transport failures) instead of scanning it at full
 	// rate until it blocks the scanner. Opt-in, since it changes scan pacing.
@@ -255,6 +252,11 @@ type Options struct {
 	// NOTE(dwisiswant0): this is experimental and might be enabled by default
 	// in the future releases.
 	EnableHTTPCache bool
+	// ResponseCache reuses identical safe GET/HEAD responses inside one scan.
+	// Only requests without auth, cookies, Host override, body, cache directives
+	// or non-allowlisted headers are eligible, so the reuse is lossless. Opt-in:
+	// a template that depends on state or timing could see a different result.
+	ResponseCache bool
 	// LeaveDefaultPorts skips normalization of default ports
 	LeaveDefaultPorts bool
 	// AutomaticScan enables automatic tech based template execution
@@ -729,6 +731,7 @@ func (options *Options) Copy() *Options {
 		PerHostRateLimit:               options.PerHostRateLimit,
 		PerHostRateLimitPoolSize:       options.PerHostRateLimitPoolSize,
 		EnableHTTPCache:                options.EnableHTTPCache,
+		ResponseCache:                  options.ResponseCache,
 		LeaveDefaultPorts:              options.LeaveDefaultPorts,
 		AutomaticScan:                  options.AutomaticScan,
 		Silent:                         options.Silent,
@@ -758,7 +761,6 @@ func (options *Options) Copy() *Options {
 		Stdin:                          options.Stdin,
 		DisableServicePlacement:        options.DisableServicePlacement,
 		DisableAdaptiveConcurrency:     options.DisableAdaptiveConcurrency,
-		DisableResponseCache:           options.DisableResponseCache,
 		StopAtFirstMatch:               options.StopAtFirstMatch,
 		HoneypotDetection:              options.HoneypotDetection,
 		HoneypotThreshold:              options.HoneypotThreshold,
@@ -958,6 +960,12 @@ func (options *Options) ShouldSaveResume() bool {
 // ShouldFollowHTTPRedirects determines if http redirects should be followed
 func (options *Options) ShouldFollowHTTPRedirects() bool {
 	return options.FollowRedirects || options.FollowHostRedirects
+}
+
+// UsesResponseCache reports whether the scan-scoped response cache may be active:
+// -response-cache.
+func (options *Options) UsesResponseCache() bool {
+	return options.ResponseCache
 }
 
 // HasClientCertificates determines if any client certificate was specified

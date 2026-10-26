@@ -294,7 +294,6 @@ UNCOVER:
 RATE-LIMIT:
    -rl, -rate-limit int                     maximum number of requests to send per second (default 150)
    -rld, -rate-limit-duration value         maximum number of requests to send per second (default 1s)
-   -disable-response-cache                  do not reuse identical safe GET/HEAD responses within one scan (also restores a random user agent per request)
    -disable-adaptive-concurrency            do not adapt in-flight requests per host:port to its latency and errors
    -disable-service-placement               run js templates that only speak non-http protocols (smb, ssh, mysql, ...) even on ports that answer http
    -host-backoff                            slow down a host that starts blocking (429, repeated 403s, connection failures)
@@ -323,6 +322,7 @@ OPTIMIZATIONS:
    -stream                          stream mode - start elaborating without sorting the input
    -ss, -scan-strategy value        strategy to use while scanning(auto/host-spray/template-spray) (default auto)
    -irt, -input-read-timeout value  timeout on input read (default 3m0s)
+   -response-cache                  reuse identical safe GET/HEAD responses within a scan (lossless: skips requests with auth, cookies, body or custom headers)
    -nh, -no-httpx                   disable httpx probing for non-url input
    -preflight-portscan              run preflight resolve + TCP portscan and filter targets before scanning (disabled by default)
    -no-stdin                        disable stdin processing

@@ -706,7 +706,7 @@ func (e *ExecutorOptions) EncodeTemplate() string {
 
 // AttachScanFeatures gives the executor fresh per-scan state for service
 // placement, adaptive concurrency and the response cache, honouring the
-// Disable options. Call it once per scan: the response cache in particular must
+// Disable options and the opt-in ResponseCache. Call it once per scan: the response cache in particular must
 // not outlive the scan, or a later scan could be served an earlier response.
 func (e *ExecutorOptions) AttachScanFeatures() {
 	if e == nil || e.Options == nil {
@@ -723,7 +723,7 @@ func (e *ExecutorOptions) AttachScanFeatures() {
 		// a fixed bound per endpoint, halved when dials start failing.
 		e.StreamLimit = hostlimit.New(hostlimit.Config{Initial: 64, Min: 8, Max: 64})
 	}
-	if !o.DisableResponseCache {
+	if o.ResponseCache {
 		e.HTTPResponseCache = httprespcache.New()
 	}
 }

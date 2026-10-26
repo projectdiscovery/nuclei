@@ -7,35 +7,10 @@ import (
 	"time"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/hostlimit"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	"github.com/projectdiscovery/retryablehttp-go"
 )
-
-func TestRespCacheKeyIncludesCustomIP(t *testing.T) {
-	req, _ := nethttp.NewRequest(nethttp.MethodGet, "http://example.com/", nil)
-	plain := contextargs.NewWithInput(context.Background(), "http://example.com/")
-	a := contextargs.NewWithInput(context.Background(), "http://example.com/")
-	a.MetaInput.CustomIP = "10.0.0.1"
-	b := contextargs.NewWithInput(context.Background(), "http://example.com/")
-	b.MetaInput.CustomIP = "10.0.0.2"
-	if respCacheKey(a, req) == respCacheKey(b, req) {
-		t.Fatal("inputs that dial different IPs must not share a cache key")
-	}
-	if respCacheKey(plain, req) == respCacheKey(a, req) {
-		t.Fatal("an IP-pinned input must not share the plain input's key")
-	}
-}
-
-func TestIsHTTPToHTTPSMismatch(t *testing.T) {
-	if !isHTTPToHTTPSMismatch(400, "<h1>The plain HTTP request was sent to HTTPS port</h1>") {
-		t.Fatal("expected the mismatch to be recognised")
-	}
-	if isHTTPToHTTPSMismatch(400, "bad request") || isHTTPToHTTPSMismatch(200, "The plain HTTP request was sent to HTTPS port") {
-		t.Fatal("only the 400 with the mismatch message counts")
-	}
-}
 
 // Time spent queued for an endpoint slot is added back to the request deadline,
 // so a queued request cannot time out before it is sent.

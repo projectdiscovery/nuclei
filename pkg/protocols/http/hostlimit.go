@@ -2,8 +2,6 @@ package http
 
 import (
 	"context"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/httprespcache"
 	"net"
 	"net/http"
 	"net/url"
@@ -81,24 +79,6 @@ func (request *Request) hasCustomTimeout(req *generatedRequest) bool {
 		}
 	}
 	return false
-}
-
-// respCacheKey is the response cache key for a request. Inputs that share a
-// URL but dial different addresses (-scan-all-ips, -iv) must not share
-// responses, so the selected IP is part of the key.
-func respCacheKey(input *contextargs.Context, req *http.Request) string {
-	key := httprespcache.KeyFromRequest(req)
-	if key == "" || input == nil || input.MetaInput == nil || input.MetaInput.CustomIP == "" {
-		return key
-	}
-	return key + " |ip:" + input.MetaInput.CustomIP
-}
-
-// isHTTPToHTTPSMismatch reports the 400 a server returns for plain HTTP sent to
-// an HTTPS port. The scan records a correction for that host:port, so this
-// response must not be cached: a later hit would skip the correction.
-func isHTTPToHTTPSMismatch(statusCode int, body string) bool {
-	return statusCode == http.StatusBadRequest && strings.Contains(body, httpToHTTPSMismatchSignature)
 }
 
 // endpointKey is host:port with the scheme's default port filled in.
