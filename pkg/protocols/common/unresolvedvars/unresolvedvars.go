@@ -23,7 +23,13 @@ func Skip(prog progress.Progress, options *types.Options, templateID, target str
 	}
 	// The user asked for these lines, so they are logged at info level: the
 	// default log level hides warnings unless -v is set.
-	if options != nil && options.LogUnresolved {
-		gologger.Info().Msgf("[%s] Could not make request for %s: %v\n", templateID, target, err)
+	if options == nil || !options.LogUnresolved {
+		return
 	}
+	// self-contained requests have no input target
+	if target == "" {
+		gologger.Info().Msgf("[%s] Could not make request: %v\n", templateID, err)
+		return
+	}
+	gologger.Info().Msgf("[%s] Could not make request for %s: %v\n", templateID, target, err)
 }
