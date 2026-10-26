@@ -703,6 +703,11 @@ func (r *Runner) RunEnumeration() error {
 
 	if (len(r.options.SecretsFile) > 0 || r.options.AuthLoginURL != "" || r.options.AuthRecording != "" || r.options.AuthCapture) && !r.options.Validate {
 		autoLoginOpts := buildAutoLoginRuntimeOptions(r.options)
+		autoLoginClient, err := autoLoginHTTPClient(r.options)
+		if err != nil {
+			return errors.Wrap(err, "could not create auto-login http client")
+		}
+		autoLoginOpts.HTTPClient = autoLoginClient
 		var providers []authprovider.AuthProvider
 
 		if len(r.options.SecretsFile) > 0 {

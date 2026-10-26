@@ -1,13 +1,17 @@
 package runner
 
 import (
+	"context"
 	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"sync/atomic"
 	"testing"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/authprovider/authx"
 	"github.com/projectdiscovery/nuclei/v3/pkg/authprovider/autologin"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	"github.com/stretchr/testify/require"
 )
@@ -192,4 +196,38 @@ func TestBuildAutoLoginRuntimeOptions_SocksProxyFallback(t *testing.T) {
 		AliveSocksProxy: "socks5://127.0.0.1:1080",
 	})
 	require.Equal(t, "http://127.0.0.1:8080", rt.Proxy)
+}
+
+// The HTTP auto-login must go through nuclei's dialer, so -lna refuses a login
+// page on the loopback network and the server never sees a request.
+func TestAutoLoginHTTPClientHonorsNetworkPolicy(t *testing.T) {
+	var hits atomic.Int32
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		hits.Add(1)
+		_, _ = w.Write([]byte(`<form method="post" action="/login"><input name="user"><input type="password" name="pass"></form>`))
+	}))
+	t.Cleanup(srv.Close)
+
+	options := &types.Options{
+		ExecutionId:                t.Name(),
+		Timeout:                    5,
+		RestrictLocalNetworkAccess: true,
+	}
+	require.NoError(t, protocolstate.Init(options))
+	t.Cleanup(func() { protocolstate.Close(options.ExecutionId) })
+
+	client, err := autoLoginHTTPClient(options)
+	require.NoError(t, err)
+	_, err = autologin.Login(context.Background(), client, autologin.Config{
+		LoginURL: srv.URL + "/login",
+		Username: "admin",
+		Password: "secret",
+	})
+	require.Error(t, err, "the login page on loopback must be refused under -lna")
+	require.Zero(t, hits.Load(), "the local server must get no request")
+}
+
+func TestAutoLoginHTTPClientNeedsDialers(t *testing.T) {
+	_, err := autoLoginHTTPClient(&types.Options{ExecutionId: t.Name()})
+	require.Error(t, err, "without nuclei dialers there is no policy-bound client")
 }

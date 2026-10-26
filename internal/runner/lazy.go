@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"context"
 	"fmt"
+	"net/http"
 	"net/url"
 	"os"
 	"strconv"
@@ -21,6 +22,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/helpers/writer"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/replacer"
 	httpprotocol "github.com/projectdiscovery/nuclei/v3/pkg/protocols/http"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/httpclientpool"
 	"github.com/projectdiscovery/nuclei/v3/pkg/scan"
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
@@ -229,6 +231,22 @@ func buildAutoLoginRuntimeOptions(opts *types.Options) *authx.AutoLoginRuntimeOp
 		rt.CustomHeaders[key] = value
 	}
 	return rt
+}
+
+// autoLoginHTTPClient returns the nuclei HTTP client of the scan's execution
+// id. The HTTP auto-login reuses its transport, so the login requests go
+// through nuclei's dialer like every scan request: network policy (-lna,
+// excluded hosts), resolvers and proxy. autologin.Login still uses its own
+// cookie jar and cross-origin redirect guard on top of that transport.
+func autoLoginHTTPClient(opts *types.Options) (*http.Client, error) {
+	client, err := httpclientpool.Get(opts, &httpclientpool.Configuration{}, "")
+	if err != nil {
+		return nil, err
+	}
+	if client == nil || client.HTTPClient == nil {
+		return nil, errkit.New("auto-login: nuclei http client is not available")
+	}
+	return client.HTTPClient, nil
 }
 
 // autoLoginStoreFromOptions assembles an in-memory Authx store containing a
