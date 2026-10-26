@@ -49,3 +49,26 @@ func TestUnresolvedRuleVariablesAreSkipped(t *testing.T) {
 		})
 	}
 }
+
+func TestRecompiledRuleClearsUnresolvedError(t *testing.T) {
+	rule := &Rule{Part: "query", Keys: []string{`{{to_lower("{{nosuchkey}}")}}`}}
+	prog := &unresolvedProgress{}
+	executorOpts := &protocols.ExecutorOptions{
+		TemplateID: "unresolved-fuzz",
+		Variables:  variables.Variable{InsertionOrderedStringMap: *utils.NewEmptyInsertionOrderedStringMap(0)},
+		Constants:  map[string]interface{}{},
+		Options:    &types.Options{},
+		Progress:   prog,
+	}
+	require.NoError(t, rule.Compile(nil, executorOpts))
+	require.Error(t, rule.unresolvedErr)
+
+	// the same rule now compiles with values that resolve
+	rule.Keys = []string{"a"}
+	require.NoError(t, rule.Compile(nil, executorOpts))
+	require.NoError(t, rule.unresolvedErr)
+
+	input := &ExecuteRuleInput{Input: contextargs.NewWithInput(context.Background(), "http://127.0.0.1/?a=1")}
+	_ = rule.Execute(input)
+	require.Zero(t, prog.SkippedUnresolved())
+}

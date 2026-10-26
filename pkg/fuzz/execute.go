@@ -470,6 +470,8 @@ func (rule *Rule) executeRuleValues(input *ExecuteRuleInput, ruleComponent compo
 
 // Compile compiles a fuzzing rule and initializes it for operation
 func (rule *Rule) Compile(generator *generators.PayloadGenerator, options *protocols.ExecutorOptions) error {
+	// a recompiled rule must not keep the result of an earlier compile
+	rule.unresolvedErr = nil
 	// If a payload generator is specified from base request, use it
 	// for payload values.
 	if generator != nil {
