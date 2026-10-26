@@ -1510,8 +1510,12 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 			httprespcache.CacheableRequest(generatedRequest.request.Request) &&
 			httprespcache.JarAllows(input.CookieJar, generatedRequest.request.Request.URL) &&
 			!httprespcache.ResponseSetsCookie(resp) {
-			if key := httprespcache.KeyFromRequest(generatedRequest.request.Request); key != "" {
-				request.options.HTTPResponseCache.Set(key, resp, respChain.BodyBytes())
+			// A body that fills the read limit may be truncated. Another template
+			// with a larger limit would then match against a cut body, so store
+			// only bodies that were read to the end.
+			body := respChain.BodyBytes()
+			if key := httprespcache.KeyFromRequest(generatedRequest.request.Request); key != "" && len(body) < maxBodylimit {
+				request.options.HTTPResponseCache.Set(key, resp, body)
 			}
 		}
 	})

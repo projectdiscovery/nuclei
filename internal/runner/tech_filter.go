@@ -206,7 +206,9 @@ func fingerprintTarget(wapp *wappalyzer.Wappalyze, client *retryablehttp.Client,
 	if err != nil {
 		return techfilter.HostProfile{}
 	}
-	if cache != nil {
+	// A body that fills the probe limit may be truncated, and a template with a
+	// larger read limit must not match against it.
+	if cache != nil && int64(len(body)) < techFilterMaxBody {
 		seedFingerprintResponse(cache, req, resp, body, seedURL)
 	}
 	info := wapp.FingerprintWithInfo(resp.Header, body)
