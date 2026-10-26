@@ -121,6 +121,9 @@ type ExecutorOptions struct {
 	InteractshScope *interactsh.RequestScope
 	// HostErrorsCache is an optional cache for handling host errors
 	HostErrorsCache hosterrorscache.CacheInterface
+	// HTTPResponseCache reuses identical safe GET/HEAD responses inside one
+	// scan. Nil disables it.
+	HTTPResponseCache *httprespcache.Cache
 	// HostBackoff paces a host that signals it is being overloaded, so a scan
 	// slows down for it instead of being blocked outright. Nil disables it.
 	HostBackoff *hostbackoff.Governor
@@ -132,8 +135,6 @@ type ExecutorOptions struct {
 	// It is separate from HostLimit so idle sockets that wait for a banner
 	// never hold the slots HTTP requests need.
 	StreamLimit *hostlimit.Limiter
-	// HTTPResponseCache reuses identical safe GET/HEAD responses inside one scan.
-	HTTPResponseCache *httprespcache.Cache
 	// Stop execution once first match is found (Assigned while parsing templates)
 	// Note: this is different from Options.StopAtFirstMatch (Assigned from CLI option)
 	StopAtFirstMatch bool
@@ -410,12 +411,12 @@ func (e *ExecutorOptions) Copy() *ExecutorOptions {
 		Browser:                      e.Browser,
 		Interactsh:                   e.Interactsh,
 		HostErrorsCache:              e.HostErrorsCache,
+		HTTPResponseCache:            e.HTTPResponseCache,
 		InteractshScope:              e.InteractshScope,
 		HostBackoff:                  e.HostBackoff,
 		HTTPService:                  e.HTTPService,
 		HostLimit:                    e.HostLimit,
 		StreamLimit:                  e.StreamLimit,
-		HTTPResponseCache:            e.HTTPResponseCache,
 		StopAtFirstMatch:             e.StopAtFirstMatch,
 		Variables:                    e.Variables,
 		Constants:                    e.Constants,
@@ -706,7 +707,7 @@ func (e *ExecutorOptions) EncodeTemplate() string {
 
 // AttachScanFeatures gives the executor fresh per-scan state for service
 // placement, adaptive concurrency and the response cache, honouring the
-// Disable options and the opt-in ResponseCache. Call it once per scan: the response cache in particular must
+// Disable options and the opt-in response cache. Call it once per scan: the response cache in particular must
 // not outlive the scan, or a later scan could be served an earlier response.
 func (e *ExecutorOptions) AttachScanFeatures() {
 	if e == nil || e.Options == nil {
@@ -723,7 +724,7 @@ func (e *ExecutorOptions) AttachScanFeatures() {
 		// a fixed bound per endpoint, halved when dials start failing.
 		e.StreamLimit = hostlimit.New(hostlimit.Config{Initial: 64, Min: 8, Max: 64})
 	}
-	if o.ResponseCache {
+	if o.UsesResponseCache() {
 		e.HTTPResponseCache = httprespcache.New()
 	}
 }
@@ -757,12 +758,12 @@ func (e *ExecutorOptions) ApplyNewEngineOptions(n *ExecutorOptions) {
 	e.Browser = n.Browser
 	e.Interactsh = n.Interactsh
 	e.InteractshScope = n.InteractshScope
+	e.HTTPResponseCache = n.HTTPResponseCache
 	e.HostErrorsCache = n.HostErrorsCache
 	e.HostBackoff = n.HostBackoff
 	e.HTTPService = n.HTTPService
 	e.HostLimit = n.HostLimit
 	e.StreamLimit = n.StreamLimit
-	e.HTTPResponseCache = n.HTTPResponseCache
 	e.InputHelper = n.InputHelper
 	e.FuzzParamsFrequency = n.FuzzParamsFrequency
 	e.FuzzStatsDB = n.FuzzStatsDB
