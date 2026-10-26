@@ -161,6 +161,9 @@ type Request struct {
 	// connectionReusePolicy stores the analyzed connection reuse policy
 	// This is set during Compile() based on template analysis
 	connectionReusePolicy ConnectionReusePolicy `yaml:"-" json:"-"`
+	// requireFullResponse is set for a clustered request when a sibling template
+	// reads the full response. Those operators are not on this request.
+	requireFullResponse bool `yaml:"-" json:"-"`
 
 	// description: |
 	//   SkipSecretFile skips the authentication or authorization configured in the secret file.
@@ -302,6 +305,7 @@ var RequestPartDefinitions = map[string]string{
 	"headers_from_response": "HTTP response headers in name:value format",
 	"tls_version":           "TLS version negotiated for the HTTP connection",
 	"cipher":                "TLS cipher suite negotiated for the HTTP connection",
+	"key_exchange":          "TLS key exchange group negotiated for the HTTP connection",
 	"sni":                   "SNI value used in the TLS handshake",
 	"subject_cn":            "Leaf certificate subject common name",
 	"subject_dn":            "Leaf certificate subject distinguished name",
@@ -627,6 +631,15 @@ func init() {
 
 // UpdateOptions replaces this request's options with a new copy
 func (r *Request) UpdateOptions(opts *protocols.ExecutorOptions) {
+	r.Operators = protocols.CloneOperators(r.Operators)
+	r.FuzzPreCondition = protocols.CloneMatchers(r.FuzzPreCondition)
+	if r.options == nil {
+		if opts != nil {
+			r.options = opts.Copy()
+		}
+		return
+	}
+	r.options = r.options.Copy()
 	r.options.ApplyNewEngineOptions(opts)
 }
 

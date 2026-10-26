@@ -6,6 +6,8 @@ package integration_test
 import (
 	"fmt"
 	"net"
+	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -38,6 +40,38 @@ func TestNetwork(t *testing.T) {
 		}
 		if err := errState.Err(); err != nil {
 			t.Fatal(err)
+		}
+		if err := expectResultsCount(results, 1); err != nil {
+			t.Fatal(err)
+		}
+	})
+
+	t.Run("PinnedTargetLine", func(t *testing.T) {
+		server := testutils.NewTCPServer(nil, 0, func(conn net.Conn) {
+			defer func() { _ = conn.Close() }()
+
+			data, err := reader.ConnReadNWithTimeout(conn, 4, 5*time.Second)
+			if err == nil && string(data) == "PING" {
+				_, _ = conn.Write([]byte("PONG"))
+			}
+		})
+		defer server.Close()
+		_, port, err := net.SplitHostPort(server.URL)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		targets := filepath.Join(t.TempDir(), "targets.txt")
+		line := fmt.Sprintf(`{"target": "pinned.test:%s", "ip": "127.0.0.1"}`, port)
+		if err := os.WriteFile(targets, []byte(line), 0o600); err != nil {
+			t.Fatal(err)
+		}
+
+		// pinned.test does not resolve: the network request reaches the server
+		// only through the pinned ip
+		results, err := testutils.RunNucleiBareArgsAndGetResults(suite.debug, nil, "-t", "protocols/network/basic.yaml", "-l", targets)
+		if err != nil {
+			t.Fatalf("pinned network request failed: %v", err)
 		}
 		if err := expectResultsCount(results, 1); err != nil {
 			t.Fatal(err)

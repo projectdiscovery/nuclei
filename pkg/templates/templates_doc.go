@@ -1940,6 +1940,10 @@ func init() {
 			Value: "Issuer organization is the organization of the certificate issuer",
 		},
 		{
+			Key:   "key_exchange",
+			Value: "Key exchange is the TLS key exchange group negotiated in the handshake",
+		},
+		{
 			Key:   "not_after",
 			Value: "Timestamp after which the remote cert expires",
 		},

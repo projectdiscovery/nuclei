@@ -1,6 +1,7 @@
 package websocket
 
 import (
+	"context"
 	"crypto/tls"
 	"fmt"
 	"io"
@@ -110,7 +111,7 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 	request.dialer = client
 
 	if len(request.Payloads) > 0 {
-		request.generator, err = generators.New(request.Payloads, request.AttackType.Value, request.options.TemplatePath, options.Catalog, options.Options.AttackType, types.DefaultOptions())
+		request.generator, err = generators.New(request.Payloads, request.AttackType.Value, request.options.TemplatePath, options.Catalog, options.Options.AttackType, options.Options)
 		if err != nil {
 			return errors.Wrap(err, "could not parse payloads")
 		}
@@ -220,10 +221,20 @@ func (request *Request) executeRequestWithPayloads(target *contextargs.Context, 
 		tlsConfig.ServerName = requestOptions.Options.SNI
 	}
 
+	// Dial reports both a refused TCP connection and a rejected HTTP upgrade.
+	// Only the TCP result belongs to host backoff: an upgrade failure means
+	// the port already accepted the connection.
+	var dialed bool
+	var dialErr error
 	websocketDialer := ws.Dialer{
-		Header:    ws.HandshakeHeaderHTTP(header),
-		Timeout:   time.Duration(requestOptions.Options.Timeout) * time.Second,
-		NetDial:   request.dialer.Dial,
+		Header:  ws.HandshakeHeaderHTTP(header),
+		Timeout: time.Duration(requestOptions.Options.Timeout) * time.Second,
+		NetDial: func(ctx context.Context, network, address string) (net.Conn, error) {
+			dialed = true
+			conn, err := request.dialer.Dial(ctx, network, address)
+			dialErr = err
+			return conn, err
+		},
 		TLSConfig: tlsConfig,
 	}
 
@@ -255,6 +266,9 @@ func (request *Request) executeRequestWithPayloads(target *contextargs.Context, 
 
 	addressToDial = parsedAddress.String()
 
+	if err := requestOptions.HostBackoffWait(target.Context(), addressToDial); err != nil {
+		return err
+	}
 	if err := requestOptions.RateLimitTakeContext(target.Context(), addressToDial); err != nil {
 		requestOptions.Output.Request(requestOptions.TemplateID, input, request.Type().String(), err)
 		requestOptions.Progress.IncrementFailedRequestsBy(1)
@@ -265,6 +279,9 @@ func (request *Request) executeRequestWithPayloads(target *contextargs.Context, 
 	timeStart := time.Now()
 	conn, readBuffer, _, err := websocketDialer.Dial(target.Context(), addressToDial)
 	handshakeDuration := time.Since(timeStart)
+	if dialed {
+		requestOptions.HostBackoffObserveDial(addressToDial, dialErr)
+	}
 	if err != nil {
 		requestOptions.Output.Request(requestOptions.TemplateID, input, request.Type().String(), err)
 		requestOptions.Progress.IncrementFailedRequestsBy(1)
@@ -307,7 +324,11 @@ func (request *Request) executeRequestWithPayloads(target *contextargs.Context, 
 	data["response"] = responseBuilder.String()
 	data["host"] = input
 	data["matched"] = addressToDial
-	data["ip"] = request.dialer.GetDialedIP(hostname)
+	if target.MetaInput.CustomIP != "" {
+		data["ip"] = target.MetaInput.CustomIP
+	} else {
+		data["ip"] = request.dialer.GetDialedIP(hostname)
+	}
 	if len(stepDurations) > 0 {
 		addWebsocketDurationFields(data, stepDurations)
 	} else {
@@ -481,5 +502,14 @@ func (request *Request) Type() templateTypes.ProtocolType {
 
 // UpdateOptions replaces this request's options with a new copy
 func (r *Request) UpdateOptions(opts *protocols.ExecutorOptions) {
+	r.Operators = protocols.CloneOperators(r.Operators)
+	r.CompiledOperators = nil
+	if r.options == nil {
+		if opts != nil {
+			r.options = opts.Copy()
+		}
+		return
+	}
+	r.options = r.options.Copy()
 	r.options.ApplyNewEngineOptions(opts)
 }

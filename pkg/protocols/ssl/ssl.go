@@ -256,6 +256,9 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 		hostIp = host
 	}
 
+	if err := request.options.HostBackoffWait(input.Context(), addressToDial); err != nil {
+		return err
+	}
 	if err := request.options.RateLimitTakeContext(input.Context(), addressToDial); err != nil {
 		requestOptions.Output.Request(requestOptions.TemplateID, input.MetaInput.Input, request.Type().String(), err)
 		requestOptions.Progress.IncrementFailedRequestsBy(1)
@@ -265,6 +268,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 	timeStart := time.Now()
 	response, err := request.tlsx.Connect(host, hostIp, port)
 	duration := time.Since(timeStart)
+	request.options.HostBackoffObserveDial(addressToDial, err)
 	if err != nil {
 		requestOptions.Output.Request(requestOptions.TemplateID, input.MetaInput.Input, request.Type().String(), err)
 		requestOptions.Progress.IncrementFailedRequestsBy(1)
@@ -384,6 +388,7 @@ var RequestPartDefinitions = map[string]string{
 	"issuer_cn":        "Issuer CN is the common name of the certificate issuer",
 	"issuer_dn":        "Issuer DN is the distinguished name of the certificate issuer",
 	"issuer_org":       "Issuer organization is the organization of the certificate issuer",
+	"key_exchange":     "Key exchange is the TLS key exchange group negotiated in the handshake",
 	"not_after":        "Timestamp after which the remote cert expires",
 	"not_before":       "Timestamp before which the certificate is not valid",
 	"probe_status":     "Probe status indicates if the probe was successful",
@@ -459,5 +464,14 @@ func (request *Request) MakeResultEventItem(wrapped *output.InternalWrappedEvent
 
 // UpdateOptions replaces this request's options with a new copy
 func (r *Request) UpdateOptions(opts *protocols.ExecutorOptions) {
+	r.Operators = protocols.CloneOperators(r.Operators)
+	r.CompiledOperators = nil
+	if r.options == nil {
+		if opts != nil {
+			r.options = opts.Copy()
+		}
+		return
+	}
+	r.options = r.options.Copy()
 	r.options.ApplyNewEngineOptions(opts)
 }

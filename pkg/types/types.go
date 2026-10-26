@@ -276,6 +276,8 @@ type Options struct {
 	NoColor bool
 	// UpdateTemplates updates the templates installed at startup (also used by cloud to update datasources)
 	UpdateTemplates bool
+	// UpdateTemplatesChannel is the nuclei-templates update channel (stable or latest)
+	UpdateTemplatesChannel string
 	// JSON writes json line output to files
 	JSONL bool
 	// JSONRequests writes requests/responses for matches in JSON output
@@ -368,10 +370,16 @@ type Options struct {
 	SourceIP string
 	// AttackType overrides template level attack-type configuration
 	AttackType string
+	// PayloadRandomOrder iterates payload combinations in a random order
+	// instead of the sequential order of the payload sets
+	PayloadRandomOrder bool
 	// ResponseReadSize is the maximum size of response to read
 	ResponseReadSize int
 	// ResponseSaveSize is the maximum size of response to save
 	ResponseSaveSize int
+	// RequestSaveSize is the maximum request body kept in saved output and
+	// debug dumps. Matchers see the full request. 0 keeps the whole body.
+	RequestSaveSize int
 	// Health Check
 	HealthCheck bool
 	// Time to wait between each input read operation before closing the stream
@@ -612,6 +620,7 @@ func (options *Options) ReleaseTemplateThread() {
 	}
 }
 
+// Copy returns a copy of the options.
 func (options *Options) Copy() *Options {
 	optCopy := &Options{
 		Tags:                           options.Tags,
@@ -731,6 +740,7 @@ func (options *Options) Copy() *Options {
 		VarDumpLimit:                   options.VarDumpLimit,
 		NoColor:                        options.NoColor,
 		UpdateTemplates:                options.UpdateTemplates,
+		UpdateTemplatesChannel:         options.UpdateTemplatesChannel,
 		JSONL:                          options.JSONL,
 		JSONRequests:                   options.JSONRequests,
 		OmitRawRequests:                options.OmitRawRequests,
@@ -779,8 +789,10 @@ func (options *Options) Copy() *Options {
 		Interface:                      options.Interface,
 		SourceIP:                       options.SourceIP,
 		AttackType:                     options.AttackType,
+		PayloadRandomOrder:             options.PayloadRandomOrder,
 		ResponseReadSize:               options.ResponseReadSize,
 		ResponseSaveSize:               options.ResponseSaveSize,
+		RequestSaveSize:                options.RequestSaveSize,
 		HealthCheck:                    options.HealthCheck,
 		InputReadTimeout:               options.InputReadTimeout,
 		DisableStdin:                   options.DisableStdin,
@@ -995,6 +1007,7 @@ func DefaultOptions() *Options {
 		MaxHostError:               30,
 		ResponseReadSize:           10 * unitutils.Mega,
 		ResponseSaveSize:           unitutils.Mega,
+		RequestSaveSize:            32 * unitutils.Kilo,
 		ExecutionId:                xid.New().String(),
 		Logger:                     newQuietLogger(),
 	}

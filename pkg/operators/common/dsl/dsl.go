@@ -8,6 +8,7 @@ import (
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/govaluate"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
+	"github.com/projectdiscovery/useragent"
 	stringsutil "github.com/projectdiscovery/utils/strings"
 )
 
@@ -40,6 +41,14 @@ func init() {
 			return defaultPort, nil
 		}
 		return port, nil
+	}))
+	// cacheable is false on purpose: a cached result would return the same
+	// user agent for the rest of the run, defeating the randomization.
+	_ = dsl.AddFunction(dsl.NewWithSingleSignature("rand_user_agent", "() string", false, func(args ...interface{}) (interface{}, error) {
+		if len(args) != 0 {
+			return nil, dsl.ErrInvalidDslFunction
+		}
+		return useragent.PickRandom().Raw, nil
 	}))
 
 	dsl.PrintDebugCallback = func(args ...interface{}) error {

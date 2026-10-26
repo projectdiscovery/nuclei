@@ -32,7 +32,11 @@ func (request *Request) Match(data map[string]interface{}, matcher *matchers.Mat
 		if !ok {
 			return false, []string{}
 		}
-		return matcher.Result(matcher.MatchStatusCode(statusCode)), []string{responsehighlighter.CreateStatusCodeSnippet(data["response"].(string), statusCode)}
+		respSnippet := types.ToString(data["response"])
+		if respSnippet == "" {
+			respSnippet = types.ToString(data["header"])
+		}
+		return matcher.Result(matcher.MatchStatusCode(statusCode)), []string{responsehighlighter.CreateStatusCodeSnippet(respSnippet, statusCode)}
 	case matchers.SizeMatcher:
 		return matcher.Result(matcher.MatchSize(len(item))), []string{}
 	case matchers.WordsMatcher:
@@ -204,8 +208,8 @@ func (request *Request) MakeResultEventItem(wrapped *output.InternalWrappedEvent
 		MatcherStatus:    true,
 		IP:               fields.Ip,
 		GlobalMatchers:   isGlobalMatchers,
-		Request:          types.ToString(wrapped.InternalEvent["request"]),
-		Response:         request.truncateResponse(wrapped.InternalEvent["response"]),
+		Request:          request.savedRequest(types.ToString(wrapped.InternalEvent["request"])),
+		Response:         request.truncateResponse(eventResponse(wrapped.InternalEvent)),
 		CURLCommand:      types.ToString(wrapped.InternalEvent["curl-command"]),
 		TemplateEncoded:  request.options.EncodeTemplate(),
 		Error:            types.ToString(wrapped.InternalEvent["error"]),
@@ -213,6 +217,25 @@ func (request *Request) MakeResultEventItem(wrapped *output.InternalWrappedEvent
 		ReqURLPattern:    reqURLPattern,
 	}
 	return data
+}
+
+// savedRequest caps the request body stored on a result. The event keeps the
+// full request so matchers can read past RequestSaveSize.
+func (request *Request) savedRequest(dump string) string {
+	if request.options == nil || request.options.Options == nil {
+		return dump
+	}
+	return string(capDumpBody([]byte(dump), request.options.Options.RequestSaveSize))
+}
+
+// eventResponse returns the full response of event. Events matched after the
+// response chain is released, such as interactsh matches, may not carry it, so
+// it is rebuilt from the headers and body they keep.
+func eventResponse(event output.InternalEvent) string {
+	if response := types.ToString(event["response"]); response != "" {
+		return response
+	}
+	return types.ToString(event["all_headers"]) + types.ToString(event["body"])
 }
 
 func (request *Request) truncateResponse(response interface{}) string {

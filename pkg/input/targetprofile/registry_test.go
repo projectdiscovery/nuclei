@@ -49,10 +49,14 @@ func selected(t *testing.T, r *Registry, input string) []string {
 
 func bindLine(t *testing.T, r *Registry, line string) string {
 	t.Helper()
-	target, selection, err := r.ParseLine(line)
+	parsed, err := r.ParseLine(line)
 	require.NoError(t, err)
-	r.Bind(target, selection)
-	return target
+	r.Bind(&contextargs.MetaInput{Input: parsed.Target, CustomIP: parsed.IP}, parsed.Selection)
+	return parsed.Target
+}
+
+func input(target string) *contextargs.MetaInput {
+	return &contextargs.MetaInput{Input: target}
 }
 
 func TestParseLineRejectsInvalidLines(t *testing.T) {
@@ -65,12 +69,60 @@ func TestParseLineRejectsInvalidLines(t *testing.T) {
 		"invalid type":     `{"target": "a.com", "type": ["smtp"]}`,
 		"non string value": `{"target": "a.com", "tags": [1]}`,
 		"missing profile":  `{"target": "a.com", "profile": "does-not-exist"}`,
+		"non string ip":    `{"target": "a.com", "ip": 10}`,
+		"invalid ip":       `{"target": "a.com", "ip": "10.0.0"}`,
+		"ip with zone":     `{"target": "a.com", "ip": "fe80::1%eth0"}`,
+		"unspecified ip":   `{"target": "a.com", "ip": "0.0.0.0"}`,
+		"ip target":        `{"target": "https://192.0.2.1", "ip": "192.0.2.10"}`,
+		"cidr target":      `{"target": "192.0.2.0/24", "ip": "192.0.2.10"}`,
+		"asn target":       `{"target": "AS13335", "ip": "192.0.2.10"}`,
 	} {
 		t.Run(name, func(t *testing.T) {
-			_, _, err := r.ParseLine(line)
+			_, err := r.ParseLine(line)
 			require.Error(t, err)
 		})
 	}
+}
+
+func TestParseLineIP(t *testing.T) {
+	r := NewRegistry(templatesDir)
+	for line, want := range map[string]Line{
+		`{"target": "https://a.com", "ip": "192.0.2.10"}`:             {Target: "https://a.com", IP: "192.0.2.10"},
+		`{"target": "a.com:8443", "ip": " 2001:DB8::1 "}`:             {Target: "a.com:8443", IP: "2001:db8::1"},
+		`{"target": "a.com", "ip": "::ffff:192.0.2.10"}`:              {Target: "a.com", IP: "192.0.2.10"},
+		`{"target": "a.com"}`:                                         {Target: "a.com"},
+		`{"target": "https://a.com", "ip": "192.0.2.10", "tags": []}`: {Target: "https://a.com", IP: "192.0.2.10"},
+	} {
+		t.Run(line, func(t *testing.T) {
+			parsed, err := r.ParseLine(line)
+			require.NoError(t, err)
+			require.Equal(t, want, parsed)
+		})
+	}
+	require.False(t, r.Scoped(), "lines that only set an ip do not scope the scan")
+	require.Nil(t, r.LoadFilter())
+}
+
+func TestPinnedTargetsKeepTheirSelection(t *testing.T) {
+	r := NewRegistry(templatesDir)
+	bindLine(t, r, `{"target": "https://a.com", "ip": "192.0.2.10", "tags": ["thinkphp"]}`)
+	bindLine(t, r, `{"target": "https://a.com", "ip": "192.0.2.11", "tags": ["tomcat"]}`)
+	bindLine(t, r, `{"target": "https://a.com", "ip": "192.0.2.12"}`)
+	r.Prepare(allTemplates)
+
+	selectedFor := func(ip string) []string {
+		selection := r.For(&contextargs.MetaInput{Input: "https://a.com", CustomIP: ip})
+		var ids []string
+		for _, tpl := range allTemplates {
+			if selection == nil || selection.Allows(tpl.Path) {
+				ids = append(ids, tpl.ID)
+			}
+		}
+		return ids
+	}
+	require.Equal(t, []string{"thinkphp-rce"}, selectedFor("192.0.2.10"))
+	require.Equal(t, []string{"tomcat-panel", "CVE-2020-1938"}, selectedFor("192.0.2.11"))
+	require.Equal(t, []string{"thinkphp-rce", "tomcat-panel", "CVE-2020-1938", "git-config"}, selectedFor("192.0.2.12"))
 }
 
 func TestProfileMustBeAnID(t *testing.T) {
@@ -85,14 +137,14 @@ func TestProfileMustBeAnID(t *testing.T) {
 		t.Run(profile, func(t *testing.T) {
 			line, err := json.Marshal(map[string]string{"target": "a.com", "profile": profile})
 			require.NoError(t, err)
-			_, _, err = r.ParseLine(string(line))
+			_, err = r.ParseLine(string(line))
 			require.ErrorContains(t, err, "profile ID")
 		})
 	}
 
-	_, selection, err := r.ParseLine(`{"target": "a.com", "profile": "php"}`)
+	parsed, err := r.ParseLine(`{"target": "a.com", "profile": "php"}`)
 	require.NoError(t, err)
-	require.Equal(t, []string{"thinkphp"}, selection.rules[0].filter.Tags)
+	require.Equal(t, []string{"thinkphp"}, parsed.Selection.rules[0].filter.Tags)
 }
 
 func TestSelectionFilters(t *testing.T) {
@@ -129,37 +181,38 @@ func TestProfileWithInlineOverride(t *testing.T) {
 	require.NoError(t, os.WriteFile(filepath.Join(dir, "profiles", "php.yml"), []byte(profile), 0o600))
 
 	r := NewRegistry(dir)
-	target, selection, err := r.ParseLine(`{"target": "https://a.com", "profile": "php", "severity": "critical"}`)
+	parsed, err := r.ParseLine(`{"target": "https://a.com", "profile": "php", "severity": "critical"}`)
 	require.NoError(t, err)
-	require.Len(t, selection.rules, 1)
-	require.Equal(t, []string{"thinkphp"}, selection.rules[0].filter.Tags)
-	require.Equal(t, []severity.Severity{severity.Critical}, selection.rules[0].filter.Severities)
-	require.Equal(t, "https://a.com", target)
+	require.Len(t, parsed.Selection.rules, 1)
+	require.Equal(t, []string{"thinkphp"}, parsed.Selection.rules[0].filter.Tags)
+	require.Equal(t, []severity.Severity{severity.Critical}, parsed.Selection.rules[0].filter.Severities)
+	require.Equal(t, "https://a.com", parsed.Target)
 }
 
 func TestDuplicateTargetsMerge(t *testing.T) {
 	r := NewRegistry(templatesDir)
-	_, php, err := r.ParseLine(`{"target": "https://a.com", "tags": ["thinkphp"]}`)
+	phpLine, err := r.ParseLine(`{"target": "https://a.com", "tags": ["thinkphp"]}`)
 	require.NoError(t, err)
-	_, tomcat, err := r.ParseLine(`{"target": "https://a.com", "tags": ["tomcat"]}`)
+	tomcatLine, err := r.ParseLine(`{"target": "https://a.com", "tags": ["tomcat"]}`)
 	require.NoError(t, err)
+	php, tomcat := phpLine.Selection, tomcatLine.Selection
 
-	r.Bind("https://a.com", php)
-	r.Merge("https://a.com", tomcat)
-	r.Merge("https://a.com", php)
-	r.Bind("https://b.com", php)
-	r.Merge("https://b.com", nil)
-	r.Bind("https://c.com", nil)
-	r.Merge("https://c.com", php)
+	r.Bind(input("https://a.com"), php)
+	r.Merge(input("https://a.com"), tomcat)
+	r.Merge(input("https://a.com"), php)
+	r.Bind(input("https://b.com"), php)
+	r.Merge(input("https://b.com"), nil)
+	r.Bind(input("https://c.com"), nil)
+	r.Merge(input("https://c.com"), php)
 	r.Prepare(allTemplates)
 
 	require.Equal(t, []string{"thinkphp-rce", "tomcat-panel", "CVE-2020-1938"}, selected(t, r, "https://a.com"))
 	require.Nil(t, r.For(&contextargs.MetaInput{Input: "https://b.com"}), "a plain duplicate lifts the restriction")
 	require.Nil(t, r.For(&contextargs.MetaInput{Input: "https://c.com"}), "a plain target stays unrestricted")
 
-	_, again, err := r.ParseLine(`{"target": "https://z.com", "tags": ["thinkphp"]}`)
+	again, err := r.ParseLine(`{"target": "https://z.com", "tags": ["thinkphp"]}`)
 	require.NoError(t, err)
-	require.Same(t, php, again, "identical selectors are interned")
+	require.Same(t, php, again.Selection, "identical selectors are interned")
 }
 
 func TestLoadFilter(t *testing.T) {
@@ -183,14 +236,14 @@ func TestLoadFilter(t *testing.T) {
 	t.Run("unrestricted target loads everything", func(t *testing.T) {
 		r := NewRegistry(templatesDir)
 		bindLine(t, r, `{"target": "https://a.com", "tags": ["thinkphp"]}`)
-		r.Bind("https://b.com", nil)
+		r.Bind(input("https://b.com"), nil)
 		require.Nil(t, r.LoadFilter())
 	})
 
 	t.Run("plain duplicate of a target line loads everything", func(t *testing.T) {
 		r := NewRegistry(templatesDir)
 		target := bindLine(t, r, `{"target": "https://a.com", "tags": ["thinkphp"]}`)
-		r.Merge(target, nil)
+		r.Merge(input(target), nil)
 		require.Nil(t, r.LoadFilter())
 	})
 }

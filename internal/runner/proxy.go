@@ -14,8 +14,24 @@ import (
 )
 
 const (
-	HTTP_PROXY_ENV = "HTTP_PROXY"
+	HTTP_PROXY_ENV  = "HTTP_PROXY"
+	HTTPS_PROXY_ENV = "HTTPS_PROXY"
 )
+
+var proxyEnvVars = []string{
+	"HTTP_PROXY",
+	"HTTPS_PROXY",
+	"http_proxy",
+	"https_proxy",
+	"ALL_PROXY",
+	"all_proxy",
+}
+
+func setProxyEnv(proxyURL string) {
+	for _, env := range proxyEnvVars {
+		_ = os.Setenv(env, proxyURL)
+	}
+}
 
 // loadProxyServers load list of proxy servers from file or comma separated
 func loadProxyServers(options *types.Options) error {
@@ -53,15 +69,19 @@ func loadProxyServers(options *types.Options) error {
 		return errkit.Wrapf(err, "failed to parse proxy got %v", err)
 	}
 	if options.ProxyInternal {
-		_ = os.Setenv(HTTP_PROXY_ENV, proxyURL.String())
+		setProxyEnv(proxyURL.String())
 	}
 	switch proxyURL.Scheme {
 	case proxyutils.HTTP, proxyutils.HTTPS:
-		options.Logger.Verbose().Msgf("Using %s as proxy server", proxyURL.String())
+		if options.Logger != nil {
+			options.Logger.Verbose().Msgf("Using %s as proxy server", proxyURL.String())
+		}
 		options.AliveHttpProxy = proxyURL.String()
 	case proxyutils.SOCKS5:
 		options.AliveSocksProxy = proxyURL.String()
-		options.Logger.Verbose().Msgf("Using %s as socket proxy server", proxyURL.String())
+		if options.Logger != nil {
+			options.Logger.Verbose().Msgf("Using %s as socket proxy server", proxyURL.String())
+		}
 	}
 	return nil
 }
