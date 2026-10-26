@@ -55,8 +55,10 @@ func Cluster(list []*Template) [][]*Template {
 
 	// Split up templates that might be clusterable
 	for _, template := range list {
-		// it is not possible to cluster flow and multiprotocol due to dependent execution
-		if template.Flow != "" || template.Options.IsMultiProtocol {
+		// it is not possible to cluster flow and multiprotocol due to dependent execution.
+		// A cluster runs with the options of its first template, so a template
+		// with its own interactsh-eviction would lose that TTL.
+		if template.Flow != "" || template.Options.IsMultiProtocol || template.InteractshEviction > 0 {
 			final = append(final, []*Template{template})
 			continue
 		}

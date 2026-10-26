@@ -205,6 +205,7 @@ func (e *ExecutorOptions) RegisterInteractshRequest(urls []string, data *interac
 	data.IssuesClient = e.IssuesClient
 	data.FuzzParamsFrequency = e.FuzzParamsFrequency
 	data.Scope = e.InteractshScope
+	data.Eviction = e.InteractshEvictionDuration()
 	e.Interactsh.RequestEvent(urls, data)
 }
 

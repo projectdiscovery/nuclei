@@ -361,7 +361,6 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 			Operators:      request.CompiledOperators,
 			MatchFunc:      request.Match,
 			ExtractFunc:    request.Extract,
-			Eviction:       request.options.InteractshEvictionDuration(),
 		})
 	}
 

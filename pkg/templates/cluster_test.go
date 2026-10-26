@@ -49,4 +49,12 @@ func TestClusterTemplates(t *testing.T) {
 		got := Cluster(tpls)[0]
 		require.ElementsMatch(t, got, expected)
 	})
+	t.Run("no-cluster-with-interactsh-eviction", func(t *testing.T) {
+		tp1 := &Template{Path: "first.yaml", RequestsHTTP: []*http.Request{{Path: []string{"{{BaseURL}}"}}}}
+		tp2 := &Template{Path: "second.yaml", InteractshEviction: 300, RequestsHTTP: []*http.Request{{Path: []string{"{{BaseURL}}"}}}}
+		tp1.Options = execOptions
+		tp2.Options = execOptions
+		got := Cluster([]*Template{tp1, tp2})
+		require.ElementsMatch(t, [][]*Template{{tp1}, {tp2}}, got)
+	})
 }
