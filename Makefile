@@ -99,10 +99,10 @@ integration:
 integration-debug:
 	$(GOTEST) -tags=integration ./internal/tests/integration -v $(GO_TEST_ARGS) -args $(INTEGRATION_ARGS)
 
-# Runs Landlock and bubblewrap sandbox tests inside Linux Docker (macOS/Windows hosts).
+# Runs the Landlock sandbox tests inside Linux Docker (macOS/Windows hosts).
 test-sandbox-linux:
 	docker run --rm -e GOTOOLCHAIN=auto -v "$(PWD):/src" -w /src golang:bookworm \
-		bash -c 'apt-get update -qq && apt-get install -y -qq bubblewrap >/dev/null && go test ./pkg/protocols/common/sandbox/... ./pkg/protocols/code/... -count=1 -run "Landlock|Apply|Supported|Bubblewrap|DisableSandbox"'
+		go test ./pkg/protocols/common/sandbox/... ./pkg/protocols/code/... -count=1 -run "Landlock|Apply|Supported|DisableSandbox"
 
 # Opt-in HTTP engine scale regression harness (not part of CI). Stands up many
 # loopback hosts and asserts finding parity across a diverse template set.

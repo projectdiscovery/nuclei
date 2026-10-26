@@ -244,7 +244,9 @@ CONFIGURATIONS:
    -ztls                                 use ztls library with autofallback to standard one for tls13 [Deprecated] autofallback to ztls is enabled by default
    -sni string                           tls sni hostname to use (default: input domain name)
    -dka, -dialer-keep-alive value        keep-alive duration for network requests.
-   -lfa, -allow-local-file-access        allow all templates in the run to read any file on the system (not just payloads)
+   -lfa, -allow-local-file-access        allows local file access from additional allowed directories (cwd and --allowed-paths)
+   -ap, -allowed-paths string[]          additional filesystem roots allowed with -lfa (repeatable)
+   -no-sandbox                           disable the OS-level filesystem sandbox and the docker sandbox for code templates
    -lna, -restrict-local-network-access  blocks connections to the local / private network
    -i, -interface string                 network interface to use for network scan
    -at, -attack-type string              type of payload combinations to perform (batteringram,pitchfork,clusterbomb)

@@ -383,7 +383,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.DurationVarP(&options.DialerKeepAlive, "dialer-keep-alive", "dka", 0, "keep-alive duration for network requests."),
 		flagSet.BoolVarP(&options.AllowLocalFileAccess, "allow-local-file-access", "lfa", false, "allows local file access from additional allowed directories (cwd and --allowed-paths)"),
 		flagSet.StringSliceVarP(&options.AllowedPaths, "allowed-paths", "ap", nil, "additional filesystem roots allowed with -lfa (repeatable)", goflags.CommaSeparatedStringSliceOptions),
-		flagSet.BoolVar(&options.DisableSandbox, "no-sandbox", false, "disable OS-level filesystem sandbox enforcement"),
+		flagSet.BoolVar(&options.DisableSandbox, "no-sandbox", false, "disable the OS-level filesystem sandbox and the docker sandbox for code templates"),
 		flagSet.BoolVarP(&options.RestrictLocalNetworkAccess, "restrict-local-network-access", "lna", false, "blocks connections to the local / private network"),
 		flagSet.StringVarP(&options.Interface, "interface", "i", "", "network interface to use for network scan"),
 		flagSet.StringVarP(&options.AttackType, "attack-type", "at", "", "type of payload combinations to perform (batteringram,pitchfork,clusterbomb)"),
