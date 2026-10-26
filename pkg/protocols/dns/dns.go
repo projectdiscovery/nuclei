@@ -224,7 +224,7 @@ func (request *Request) getDnsClient(options *protocols.ExecutorOptions, metadat
 					// Defer resolution to the per-request runtime path.
 					continue
 				}
-				result, err := render.Render(render.Input{Text: resolver, Values: metadata})
+				result, err := render.Render(render.Input{Options: options.GetOptions(), Text: resolver, Values: metadata})
 				if err != nil {
 					return nil, errors.Wrap(err, "could not resolve resolvers expressions")
 				}

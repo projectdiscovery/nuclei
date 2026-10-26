@@ -22,6 +22,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/loader/parser"
 	"github.com/projectdiscovery/nuclei/v3/pkg/model"
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators"
+	llmclient "github.com/projectdiscovery/nuclei/v3/pkg/operators/common/llm"
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators/extractors"
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators/matchers"
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
@@ -81,6 +82,10 @@ type ExecutorOptions struct {
 	// Verified reports whether a trusted verifier verified the template's
 	// signature. Code and JavaScript protocols check it at execution time.
 	Verified bool
+	// LLMClient is the scan's llm client, injected into llm matchers and
+	// extractors when a request compiles. Nil unless -llm is set, which makes
+	// those operators fail closed.
+	LLMClient llmclient.Client
 	// TemplateVerificationCallback returns cached verification info for a template path.
 	// If it returns nil, verification should be computed normally.
 	TemplateVerificationCallback func(templatePath string) *TemplateVerification
@@ -104,6 +109,9 @@ type ExecutorOptions struct {
 	Browser *engine.Browser
 	// Interactsh is a client for interactsh oob polling server
 	Interactsh *interactsh.Client
+	// InteractshScope isolates delayed callbacks and cleanup for one execution
+	// when Interactsh is shared by concurrent engines.
+	InteractshScope *interactsh.RequestScope
 	// HostErrorsCache is an optional cache for handling host errors
 	HostErrorsCache hosterrorscache.CacheInterface
 	// Stop execution once first match is found (Assigned while parsing templates)
@@ -157,6 +165,35 @@ type ExecutorOptions struct {
 	CustomFastdialer *fastdialer.Dialer
 	// ClusterMappings stores cluster ID to template IDs mapping during execution
 	ClusterMappings *templateTypes.ClusterMappingsMap
+	// TargetScope narrows the templates run on each target (per-target profiles)
+	TargetScope TargetScope
+}
+
+// TargetScope resolves the template selection that applies to a target.
+type TargetScope interface {
+	// For returns the selection for input, or nil when every template applies.
+	For(input *contextargs.MetaInput) TemplateSelection
+}
+
+// TemplateSelection decides which templates run on a target. Implementations
+// must be comparable, such as pointers, since targets are grouped by selection.
+type TemplateSelection interface {
+	// Allows reports whether the template loaded from templatePath is selected.
+	Allows(templatePath string) bool
+}
+
+// RegisterInteractshRequest attaches execution-local output dependencies before
+// registering a delayed OOB callback on a potentially shared Interactsh client.
+func (e *ExecutorOptions) RegisterInteractshRequest(urls []string, data *interactsh.RequestData) {
+	if e == nil || e.Interactsh == nil || data == nil {
+		return
+	}
+	data.Output = e.Output
+	data.Progress = e.Progress
+	data.IssuesClient = e.IssuesClient
+	data.FuzzParamsFrequency = e.FuzzParamsFrequency
+	data.Scope = e.InteractshScope
+	e.Interactsh.RequestEvent(urls, data)
 }
 
 // todo: centralizing components is not feasible with current clogged architecture
@@ -232,7 +269,7 @@ func (e *ExecutorOptions) GetTemplateCtx(input *contextargs.MetaInput) *contexta
 // NewVariablesScope creates a variable evaluation scope with terminal data
 // layers applied in order.
 func (e *ExecutorOptions) NewVariablesScope(values ...map[string]interface{}) *variables.Scope {
-	return variables.NewScope().AddData(values...)
+	return variables.NewScope().WithOptions(e.GetOptions()).AddData(values...)
 }
 
 // AddTemplateCtxToVariablesScope adds template context values to a variable
@@ -304,6 +341,7 @@ func (e *ExecutorOptions) Copy() *ExecutorOptions {
 		TemplateInfo:                 e.TemplateInfo,
 		TemplateVerifier:             e.TemplateVerifier,
 		Verified:                     e.Verified,
+		LLMClient:                    e.LLMClient,
 		TemplateVerificationCallback: e.TemplateVerificationCallback,
 		RawTemplate:                  e.RawTemplate,
 		Output:                       e.Output,
@@ -315,6 +353,7 @@ func (e *ExecutorOptions) Copy() *ExecutorOptions {
 		ProjectFile:                  e.ProjectFile,
 		Browser:                      e.Browser,
 		Interactsh:                   e.Interactsh,
+		InteractshScope:              e.InteractshScope,
 		HostErrorsCache:              e.HostErrorsCache,
 		StopAtFirstMatch:             e.StopAtFirstMatch,
 		Variables:                    e.Variables,
@@ -338,6 +377,7 @@ func (e *ExecutorOptions) Copy() *ExecutorOptions {
 		ExportReqURLPattern:          e.ExportReqURLPattern,
 		GlobalMatchers:               e.GlobalMatchers,
 		Logger:                       e.Logger,
+		TargetScope:                  e.TargetScope,
 	}
 	copy.ClusterMappings = e.ClusterMappings.Copy()
 	copy.CreateTemplateCtxStore()
@@ -415,6 +455,11 @@ func MakeDefaultResultEvent(request Request, wrapped *output.InternalWrappedEven
 
 // MakeDefaultExtractFunc performs extracting operation for an extractor on model and returns true or false.
 func MakeDefaultExtractFunc(data map[string]interface{}, extractor *extractors.Extractor) map[string]struct{} {
+	return MakeDefaultExtractFuncWithOptions(data, extractor, nil)
+}
+
+// MakeDefaultExtractFuncWithOptions extracts using the current scan's DSL policy.
+func MakeDefaultExtractFuncWithOptions(data map[string]interface{}, extractor *extractors.Extractor, options *types.Options) map[string]struct{} {
 	part := extractor.Part
 	if part == "" {
 		part = "response"
@@ -436,13 +481,18 @@ func MakeDefaultExtractFunc(data map[string]interface{}, extractor *extractors.E
 	case extractors.XPathExtractor:
 		return extractor.ExtractXPath(itemStr)
 	case extractors.DSLExtractor:
-		return extractor.ExtractDSL(data)
+		return extractor.ExtractDSLWithOptions(data, options)
 	}
 	return nil
 }
 
 // MakeDefaultMatchFunc performs matching operation for a matcher on model and returns true or false.
 func MakeDefaultMatchFunc(data map[string]interface{}, matcher *matchers.Matcher) (bool, []string) {
+	return MakeDefaultMatchFuncWithOptions(data, matcher, nil)
+}
+
+// MakeDefaultMatchFuncWithOptions matches using the current scan's DSL policy.
+func MakeDefaultMatchFuncWithOptions(data map[string]interface{}, matcher *matchers.Matcher, options *types.Options) (bool, []string) {
 	part := matcher.Part
 	if part == "" {
 		part = "response"
@@ -459,13 +509,13 @@ func MakeDefaultMatchFunc(data map[string]interface{}, matcher *matchers.Matcher
 		result := matcher.Result(matcher.MatchSize(len(item)))
 		return result, nil
 	case matchers.WordsMatcher:
-		return matcher.ResultWithMatchedSnippet(matcher.MatchWords(item, nil))
+		return matcher.ResultWithMatchedSnippet(matcher.MatchWordsWithOptions(item, nil, options))
 	case matchers.RegexMatcher:
 		return matcher.ResultWithMatchedSnippet(matcher.MatchRegex(item))
 	case matchers.BinaryMatcher:
 		return matcher.ResultWithMatchedSnippet(matcher.MatchBinary(item))
 	case matchers.DSLMatcher:
-		return matcher.Result(matcher.MatchDSL(data)), nil
+		return matcher.Result(matcher.MatchDSLWithOptions(data, options)), nil
 	case matchers.XPathMatcher:
 		return matcher.Result(matcher.MatchXPath(item)), []string{}
 	}
@@ -496,6 +546,7 @@ func (e *ExecutorOptions) ApplyNewEngineOptions(n *ExecutorOptions) {
 	e.ProjectFile = n.ProjectFile
 	e.Browser = n.Browser
 	e.Interactsh = n.Interactsh
+	e.InteractshScope = n.InteractshScope
 	e.HostErrorsCache = n.HostErrorsCache
 	e.InputHelper = n.InputHelper
 	e.FuzzParamsFrequency = n.FuzzParamsFrequency
@@ -513,4 +564,12 @@ func (e *ExecutorOptions) ApplyNewEngineOptions(n *ExecutorOptions) {
 	e.Logger = n.Logger
 	e.CustomFastdialer = n.CustomFastdialer
 	e.ClusterMappings = n.ClusterMappings.Copy()
+}
+
+// GetOptions returns scan options, or nil for an unbound executor.
+func (e *ExecutorOptions) GetOptions() *types.Options {
+	if e == nil {
+		return nil
+	}
+	return e.Options
 }

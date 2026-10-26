@@ -263,9 +263,13 @@ func (request *Request) findMatchesWithReader(reader io.Reader, input *contextar
 	// we are forced to check if the whole file needs to be elaborated
 	// - matchers-condition option set to AND
 	hasAndCondition := request.CompiledOperators.GetMatchersCondition() == matchers.ANDCondition
-	// - any matcher has AND condition
+	hasOffsetMatcher := false
+	// - any matcher has AND condition or an absolute offset
 	for _, matcher := range request.CompiledOperators.Matchers {
-		if hasAndCondition {
+		if matcher.Offset != nil {
+			hasOffsetMatcher = true
+		}
+		if hasAndCondition && hasOffsetMatcher {
 			break
 		}
 		if matcher.GetCondition() == matchers.ANDCondition {
@@ -275,7 +279,7 @@ func (request *Request) findMatchesWithReader(reader io.Reader, input *contextar
 
 	scanner := bufio.NewScanner(reader)
 	buffer := []byte{}
-	if hasAndCondition {
+	if hasAndCondition || hasOffsetMatcher {
 		scanner.Buffer(buffer, int(defaultMaxReadSize))
 		scanner.Split(func(data []byte, atEOF bool) (advance int, token []byte, err error) {
 			defaultMaxReadSizeInt := int(defaultMaxReadSize)

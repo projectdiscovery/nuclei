@@ -196,7 +196,7 @@ func (request *Request) executeRequestWithPayloads(target *contextargs.Context, 
 
 	requestOptions := request.options
 	for key, value := range request.Headers {
-		result, dataErr := render.Render(render.Input{Text: value, Values: payloadValues})
+		result, dataErr := render.Render(render.Input{Options: request.options.GetOptions(), Text: value, Values: payloadValues})
 		if dataErr != nil {
 			requestOptions.Output.Request(requestOptions.TemplateID, input, request.Type().String(), dataErr)
 			requestOptions.Progress.IncrementFailedRequestsBy(1)
@@ -228,7 +228,7 @@ func (request *Request) executeRequestWithPayloads(target *contextargs.Context, 
 		gologger.Debug().Msgf("WebSocket Protocol request variables: %s\n", vardump.DumpVariables(payloadValues))
 	}
 
-	addressResult, dataErr := render.Render(render.Input{Text: request.Address, Values: payloadValues})
+	addressResult, dataErr := render.Render(render.Input{Options: request.options.GetOptions(), Text: request.Address, Values: payloadValues})
 	if dataErr != nil {
 		requestOptions.Output.Request(requestOptions.TemplateID, input, request.Type().String(), dataErr)
 		requestOptions.Progress.IncrementFailedRequestsBy(1)
@@ -333,7 +333,7 @@ func (request *Request) readWriteInputWebsocket(conn net.Conn, payloadValues map
 	for _, req := range request.Inputs {
 		reqBuilder.Grow(len(req.Data))
 
-		result, dataErr := render.Render(render.Input{Text: req.Data, Values: payloadValues})
+		result, dataErr := render.Render(render.Input{Options: request.options.GetOptions(), Text: req.Data, Values: payloadValues})
 		if dataErr != nil {
 			requestOptions.Output.Request(requestOptions.TemplateID, input, request.Type().String(), dataErr)
 			requestOptions.Progress.IncrementFailedRequestsBy(1)
@@ -369,7 +369,7 @@ func (request *Request) readWriteInputWebsocket(conn net.Conn, payloadValues map
 
 			// Run any internal extractors for the request here and add found values to map.
 			if request.CompiledOperators != nil {
-				values := request.CompiledOperators.ExecuteInternalExtractors(map[string]interface{}{req.Name: bufferStr}, protocols.MakeDefaultExtractFunc)
+				values := request.CompiledOperators.ExecuteInternalExtractors(map[string]interface{}{req.Name: bufferStr}, request.Extract)
 				maps.Copy(inputEvents, values)
 			}
 		}
@@ -406,12 +406,12 @@ func getAddress(toTest string) (string, error) {
 // true and a list of matched snippets if the matcher type is supports it
 // otherwise false and an empty string slice
 func (request *Request) Match(data map[string]interface{}, matcher *matchers.Matcher) (bool, []string) {
-	return protocols.MakeDefaultMatchFunc(data, matcher)
+	return protocols.MakeDefaultMatchFuncWithOptions(data, matcher, request.options.GetOptions())
 }
 
 // Extract performs extracting operation for an extractor on model and returns true or false.
 func (request *Request) Extract(data map[string]interface{}, matcher *extractors.Extractor) map[string]struct{} {
-	return protocols.MakeDefaultExtractFunc(data, matcher)
+	return protocols.MakeDefaultExtractFuncWithOptions(data, matcher, request.options.GetOptions())
 }
 
 // MakeResultEvent creates a result event from internal wrapped event

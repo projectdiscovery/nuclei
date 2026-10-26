@@ -35,13 +35,13 @@ func (request *Request) Match(data map[string]interface{}, matcher *matchers.Mat
 	case matchers.SizeMatcher:
 		return matcher.Result(matcher.MatchSize(len(types.ToString(item)))), []string{}
 	case matchers.WordsMatcher:
-		return matcher.ResultWithMatchedSnippet(matcher.MatchWords(types.ToString(item), data))
+		return matcher.ResultWithMatchedSnippet(matcher.MatchWordsWithOptions(types.ToString(item), data, request.options.GetOptions()))
 	case matchers.RegexMatcher:
 		return matcher.ResultWithMatchedSnippet(matcher.MatchRegex(types.ToString(item)))
 	case matchers.BinaryMatcher:
 		return matcher.ResultWithMatchedSnippet(matcher.MatchBinary(types.ToString(item)))
 	case matchers.DSLMatcher:
-		return matcher.Result(matcher.MatchDSL(data)), []string{}
+		return matcher.Result(matcher.MatchDSLWithOptions(data, request.options.GetOptions())), []string{}
 	case matchers.XPathMatcher:
 		return matcher.Result(matcher.MatchXPath(types.ToString(item))), []string{}
 	}
@@ -61,7 +61,7 @@ func (request *Request) Extract(data map[string]interface{}, extractor *extracto
 	case extractors.KValExtractor:
 		return extractor.ExtractKval(data)
 	case extractors.DSLExtractor:
-		return extractor.ExtractDSL(data)
+		return extractor.ExtractDSLWithOptions(data, request.options.GetOptions())
 	}
 	return nil
 }

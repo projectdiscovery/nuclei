@@ -181,7 +181,8 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 		}
 		request.addresses = append(request.addresses, addressKV{address: address, tls: shouldUseTLS})
 	}
-	// Pre-compile any input dsl functions before executing the request.
+	// Pre-compile context-free input DSL functions before executing the request.
+	// Network helpers stay deferred so cached templates cannot retain scan results.
 	// Build a map with template variables and -var flag values for pre-compilation
 	preCompileVars := request.options.Variables.GetAll()
 	// Merge in -var flag values
@@ -279,7 +280,14 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 
 // Requests returns the total number of requests the YAML rule will perform
 func (request *Request) Requests() int {
-	return len(request.Address)
+	requests := len(request.Address)
+	if len(request.ports) > 0 {
+		requests *= len(request.ports)
+	}
+	if request.generator != nil {
+		requests *= request.generator.NewIterator().Total()
+	}
+	return requests
 }
 
 func (request *Request) SetDialer(dialer *fastdialer.Dialer) {
