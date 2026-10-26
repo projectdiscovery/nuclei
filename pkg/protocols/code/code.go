@@ -47,7 +47,7 @@ var (
 
 type Sandbox struct {
 	// WorkingDir is kept for backwards-compatible template parsing, but it is
-	// intentionally ignored by the Docker-backed gozero sandbox. Letting
+	// intentionally ignored by the gozero sandbox (Docker or native). Letting
 	// templates choose host/container workdirs reintroduces path-policy footguns.
 	WorkingDir string `yaml:"working-dir,omitempty" json:"working-dir,omitempty" jsonschema:"title=working-dir,description=Working directory"`
 	Image      string `yaml:"image,omitempty" json:"image,omitempty" jsonschema:"title=image,description=Docker image for sandboxed code execution"`

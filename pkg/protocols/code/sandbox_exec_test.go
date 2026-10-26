@@ -73,17 +73,81 @@ func TestCodeProtocolConfinementPolicyIsHardened(t *testing.T) {
 	options.GetTimeouts().CodeExecutionTimeout = 3 * time.Second
 	request.options = testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{})
 
-	policy := request.confinementPolicy()
+	policy := request.confinementPolicy(confine.BackendDocker)
 	require.Equal(t, confine.BackendDocker, policy.Backend)
 	require.Equal(t, "python:3.14", policy.DockerImage)
 	require.False(t, policy.AllowNetwork)
-	require.True(t, policy.ReadonlyRootfs)
-	require.True(t, policy.DropAllCapabilities)
-	require.True(t, policy.NoNewPrivileges)
+	require.False(t, policy.WritableRootfs)
+	require.False(t, policy.AllowCapabilities)
+	require.False(t, policy.AllowNewPrivileges)
+	require.Empty(t, policy.DockerUser)
 	require.Equal(t, 65534, policy.RunAsUID, "payload must run as a non-root uid")
 	require.Equal(t, 65534, policy.RunAsGID, "payload must run as a non-root gid")
 	require.Equal(t, 3*time.Second, policy.Timeout)
 	require.Empty(t, policy.Workspace, "template working-dir must not become a host workspace")
+
+	native := request.confinementPolicy(confine.BackendAuto)
+	require.Equal(t, confine.BackendAuto, native.Backend)
+	require.False(t, native.AllowNetwork)
+	require.False(t, native.AllowCapabilities)
+	require.Empty(t, native.Tmp, "no shared writable temp dir for the payload")
+	require.Empty(t, native.ReadOnlyPaths, "no home path is exposed")
+	require.Equal(t, 3*time.Second, native.Timeout)
+}
+
+// TestCodeProtocolNativeFallbackConfinesPayload forces the Docker-unreachable
+// path and runs a real payload through the gozero native backend (Seatbelt or
+// bubblewrap): it can write its workspace, and it can neither write the home
+// directory, read files under it (such as ~/.ssh) nor reach the network.
+func TestCodeProtocolNativeFallbackConfinesPayload(t *testing.T) {
+	if c, err := confine.New(&confine.Policy{Backend: confine.BackendAuto}); err != nil {
+		t.Skipf("native sandbox unavailable: %v", err)
+	} else {
+		require.NoError(t, c.Close())
+	}
+	prev := dockerUnavailable.Swap(true)
+	t.Cleanup(func() { dockerUnavailable.Store(prev) })
+
+	home, err := os.UserHomeDir()
+	require.NoError(t, err)
+	canaryDir, err := os.MkdirTemp(home, ".nuclei-native-canary-*")
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = os.RemoveAll(canaryDir) })
+	secret := "NUCLEI_NATIVE_SECRET"
+	require.NoError(t, os.WriteFile(filepath.Join(canaryDir, "secret"), []byte(secret), 0o600))
+	homeWrite := filepath.Join(canaryDir, "written")
+
+	options := testutils.DefaultOptions.Copy()
+	options.EnableCodeTemplates = true
+	options.DisableSandbox = false
+	testutils.Init(options)
+	t.Cleanup(func() { testutils.Cleanup(options) })
+	request := &Request{
+		Engine: []string{"sh"},
+		Source: fmt.Sprintf(`echo ws > "$HOME/ws-file" && cat "$HOME/ws-file"
+echo pwned > %[1]q 2>/dev/null; test -f %[1]q && echo HOME_WRITE_OK || echo HOME_WRITE_DENIED
+cat %[2]q 2>/dev/null || echo HOME_READ_DENIED
+ls %[3]q >/dev/null 2>&1 && echo SSH_READ_OK || echo SSH_READ_DENIED
+(exec 3<>/dev/tcp/1.1.1.1/80) 2>/dev/null && echo NET_OK || echo NET_DENIED`, homeWrite, filepath.Join(canaryDir, "secret"), filepath.Join(home, ".ssh")),
+	}
+	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
+		ID:   "code-native-sandbox",
+		Info: model.Info{SeverityHolder: severity.Holder{Severity: severity.Low}, Name: "test"},
+	})
+	executerOpts.Verified = true
+	require.NoError(t, request.Compile(executerOpts))
+
+	var gotEvent output.InternalEvent
+	require.NoError(t, request.ExecuteWithResults(contextargs.NewWithInput(context.Background(), ""), nil, nil, func(event *output.InternalWrappedEvent) {
+		gotEvent = event.InternalEvent
+	}))
+	response, _ := gotEvent["response"].(string)
+	require.Contains(t, response, "ws\n")
+	require.Contains(t, response, "HOME_WRITE_DENIED")
+	require.Contains(t, response, "HOME_READ_DENIED")
+	require.Contains(t, response, "SSH_READ_DENIED")
+	require.NotContains(t, response, secret)
+	require.NoFileExists(t, homeWrite)
 }
 
 func TestCodeProtocolGozeroSandboxDeniesHostFileRead(t *testing.T) {
