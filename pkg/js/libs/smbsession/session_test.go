@@ -103,6 +103,43 @@ func TestListDirContextUnblocksCancelledLs(t *testing.T) {
 	}
 }
 
+func TestListSharesContextUnblocksCancelledCall(t *testing.T) {
+	started := make(chan struct{})
+	closed := make(chan struct{})
+	hang := &hangBackend{fakeBackend: *newFakeBackend(nil), started: started, wait: closed}
+	sess := &Session{backend: hang, closed: closed}
+	ctx, cancel := context.WithCancel(context.Background())
+
+	errCh := make(chan error, 1)
+	go func() {
+		_, err := sess.ListSharesContext(ctx)
+		errCh <- err
+	}()
+
+	select {
+	case <-started:
+	case <-time.After(2 * time.Second):
+		t.Fatal("ListShares did not start")
+	}
+	cancel()
+
+	select {
+	case err := <-errCh:
+		require.ErrorIs(t, err, context.Canceled)
+	case <-time.After(2 * time.Second):
+		t.Fatal("share listing stayed blocked after cancel")
+	}
+}
+
+func TestListSharesContextReturnsShares(t *testing.T) {
+	fake := newFakeBackend(nil)
+	fake.shares = []string{"ADMIN$", "backup"}
+	sess := &Session{backend: fake, closed: make(chan struct{})}
+	shares, err := sess.ListSharesContext(context.Background())
+	require.NoError(t, err)
+	require.Equal(t, []string{"ADMIN$", "backup"}, shares)
+}
+
 func TestListTreeContextUnblocksCancelledLs(t *testing.T) {
 	started := make(chan struct{})
 	closed := make(chan struct{})
@@ -280,6 +317,12 @@ type hangBackend struct {
 	started   chan struct{}
 	startOnce sync.Once
 	wait      <-chan struct{}
+}
+
+func (h *hangBackend) ListShares() ([]string, error) {
+	h.startOnce.Do(func() { close(h.started) })
+	<-h.wait
+	return nil, context.Canceled
 }
 
 func (h *hangBackend) Ls(string) ([]os.FileInfo, error) {

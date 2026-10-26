@@ -49,7 +49,7 @@ func listSharesWithOptions(ctx context.Context, executionId string, opts SMBOpti
 		return nil, err
 	}
 	defer sess.Close()
-	return sess.ListShares()
+	return sess.ListSharesContext(dialCtx)
 }
 
 func smbDialContext(ctx context.Context, timeout time.Duration) (context.Context, context.CancelFunc) {

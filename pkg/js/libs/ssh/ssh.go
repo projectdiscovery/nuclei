@@ -175,7 +175,9 @@ func (c *SSHClient) ConnectWithKey(ctx context.Context, host string, port int, u
 // ```
 func (c *SSHClient) ConnectSSHInfoMode(ctx context.Context, host string, port int) (*ssh.HandshakeLog, error) {
 	executionId := ctx.Value("executionId").(string)
-	return memoizedconnectSSHInfoMode(ctx, &connectOptions{
+	// Concurrent callers share one memoized handshake, so one caller's cancel
+	// must not abort it for the others.
+	return memoizedconnectSSHInfoMode(context.WithoutCancel(ctx), &connectOptions{
 		Host:        host,
 		Port:        port,
 		ExecutionId: executionId,

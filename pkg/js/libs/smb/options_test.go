@@ -55,7 +55,9 @@ func TestSMBDialContextUsesShorterConfiguredTimeout(t *testing.T) {
 	parent, cancelParent := context.WithTimeout(t.Context(), time.Minute)
 	defer cancelParent()
 
+	start := time.Now()
 	dialCtx, cancelDial := smbDialContext(parent, 20*time.Millisecond)
+	end := time.Now()
 	defer cancelDial()
 
 	parentDeadline, ok := parent.Deadline()
@@ -63,5 +65,6 @@ func TestSMBDialContextUsesShorterConfiguredTimeout(t *testing.T) {
 	dialDeadline, ok := dialCtx.Deadline()
 	require.True(t, ok)
 	require.True(t, dialDeadline.Before(parentDeadline))
-	require.WithinDuration(t, time.Now().Add(20*time.Millisecond), dialDeadline, 10*time.Millisecond)
+	require.False(t, dialDeadline.Before(start.Add(20*time.Millisecond)))
+	require.False(t, dialDeadline.After(end.Add(20*time.Millisecond)))
 }
