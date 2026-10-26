@@ -7,8 +7,8 @@ import (
 
 var headlessRequestMetadata = []schema.PropertyMetadata{
 	{
-		PropName: "id",
-		PropType: "string",
+		PropName:    "id",
+		PropType:    "string",
 		Description: schema.MultiLine("Optional ID of this headless request block"),
 		Example:     schema.PropertyExample("headless-login"),
 	},
@@ -34,12 +34,12 @@ var headlessRequestMetadata = []schema.PropertyMetadata{
 		),
 	},
 	{
-		PropName: "custom_user_agent",
+		PropName:    "custom_user_agent",
 		Description: schema.MultiLine("Custom user agent string for the headless request"),
 		Example:     schema.PropertyExample("Mozilla/5.0 (compatible; Nuclei)"),
 	},
 	{
-		PropName: "payloads",
+		PropName:    "payloads",
 		Description: schema.MultiLine("Payloads for the headless request"),
 	},
 	{
@@ -51,11 +51,11 @@ var headlessRequestMetadata = []schema.PropertyMetadata{
 		Example: schema.PropertyExamples("batteringram", "pitchfork", "clusterbomb"),
 	},
 	{
-		PropName: "fuzzing",
+		PropName:    "fuzzing",
 		Description: schema.MultiLine("Fuzzing/DAST rules that mutate headless requests"),
 	},
 	{
-		PropName: "stop-at-first-match",
+		PropName:    "stop-at-first-match",
 		Description: schema.MultiLine("Stop execution after the first match is found"),
 		Example:     schema.PropertyExample(true),
 	},
@@ -67,7 +67,7 @@ var headlessRequestMetadata = []schema.PropertyMetadata{
 		Deprecated: true,
 	},
 	{
-		PropName: "disable-cookie",
+		PropName:    "disable-cookie",
 		Description: schema.MultiLine("Disable cookie reuse for this headless request"),
 		Example:     schema.PropertyExample(true),
 	},

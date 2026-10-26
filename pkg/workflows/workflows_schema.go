@@ -31,7 +31,7 @@ var workflowTemplateMetadata = []schema.PropertyMetadata{
 		Example: schema.PropertyExamples("http/cves/", "network/detection/"),
 	},
 	{
-		PropName: "tags",
+		PropName:  "tags",
 		RemoveRef: true,
 		OneOf: []*schema.PropertyMetadata{
 			{

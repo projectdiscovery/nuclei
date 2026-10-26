@@ -7,8 +7,8 @@ import (
 
 var javascriptRequestMetadata = []schema.PropertyMetadata{
 	{
-		PropName: "id",
-		PropType: "string",
+		PropName:    "id",
+		PropType:    "string",
 		Description: schema.MultiLine("Optional ID of this javascript request block"),
 		Example:     schema.PropertyExample("js-probe"),
 	},
@@ -50,7 +50,7 @@ var javascriptRequestMetadata = []schema.PropertyMetadata{
 		Example: schema.PropertyExample("Port == 443"),
 	},
 	{
-		PropName: "payloads",
+		PropName:    "payloads",
 		Description: schema.MultiLine("Payloads for the javascript request"),
 	},
 	{
@@ -62,12 +62,12 @@ var javascriptRequestMetadata = []schema.PropertyMetadata{
 		Example: schema.PropertyExamples("batteringram", "pitchfork", "clusterbomb"),
 	},
 	{
-		PropName: "threads",
+		PropName:    "threads",
 		Description: schema.MultiLine("Concurrency for sending javascript requests with payloads"),
 		Example:     schema.PropertyExample(10),
 	},
 	{
-		PropName: "stop-at-first-match",
+		PropName:    "stop-at-first-match",
 		Description: schema.MultiLine("Stop execution after the first match is found"),
 		Example:     schema.PropertyExample(true),
 	},

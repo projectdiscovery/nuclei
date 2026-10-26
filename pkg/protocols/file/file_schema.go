@@ -7,8 +7,8 @@ import (
 
 var fileRequestMetadata = []schema.PropertyMetadata{
 	{
-		PropName: "id",
-		PropType: "string",
+		PropName:    "id",
+		PropType:    "string",
 		Description: schema.MultiLine("Optional ID of this file request block"),
 		Example:     schema.PropertyExample("file-secret"),
 	},
@@ -34,22 +34,22 @@ var fileRequestMetadata = []schema.PropertyMetadata{
 		Example: schema.PropertyExample([]string{".git", "node_modules"}),
 	},
 	{
-		PropName: "max-size",
+		PropName:    "max-size",
 		Description: schema.MultiLine("Maximum size of the file to run the request on"),
 		Example:     schema.PropertyExamples("5Mb", "1Kb"),
 	},
 	{
-		PropName: "archive",
+		PropName:    "archive",
 		Description: schema.MultiLine("Process compressed archives without unpacking"),
 		Example:     schema.PropertyExample(true),
 	},
 	{
-		PropName: "mime-type",
+		PropName:    "mime-type",
 		Description: schema.MultiLine("Filter files by mime-type"),
 		Example:     schema.PropertyExample(true),
 	},
 	{
-		PropName: "no-recursive",
+		PropName:    "no-recursive",
 		Description: schema.MultiLine("Do not recurse into folders when directories are provided"),
 		Example:     schema.PropertyExample(true),
 	},

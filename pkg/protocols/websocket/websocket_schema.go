@@ -7,8 +7,8 @@ import (
 
 var websocketRequestMetadata = []schema.PropertyMetadata{
 	{
-		PropName: "id",
-		PropType: "string",
+		PropName:    "id",
+		PropType:    "string",
 		Description: schema.MultiLine("Optional ID of this websocket request block"),
 		Example:     schema.PropertyExample("ws-echo"),
 	},
@@ -36,14 +36,14 @@ var websocketRequestMetadata = []schema.PropertyMetadata{
 		),
 	},
 	{
-		PropName: "headers",
+		PropName:    "headers",
 		Description: schema.MultiLine("Headers for the websocket handshake request"),
 		Example: schema.PropertyExample(map[string]string{
 			"Origin": "https://example.com",
 		}),
 	},
 	{
-		PropName: "payloads",
+		PropName:    "payloads",
 		Description: schema.MultiLine("Payloads for the websocket request"),
 	},
 	{

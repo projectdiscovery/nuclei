@@ -38,7 +38,7 @@ var networkRequestMetadata = []schema.PropertyMetadata{
 		Example: schema.PropertyExamples("80", "443", "ssh"),
 	},
 	{
-		PropName: "exclude-ports",
+		PropName:    "exclude-ports",
 		Description: schema.MultiLine("Ports to exclude from being scanned"),
 		Example:     schema.PropertyExample("22,25"),
 	},
@@ -55,23 +55,23 @@ var networkRequestMetadata = []schema.PropertyMetadata{
 		),
 	},
 	{
-		PropName: "read-size",
+		PropName:    "read-size",
 		Description: schema.MultiLine("Size of response to read at the end. Default is 1024 bytes"),
 		Example:     schema.PropertyExample(1024),
 		Default:     1024,
 	},
 	{
-		PropName: "read-all",
+		PropName:    "read-all",
 		Description: schema.MultiLine("Read the entire response stream until the server stops sending"),
 		Example:     schema.PropertyExample(true),
 	},
 	{
-		PropName: "stop-at-first-match",
+		PropName:    "stop-at-first-match",
 		Description: schema.MultiLine("Stop execution after the first match is found"),
 		Example:     schema.PropertyExample(true),
 	},
 	{
-		PropName: "payloads",
+		PropName:    "payloads",
 		Description: schema.MultiLine("Payloads for the network request"),
 	},
 	{
@@ -83,7 +83,7 @@ var networkRequestMetadata = []schema.PropertyMetadata{
 		Example: schema.PropertyExamples("batteringram", "pitchfork", "clusterbomb"),
 	},
 	{
-		PropName: "threads",
+		PropName:    "threads",
 		Description: schema.MultiLine("Concurrency for sending network requests with payloads"),
 		Example:     schema.PropertyExample(10),
 	},

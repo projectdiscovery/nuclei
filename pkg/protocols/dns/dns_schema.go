@@ -44,7 +44,7 @@ var dnsRequestMetadata = []schema.PropertyMetadata{
 		Default: "inet",
 	},
 	{
-		PropName: "retries",
+		PropName:    "retries",
 		Description: schema.MultiLine("Number of retries for the DNS request"),
 		Example:     schema.PropertyExample(3),
 	},
@@ -62,12 +62,12 @@ var dnsRequestMetadata = []schema.PropertyMetadata{
 		Example: schema.PropertyExample([]string{"1.1.1.1", "8.8.8.8"}),
 	},
 	{
-		PropName: "recursion",
+		PropName:    "recursion",
 		Description: schema.MultiLine("Whether the resolver should recurse records"),
 		Example:     schema.PropertyExample(true),
 	},
 	{
-		PropName: "trace",
+		PropName:    "trace",
 		Description: schema.MultiLine("Perform a DNS trace operation for the target"),
 		Example:     schema.PropertyExample(true),
 	},

@@ -7,8 +7,8 @@ import (
 
 var sslRequestMetadata = []schema.PropertyMetadata{
 	{
-		PropName: "id",
-		PropType: "string",
+		PropName:    "id",
+		PropType:    "string",
 		Description: schema.MultiLine("Optional ID of this SSL request block"),
 		Example:     schema.PropertyExample("ssl-cert"),
 	},
@@ -40,7 +40,7 @@ var sslRequestMetadata = []schema.PropertyMetadata{
 		Example: schema.PropertyExamples("tls12", "tls13"),
 	},
 	{
-		PropName: "cipher_suites",
+		PropName:    "cipher_suites",
 		Description: schema.MultiLine("Explicit cipher suites to negotiate"),
 	},
 	{
@@ -53,12 +53,12 @@ var sslRequestMetadata = []schema.PropertyMetadata{
 		Default: "auto",
 	},
 	{
-		PropName: "tls_version_enum",
+		PropName:    "tls_version_enum",
 		Description: schema.MultiLine("Enumerate supported TLS versions"),
 		Example:     schema.PropertyExample(true),
 	},
 	{
-		PropName: "tls_cipher_enum",
+		PropName:    "tls_cipher_enum",
 		Description: schema.MultiLine("Enumerate supported TLS ciphers"),
 		Example:     schema.PropertyExample(true),
 	},

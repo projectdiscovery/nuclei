@@ -7,8 +7,8 @@ import (
 
 var codeRequestMetadata = []schema.PropertyMetadata{
 	{
-		PropName: "id",
-		PropType: "string",
+		PropName:    "id",
+		PropType:    "string",
 		Description: schema.MultiLine("Optional ID of this code request block"),
 		Example:     schema.PropertyExample("code-py"),
 	},
@@ -37,12 +37,12 @@ var codeRequestMetadata = []schema.PropertyMetadata{
 		),
 	},
 	{
-		PropName: "args",
+		PropName:    "args",
 		Description: schema.MultiLine("Arguments passed to the code engine"),
 		Example:     schema.PropertyExample([]string{"-c"}),
 	},
 	{
-		PropName: "pattern",
+		PropName:    "pattern",
 		Description: schema.MultiLine("Optional pattern used by some engines for file selection"),
 	},
 	{

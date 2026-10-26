@@ -7,8 +7,8 @@ import (
 
 var whoisRequestMetadata = []schema.PropertyMetadata{
 	{
-		PropName: "id",
-		PropType: "string",
+		PropName:    "id",
+		PropType:    "string",
 		Description: schema.MultiLine("Optional ID of this WHOIS request block"),
 		Example:     schema.PropertyExample("whois-lookup"),
 	},
