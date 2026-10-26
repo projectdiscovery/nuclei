@@ -185,5 +185,36 @@ func TestNormalizeCookie(t *testing.T) {
 
 	require.Equal(t, "a=1; b=2", normalizeCookie(" b=2 ;; a=1 ;"))
 	require.Equal(t, "", normalizeCookie(""))
-	require.Equal(t, "a=1; a=2", normalizeCookie("a=2; a=1"))
+	require.Equal(t, "a=2; a=1", normalizeCookie("a=2; a=1"), "repeated names keep their order")
+	require.Equal(t, "b=3; a=2; a=1", normalizeCookie("b=3; a=2; a=1"))
+}
+
+func TestHashRequestRepeatedCookieOrder(t *testing.T) {
+	t.Parallel()
+
+	a := newReq(t, "GET", "https://example.com/x", "", map[string]string{"Cookie": "session=alice; session=bob"})
+	b := newReq(t, "GET", "https://example.com/x", "", map[string]string{"Cookie": "session=bob; session=alice"})
+
+	ha, err := HashRequest(a)
+	require.NoError(t, err)
+	hb, err := HashRequest(b)
+	require.NoError(t, err)
+	require.NotEqual(t, ha, hb)
+}
+
+func TestNormalizeURLQuery(t *testing.T) {
+	t.Parallel()
+
+	normalize := func(raw string) string {
+		u, err := url.Parse(raw)
+		require.NoError(t, err)
+		got, err := NormalizeURL(u)
+		require.NoError(t, err)
+		return got
+	}
+
+	require.Equal(t, normalize("https://example.com/x?b=2&a=1"), normalize("https://example.com/x?a=1&b=2"), "key order should not matter")
+	require.NotEqual(t, normalize("https://example.com/x?a=1&a=2"), normalize("https://example.com/x?a=2&a=1"), "order of repeated values should matter")
+	require.NotEqual(t, normalize("https://example.com/x?a=1&probe=%ZZ"), normalize("https://example.com/x?a=1"), "malformed pairs should not be dropped")
+	require.Equal(t, "https://example.com/x?a=1&probe=%ZZ", normalize("https://example.com/x?a=1&probe=%ZZ"))
 }

@@ -129,8 +129,10 @@ func HashRequest(req *types.RequestResponse) (string, error) {
 }
 
 // NormalizeURL returns a stable string form of u without mutating the original.
-// Scheme and host are lowercased, query keys and values are sorted and the
-// fragment is dropped since it is never sent to the server.
+// Scheme and host are lowercased, query keys are sorted and the fragment is
+// dropped since it is never sent to the server. The values of a repeated key
+// keep their order, because servers can use the first or the last value. A
+// query that does not parse is kept as sent, so no malformed pair is dropped.
 func NormalizeURL(u *url.URL) (string, error) {
 	if u == nil {
 		return "", nil
@@ -140,14 +142,10 @@ func NormalizeURL(u *url.URL) (string, error) {
 	cloned.Host = strings.ToLower(cloned.Host)
 	cloned.Fragment = ""
 	cloned.RawFragment = ""
-	query := cloned.Query()
-	sortedQuery := make(url.Values, len(query))
-	for k, v := range query {
-		sorted := append([]string(nil), v...)
-		sort.Strings(sorted)
-		sortedQuery[k] = sorted
+	if query, err := url.ParseQuery(cloned.RawQuery); err == nil {
+		// Encode sorts the keys and keeps the order of the values of each key.
+		cloned.RawQuery = query.Encode()
 	}
-	cloned.RawQuery = sortedQuery.Encode()
 	if cloned.Path == "" {
 		cloned.Path = "/"
 	}
@@ -183,16 +181,28 @@ func sortedNonDynamicHeaders(headers mapsutil.OrderedMap[string, string]) []head
 
 // normalizeCookie sorts the cookie pairs so that only their order does not make
 // two requests different. Empty pairs are dropped; names and values are kept
-// as sent, since both are case sensitive.
+// as sent, since both are case sensitive. When a name occurs more than once,
+// the pairs keep their order, because servers can use the first or the last
+// value.
 func normalizeCookie(value string) string {
 	parts := strings.Split(value, ";")
 	pairs := parts[:0]
+	names := make(map[string]struct{}, len(parts))
+	unique := true
 	for _, part := range parts {
 		if part = strings.TrimSpace(part); part != "" {
 			pairs = append(pairs, part)
+			name, _, _ := strings.Cut(part, "=")
+			name = strings.TrimSpace(name)
+			if _, seen := names[name]; seen {
+				unique = false
+			}
+			names[name] = struct{}{}
 		}
 	}
-	sort.Strings(pairs)
+	if unique {
+		sort.Strings(pairs)
+	}
 	return strings.Join(pairs, "; ")
 }
 
