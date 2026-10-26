@@ -52,6 +52,20 @@ func TestKatanaFormatRawRequestPreserved(t *testing.T) {
 	require.Equal(t, "https://example.com/sub", rr.URL.String())
 }
 
+func TestKatanaFormatRawConflictUsesStructuredRequest(t *testing.T) {
+	// katana issue 876: a POST with a body whose raw request is a GET without it.
+	rr := parseSingle(t, `{"request":{"method":"POST","endpoint":"https://example.com/sub","body":"user=a&pass=b","headers":{"Content-Type":"application/x-www-form-urlencoded"},"raw":"GET /sub HTTP/1.1\r\nHost: example.com\r\nCookie: s=1\r\nContent-Length: 0\r\n\r\n"}}`)
+	require.Equal(t, "POST", rr.Request.Method)
+	require.Equal(t, "user=a&pass=b", rr.Request.Body)
+	require.Equal(t, "https://example.com/sub", rr.URL.String())
+
+	built, err := rr.BuildRequest()
+	require.NoError(t, err)
+	require.Equal(t, "s=1", built.Header.Get("Cookie"))
+	require.Equal(t, "application/x-www-form-urlencoded", built.Header.Get("Content-Type"))
+	require.Equal(t, int64(len("user=a&pass=b")), built.ContentLength)
+}
+
 func TestKatanaFormatComponentSynthesis(t *testing.T) {
 	// No raw request: it must be synthesized from method/endpoint/headers/body.
 	rr := parseSingle(t, `{"request":{"method":"POST","endpoint":"https://example.com/login","headers":{"Content-Type":"application/json"},"body":"{\"u\":\"admin\"}"}}`)

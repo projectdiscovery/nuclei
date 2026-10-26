@@ -171,14 +171,51 @@ func (k *KatanaFormat) handleRecord(record []byte, resultsCb formats.ParseReqRes
 // RequestResponse. It prefers the captured raw request when available and falls
 // back to synthesizing one from the discovered components otherwise.
 func (k *KatanaFormat) toRequestResponse(req *katanaRequest) (*types.RequestResponse, error) {
-	if strings.TrimSpace(req.Raw) != "" {
-		return types.ParseRawRequestWithURL(req.Raw, req.Endpoint)
-	}
 	method := req.Method
 	if method == "" {
 		method = http.MethodGet
 	}
-	return k.buildFromComponents(method, req.Endpoint, req.Headers, req.Body)
+	if strings.TrimSpace(req.Raw) == "" {
+		return k.buildFromComponents(method, req.Endpoint, req.Headers, req.Body)
+	}
+	rr, err := types.ParseRawRequestWithURL(req.Raw, req.Endpoint)
+	if err != nil || !rawConflicts(req, rr) {
+		return rr, err
+	}
+	// Some katana versions record a form submission as a POST with a body but
+	// keep a raw GET without it (katana issue 876). Rebuild the request from the
+	// structured fields so the method and body survive, and keep the headers the
+	// raw request captured, such as cookies.
+	return k.buildFromComponents(method, req.Endpoint, mergeRawHeaders(rr, req.Headers), req.Body)
+}
+
+// rawConflicts reports whether the parsed raw request disagrees with the
+// structured method or body of the katana request.
+func rawConflicts(req *katanaRequest, rr *types.RequestResponse) bool {
+	if rr == nil || rr.Request == nil {
+		return false
+	}
+	if req.Method != "" && !strings.EqualFold(req.Method, rr.Request.Method) {
+		return true
+	}
+	return req.Body != "" && rr.Request.Body == ""
+}
+
+// mergeRawHeaders returns the headers of the raw request overridden by the
+// structured headers. Framing headers are dropped, because they describe the
+// raw body and not the structured one.
+func mergeRawHeaders(rr *types.RequestResponse, structured map[string]string) map[string]string {
+	headers := make(map[string]string)
+	rr.Request.Headers.Iterate(func(key, value string) bool {
+		if !strings.EqualFold(key, "Content-Length") && !strings.EqualFold(key, "Transfer-Encoding") {
+			headers[http.CanonicalHeaderKey(key)] = value
+		}
+		return true
+	})
+	for key, value := range structured {
+		headers[http.CanonicalHeaderKey(key)] = value
+	}
+	return headers
 }
 
 // buildFromComponents synthesizes a raw HTTP request from discrete fields and
