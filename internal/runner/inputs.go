@@ -62,7 +62,21 @@ func (r *Runner) initializeTemplatesHTTPInput() (*hybrid.HybridMap, error) {
 	}
 	var alive atomic.Int32
 	var probed atomic.Int32
-	var probeTotal int
+
+	// swg.Add blocks once the pool is full, so the probe loop below only
+	// returns when almost every probe is done. Count the hosts first so the
+	// progress ticker runs while the probes run.
+	var stop func()
+	if r.options.EnableProgressBar {
+		var probeTotal int
+		r.inputProvider.Iterate(func(value *contextargs.MetaInput) bool {
+			if !stringsutil.HasPrefixAny(value.Input, "http://", "https://") {
+				probeTotal++
+			}
+			return true
+		})
+		stop = r.startHTTPXProbeProgress(probeTotal, &probed, &alive)
+	}
 
 	r.inputProvider.Iterate(func(value *contextargs.MetaInput) bool {
 		if stringsutil.HasPrefixAny(value.Input, "http://", "https://") {
@@ -75,7 +89,6 @@ func (r *Runner) initializeTemplatesHTTPInput() (*hybrid.HybridMap, error) {
 			}
 		}
 
-		probeTotal++
 		swg.Add()
 		go func(target *contextargs.MetaInput) {
 			defer swg.Done()
@@ -91,9 +104,6 @@ func (r *Runner) initializeTemplatesHTTPInput() (*hybrid.HybridMap, error) {
 		}(value)
 		return true
 	})
-
-	// Start progress only after enqueue so we know the total; ticker runs during Wait.
-	stop := r.startHTTPXProbeProgress(probeTotal, &probed, &alive)
 	swg.Wait()
 	if stop != nil {
 		stop()
