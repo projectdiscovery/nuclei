@@ -25,7 +25,7 @@ func TestPlanScope(t *testing.T) {
 	dupB := &templates.Template{ID: "dup-b", Path: "/t/dup.yaml"}
 	// the filter drops the network template on host-a only
 	allow := func(tpl *templates.Template, mi *contextargs.MetaInput) bool {
-		return !(mi.Input == "host-a" && tpl.ID != "web")
+		return mi.Input != "host-a" || tpl.ID == "web"
 	}
 	input := func(raw string) *contextargs.MetaInput {
 		mi := contextargs.NewMetaInput()
