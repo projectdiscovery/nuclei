@@ -41,14 +41,14 @@ func TestSeedFingerprintResponseAfterRedirect(t *testing.T) {
 	seedFingerprintResponse(c, req, respFor(finalURL, 200), []byte("install page"), seedURL)
 
 	lookup := req.Request.Clone(req.Context())
-	if got := c.Get(httprespcache.KeyFromRequest(lookup), lookup); got != nil {
+	if got := c.Get(httprespcache.KeyFromRequest(lookup), "template", lookup); got != nil {
 		t.Fatal("the redirect target must not be cached under the requested URL")
 	}
 
 	finalLookup := req.Request.Clone(req.Context())
 	finalLookup.URL, _ = url.Parse(finalURL)
 	finalLookup.Host = ""
-	if got := c.Get(httprespcache.KeyFromRequest(finalLookup), finalLookup); got == nil {
+	if got := c.Get(httprespcache.KeyFromRequest(finalLookup), "template", finalLookup); got == nil {
 		t.Fatal("the response must be cached under the URL it belongs to")
 	}
 }
@@ -64,7 +64,7 @@ func TestSeedFingerprintResponseWithoutRedirect(t *testing.T) {
 	seedFingerprintResponse(c, req, respFor(seedURL, 200), []byte("home"), seedURL)
 
 	lookup := req.Request.Clone(req.Context())
-	if got := c.Get(httprespcache.KeyFromRequest(lookup), lookup); got == nil {
+	if got := c.Get(httprespcache.KeyFromRequest(lookup), "template", lookup); got == nil {
 		t.Fatal("a non-redirected response must be cached under the requested URL")
 	}
 }

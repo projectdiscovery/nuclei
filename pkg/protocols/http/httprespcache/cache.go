@@ -12,6 +12,8 @@ import (
 	"strings"
 	"sync"
 	"sync/atomic"
+
+	"github.com/cespare/xxhash"
 )
 
 // representationHeaderNames are folded into the cache key so two requests
@@ -27,7 +29,9 @@ const (
 	// Entry cap sized above a typical per-host unique GET set; the byte cap below
 	// is the real memory bound, so a larger entry cap cannot grow memory.
 	defaultMaxEntries = 16384
-	defaultMaxBytes   = 64 << 20 // 64 MiB of retained response bodies
+	defaultMaxBytes   = 64 << 20 // 64 MiB of retained responses (key, headers and body)
+	// defaultMaxSeen bounds the (owner, key) record: about 16 bytes per pair.
+	defaultMaxSeen = 1 << 20
 )
 
 // Cache stores response snapshots keyed by METHOD + URL + representation headers.
@@ -42,10 +46,24 @@ type Cache struct {
 	maxEntries int
 	maxBytes   int64
 	curBytes   int64
+
+	// seen records every (owner, key) pair that has been looked up or stored,
+	// as a hash. A pair already seen is never served from the cache: a template
+	// that repeats a request means it (state changes, race checks,
+	// request-and-compare), so the repeat must reach the server even when another
+	// template stored a response in between. When the record is full the cache
+	// stops serving hits instead of forgetting pairs.
+	seen    map[uint64]struct{}
+	maxSeen int
 }
 
 // Entry is a reusable response snapshot.
 type Entry struct {
+	// Owner identifies who stored the entry (a template ID). It is never served
+	// back to the same owner: a template that repeats its own request means it
+	// (state changes, race checks, request-and-compare), so that repeat must
+	// reach the server.
+	Owner         string
 	StatusCode    int
 	Status        string
 	Proto         string
@@ -54,6 +72,8 @@ type Entry struct {
 	Header        http.Header
 	Body          []byte
 	ContentLength int64
+	// size is what the entry is charged against maxBytes: key, headers and body.
+	size int64
 }
 
 // New returns an empty cache with default memory bounds.
@@ -62,6 +82,8 @@ func New() *Cache {
 		entries:    make(map[string]*Entry),
 		maxEntries: defaultMaxEntries,
 		maxBytes:   defaultMaxBytes,
+		seen:       make(map[uint64]struct{}),
+		maxSeen:    defaultMaxSeen,
 	}
 }
 
@@ -199,14 +221,16 @@ func ResponseSetsCookie(resp *http.Response) bool {
 
 // Get returns a fresh *http.Response (new Body reader) or nil on miss.
 // req is attached as Response.Request so downstream dump/curl code works.
-func (c *Cache) Get(key string, req *http.Request) *http.Response {
+// An entry stored by owner is not served back to owner; see Entry.Owner.
+func (c *Cache) Get(key, owner string, req *http.Request) *http.Response {
 	if !c.Enabled() || key == "" {
 		return nil
 	}
-	c.mu.RLock()
+	c.mu.Lock()
+	firstLook := c.markSeen(owner, key)
 	ent, ok := c.entries[key]
-	c.mu.RUnlock()
-	if !ok || ent == nil {
+	c.mu.Unlock()
+	if !firstLook || !ok || ent == nil || (owner != "" && ent.Owner == owner) {
 		c.misses.Add(1)
 		return nil
 	}
@@ -216,27 +240,30 @@ func (c *Cache) Get(key string, req *http.Request) *http.Response {
 
 // Set stores a snapshot for key. body should already be fully read.
 // Entries that would exceed the scan-wide budget are skipped.
-func (c *Cache) Set(key string, resp *http.Response, body []byte) {
+func (c *Cache) Set(key, owner string, resp *http.Response, body []byte) {
 	if !c.Enabled() || key == "" || resp == nil {
 		return
 	}
 	bodyLen := int64(len(body))
+	size := int64(len(key)) + headerSize(resp.Header) + bodyLen
 	c.mu.Lock()
 	defer c.mu.Unlock()
+	c.markSeen(owner, key)
 
 	if old, ok := c.entries[key]; ok {
-		c.curBytes -= old.ContentLength
+		c.curBytes -= old.size
 		delete(c.entries, key)
 	} else if c.maxEntries > 0 && len(c.entries) >= c.maxEntries {
 		c.skipped.Add(1)
 		return
 	}
-	if c.maxBytes > 0 && c.curBytes+bodyLen > c.maxBytes {
+	if c.maxBytes > 0 && c.curBytes+size > c.maxBytes {
 		c.skipped.Add(1)
 		return
 	}
 
 	ent := &Entry{
+		Owner:         owner,
 		StatusCode:    resp.StatusCode,
 		Status:        resp.Status,
 		Proto:         resp.Proto,
@@ -245,19 +272,47 @@ func (c *Cache) Set(key string, resp *http.Response, body []byte) {
 		Header:        resp.Header.Clone(),
 		Body:          append([]byte(nil), body...),
 		ContentLength: bodyLen,
+		size:          size,
 	}
 	c.entries[key] = ent
-	c.curBytes += bodyLen
+	c.curBytes += size
 	c.stores.Add(1)
 }
 
 // SeedHTTP stores a fingerprint/probe response under the request's full key
-// (method + URL + representation headers).
-func (c *Cache) SeedHTTP(req *http.Request, resp *http.Response, body []byte) {
-	if !CacheableRequest(req) {
+// (method + URL + representation headers). readLimit is the most the probe
+// read of the body; see CompleteBody.
+func (c *Cache) SeedHTTP(req *http.Request, resp *http.Response, body []byte, readLimit int64) {
+	if !CacheableRequest(req) || !CompleteBody(body, readLimit) {
 		return
 	}
-	c.Set(KeyFromRequest(req), resp, body)
+	c.Set(KeyFromRequest(req), "", resp, body)
+}
+
+// CompleteBody reports whether body was read to its end under readLimit. A body
+// that fills the limit may be cut short, and a reader with a larger limit
+// (another template's max-size) would then match against the cut copy, so such
+// a body must not be cached. A readLimit of zero or less means no limit.
+func CompleteBody(body []byte, readLimit int64) bool {
+	return readLimit <= 0 || int64(len(body)) < readLimit
+}
+
+// Reset drops every entry and the counters, keeping the cache usable. It lets a
+// long-lived engine reuse one cache instance while scoping its content to one
+// scan.
+func (c *Cache) Reset() {
+	if c == nil {
+		return
+	}
+	c.mu.Lock()
+	c.entries = make(map[string]*Entry)
+	c.curBytes = 0
+	c.seen = make(map[uint64]struct{})
+	c.mu.Unlock()
+	c.hits.Store(0)
+	c.misses.Store(0)
+	c.stores.Store(0)
+	c.skipped.Store(0)
 }
 
 // Stats returns hit/miss/store counters.
@@ -290,4 +345,61 @@ func (e *Entry) toResponse(req *http.Request) *http.Response {
 		ContentLength: e.ContentLength,
 		Request:       req,
 	}
+}
+
+// markSeen records the (owner, key) pair and reports whether this is its first
+// sighting. It reports false when the record is full, so nothing is served
+// that could not be remembered. An empty owner is not tracked. Must hold c.mu.
+func (c *Cache) markSeen(owner, key string) bool {
+	if owner == "" {
+		return true
+	}
+	if c.seen == nil {
+		c.seen = make(map[uint64]struct{})
+	}
+	h := xxhash.Sum64String(owner + "\x00" + key)
+	if _, ok := c.seen[h]; ok {
+		return false
+	}
+	if c.maxSeen > 0 && len(c.seen) >= c.maxSeen {
+		return false
+	}
+	c.seen[h] = struct{}{}
+	return true
+}
+
+func headerSize(h http.Header) int64 {
+	var n int64
+	for k, vs := range h {
+		for _, v := range vs {
+			n += int64(len(k) + len(v) + 4) // "k: v\r\n"
+		}
+	}
+	return n
+}
+
+// ReplayableEncoding reports whether a response can be replayed from its
+// decoded body with identical results. The response chain decodes the body by
+// its Content-Encoding header, and a cache hit keeps that header (templates may
+// match on it), so a hit is decoded again. That is harmless only when the
+// second decode fails at once and falls back to the same bytes: no encoding, or
+// gzip whose decoded body does not itself start with the gzip magic bytes.
+// Other encodings (deflate, br, zstd) can fail mid-read or decode twice, so
+// they are not cached.
+func ReplayableEncoding(h http.Header, decodedBody []byte) bool {
+	switch strings.ToLower(strings.TrimSpace(h.Get("Content-Encoding"))) {
+	case "", "identity":
+		return true
+	case "gzip":
+		return len(decodedBody) < 2 || decodedBody[0] != 0x1f || decodedBody[1] != 0x8b
+	default:
+		return false
+	}
+}
+
+// StoredStatus reports whether a response status may be cached. Transient
+// failures (408, 429, 5xx) are not: a later request may find the server
+// recovered, and serving the failure would hide that.
+func StoredStatus(code int) bool {
+	return code != http.StatusRequestTimeout && code != http.StatusTooManyRequests && code < http.StatusInternalServerError
 }

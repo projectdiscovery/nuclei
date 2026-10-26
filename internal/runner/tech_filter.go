@@ -206,9 +206,7 @@ func fingerprintTarget(wapp *wappalyzer.Wappalyze, client *retryablehttp.Client,
 	if err != nil {
 		return techfilter.HostProfile{}
 	}
-	// A body that fills the probe limit may be truncated, and a template with a
-	// larger read limit must not match against it.
-	if cache != nil && int64(len(body)) < techFilterMaxBody {
+	if cache != nil {
 		seedFingerprintResponse(cache, req, resp, body, seedURL)
 	}
 	info := wapp.FingerprintWithInfo(resp.Header, body)
@@ -232,13 +230,13 @@ func seedFingerprintResponse(cache *httprespcache.Cache, req *retryablehttp.Requ
 		finalURL = resp.Request.URL.String()
 	}
 	if finalURL == seedURL {
-		cache.SeedHTTP(req.Request, resp, body)
+		cache.SeedHTTP(req.Request, resp, body, techFilterMaxBody)
 		return
 	}
 	finalReq := req.Request.Clone(req.Context())
 	finalReq.URL = resp.Request.URL
 	finalReq.Host = ""
-	cache.SeedHTTP(finalReq, resp, body)
+	cache.SeedHTTP(finalReq, resp, body, techFilterMaxBody)
 }
 
 // estimateTechFilteredExecutions counts template×host pairs that survive the tech filter.
