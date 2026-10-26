@@ -10,10 +10,10 @@ import (
 func TestHttpInputProviderDeduplicatesJSONL(t *testing.T) {
 	t.Parallel()
 
-	// Three lines: two equivalent GETs (different Cookie / query order) and one unique POST.
+	// Three lines: two equivalent GETs (different cookie and query order) and one unique POST.
 	input := "" +
-		`{"url":"https://example.com/search?q=1&lang=en","request":{"raw":"GET /search?q=1&lang=en HTTP/1.1\r\nHost: example.com\r\nCookie: a=1\r\n\r\n"}}` + "\n" +
-		`{"url":"https://example.com/search?lang=en&q=1","request":{"raw":"GET /search?lang=en&q=1 HTTP/1.1\r\nHost: example.com\r\nCookie: a=2\r\n\r\n"}}` + "\n" +
+		`{"url":"https://example.com/search?q=1&lang=en","request":{"raw":"GET /search?q=1&lang=en HTTP/1.1\r\nHost: example.com\r\nCookie: a=1; b=2\r\n\r\n"}}` + "\n" +
+		`{"url":"https://example.com/search?lang=en&q=1","request":{"raw":"GET /search?lang=en&q=1 HTTP/1.1\r\nHost: example.com\r\nCookie: b=2; a=1\r\n\r\n"}}` + "\n" +
 		`{"url":"https://example.com/search","request":{"raw":"POST /search HTTP/1.1\r\nHost: example.com\r\nContent-Type: application/json\r\nContent-Length: 7\r\n\r\n{\"x\":1}"}}` + "\n"
 
 	provider, err := NewHttpInputProvider(&HttpMultiFormatOptions{
@@ -58,4 +58,20 @@ func TestHttpInputProviderIterateSkipsDuplicates(t *testing.T) {
 		return true
 	})
 	require.Equal(t, []string{"https://example.com/a", "https://example.com/b"}, urls)
+}
+
+func TestHttpInputProviderKeepsAuthOnlyDifferences(t *testing.T) {
+	t.Parallel()
+
+	input := "" +
+		`{"url":"https://example.com/orders/1","request":{"raw":"GET /orders/1 HTTP/1.1\r\nHost: example.com\r\nAuthorization: Bearer alice\r\n\r\n"}}` + "\n" +
+		`{"url":"https://example.com/orders/1","request":{"raw":"GET /orders/1 HTTP/1.1\r\nHost: example.com\r\nAuthorization: Bearer bob\r\n\r\n"}}` + "\n"
+
+	provider, err := NewHttpInputProvider(&HttpMultiFormatOptions{
+		InputMode:     "jsonl",
+		InputContents: input,
+	})
+	require.NoError(t, err)
+	require.Equal(t, int64(2), provider.Count())
+	require.Equal(t, int64(0), provider.dupeCount)
 }

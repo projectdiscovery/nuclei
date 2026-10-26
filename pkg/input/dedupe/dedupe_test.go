@@ -52,12 +52,12 @@ func TestRequestDeduplicatorIgnoresDynamicHeaders(t *testing.T) {
 
 	d := NewRequestDeduplicator()
 	a := newReq(t, "GET", "https://example.com/x", "", map[string]string{
-		"Cookie":     "a=1",
+		"Cookie":     "a=1; b=2",
 		"User-Agent": "ua-a",
 		"X-Custom":   "keep",
 	})
 	b := newReq(t, "GET", "https://example.com/x", "", map[string]string{
-		"Cookie":     "a=2",
+		"Cookie":     "b=2;a=1",
 		"User-Agent": "ua-b",
 		"X-Custom":   "keep",
 	})
@@ -66,7 +66,7 @@ func TestRequestDeduplicatorIgnoresDynamicHeaders(t *testing.T) {
 	})
 
 	require.False(t, d.IsDuplicate(a))
-	require.True(t, d.IsDuplicate(b), "dynamic headers should be ignored")
+	require.True(t, d.IsDuplicate(b), "dynamic headers and cookie order should be ignored")
 	require.False(t, d.IsDuplicate(c), "stable header change should not collide")
 }
 
@@ -136,4 +136,54 @@ func TestHashRequestHostCaseAndFragment(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, ha, hb, "host case and fragment should not matter")
 	require.NotEqual(t, hb, hc, "path case should matter")
+}
+
+func TestRequestDeduplicatorAuthHeadersMatter(t *testing.T) {
+	t.Parallel()
+
+	d := NewRequestDeduplicator()
+	alice := newReq(t, "GET", "https://example.com/orders/1", "", map[string]string{"Authorization": "Bearer alice"})
+	bob := newReq(t, "GET", "https://example.com/orders/1", "", map[string]string{"Authorization": "Bearer bob"})
+	aliceAgain := newReq(t, "GET", "https://example.com/orders/1", "", map[string]string{"authorization": "bearer  alice "})
+	anonymous := newReq(t, "GET", "https://example.com/orders/1", "", nil)
+
+	require.False(t, d.IsDuplicate(alice))
+	require.False(t, d.IsDuplicate(bob), "different authorization must not collide")
+	require.True(t, d.IsDuplicate(aliceAgain), "scheme case and spacing should not matter")
+	require.False(t, d.IsDuplicate(anonymous), "request without credentials must not collide")
+	require.Equal(t, 3, d.Len())
+}
+
+func TestRequestDeduplicatorCookies(t *testing.T) {
+	t.Parallel()
+
+	d := NewRequestDeduplicator()
+	a := newReq(t, "GET", "https://example.com/x", "", map[string]string{"Cookie": "session=alice; theme=dark"})
+	b := newReq(t, "GET", "https://example.com/x", "", map[string]string{"Cookie": "theme=dark;session=alice;"})
+	c := newReq(t, "GET", "https://example.com/x", "", map[string]string{"Cookie": "session=bob; theme=dark"})
+
+	require.False(t, d.IsDuplicate(a))
+	require.True(t, d.IsDuplicate(b), "cookie pair order should not matter")
+	require.False(t, d.IsDuplicate(c), "different cookie value must not collide")
+	require.Equal(t, 2, d.Len())
+}
+
+func TestRequestDeduplicatorWithoutAuthHeaders(t *testing.T) {
+	t.Parallel()
+
+	d := NewRequestDeduplicator()
+	a := newReq(t, "GET", "https://example.com/x?b=2&a=1", "", map[string]string{"User-Agent": "a", "X-Request-Id": "1"})
+	b := newReq(t, "GET", "https://example.com/x?a=1&b=2", "", map[string]string{"User-Agent": "b", "X-Request-Id": "2"})
+
+	require.False(t, d.IsDuplicate(a))
+	require.True(t, d.IsDuplicate(b))
+	require.Equal(t, 1, d.Len())
+}
+
+func TestNormalizeCookie(t *testing.T) {
+	t.Parallel()
+
+	require.Equal(t, "a=1; b=2", normalizeCookie(" b=2 ;; a=1 ;"))
+	require.Equal(t, "", normalizeCookie(""))
+	require.Equal(t, "a=1; a=2", normalizeCookie("a=2; a=1"))
 }

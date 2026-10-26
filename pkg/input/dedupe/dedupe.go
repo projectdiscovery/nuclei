@@ -15,7 +15,10 @@ import (
 )
 
 // Headers that commonly change between equivalent requests and should not
-// affect the fingerprint used for deduplication.
+// affect the fingerprint used for deduplication. Cookie and Authorization are
+// not here: requests that differ only in credentials are distinct (e.g. for
+// authorization or IDOR testing), so their normalized values are part of the
+// fingerprint.
 var dynamicHeaders = map[string]bool{
 	"date":                true,
 	"if-modified-since":   true,
@@ -23,8 +26,6 @@ var dynamicHeaders = map[string]bool{
 	"cache-control":       true,
 	"if-none-match":       true,
 	"if-match":            true,
-	"authorization":       true,
-	"cookie":              true,
 	"x-csrf-token":        true,
 	"content-length":      true,
 	"content-md5":         true,
@@ -161,13 +162,47 @@ type header struct {
 func sortedNonDynamicHeaders(headers mapsutil.OrderedMap[string, string]) []header {
 	var result []header
 	headers.Iterate(func(k, v string) bool {
-		if !dynamicHeaders[strings.ToLower(k)] {
-			result = append(result, header{Key: strings.ToLower(k), Value: v})
+		key := strings.ToLower(k)
+		if dynamicHeaders[key] {
+			return true
 		}
+		switch key {
+		case "cookie":
+			v = normalizeCookie(v)
+		case "authorization":
+			v = normalizeAuthorization(v)
+		}
+		result = append(result, header{Key: key, Value: v})
 		return true
 	})
 	sort.Slice(result, func(i, j int) bool {
 		return result[i].Key < result[j].Key
 	})
 	return result
+}
+
+// normalizeCookie sorts the cookie pairs so that only their order does not make
+// two requests different. Empty pairs are dropped; names and values are kept
+// as sent, since both are case sensitive.
+func normalizeCookie(value string) string {
+	parts := strings.Split(value, ";")
+	pairs := parts[:0]
+	for _, part := range parts {
+		if part = strings.TrimSpace(part); part != "" {
+			pairs = append(pairs, part)
+		}
+	}
+	sort.Strings(pairs)
+	return strings.Join(pairs, "; ")
+}
+
+// normalizeAuthorization lowercases the case insensitive auth scheme and trims
+// the surrounding space. The credentials are kept as sent.
+func normalizeAuthorization(value string) string {
+	value = strings.TrimSpace(value)
+	scheme, credentials, found := strings.Cut(value, " ")
+	if !found {
+		return value
+	}
+	return strings.ToLower(scheme) + " " + strings.TrimSpace(credentials)
 }
