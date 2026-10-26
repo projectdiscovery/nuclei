@@ -1,10 +1,12 @@
 package templates
 
 import (
+	"strconv"
 	"testing"
 	"time"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/interactsh"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v3"
@@ -40,4 +42,14 @@ func TestTemplateInteractshEvictionRejectsNegativeValue(t *testing.T) {
 
 	_, err := prepareTemplate(&Template{InteractshEviction: -1}, nil)
 	require.EqualError(t, err, "interactsh-eviction cannot be negative")
+}
+
+func TestTemplateInteractshEvictionRejectsOverflow(t *testing.T) {
+	t.Parallel()
+
+	if strconv.IntSize < 64 {
+		t.Skip("int cannot hold a value above the limit")
+	}
+	_, err := prepareTemplate(&Template{InteractshEviction: int(interactsh.MaxEvictionSeconds) + 1}, nil)
+	require.ErrorContains(t, err, "interactsh-eviction cannot be greater than")
 }

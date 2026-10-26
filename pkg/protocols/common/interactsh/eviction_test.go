@@ -1,6 +1,7 @@
 package interactsh
 
 import (
+	"strconv"
 	"testing"
 	"time"
 
@@ -13,6 +14,10 @@ func TestEvictionFromSeconds(t *testing.T) {
 	require.Equal(t, time.Duration(0), EvictionFromSeconds(0))
 	require.Equal(t, time.Duration(0), EvictionFromSeconds(-1))
 	require.Equal(t, 300*time.Second, EvictionFromSeconds(300))
+	require.Equal(t, time.Duration(MaxEvictionSeconds)*time.Second, EvictionFromSeconds(int(MaxEvictionSeconds)))
+	if strconv.IntSize == 64 {
+		require.Positive(t, EvictionFromSeconds(int(MaxEvictionSeconds)+1))
+	}
 }
 
 func TestClientEvictionForUsesRequestOverride(t *testing.T) {

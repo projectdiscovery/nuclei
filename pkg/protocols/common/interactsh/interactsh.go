@@ -3,6 +3,7 @@ package interactsh
 import (
 	"bytes"
 	"fmt"
+	"math"
 	"os"
 	"regexp"
 	"strings"
@@ -570,11 +571,19 @@ func (c *Client) evictionFor(data *RequestData) time.Duration {
 	return c.eviction
 }
 
+// MaxEvictionSeconds is the largest eviction value in seconds that fits in a
+// time.Duration.
+const MaxEvictionSeconds = math.MaxInt64 / int64(time.Second)
+
 // EvictionFromSeconds converts a template/CLI eviction value in seconds to a
-// duration. Non-positive values mean "use the client default".
+// duration. Non-positive values mean "use the client default". Values above
+// MaxEvictionSeconds are capped, so they cannot overflow to a negative duration.
 func EvictionFromSeconds(seconds int) time.Duration {
 	if seconds <= 0 {
 		return 0
+	}
+	if int64(seconds) > MaxEvictionSeconds {
+		return time.Duration(MaxEvictionSeconds) * time.Second
 	}
 	return time.Duration(seconds) * time.Second
 }
