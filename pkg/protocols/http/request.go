@@ -1087,6 +1087,8 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 		// including follow-ups when the initial response came from the cache.
 		executingClient *retryablehttp.Client
 	)
+	// respCacheDone ends this request's response cache flight, if it leads one.
+	respCacheDone := func() {}
 
 	// Dump request for variables checks
 	// For race conditions we can't dump the request body at this point as it's already waiting the open-gate event, already handled with a similar code within the race function
@@ -1243,13 +1245,18 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 			}
 		}
 		// Scan-scoped in-memory cache (tech-filter / response reuse). Prefer this
-		// over a network round-trip for identical safe GET/HEAD requests.
+		// over a network round-trip for identical safe GET/HEAD requests. An
+		// identical request already on the wire is waited for, not sent again.
 		if resp == nil && request.options.HTTPResponseCache != nil && request.usesResponseCache(generatedRequest) &&
 			generatedRequest.request != nil && generatedRequest.request.Request != nil &&
 			httprespcache.CacheableRequest(generatedRequest.request.Request) &&
 			httprespcache.JarAllows(input.CookieJar, generatedRequest.request.Request.URL) {
 			if key := respCacheKey(input, generatedRequest.request.Request); key != "" {
-				if cached := request.options.HTTPResponseCache.Get(key, request.options.TemplateID, generatedRequest.request.Request); cached != nil {
+				cached, done := request.options.HTTPResponseCache.GetOrLead(key, request.options.TemplateID, generatedRequest.request.Request)
+				// Every return path ends the flight, so waiters never hang.
+				defer done()
+				respCacheDone = done
+				if cached != nil {
 					resp = cached
 					fromCache = true
 					err = nil
@@ -1524,6 +1531,8 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 				request.options.HTTPResponseCache.Set(key, request.options.TemplateID, resp, respChain.BodyBytes())
 			}
 		}
+		// Wake requests waiting on this one now, not after matching.
+		respCacheDone()
 	})
 
 	// evaluate responses continuously until first redirect request in reverse order

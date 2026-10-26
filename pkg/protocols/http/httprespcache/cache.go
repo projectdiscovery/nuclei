@@ -55,6 +55,19 @@ type Cache struct {
 	// stops serving hits instead of forgetting pairs.
 	seen    map[uint64]struct{}
 	maxSeen int
+
+	// flights holds the requests now on the wire, by key. Identical requests
+	// that arrive meanwhile wait for the leader instead of sending their own.
+	flights map[string]*flight
+}
+
+// flight is one request on the wire that other callers may wait for.
+type flight struct {
+	owner string
+	done  chan struct{}
+	// ent is the entry the leader stored, or nil when it stored nothing
+	// (error, uncacheable response, size limit). Set before done is closed.
+	ent *Entry
 }
 
 // Entry is a reusable response snapshot.
@@ -84,6 +97,7 @@ func New() *Cache {
 		maxBytes:   defaultMaxBytes,
 		seen:       make(map[uint64]struct{}),
 		maxSeen:    defaultMaxSeen,
+		flights:    make(map[string]*flight),
 	}
 }
 
@@ -238,6 +252,85 @@ func (c *Cache) Get(key, owner string, req *http.Request) *http.Response {
 	return ent.toResponse(req)
 }
 
+// GetOrLead is Get that also shares requests in flight. On a miss the caller
+// either leads a new flight or, when an identical request from another owner is
+// already on the wire, waits for it and gets its stored response.
+//
+// The returned done func must be called once the caller has stored its
+// response (or knows it will not). It is never nil and is safe to call more
+// than once. Waiters get their own response and body reader. When the leader
+// stores nothing (an error, an uncacheable response, the size limit), waiters
+// get nil and send their own request, so failures are never shared.
+// A canceled req context stops the wait.
+func (c *Cache) GetOrLead(key, owner string, req *http.Request) (*http.Response, func()) {
+	noop := func() {}
+	if !c.Enabled() || key == "" {
+		return nil, noop
+	}
+	c.mu.Lock()
+	firstLook := c.markSeen(owner, key)
+	ent, ok := c.entries[key]
+	if firstLook && ok && ent != nil && (owner == "" || ent.Owner != owner) {
+		c.mu.Unlock()
+		c.hits.Add(1)
+		return ent.toResponse(req), noop
+	}
+	if !firstLook {
+		// A repeat of the owner's own request must reach the server.
+		c.mu.Unlock()
+		c.misses.Add(1)
+		return nil, noop
+	}
+	if c.flights == nil {
+		c.flights = make(map[string]*flight)
+	}
+	f, inFlight := c.flights[key]
+	if !inFlight {
+		f = &flight{owner: owner, done: make(chan struct{})}
+		c.flights[key] = f
+		c.mu.Unlock()
+		c.misses.Add(1)
+		return nil, c.landFunc(key, f)
+	}
+	c.mu.Unlock()
+	if owner != "" && f.owner == owner {
+		// The owner's own response is never served back to it.
+		c.misses.Add(1)
+		return nil, noop
+	}
+	var ctxDone <-chan struct{}
+	if req != nil {
+		ctxDone = req.Context().Done()
+	}
+	select {
+	case <-f.done:
+	case <-ctxDone:
+		c.misses.Add(1)
+		return nil, noop
+	}
+	if f.ent == nil {
+		c.misses.Add(1)
+		return nil, noop
+	}
+	c.hits.Add(1)
+	return f.ent.toResponse(req), noop
+}
+
+// landFunc returns the func that ends flight f and wakes its waiters.
+func (c *Cache) landFunc(key string, f *flight) func() {
+	var once sync.Once
+	return func() {
+		once.Do(func() {
+			c.mu.Lock()
+			if c.flights[key] == f {
+				delete(c.flights, key)
+			}
+			c.mu.Unlock()
+			close(f.done)
+		})
+	}
+}
+
 // Set stores a snapshot for key. body should already be fully read.
 // Entries that would exceed the scan-wide budget are skipped.
 func (c *Cache) Set(key, owner string, resp *http.Response, body []byte) {
@@ -277,6 +370,11 @@ func (c *Cache) Set(key, owner string, resp *http.Response, body []byte) {
 	c.entries[key] = ent
 	c.curBytes += size
 	c.stores.Add(1)
+	if f, ok := c.flights[key]; ok && f.owner == owner {
+		// Written under c.mu before the leader closes f.done, so waiters
+		// that read it after <-f.done see it.
+		f.ent = ent
+	}
 }
 
 // SeedHTTP stores a fingerprint/probe response under the request's full key
