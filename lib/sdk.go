@@ -24,6 +24,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/hosterrorscache"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/interactsh"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolinit"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/headless/engine"
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting"
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates"
@@ -279,6 +280,9 @@ func (e *NucleiEngine) closeInternal() {
 	}
 	if e.tmpDir != "" {
 		_ = os.RemoveAll(e.tmpDir)
+		if e.opts != nil {
+			protocolstate.SetTemporaryDirectory(e.opts.ExecutionId, "")
+		}
 	}
 	if e.opts != nil {
 		generators.ClearOptionsPayloadMap(e.opts)

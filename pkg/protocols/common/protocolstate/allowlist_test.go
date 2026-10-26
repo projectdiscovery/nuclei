@@ -12,14 +12,50 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestAllowedFileRootsAlwaysIncludesTemplatesAndTemp(t *testing.T) {
+func TestAllowedFileRootsAlwaysIncludesTemplatesAndScanTemp(t *testing.T) {
 	templatesDir := t.TempDir()
 	restoreTemplatesDir(t, templatesDir)
+	scanTemp := t.TempDir()
+	protocolstate.SetTemporaryDirectory(t.Name(), scanTemp)
+	t.Cleanup(func() { protocolstate.SetTemporaryDirectory(t.Name(), "") })
 
 	roots := protocolstate.AllowedFileRoots(&types.Options{ExecutionId: t.Name()})
 	require.NotEmpty(t, roots)
 	require.True(t, rootListContains(roots, templatesDir), "templates dir must be in allowlist: %v", roots)
-	require.True(t, rootListContains(roots, os.TempDir()), "temp dir must be in allowlist: %v", roots)
+	require.True(t, rootListContains(roots, scanTemp), "per-scan temp dir must be in allowlist: %v", roots)
+}
+
+// The shared system temp dir (/tmp on Linux) holds other users' and other
+// programs' files, so templates must not reach it. Only the per-scan dir is
+// allowed, while the process sandbox still keeps the system temp dir usable.
+func TestSystemTempDirIsNotTemplateReadable(t *testing.T) {
+	templatesDir := t.TempDir()
+	restoreTemplatesDir(t, templatesDir)
+	scanTemp := t.TempDir()
+	protocolstate.SetTemporaryDirectory(t.Name(), scanTemp)
+	t.Cleanup(func() { protocolstate.SetTemporaryDirectory(t.Name(), "") })
+
+	opts := &types.Options{ExecutionId: t.Name()}
+	roots := protocolstate.AllowedFileRoots(opts)
+	require.False(t, rootListContains(roots, os.TempDir()), "system temp dir must not be in allowlist: %v", roots)
+
+	sibling, err := os.MkdirTemp("", "nuclei-shared-tmp-*")
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = os.RemoveAll(sibling) })
+	shared := filepath.Join(sibling, "other-user-file")
+	require.NoError(t, os.WriteFile(shared, []byte("x"), 0o600))
+	_, err = protocolstate.NormalizePath(opts, shared)
+	require.ErrorIs(t, err, protocolstate.ErrPathDenied)
+
+	inScan := filepath.Join(scanTemp, "scan-file")
+	require.NoError(t, os.WriteFile(inScan, []byte("x"), 0o600))
+	_, err = protocolstate.NormalizePath(opts, inScan)
+	require.NoError(t, err)
+
+	require.True(t, rootListContains(protocolstate.SandboxFileRoots(opts), os.TempDir()), "process sandbox must keep the system temp dir usable")
+
+	protocolstate.SetTemporaryDirectory(t.Name(), "")
+	require.False(t, rootListContains(protocolstate.AllowedFileRoots(opts), scanTemp), "cleared per-scan temp dir must leave the allowlist")
 }
 
 func TestAllowedFileRootsWithLFAIncludesCWD(t *testing.T) {

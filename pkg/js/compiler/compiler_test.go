@@ -88,7 +88,13 @@ func TestRequireTemplateModuleAllowedWithoutLFA(t *testing.T) {
 }
 
 func TestRequireLocalFileAccessAllowed(t *testing.T) {
-	modulePath := writeModuleFile(t, t.TempDir(), "outside.js", `module.exports = { value: "outside-ok" };`)
+	// -lfa grants the working directory; the system temp dir is never granted.
+	cwd, err := os.Getwd()
+	require.NoError(t, err)
+	moduleDir := filepath.Join(cwd, ".nuclei-module-lfa-test-"+t.Name())
+	require.NoError(t, os.MkdirAll(moduleDir, 0o700))
+	t.Cleanup(func() { _ = os.RemoveAll(moduleDir) })
+	modulePath := writeModuleFile(t, moduleDir, "outside.js", `module.exports = { value: "outside-ok" };`)
 	script := fmt.Sprintf(`var helper = require(%q); ExportAs("value", helper.value); true;`, modulePath)
 
 	result, err := executeScript(t, t.Name(), true, script)

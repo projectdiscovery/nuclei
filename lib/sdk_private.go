@@ -271,6 +271,8 @@ func (e *NucleiEngine) init(ctx context.Context) error {
 		}
 		e.tmpDir = tmpDir
 	}
+	// The per-scan temp dir is the only temp location templates may access.
+	protocolstate.SetTemporaryDirectory(e.opts.ExecutionId, e.tmpDir)
 
 	e.executerOpts = &protocols.ExecutorOptions{
 		Output:             e.customWriter,

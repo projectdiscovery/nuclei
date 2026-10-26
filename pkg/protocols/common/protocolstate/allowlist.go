@@ -12,16 +12,22 @@ import (
 )
 
 // AllowedFileRoots returns filesystem roots that template execution may access.
-// Templates dir is always included. When -lfa is enabled the current working
-// directory and any configured AllowedPaths are added as well. The config dir
-// is never included: it holds the template signing key and reporting secrets.
+// Templates dir and the per-scan temp dir are always included. When -lfa is
+// enabled the current working directory and any configured AllowedPaths are
+// added as well. The config dir is never included: it holds the template
+// signing key and reporting secrets.
 func AllowedFileRoots(options *types.Options) []string {
 	roots := make([]string, 0, 6)
 	if templateDir := config.DefaultConfig.GetTemplateDir(); templateDir != "" {
 		roots = append(roots, canonicalRoot(templateDir))
 	}
-	if tempDir := os.TempDir(); tempDir != "" {
-		roots = append(roots, canonicalRoot(tempDir))
+	// Only the per-scan temp dir nuclei created is allowlisted, never the
+	// shared system temp dir: on Linux that is /tmp, which holds other users'
+	// and other programs' files.
+	if options != nil {
+		if tempDir := GetTemporaryDirectory(options.ExecutionId); tempDir != "" {
+			roots = append(roots, canonicalRoot(tempDir))
+		}
 	}
 	// StoreResponseDir defaults to a relative "output" folder, so it is only a
 	// real root once response storing is actually requested. Adding it
@@ -59,6 +65,13 @@ func AllowedFileRoots(options *types.Options) []string {
 // javascript/code file access is still checked against AllowedFileRoots.
 func SandboxFileRoots(options *types.Options) []string {
 	roots := AllowedFileRoots(options)
+	// nuclei itself keeps working files in the system temp dir (the per-scan
+	// dir, the headless browser profile, the dedupe db, update locks), so
+	// the process sandbox must keep it usable. Templates still cannot reach
+	// it: their access is checked against AllowedFileRoots.
+	if tempDir := os.TempDir(); tempDir != "" {
+		roots = append(roots, canonicalRoot(tempDir))
+	}
 	if options == nil {
 		return uniqueRoots(roots)
 	}

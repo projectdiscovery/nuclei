@@ -26,6 +26,11 @@ var (
 	// SyncLockMap value).
 	allowedPathsMu     sync.RWMutex
 	allowedPathsByExec = map[string][]string{}
+	// tempDirByExec stores the per-scan temporary directory nuclei created for
+	// an execution id. It replaces the shared system temp dir in the template
+	// filesystem allowlist.
+	tempDirMu     sync.RWMutex
+	tempDirByExec = map[string]string{}
 )
 
 func init() {
@@ -83,6 +88,33 @@ func GetAllowedPaths(executionId string) []string {
 	allowedPathsMu.RLock()
 	defer allowedPathsMu.RUnlock()
 	return allowedPathsByExec[executionId]
+}
+
+// SetTemporaryDirectory records the per-scan temporary directory nuclei
+// created for an execution id. Templates may access it; the shared system
+// temp dir (on Linux, /tmp) is not part of the template allowlist.
+func SetTemporaryDirectory(executionId, dir string) {
+	if executionId == "" {
+		return
+	}
+	tempDirMu.Lock()
+	defer tempDirMu.Unlock()
+	if dir == "" {
+		delete(tempDirByExec, executionId)
+		return
+	}
+	tempDirByExec[executionId] = dir
+}
+
+// GetTemporaryDirectory returns the per-scan temporary directory recorded for
+// an execution id, or an empty string when none was recorded.
+func GetTemporaryDirectory(executionId string) string {
+	if executionId == "" {
+		return ""
+	}
+	tempDirMu.RLock()
+	defer tempDirMu.RUnlock()
+	return tempDirByExec[executionId]
 }
 
 func GetLfaAllowed(options *types.Options) bool {
