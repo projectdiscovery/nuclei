@@ -50,17 +50,16 @@ var defaultIgnoredCookiePrefixes = []string{
 `
 
 func main() {
-	out := flag.String("out", "", "output Go file (default: ../ignorelists.gen.go next to this tool)")
+	out := flag.String("out", "", "output Go file (default: ignorelists.gen.go in the component package)")
 	withWappalyzer := flag.Bool("wappalyzer", false, "merge header/cookie names from wappalyzergo fingerprints")
 	flag.Parse()
 
 	outPath := *out
 	if outPath == "" {
-		_, file, _, ok := runtime.Caller(0)
-		if !ok {
+		outPath = defaultOutPath()
+		if outPath == "" {
 			fatalf("could not resolve generator path")
 		}
-		outPath = filepath.Join(filepath.Dir(file), "..", "ignorelists.gen.go")
 	}
 
 	seedHeaders, err := readSeedLines("seed_headers.txt")
@@ -291,6 +290,15 @@ func sortedKeys(m map[string]struct{}) []string {
 	}
 	sort.Strings(out)
 	return out
+}
+
+// defaultOutPath returns the ignorelists.gen.go path in the component package, two levels above this tool.
+func defaultOutPath() string {
+	_, file, _, ok := runtime.Caller(0)
+	if !ok {
+		return ""
+	}
+	return filepath.Join(filepath.Dir(file), "..", "..", "ignorelists.gen.go")
 }
 
 func fatalf(format string, args ...any) {

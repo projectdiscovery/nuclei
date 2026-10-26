@@ -1,6 +1,8 @@
 package main
 
 import (
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -32,4 +34,12 @@ func TestAddCookieIgnoreLowercases(t *testing.T) {
 	addCookieIgnore(exact, prefixes, "_GA_*")
 	require.Equal(t, []string{"awsalb"}, sortedKeys(exact))
 	require.Equal(t, []string{"_ga_"}, sortedKeys(prefixes))
+}
+
+func TestDefaultOutPath(t *testing.T) {
+	out := defaultOutPath()
+	require.Equal(t, "ignorelists.gen.go", filepath.Base(out))
+	require.Equal(t, "component", filepath.Base(filepath.Dir(out)))
+	_, err := os.Stat(out)
+	require.NoError(t, err)
 }
