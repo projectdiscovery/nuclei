@@ -1581,6 +1581,10 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 					HttpClient:         analyzerClient,
 					ResponseTimeDelay:  duration,
 					AnalyzerParameters: request.Analyzer.Parameters,
+					// Analyzer probes share the scan's rate limit and host backoff.
+					RateLimitTake: func() {
+						_ = request.rateLimitTake(input.Context(), hostBackoffKey(generatedRequest, input))
+					},
 				})
 				if err != nil {
 					gologger.Warning().Msgf("Could not analyze response: %v\n", err)
