@@ -177,7 +177,7 @@ func (i *Integration) findIssueByTitle(title string) (*gitea.Issue, error) {
 			return nil, nil
 		}
 
-		issueList, _, err := i.client.ListRepoIssues(i.options.ProjectOwner, i.options.ProjectName, opts)
+		issueList, response, err := i.client.ListRepoIssues(i.options.ProjectOwner, i.options.ProjectName, opts)
 		if err != nil {
 			return nil, err
 		}
@@ -188,12 +188,11 @@ func (i *Integration) findIssueByTitle(title string) (*gitea.Issue, error) {
 			}
 		}
 
-		if len(issueList) < opts.PageSize {
-			// Last page reached.
+		if response == nil || response.NextPage == 0 {
+			// Gitea's Link header indicates there is no next page.
 			return nil, nil
 		}
-
-		opts.Page++
+		opts.Page = response.NextPage
 	}
 }
 
