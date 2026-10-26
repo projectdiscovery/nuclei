@@ -312,7 +312,7 @@ func parseStatusCodes(raw string) ([]int, error) {
 			return nil, errkit.Wrapf(err, "invalid -auth-reauth-status-codes value %q", part)
 		}
 		if code < 100 || code > 599 {
-			return nil, errkit.New("invalid -auth-reauth-status-codes value %q: must be a valid HTTP status code", part)
+			return nil, errkit.Newf("invalid -auth-reauth-status-codes value %q: must be a valid HTTP status code", part)
 		}
 		codes = append(codes, code)
 	}

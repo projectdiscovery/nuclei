@@ -35,6 +35,7 @@ type LazyFetchSecret func(d *Dynamic) error
 type fetchState struct {
 	mu        sync.RWMutex
 	fetched   bool      // whether the login callback has completed at least once
+	attempted bool      // whether the login callback has run, even if it failed
 	stale     bool      // whether the session must be re-authenticated on next fetch
 	fetchedAt time.Time // time of the last successful/attempted fetch
 	err       error     // error from the most recent fetch attempt
@@ -175,15 +176,8 @@ func (d *Dynamic) Validate() error {
 		if len(domains) == 0 && len(domainsRegex) == 0 {
 			return errkit.New("domains or domains-regex are required for auto-login dynamic secret")
 		}
-		if d.RefreshInterval != "" {
-			dur, err := time.ParseDuration(d.RefreshInterval)
-			if err != nil {
-				return errkit.New("invalid refresh-interval %q for dynamic secret: %s", d.RefreshInterval, err)
-			}
-			if dur < 0 {
-				return errkit.New("refresh-interval cannot be negative for dynamic secret")
-			}
-			d.refreshInterval = dur
+		if err := d.parseRefreshInterval(); err != nil {
+			return err
 		}
 		// The applied secret is built from the captured session at fetch time, so
 		// skip the (pre-fetch) Secret.Validate which would reject the still-empty
@@ -200,15 +194,8 @@ func (d *Dynamic) Validate() error {
 	if len(d.Variables) == 0 {
 		return errkit.New("variables are required for dynamic secret")
 	}
-	if d.RefreshInterval != "" {
-		dur, err := time.ParseDuration(d.RefreshInterval)
-		if err != nil {
-			return errkit.New("invalid refresh-interval %q for dynamic secret: %s", d.RefreshInterval, err)
-		}
-		if dur < 0 {
-			return errkit.New("refresh-interval cannot be negative for dynamic secret")
-		}
-		d.refreshInterval = dur
+	if err := d.parseRefreshInterval(); err != nil {
+		return err
 	}
 
 	if d.Secret != nil {
@@ -223,6 +210,22 @@ func (d *Dynamic) Validate() error {
 			return err
 		}
 	}
+	return nil
+}
+
+// parseRefreshInterval parses RefreshInterval into refreshInterval.
+func (d *Dynamic) parseRefreshInterval() error {
+	if d.RefreshInterval == "" {
+		return nil
+	}
+	dur, err := time.ParseDuration(d.RefreshInterval)
+	if err != nil {
+		return errkit.Newf("invalid refresh-interval %q for dynamic secret: %s", d.RefreshInterval, err)
+	}
+	if dur < 0 {
+		return errkit.New("refresh-interval cannot be negative for dynamic secret")
+	}
+	d.refreshInterval = dur
 	return nil
 }
 
@@ -474,7 +477,7 @@ func (d *Dynamic) Fetch(isFatal bool) error {
 	}
 
 	d.fetchState.mu.Lock()
-	if !d.fetchState.fetched || d.isExpiredLocked() {
+	if d.needsFetchLocked() {
 		d.runFetchLocked()
 	}
 	err := d.fetchState.err
@@ -484,6 +487,20 @@ func (d *Dynamic) Fetch(isFatal bool) error {
 		gologger.Fatal().Msgf("Could not fetch dynamic secret: %s\n", err)
 	}
 	return err
+}
+
+// needsFetchLocked reports whether the login callback must run. A failed login
+// is not retried on every request, as that would send one login per scan
+// request (account lockout, WAF bans). It is retried only once the refresh
+// interval has passed since the failed attempt. The caller must hold the lock.
+func (d *Dynamic) needsFetchLocked() bool {
+	if !d.fetchState.fetched {
+		if !d.fetchState.attempted {
+			return true
+		}
+		return d.refreshInterval > 0 && time.Since(d.fetchState.fetchedAt) > d.refreshInterval
+	}
+	return d.isExpiredLocked()
 }
 
 // Refresh forces an immediate re-authentication, re-running the login flow
@@ -617,10 +634,14 @@ func (d *Dynamic) runFetchLocked() {
 		d.fetchState.err = errkit.New("dynamic secret fetch callback not set: call SetLazyFetchCallback() before Fetch()")
 		return
 	}
+	d.fetchState.attempted = true
+	d.fetchState.fetchedAt = time.Now()
 	d.fetchState.err = d.fetchCallback(d)
 	if d.fetchState.err != nil {
-		// Leave fetched=false so a later Fetch(false) can retry instead of
-		// treating the failed attempt as an established session.
+		// A failed (re-)login drops the session: requests go out without it
+		// and the login is retried only as needsFetchLocked allows.
+		d.fetchState.fetched = false
+		d.fetchState.stale = false
 		return
 	}
 	d.fetchState.fetched = true
@@ -683,6 +704,7 @@ func (d *Dynamic) Close() {
 		}
 		d.fetchState.autoLoginSecrets = nil
 		d.fetchState.fetched = false
+		d.fetchState.attempted = false
 		d.fetchState.stale = false
 		d.fetchState.err = nil
 		d.fetchState.mu.Unlock()

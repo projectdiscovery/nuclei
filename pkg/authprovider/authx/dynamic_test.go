@@ -135,7 +135,6 @@ func TestDynamicFetchConcurrent(t *testing.T) {
 		wantErr := errors.New("auth fetch failed")
 		fetchStarted := make(chan struct{})
 		fetchUnblock := make(chan struct{})
-		var startedOnce sync.Once
 
 		d := &Dynamic{
 			TemplatePath: "test-template.yaml",
@@ -143,9 +142,9 @@ func TestDynamicFetchConcurrent(t *testing.T) {
 		}
 		require.NoError(t, d.Validate())
 		d.SetLazyFetchCallback(func(_ *Dynamic) error {
-			// Failed fetches leave fetched=false so a later Fetch can retry;
-			// concurrent waiters may therefore re-enter the callback.
-			startedOnce.Do(func() { close(fetchStarted) })
+			// a failed login is not retried by the waiting requests: a second
+			// call would close fetchStarted again and panic
+			close(fetchStarted)
 			<-fetchUnblock
 			return wantErr
 		})
@@ -827,5 +826,65 @@ func TestGetDomainAndDomainRegex(t *testing.T) {
 		domains, regexes := d.GetDomainAndDomainRegex()
 		require.Nil(t, domains)
 		require.Nil(t, regexes)
+	})
+}
+
+// A failed login must not be retried on every request: each retry is one more
+// login attempt against the target (account lockout, WAF bans).
+func TestDynamicFailedLoginIsNotRetriedPerRequest(t *testing.T) {
+	newDynamic := func(refresh string, fail *atomic.Bool, calls *atomic.Int32) *Dynamic {
+		d := &Dynamic{
+			TemplatePath:    "test-template.yaml",
+			Variables:       []KV{{Key: "username", Value: "test"}},
+			RefreshInterval: refresh,
+		}
+		require.NoError(t, d.Validate())
+		d.SetLazyFetchCallback(func(d *Dynamic) error {
+			calls.Add(1)
+			if fail.Load() {
+				return errors.New("bad credentials")
+			}
+			d.Extracted = map[string]interface{}{"token": "x"}
+			return nil
+		})
+		return d
+	}
+
+	t.Run("first login fails", func(t *testing.T) {
+		var fail atomic.Bool
+		var calls atomic.Int32
+		fail.Store(true)
+		d := newDynamic("", &fail, &calls)
+		for i := 0; i < 5; i++ {
+			require.Error(t, d.Fetch(false))
+		}
+		require.Equal(t, int32(1), calls.Load())
+	})
+
+	t.Run("re-login after stale fails", func(t *testing.T) {
+		var fail atomic.Bool
+		var calls atomic.Int32
+		d := newDynamic("", &fail, &calls)
+		require.NoError(t, d.Fetch(false))
+		fail.Store(true)
+		d.MarkStale()
+		for i := 0; i < 5; i++ {
+			require.Error(t, d.Fetch(false))
+		}
+		require.Equal(t, int32(2), calls.Load())
+	})
+
+	t.Run("retried after refresh interval", func(t *testing.T) {
+		var fail atomic.Bool
+		var calls atomic.Int32
+		fail.Store(true)
+		d := newDynamic("50ms", &fail, &calls)
+		require.Error(t, d.Fetch(false))
+		require.Error(t, d.Fetch(false))
+		require.Equal(t, int32(1), calls.Load())
+		fail.Store(false)
+		time.Sleep(80 * time.Millisecond)
+		require.NoError(t, d.Fetch(false))
+		require.Equal(t, int32(2), calls.Load())
 	})
 }
