@@ -121,9 +121,10 @@ func (r *Runner) startHTTPXProbeProgress(probeTotal int, probed, alive *atomic.I
 		return nil
 	}
 
+	// like the stats ticker, an interval of zero or less disables periodic output
 	interval := time.Duration(r.options.StatsInterval) * time.Second
 	if interval <= 0 {
-		interval = 5 * time.Second
+		return nil
 	}
 
 	r.Logger.Info().Msgf("httpx probe progress enabled for %d hosts (interval %s)", probeTotal, interval)
