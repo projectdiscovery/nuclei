@@ -2,7 +2,10 @@ package templates
 
 import (
 	"testing"
+	"time"
 
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
+	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v3"
 )
@@ -25,6 +28,11 @@ http:
 	var template Template
 	require.NoError(t, yaml.Unmarshal([]byte(raw), &template))
 	require.Equal(t, 300, template.InteractshEviction)
+
+	parsed, err := parseTemplateNoVerify([]byte(raw), &protocols.ExecutorOptions{Options: types.DefaultOptions()})
+	require.NoError(t, err)
+	require.Equal(t, 300, parsed.Options.InteractshEviction)
+	require.Equal(t, 300*time.Second, parsed.Options.InteractshEvictionDuration())
 }
 
 func TestTemplateInteractshEvictionRejectsNegativeValue(t *testing.T) {
