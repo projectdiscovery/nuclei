@@ -43,7 +43,6 @@ func main() {
 
 	// Generate JSON Schema
 	r := &jsonschema.Reflector{
-		BaseSchemaID: jsonschema.ID("https://nuclei.projectdiscovery.io/"),
 		Namer: func(t reflect.Type) string {
 			if t.Kind() == reflect.Slice {
 				return ""
@@ -72,7 +71,7 @@ func main() {
 	m["$id"] = "https://nuclei.projectdiscovery.io/template-schema.json"
 
 	// Enable markdown descriptions in Monaco / VS Code.
-	updateDescriptionKeyName("", m)
+	updateDescriptionKeyName(m)
 
 	schemax, err := json.MarshalIndent(m, "", "  ")
 	if err != nil {
@@ -82,22 +81,69 @@ func main() {
 	writeToFile(os.Args[2], schemax)
 }
 
-// updateDescriptionKeyName recursively renames description -> markdownDescription
-// except when description is a property key under "properties".
-func updateDescriptionKeyName(parent string, m map[string]interface{}) {
-	for k, v := range m {
-		if k == "description" && parent != "properties" {
-			// Keep standard JSON Schema "description" for non-Monaco consumers
-			// and also emit Monaco/VS Code "markdownDescription".
-			m["markdownDescription"] = v
+// schemaMapKeywords hold a map of names to subschemas.
+var schemaMapKeywords = map[string]struct{}{
+	"properties":        {},
+	"patternProperties": {},
+	"$defs":             {},
+	"definitions":       {},
+	"dependentSchemas":  {},
+}
+
+// schemaKeywords hold a single subschema.
+var schemaKeywords = map[string]struct{}{
+	"items":                 {},
+	"additionalProperties":  {},
+	"unevaluatedProperties": {},
+	"unevaluatedItems":      {},
+	"contains":              {},
+	"propertyNames":         {},
+	"not":                   {},
+	"if":                    {},
+	"then":                  {},
+	"else":                  {},
+}
+
+// schemaListKeywords hold a list of subschemas.
+var schemaListKeywords = map[string]struct{}{
+	"allOf":       {},
+	"anyOf":       {},
+	"oneOf":       {},
+	"prefixItems": {},
+}
+
+// updateDescriptionKeyName copies description to markdownDescription on every
+// schema node. It walks only schema keywords, so description keys inside
+// examples, defaults, enums and consts stay as they are.
+func updateDescriptionKeyName(node map[string]interface{}) {
+	if v, ok := node["description"]; ok {
+		// Keep standard JSON Schema "description" for non-Monaco consumers
+		// and also emit Monaco/VS Code "markdownDescription".
+		node["markdownDescription"] = v
+	}
+	for k, v := range node {
+		if _, ok := schemaMapKeywords[k]; ok {
+			if children, ok := v.(map[string]interface{}); ok {
+				for _, child := range children {
+					if childMap, ok := child.(map[string]interface{}); ok {
+						updateDescriptionKeyName(childMap)
+					}
+				}
+			}
+			continue
 		}
-		if vMap, ok := v.(map[string]interface{}); ok {
-			updateDescriptionKeyName(k, vMap)
+		if _, ok := schemaKeywords[k]; ok {
+			if childMap, ok := v.(map[string]interface{}); ok {
+				updateDescriptionKeyName(childMap)
+			}
+			continue
 		}
-		if vSlice, ok := v.([]interface{}); ok {
-			for _, item := range vSlice {
-				if itemMap, ok := item.(map[string]interface{}); ok {
-					updateDescriptionKeyName(k, itemMap)
+		if _, ok := schemaListKeywords[k]; ok {
+			if children, ok := v.([]interface{}); ok {
+				for _, child := range children {
+					if childMap, ok := child.(map[string]interface{}); ok {
+						updateDescriptionKeyName(childMap)
+					}
 				}
 			}
 		}

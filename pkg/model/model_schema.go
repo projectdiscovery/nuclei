@@ -85,7 +85,10 @@ var infoSectionMetadata = []schema.PropertyMetadata{
 			"https://logging.apache.org/log4j/2.x/security.html",
 			"https://nvd.nist.gov/vuln/detail/CVE-2021-44228",
 		),
-		Example: schema.PropertyExample("\n\t- https://example.com"),
+		Example: schema.PropertyExamples(
+			"https://example.com",
+			[]string{"https://example.com", "https://nvd.nist.gov/vuln/detail/CVE-2021-44228"},
+		),
 	},
 	{
 		PropName: "severity",

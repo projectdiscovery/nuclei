@@ -2093,7 +2093,11 @@
           "$ref": "#/$defs/stringslice.StringOrSlice",
           "description": "References for the template.\nThis should contain links relevant to the template.\nExample:\nhttps://logging.apache.org/log4j/2.x/security.html\nhttps://nvd.nist.gov/vuln/detail/CVE-2021-44228",
           "examples": [
-            "\n\t- https://example.com"
+            "https://example.com",
+            [
+              "https://example.com",
+              "https://nvd.nist.gov/vuln/detail/CVE-2021-44228"
+            ]
           ],
           "markdownDescription": "References for the template.\nThis should contain links relevant to the template.\nExample:\nhttps://logging.apache.org/log4j/2.x/security.html\nhttps://nvd.nist.gov/vuln/detail/CVE-2021-44228",
           "title": "references for the template"
