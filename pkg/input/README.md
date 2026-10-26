@@ -43,6 +43,7 @@ https://d.example
 | Key | Selects |
 | --- | --- |
 | `target` | the target (URL, host, IP, CIDR or ASN), required |
+| `ip` | the address to connect to instead of resolving the target's host, see below |
 | `profile` | a template profile ID from the templates `profiles` directory (paths are rejected); the line's other keys override it |
 | `templates` | template paths, relative to the templates directory |
 | `tags`, `exclude-tags`, `include-tags`, `author`, `template-id`, `exclude-id`, `severity`, `exclude-severity`, `type`, `exclude-type` | same as the CLI flags |
@@ -53,6 +54,23 @@ https://d.example
 - When every target has a selection, only the templates some target selects are loaded.
 - Unknown keys fail the run rather than widening the scan. Profile keys that configure the whole scan, such as `code` or `var`, are ignored per target.
 - Not supported with `-automatic-scan`. Global matchers still apply to every target.
+
+### Pinning a target to an IP
+
+`ip` sends the target's traffic to one address, like `curl --resolve`: the hostname is still used for the Host header, SNI and template variables such as `{{Hostname}}`, while connections to that hostname go to the ip. This scans a vhost on a given server, or an origin behind a CDN.
+
+```jsonl
+{"target": "https://app.example", "ip": "192.0.2.10"}
+{"target": "https://app.example", "ip": "192.0.2.11", "tags": ["cve"]}
+```
+
+- Each `target` and `ip` pair is a separate target: the same host can be listed with several ips, and each pair has its own selection. `{{ip}}` and the `ip` field of results hold the pinned ip.
+- The target must have a hostname; IP, CIDR and ASN targets cannot be pinned. `-sa` and `-iv` do not apply to a pinned target.
+- A pinned ip excluded with `-eh`, or a local one with `-lna`, is skipped.
+- `-mup` counts the urls of each ip apart, so a url listed with several ips is kept on each of them.
+- HTTP, network, websocket, javascript and ssl templates connect to the ip. Headless templates and `unsafe: true` raw requests do not.
+- Pinned targets cannot be combined with `-proxy`, `-replay-proxy` or `-automatic-scan`.
+- `-u` splits its value on commas unless the value is quoted, so pass target lines in a file (`-l`) or on stdin.
 
 ## Formats
 
