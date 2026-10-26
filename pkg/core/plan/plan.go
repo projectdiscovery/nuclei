@@ -18,7 +18,7 @@ type Input struct {
 	// Reachability / probe budget (known before or after probing).
 	PortsToProbe             int
 	ConcreteNetworkTemplates int
-	// FilteredRequests, when > 0, is the post-filter request estimate used for Progress.Init.
+	// FilteredRequests, when > 0, is the post-filter request estimate the plan reports.
 	FilteredRequests int
 	// GroupCount is distinct host signatures after probing (0 = unknown).
 	GroupCount int

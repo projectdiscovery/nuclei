@@ -314,12 +314,6 @@ func (e *ClusterExecuter) Execute(ctx *scan.ScanContext) (bool, error) {
 			return false, nil
 		}
 	}
-
-	ops := e.operatorsForInput(inputItem.MetaInput)
-	if len(ops) == 0 {
-		return false, nil
-	}
-
 	previous := make(map[string]interface{})
 	dynamicValues := make(map[string]interface{})
 
@@ -334,7 +328,7 @@ func (e *ClusterExecuter) Execute(ctx *scan.ScanContext) (bool, error) {
 		if event.InternalEvent == nil {
 			event.InternalEvent = make(map[string]interface{})
 		}
-		for _, operator := range ops {
+		for _, operator := range clusterOperators {
 			clonedEvent := event.CloneShallow()
 
 			result, matched := operator.operator.Execute(clonedEvent.InternalEvent, e.requests.Match, e.requests.Extract, e.options.Options.Debug || e.options.Options.DebugResponse)
@@ -361,7 +355,7 @@ func (e *ClusterExecuter) Execute(ctx *scan.ScanContext) (bool, error) {
 	if !callbackCalled.Load() && e.options.Options.MatcherStatus {
 		// Parse URL fields from the input
 		fields := protocolUtils.GetJsonFieldsFromURL(ctx.Input.MetaInput.Input)
-		for _, operator := range ops {
+		for _, operator := range clusterOperators {
 			errMsg := ""
 			if err != nil {
 				errMsg = err.Error()
@@ -398,29 +392,6 @@ func (e *ClusterExecuter) Execute(ctx *scan.ScanContext) (bool, error) {
 	return results, err
 }
 
-// operatorsForInput returns cluster members allowed on input by TargetScope
-// (per-target profiles) and ClusterMemberFilter (automatic-scan reachability).
-// When both filters are unset, all operators are returned.
-func (e *ClusterExecuter) operatorsForInput(mi *contextargs.MetaInput) []*clusteredOperator {
-	base := e.operators
-	if e.options != nil {
-		base = e.operatorsFor(mi)
-	}
-	if e.options == nil || e.options.ClusterMemberFilter == nil {
-		return base
-	}
-	out := make([]*clusteredOperator, 0, len(base))
-	for _, op := range base {
-		if e.options.ClusterMemberFilter(op.templateID, op.templateInfo, mi) {
-			out = append(out, op)
-		}
-	}
-	if len(out) == len(base) {
-		return base
-	}
-	return out
-}
-
 // ExecuteWithResults executes the protocol requests and returns results instead of writing them.
 func (e *ClusterExecuter) ExecuteWithResults(ctx *scan.ScanContext) ([]*output.ResultEvent, error) {
 	clusterOperators := e.operatorsFor(ctx.Input.MetaInput)
@@ -436,12 +407,8 @@ func (e *ClusterExecuter) ExecuteWithResults(ctx *scan.ScanContext) ([]*output.R
 			return nil, nil
 		}
 	}
-	ops := e.operatorsForInput(inputItem.MetaInput)
-	if len(ops) == 0 {
-		return nil, nil
-	}
 	err := e.requests.ExecuteWithResults(inputItem, dynamicValues, nil, func(event *output.InternalWrappedEvent) {
-		for _, operator := range ops {
+		for _, operator := range clusterOperators {
 			clonedEvent := event.CloneShallow()
 
 			result, matched := operator.operator.Execute(clonedEvent.InternalEvent, e.requests.Match, e.requests.Extract, e.options.Options.Debug || e.options.Options.DebugResponse)

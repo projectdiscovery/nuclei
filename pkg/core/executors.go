@@ -195,13 +195,6 @@ func (e *Engine) executeTemplateWithTargets(ctx context.Context, template *templ
 			return true
 		}
 
-		// Reachability filter (strict-probe): skip template×target pairs that
-		// cannot produce findings. Done here so spray stays a single pass.
-		if !skip && e.TemplateTargetFilter != nil && !e.TemplateTargetFilter(template, scannedValue) {
-			skip = true
-			e.creditFilteredSkip(template)
-		}
-
 		tasks <- task{index: index, skip: skip, value: scannedValue}
 		index++
 		return true
@@ -261,11 +254,6 @@ func (e *Engine) executeTemplatesOnTarget(ctx context.Context, alltemplates []*t
 			break
 		}
 
-		if e.TemplateTargetFilter != nil && !e.TemplateTargetFilter(tpl, target) {
-			e.creditFilteredSkip(tpl)
-			continue
-		}
-
 		// resize check point - nop if there are no changes
 		wp.RefreshWithConfigContext(ctx, e.GetWorkPoolConfig())
 
@@ -313,23 +301,6 @@ func (e *Engine) selectionFor(input *contextargs.MetaInput) protocols.TemplateSe
 		return nil
 	}
 	return e.executerOpts.TargetScope.For(input)
-}
-
-// creditFilteredSkip records progress for a template and target pair the
-// TemplateTargetFilter skipped. The pair never reaches executeTemplateOnInput,
-// so its task is done here. When Progress was inited with the filtered total,
-// its requests are not credited again (would overshoot 100%); otherwise the
-// baseline requests are credited.
-func (e *Engine) creditFilteredSkip(template *templates.Template) {
-	e.tasksDone(1)
-	if e.executerOpts == nil || e.executerOpts.Progress == nil || e.executerOpts.ExpectedRequestsOverride > 0 {
-		return
-	}
-	reqs := int64(template.TotalRequests)
-	if reqs <= 0 {
-		reqs = 1
-	}
-	e.executerOpts.Progress.IncrementFailedRequestsBy(reqs)
 }
 
 // taskTracker returns the progress when it counts tasks, nil otherwise.

@@ -176,14 +176,6 @@ type ExecutorOptions struct {
 	CustomFastdialer *fastdialer.Dialer
 	// ClusterMappings stores cluster ID to template IDs mapping during execution
 	ClusterMappings *templateTypes.ClusterMappingsMap
-	// ExpectedRequestsOverride, when > 0, is used by Progress.Init instead of the
-	// full templates×hosts product. Set by the scan planner when a reachability
-	// filter will skip impossible pairs so ETA matches filtered work.
-	ExpectedRequestsOverride int64
-	// ClusterMemberFilter, when set, decides whether a clustered template member
-	// should produce results on a given input. Used so tech/reachability filters
-	// still apply after request clustering merges templates.
-	ClusterMemberFilter func(templateID string, info model.Info, input *contextargs.MetaInput) bool
 	// TargetScope narrows the templates run on each target (per-target profiles)
 	TargetScope TargetScope
 }
@@ -434,8 +426,6 @@ func (e *ExecutorOptions) Copy() *ExecutorOptions {
 		ExportReqURLPattern:          e.ExportReqURLPattern,
 		GlobalMatchers:               e.GlobalMatchers,
 		Logger:                       e.Logger,
-		ClusterMemberFilter:          e.ClusterMemberFilter,
-		ExpectedRequestsOverride:     e.ExpectedRequestsOverride,
 		TargetScope:                  e.TargetScope,
 	}
 	copy.ClusterMappings = e.ClusterMappings.Copy()

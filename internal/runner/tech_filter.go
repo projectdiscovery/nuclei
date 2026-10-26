@@ -10,7 +10,6 @@ import (
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/core/techfilter"
 	"github.com/projectdiscovery/nuclei/v3/pkg/input"
-	"github.com/projectdiscovery/nuclei/v3/pkg/model"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
 	httpProtocol "github.com/projectdiscovery/nuclei/v3/pkg/protocols/http"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/httpclientpool"
@@ -92,12 +91,6 @@ func (idx *techReachabilityIndex) lookup(raw string) (techfilter.HostProfile, bo
 		return p, true
 	}
 	return techfilter.HostProfile{}, false
-}
-
-// AllowClusterMember adapts Allow for ClusterExecuter (template ID + info only).
-func (idx *techReachabilityIndex) AllowClusterMember(templateID string, info model.Info, mi *contextargs.MetaInput) bool {
-	stub := &templates.Template{ID: templateID, Info: info}
-	return idx.Allow(stub, mi)
 }
 
 // buildTechReachability fingerprints HTTP(S) targets and builds a tag index.

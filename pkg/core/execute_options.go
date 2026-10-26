@@ -79,17 +79,7 @@ func (e *Engine) ExecuteScanWithOpts(ctx context.Context, templatesList []*templ
 		// workflow requests are not counted as they can be conditional
 		// templateList count is user requested templates count (before clustering)
 		// totalReqAfterClustering is total requests count after clustering
-		// ExpectedRequestsOverride (scan planner) replaces the total when a
-		// reachability filter will skip impossible template×target pairs. The
-		// planner counts unclustered requests, so scale it by the clustering
-		// reduction.
 		requests, tasks := e.expectedWork(finalTemplates, filtered, target, totalReqAfterClustering)
-		if override := e.executerOpts.ExpectedRequestsOverride; override > 0 {
-			requests = override
-			if totalReqBeforeCluster > 0 && totalReqAfterClustering < totalReqBeforeCluster {
-				requests = override * int64(totalReqAfterClustering) / int64(totalReqBeforeCluster)
-			}
-		}
 		e.executerOpts.Progress.Init(target.Count(), len(templatesList), requests)
 		// a self-contained template runs once
 		e.addTaskTotal(tasks + int64(len(selfContained)))

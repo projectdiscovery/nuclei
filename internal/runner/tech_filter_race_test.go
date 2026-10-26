@@ -5,7 +5,6 @@ import (
 	"testing"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/core/techfilter"
-	"github.com/projectdiscovery/nuclei/v3/pkg/model"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates"
 )
@@ -27,7 +26,6 @@ func TestTechReachabilityIndexConcurrentTagsFor(t *testing.T) {
 				tpl := &templates.Template{ID: string(rune('a' + (i+j)%26))}
 				_ = idx.tagsFor(tpl)
 				_ = idx.Allow(tpl, &contextargs.MetaInput{Input: "http://x/"})
-				_ = idx.AllowClusterMember(tpl.ID, model.Info{}, &contextargs.MetaInput{Input: "http://x/"})
 			}
 		}(i)
 	}

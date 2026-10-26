@@ -1073,6 +1073,20 @@ func (r *Runner) executeTemplatesInput(store *loader.Store, engine *core.Engine)
 // reachability / tech filter, then runs a single Execute pass. Wall clock must
 // match or beat baseline spray; probing is skipped when its cost would dominate.
 func (r *Runner) executeTemplatesWithScanPlan(engine *core.Engine, finalTemplates []*templates.Template) (*atomic.Bool, error) {
+	defer r.attachScanPlan(engine, finalTemplates)()
+	results := engine.ExecuteScanWithOpts(context.Background(), finalTemplates, r.inputProvider, r.options.DisableClustering)
+	return results, nil
+}
+
+// attachScanPlan applies the scan plan to engine for one scan. It returns a
+// func that undoes the per-scan state once the scan is done.
+func (r *Runner) attachScanPlan(engine *core.Engine, finalTemplates []*templates.Template) func() {
+	var undo []func()
+	cleanup := func() {
+		for i := len(undo) - 1; i >= 0; i-- {
+			undo[i]()
+		}
+	}
 	hostCount := int(r.inputProvider.Count())
 	baselineReqs := estimateTemplateRequests(finalTemplates) * hostCount
 	concreteNet, portsToProbe := countReachabilityStats(finalTemplates)
@@ -1174,35 +1188,29 @@ func (r *Runner) executeTemplatesWithScanPlan(engine *core.Engine, finalTemplate
 	}
 
 	p.ApplyFiltered(filteredReqs)
-	engine.TemplateTargetFilter = composeTemplateFilters(reachFilter, techFilterFn)
-	if engine.TemplateTargetFilter != nil {
-		defer func() { engine.TemplateTargetFilter = nil }()
-	}
 	if opts := engine.ExecuterOptions(); opts != nil {
-		// Cluster members keep their own Info.Tags; apply tech filter there so
-		// clustering cannot re-introduce skipped product templates.
-		if techIdx != nil {
-			opts.ClusterMemberFilter = techIdx.AllowClusterMember
-			defer func() { opts.ClusterMemberFilter = nil }()
-		}
-		if p.ExpectedRequests > 0 && (engine.TemplateTargetFilter != nil || opts.ClusterMemberFilter != nil) {
-			opts.ExpectedRequestsOverride = p.ExpectedRequests
-			defer func() { opts.ExpectedRequestsOverride = 0 }()
+		// The filters narrow the templates per target through the same
+		// TargetScope as per-target profiles, on top of them. The engine then
+		// skips the pairs, counts progress and narrows clusters as it does for
+		// profiles.
+		if filter := composeTemplateFilters(reachFilter, techFilterFn); filter != nil {
+			profiles := opts.TargetScope
+			opts.TargetScope = newPlanScope(profiles, filter, finalTemplates)
+			undo = append(undo, func() { opts.TargetScope = profiles })
 		}
 		if opts.HTTPResponseCache != nil {
-			defer func() {
+			undo = append(undo, func() {
 				hits, misses, stores := opts.HTTPResponseCache.Stats()
 				r.Logger.Info().Msgf("http-response-cache: hits=%d misses=%d stores=%d", hits, misses, stores)
 				opts.HTTPResponseCache = nil
-			}()
+			})
 		}
 	}
 
 	r.Logger.Info().Msgf("scan-plan: strategy=%s reach=%v tech=%v expected_req=%d reason=%s",
 		r.options.ScanStrategy, p.UseReachabilityFilter, p.UseTechFilter, p.ExpectedRequests, p.Reason)
 
-	results := engine.ExecuteScanWithOpts(context.Background(), finalTemplates, r.inputProvider, r.options.DisableClustering)
-	return results, nil
+	return cleanup
 }
 
 // displayExecutionInfo prints parser stats, version info, and scan counts.
