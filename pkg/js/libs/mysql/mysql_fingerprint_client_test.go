@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"path/filepath"
+	"runtime"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -217,14 +219,17 @@ func TestConnectWithDSNUnixDeniedByNetworkPolicy(t *testing.T) {
 	t.Cleanup(func() { protocolstate.Close(executionID) })
 	ctx := context.WithValue(context.Background(), "executionId", executionID) //nolint:staticcheck
 
-	sock := "/tmp/nuclei-mysql-lna-" + strings.NewReplacer("/", "-", " ", "-").Replace(t.Name()) + ".sock"
-	_ = os.Remove(sock)
-	ln, err := net.Listen("unix", sock)
+	// t.TempDir can exceed the unix socket path limit on macOS, so use a short dir.
+	dir, err := os.MkdirTemp("", "nuclei-mysql")
 	require.NoError(t, err)
-	t.Cleanup(func() {
-		_ = ln.Close()
-		_ = os.Remove(sock)
-	})
+	t.Cleanup(func() { _ = os.RemoveAll(dir) })
+	sock := filepath.Join(dir, "lna.sock")
+	ln, err := net.Listen("unix", sock)
+	if err != nil && runtime.GOOS == "windows" {
+		t.Skipf("unix sockets not available: %v", err)
+	}
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = ln.Close() })
 
 	var accepted atomic.Int32
 	go func() {

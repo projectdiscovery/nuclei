@@ -77,9 +77,10 @@ func BuildDSN(opts MySQLOptions) (string, error) {
 }
 
 // sandboxDSN enforces local file and network policy on a MySQL DSN.
-// allowAllFiles is only honored when -lfa is enabled. Raw tcp DSNs are
-// rewritten to nucleitcp so the driver uses the fastdialer registered in
-// protocolstate. Unix sockets are treated as loopback for -lna.
+// allowAllFiles is only honored when -lfa is enabled. tcp, tcp4 and tcp6
+// DSNs are rewritten to nucleitcp so the driver uses the fastdialer
+// registered in protocolstate. Unix sockets are treated as loopback for -lna.
+// Other networks are rejected.
 func sandboxDSN(executionId, dsn string) (string, error) {
 	cfg, err := mysql.ParseDSN(dsn)
 	if err != nil {
@@ -101,19 +102,16 @@ func sandboxDSN(executionId, dsn string) (string, error) {
 		if !protocolstate.IsHostAllowed(executionId, unixPolicyHost) {
 			return "", protocolstate.ErrHostDenied.Msgf(unixPolicyHost)
 		}
-	case "tcp":
+	case "tcp", "tcp4", "tcp6", "nucleitcp":
+		// Only nucleitcp has a registered dialer; the others would use the
+		// driver's plain net.Dialer and skip the dial-time policy check.
 		cfg.Net = "nucleitcp"
-		fallthrough
-	case "nucleitcp":
 		host := dsnPolicyHost(cfg.Addr)
 		if !protocolstate.IsHostAllowed(executionId, host) {
 			return "", protocolstate.ErrHostDenied.Msgf(host)
 		}
 	default:
-		host := dsnPolicyHost(cfg.Addr)
-		if host != "" && !protocolstate.IsHostAllowed(executionId, host) {
-			return "", protocolstate.ErrHostDenied.Msgf(host)
-		}
+		return "", fmt.Errorf("unsupported mysql network %q", netName)
 	}
 	return cfg.FormatDSN(), nil
 }

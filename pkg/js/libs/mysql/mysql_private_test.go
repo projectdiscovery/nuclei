@@ -55,6 +55,24 @@ func TestSandboxDSN(t *testing.T) {
 		require.Equal(t, "acme.com:3306", cfg.Addr)
 	})
 
+	t.Run("rewrites tcp4 and tcp6 to nucleitcp", func(t *testing.T) {
+		for _, netName := range []string{"tcp4", "tcp6"} {
+			got, err := sandboxDSN("", "root:x@"+netName+"(acme.com:3306)/")
+			require.NoError(t, err)
+
+			cfg, err := mysql.ParseDSN(got)
+			require.NoError(t, err)
+			require.Equal(t, "nucleitcp", cfg.Net)
+			require.Equal(t, "acme.com:3306", cfg.Addr)
+		}
+	})
+
+	t.Run("rejects unsupported network", func(t *testing.T) {
+		_, err := sandboxDSN("", "root:x@udp(acme.com:3306)/")
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "udp")
+	})
+
 	t.Run("errors on invalid dsn", func(t *testing.T) {
 		_, err := sandboxDSN("", "::not-a-dsn::")
 		require.Error(t, err)
@@ -71,6 +89,24 @@ func TestSandboxDSN(t *testing.T) {
 		_, err := sandboxDSN(executionID, "vuser:vpass@tcp(127.0.0.1:3306)/vdb")
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "127.0.0.1")
+	})
+
+	t.Run("denies loopback variants when lna enabled", func(t *testing.T) {
+		executionID := "mysql-lna-variants-" + t.Name()
+		require.NoError(t, protocolstate.Init(&types.Options{
+			ExecutionId:                executionID,
+			RestrictLocalNetworkAccess: true,
+		}))
+		t.Cleanup(func() { protocolstate.Close(executionID) })
+
+		for _, dsn := range []string{
+			"vuser:vpass@tcp4(127.0.0.1:3306)/vdb",
+			"vuser:vpass@tcp6([::1]:3306)/vdb",
+			"vuser:vpass@tcp([::ffff:127.0.0.1]:3306)/vdb",
+		} {
+			_, err := sandboxDSN(executionID, dsn)
+			require.Error(t, err, dsn)
+		}
 	})
 
 	t.Run("denies unix socket when lna enabled", func(t *testing.T) {
