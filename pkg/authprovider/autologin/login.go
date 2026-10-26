@@ -152,7 +152,7 @@ func Login(ctx context.Context, base *http.Client, cfg Config) (*Session, error)
 	if timeout == 0 {
 		timeout = 30 * time.Second
 	}
-	client := &http.Client{Jar: jar, Timeout: timeout}
+	client := &http.Client{Jar: jar, Timeout: timeout, CheckRedirect: checkLoginRedirect(cfg.AllowCrossOriginAction)}
 	switch {
 	case base != nil && base.Transport != nil:
 		// Reuse the template client's transport (proxy/TLS) when provided.
@@ -368,6 +368,25 @@ func renderCookieHeader(cookies []*http.Cookie) string {
 		parts = append(parts, c.Name+"="+c.Value)
 	}
 	return strings.Join(parts, "; ")
+}
+
+// checkLoginRedirect keeps the default limit of 10 redirects and refuses a
+// 307/308 redirect that would replay the submitted form body (with the
+// password) to another origin. Without it a login endpoint could bounce the
+// credentials anywhere, which the form action origin check alone cannot stop.
+func checkLoginRedirect(allowCrossOrigin bool) func(*http.Request, []*http.Request) error {
+	return func(req *http.Request, via []*http.Request) error {
+		if len(via) >= 10 {
+			return errkit.New("auto-login: stopped after 10 redirects")
+		}
+		if allowCrossOrigin || req.Method == http.MethodGet || req.Method == http.MethodHead {
+			return nil
+		}
+		if !sameOrigin(via[len(via)-1].URL, req.URL) {
+			return errkit.Newf("auto-login: refusing to replay the login form to a different origin (%s); set allow-cross-origin-action to send the credentials there", req.URL.Redacted())
+		}
+		return nil
+	}
 }
 
 // sameOrigin reports whether a and b share scheme, host and port, with the

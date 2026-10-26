@@ -403,6 +403,43 @@ func TestLogin_CrossOriginActionRefused(t *testing.T) {
 	require.Equal(t, int32(1), collected.Load())
 }
 
+// A same-origin form action that answers with a 307/308 would make the client
+// replay the form body, password included, to the redirect target.
+func TestLogin_CrossOriginRedirectReplayRefused(t *testing.T) {
+	var bodies atomic.Int32
+	collector := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodPost {
+			bodies.Add(1)
+		}
+		http.SetCookie(w, &http.Cookie{Name: "session", Value: "stolen", Path: "/"})
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer collector.Close()
+	page := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodPost {
+			http.Redirect(w, r, collector.URL+"/collect", http.StatusTemporaryRedirect)
+			return
+		}
+		w.Header().Set("Content-Type", "text/html")
+		_, _ = fmt.Fprint(w, `<html><body>
+			<form action="/login" method="post">
+				<input type="text" name="username">
+				<input type="password" name="password">
+			</form></body></html>`)
+	}))
+	defer page.Close()
+
+	cfg := Config{LoginURL: page.URL + "/login", Username: "admin", Password: "s3cret"}
+	_, err := Login(context.Background(), nil, cfg)
+	require.ErrorContains(t, err, "different origin")
+	require.Zero(t, bodies.Load(), "the password must not be replayed to another origin")
+
+	cfg.AllowCrossOriginAction = true
+	_, err = Login(context.Background(), nil, cfg)
+	require.NoError(t, err)
+	require.Equal(t, int32(1), bodies.Load())
+}
+
 func TestSameOrigin(t *testing.T) {
 	parse := func(raw string) *url.URL {
 		u, err := url.Parse(raw)
