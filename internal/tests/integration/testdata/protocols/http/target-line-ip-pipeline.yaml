@@ -1,0 +1,25 @@
+id: target-line-ip-pipeline
+
+info:
+  name: Target Line IP Pipeline
+  author: pdteam
+  severity: info
+
+http:
+  - raw:
+      - |
+        GET / HTTP/1.1
+        Host: {{Hostname}}
+
+    pipeline: true
+    pipeline-concurrent-connections: 1
+    pipeline-requests-per-connection: 1
+    matchers:
+      - type: word
+        words:
+          - "host=pinned.test:"
+    extractors:
+      - type: regex
+        group: 1
+        regex:
+          - "server=([a-z]+)"

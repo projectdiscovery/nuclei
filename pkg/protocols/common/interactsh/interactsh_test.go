@@ -9,6 +9,8 @@ import (
 	"testing"
 	"time"
 
+	"errors"
+
 	"github.com/logrusorgru/aurora/v4"
 	serverint "github.com/projectdiscovery/interactsh/pkg/server"
 	"github.com/projectdiscovery/nuclei/v3/pkg/fuzz/frequency"
@@ -348,4 +350,31 @@ func TestClientInitializesCachesOnceConcurrently(t *testing.T) {
 	require.NotNil(t, client.interactions)
 	require.NotNil(t, client.matchedTemplates)
 	require.NotNil(t, client.interactshURLs)
+}
+
+func TestClientNilReceiver(t *testing.T) {
+	var client *Client
+	var iClient IClient = client
+	if res := iClient.Close(); res != false {
+		t.Fatal("Close() on a nil receiver returned true, want false")
+	}
+}
+
+func TestNotifyInteractionSkipsUnmatched(t *testing.T) {
+	client := &Client{}
+	var got *RequestData
+	client.SetInteractionCallback(func(_ *serverint.Interaction, found *RequestData) {
+		got = found
+	})
+
+	client.notifyInteraction(&serverint.Interaction{UniqueID: "missing"}, nil, errors.New("not found"))
+	if got != nil {
+		t.Fatal("callback ran for an unmatched interaction")
+	}
+
+	request := &RequestData{}
+	client.notifyInteraction(&serverint.Interaction{UniqueID: "known"}, request, nil)
+	if got != request {
+		t.Fatal("callback did not receive the matched request")
+	}
 }

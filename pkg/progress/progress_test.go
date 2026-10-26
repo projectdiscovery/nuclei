@@ -51,6 +51,8 @@ func TestMetricsMapPercent(t *testing.T) {
 		name        string
 		requests    uint64
 		total       uint64
+		tasks       uint64
+		totalTasks  uint64
 		wantPercent string
 	}{
 		{
@@ -65,14 +67,27 @@ func TestMetricsMapPercent(t *testing.T) {
 			total:       0,
 			wantPercent: "0",
 		},
+		{
+			name:        "tasks are counted",
+			requests:    50,
+			total:       200,
+			tasks:       3,
+			totalTasks:  4,
+			wantPercent: "75",
+		},
 	}
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			// Given
 			stats := &statsClientSpy{
-				counters: map[string]uint64{"requests": test.requests, "total": test.total},
-				statics:  map[string]interface{}{"startedAt": time.Now().Add(-time.Second)},
+				counters: map[string]uint64{
+					"requests":   test.requests,
+					"total":      test.total,
+					"tasks":      test.tasks,
+					"totalTasks": test.totalTasks,
+				},
+				statics: map[string]interface{}{"startedAt": time.Now().Add(-time.Second)},
 			}
 
 			// When
@@ -80,6 +95,47 @@ func TestMetricsMapPercent(t *testing.T) {
 
 			// Then
 			require.Equal(t, test.wantPercent, results["percent"])
+			require.Equal(t, clistats.String(test.tasks), results["tasks"])
+			require.Equal(t, clistats.String(test.totalTasks), results["totalTasks"])
+		})
+	}
+}
+
+func TestPrintCallbackTasks(t *testing.T) {
+	tests := []struct {
+		name       string
+		tasks      uint64
+		totalTasks uint64
+		want       string
+	}{
+		{
+			name: "tasks are not counted",
+			want: "| Requests: 10/40 (25%)",
+		},
+		{
+			name:       "tasks are counted",
+			tasks:      1,
+			totalTasks: 2,
+			want:       "| Requests: 10/40 | Tasks: 1/2 (50%)",
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			ticker := &StatsTicker{}
+			stats := &statsClientSpy{
+				counters: map[string]uint64{
+					"requests":   10,
+					"total":      40,
+					"tasks":      test.tasks,
+					"totalTasks": test.totalTasks,
+				},
+				statics: map[string]interface{}{"startedAt": time.Now()},
+			}
+
+			out, ok := ticker.makePrintCallback()(stats).(string)
+			require.True(t, ok)
+			require.Contains(t, out, test.want)
 		})
 	}
 }

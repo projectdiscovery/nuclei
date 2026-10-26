@@ -835,6 +835,51 @@ func TestHTTPExtractMultipleReuseStopsOnceBranchesAfterCancellation(t *testing.T
 	require.Less(t, time.Since(startedAt), 750*time.Millisecond)
 }
 
+func TestRequestMatcherSeesBodyPastSaveSize(t *testing.T) {
+	options := testutils.DefaultOptions.Copy()
+	options.RequestSaveSize = 32
+	testutils.Init(options)
+	t.Cleanup(func() { testutils.Cleanup(options) })
+
+	marker := "TAILMARKER"
+	request := &Request{
+		ID:     "request-save-size",
+		Method: HTTPMethodTypeHolder{MethodType: HTTPPost},
+		Path:   []string{"{{BaseURL}}"},
+		Body:   strings.Repeat("A", 200) + marker,
+		Operators: operators.Operators{
+			Matchers: []*matchers.Matcher{{
+				Part:  "request",
+				Type:  matchers.MatcherTypeHolder{MatcherType: matchers.WordsMatcher},
+				Words: []string{marker},
+			}},
+		},
+	}
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer ts.Close()
+
+	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
+		ID:   request.ID,
+		Info: model.Info{SeverityHolder: severity.Holder{Severity: severity.Low}, Name: "test"},
+	})
+	require.NoError(t, request.Compile(executerOpts))
+
+	var event *output.InternalWrappedEvent
+	err := request.ExecuteWithResults(contextargs.NewWithInput(context.Background(), ts.URL), make(output.InternalEvent), make(output.InternalEvent), func(got *output.InternalWrappedEvent) {
+		if got.OperatorsResult != nil && got.OperatorsResult.Matched {
+			event = got
+		}
+	})
+	require.NoError(t, err)
+	require.NotNil(t, event)
+	require.Contains(t, event.InternalEvent["request"], marker)
+	require.NotEmpty(t, event.Results)
+	require.NotContains(t, event.Results[0].Request, marker)
+	require.Contains(t, event.Results[0].Request, "truncated")
+}
+
 func TestDisableTE(t *testing.T) {
 	options := testutils.DefaultOptions
 

@@ -1,0 +1,20 @@
+id: target-line-ip
+
+info:
+  name: Target Line IP
+  author: pdteam
+  severity: info
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}"
+    matchers:
+      - type: word
+        words:
+          - "host=pinned.test:"
+    extractors:
+      - type: regex
+        group: 1
+        regex:
+          - "server=([a-z]+)"

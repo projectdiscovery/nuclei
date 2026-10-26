@@ -88,7 +88,7 @@ var (
 // Runner is a client for running the enumeration process.
 type Runner struct {
 	output             output.Writer
-	interactsh         *interactsh.Client
+	interactsh         interactsh.IClient
 	options            *types.Options
 	projectFile        *projectfile.ProjectFile
 	catalog            catalog.Catalog
@@ -163,7 +163,9 @@ func New(options *types.Options) (*Runner, error) {
 		tm := &installer.TemplateManager{
 			CustomTemplates:        ctm,
 			DisablePublicTemplates: options.PublicTemplateDisableDownload,
+			Channel:                options.UpdateTemplatesChannel,
 		}
+		templatesVersion := config.DefaultConfig.TemplateVersion
 		if err := tm.FreshInstallIfNotExists(); err != nil {
 			runner.Logger.Warning().Msgf("Failed to install nuclei templates: %s\n", err)
 		}
@@ -180,7 +182,12 @@ func New(options *types.Options) (*Runner, error) {
 		if options.UpdateTemplates {
 			// we automatically check for updates unless explicitly disabled
 			// this print statement is only to inform the user that there are no updates
-			if !config.DefaultConfig.NeedsTemplateUpdate() {
+			noUpdates := !config.DefaultConfig.NeedsTemplateUpdate()
+			if tm.Channel == installer.TemplatesChannelLatest {
+				// the latest channel updates without a new release
+				noUpdates = config.DefaultConfig.TemplateVersion == templatesVersion
+			}
+			if noUpdates {
 				runner.Logger.Info().Msgf("No new updates found for nuclei templates")
 			}
 
@@ -746,6 +753,11 @@ func (r *Runner) RunEnumeration() error {
 		}
 		loaderConfig.TargetFilter = profiles.LoadFilter()
 	}
+	if r.hasPinnedTargets() {
+		if err := pinnedTargetConflict(r.options); err != nil {
+			return err
+		}
+	}
 	if (!strings.EqualFold(r.options.InputFileMode, "list") || r.options.DAST) && !r.options.OfflineHTTP {
 		// if input type is not list (implicitly enable fuzzing), unless passive/offlinehttp
 		r.options.DAST = true
@@ -789,6 +801,11 @@ func (r *Runner) RunEnumeration() error {
 	}
 	if err := store.Load(); err != nil {
 		return err
+	}
+	// Each template is parsed once per scan, so the compiled cache only holds
+	// pre-compilation snapshots that nothing reads after loading.
+	if parser, ok := r.parser.(*templates.Parser); ok {
+		parser.PurgeCompiled()
 	}
 	if profiles != nil {
 		profiles.Prepare(slices.Concat(store.Templates(), store.Workflows()))
@@ -988,7 +1005,7 @@ func (r *Runner) executeSmartWorkflowInput(executorOpts *protocols.ExecutorOptio
 	if err != nil {
 		return nil, errors.Wrap(err, "could not create automatic scan service")
 	}
-	if err := service.Execute(); err != nil {
+	if err := service.Execute(context.Background()); err != nil {
 		return nil, errors.Wrap(err, "could not execute automatic scan")
 	}
 	result := &atomic.Bool{}

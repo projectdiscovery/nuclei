@@ -244,6 +244,8 @@ func main() {
 	}
 }
 
+// readConfig defines the cli flags and loads them from the command line and
+// config files.
 func readConfig() *goflags.FlagSet {
 	var selectedFiles configuration.Selection
 	// when true updates nuclei binary to latest version
@@ -307,7 +309,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.BoolVarP(&options.EnableGlobalMatchersTemplates, "enable-global-matchers", "egm", false, "enable loading global matchers templates"),
 		flagSet.BoolVar(&options.EnableFileTemplates, "file", false, "enable loading file templates"),
 		flagSet.BoolVar(&options.EnableLLM, "llm", false, "enable llm matchers and extractors (semantic matching)"),
-		flagSet.StringVar(&options.LLMProvider, "llm-provider", "openai", "llm provider for semantic matching (openai, ollama, llamacpp, vllm, lmstudio, groq, openrouter, together)"),
+		flagSet.StringVar(&options.LLMProvider, "llm-provider", "openai", "llm provider for semantic matching (openai, ollama, llamacpp, vllm, lmstudio, groq, openrouter, together, orcarouter)"),
 		flagSet.StringVar(&options.LLMBaseURL, "llm-base-url", "", "openai-compatible endpoint for semantic matching (overrides -llm-provider, e.g. a local model)"),
 		flagSet.StringVar(&options.LLMModel, "llm-model", "", "model used for semantic matching"),
 		flagSet.IntVar(&options.LLMTimeout, "llm-timeout", 30, "time in seconds to wait for a single llm call"),
@@ -383,9 +385,11 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.BoolVarP(&options.RestrictLocalNetworkAccess, "restrict-local-network-access", "lna", false, "blocks connections to the local / private network"),
 		flagSet.StringVarP(&options.Interface, "interface", "i", "", "network interface to use for network scan"),
 		flagSet.StringVarP(&options.AttackType, "attack-type", "at", "", "type of payload combinations to perform (batteringram,pitchfork,clusterbomb)"),
+		flagSet.BoolVarP(&options.PayloadRandomOrder, "payload-random-order", "pro", false, "iterate payload combinations in a random order instead of sequentially"),
 		flagSet.StringVarP(&options.SourceIP, "source-ip", "sip", "", "source ip address to use for network scan"),
 		flagSet.IntVarP(&options.ResponseReadSize, "response-size-read", "rsr", 0, "max response size to read in bytes"),
 		flagSet.IntVarP(&options.ResponseSaveSize, "response-size-save", "rss", unitutils.Mega, "max response size to read in bytes"),
+		flagSet.IntVarP(&options.RequestSaveSize, "request-size-save", "rqss", 32*unitutils.Kilo, "max request body size to save in bytes (0 to save the whole body)"),
 		flagSet.CallbackVar(func() { resetRequested = true }, "reset", "reset removes all nuclei configuration and data files (including nuclei-templates)"),
 		flagSet.BoolVarP(&options.TlsImpersonate, "tls-impersonate", "tlsi", false, "enable experimental client hello (ja3) tls randomization"),
 		flagSet.StringVarP(&options.HttpApiEndpoint, "http-api-endpoint", "hae", "", "experimental http api endpoint"),
@@ -503,6 +507,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 	flagSet.CreateGroup("update", "Update",
 		flagSet.BoolVarP(&updateNucleiBinary, "update", "up", false, "update nuclei engine to the latest released version"),
 		flagSet.BoolVarP(&options.UpdateTemplates, "update-templates", "ut", false, "update nuclei-templates to latest released version"),
+		flagSet.StringVarP(&options.UpdateTemplatesChannel, "update-templates-channel", "utc", installer.TemplatesChannelStable, "nuclei-templates update channel (stable, latest)"),
 		flagSet.StringVarP(&options.NewTemplatesDirectory, "update-template-dir", "ud", "", "custom directory to install / update nuclei-templates"),
 		flagSet.BoolVarP(&disableUpdateCheck, "disable-update-check", "duc", false, "disable automatic nuclei/templates update check"),
 	)

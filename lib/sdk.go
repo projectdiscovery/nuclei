@@ -70,7 +70,7 @@ type NucleiEngine struct {
 
 	// unexported core fields
 	ctx              context.Context
-	interactshClient *interactsh.Client
+	interactshClient interactsh.IClient
 	catalog          catalog.Catalog
 	rateLimiter      *ratelimit.Limiter
 	store            *loader.Store
@@ -257,7 +257,7 @@ func (e *NucleiEngine) closeInternal() {
 	if e.hostErrCache != nil {
 		e.hostErrCache.Close()
 	}
-	if e.executerOpts.RateLimiter != nil {
+	if e.executerOpts != nil && e.executerOpts.RateLimiter != nil {
 		e.executerOpts.RateLimiter.Stop()
 	}
 	if e.rateLimiter != nil {
@@ -386,6 +386,10 @@ func NewNucleiEngineCtx(ctx context.Context, options ...NucleiSDKOptions) (*Nucl
 		}
 	}
 	if err := e.init(ctx); err != nil {
+		// init may already own interactsh, a browser, a temp dir, and
+		// reporting. Close is safe on a partial engine: executerOpts is
+		// checked, and protocolinit.Close is a no-op before Init.
+		e.Close()
 		return nil, err
 	}
 	return e, nil

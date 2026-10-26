@@ -111,7 +111,7 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 	request.dialer = client
 
 	if len(request.Payloads) > 0 {
-		request.generator, err = generators.New(request.Payloads, request.AttackType.Value, request.options.TemplatePath, options.Catalog, options.Options.AttackType, types.DefaultOptions())
+		request.generator, err = generators.New(request.Payloads, request.AttackType.Value, request.options.TemplatePath, options.Catalog, options.Options.AttackType, options.Options)
 		if err != nil {
 			return errors.Wrap(err, "could not parse payloads")
 		}
@@ -324,7 +324,11 @@ func (request *Request) executeRequestWithPayloads(target *contextargs.Context, 
 	data["response"] = responseBuilder.String()
 	data["host"] = input
 	data["matched"] = addressToDial
-	data["ip"] = request.dialer.GetDialedIP(hostname)
+	if target.MetaInput.CustomIP != "" {
+		data["ip"] = target.MetaInput.CustomIP
+	} else {
+		data["ip"] = request.dialer.GetDialedIP(hostname)
+	}
 	if len(stepDurations) > 0 {
 		addWebsocketDurationFields(data, stepDurations)
 	} else {
@@ -498,5 +502,14 @@ func (request *Request) Type() templateTypes.ProtocolType {
 
 // UpdateOptions replaces this request's options with a new copy
 func (r *Request) UpdateOptions(opts *protocols.ExecutorOptions) {
+	r.Operators = protocols.CloneOperators(r.Operators)
+	r.CompiledOperators = nil
+	if r.options == nil {
+		if opts != nil {
+			r.options = opts.Copy()
+		}
+		return
+	}
+	r.options = r.options.Copy()
 	r.options.ApplyNewEngineOptions(opts)
 }

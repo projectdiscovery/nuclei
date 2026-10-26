@@ -595,7 +595,10 @@ func (request *Request) executeRequestParallel(ctxParent context.Context, hostPo
 				break
 			}
 
-			sg.Add()
+			if err := sg.AddWithContext(ctx); err != nil {
+				setRunErr(err)
+				break iteratorLoop
+			}
 			go func(value map[string]interface{}, urls []string) {
 				defer sg.Done()
 				if ctx.Err() != nil {
@@ -665,11 +668,19 @@ func (request *Request) executeRequestWithPayloads(
 
 	// a script's network calls are not visible here, so like progress it is
 	// limited as one request per execution
+	if err := request.options.HostBackoffWait(input.Context(), hostPort); err != nil {
+		return err
+	}
 	if err := request.options.RateLimitTakeContext(input.Context(), hostPort); err != nil {
 		return err
 	}
 
-	results, err := request.options.JsCompiler.ExecuteWithOptions(input.Context(), request.scriptCompiled, argsCopy,
+	ctx := input.Context()
+	if request.options.HostBackoff != nil {
+		// the script's own dials are the only signal: report them as they happen
+		ctx = protocolstate.WithDialObserver(ctx, request.options.HostBackoffObserveDial)
+	}
+	results, err := request.options.JsCompiler.ExecuteWithOptions(ctx, request.scriptCompiled, argsCopy,
 		&compiler.ExecuteOptions{
 			ExecutionId:     requestOptions.Options.ExecutionId,
 			TimeoutVariants: requestOptions.Options.GetTimeouts(),
@@ -996,5 +1007,14 @@ func prettyPrint(templateId string, buff string) {
 
 // UpdateOptions replaces this request's options with a new copy
 func (r *Request) UpdateOptions(opts *protocols.ExecutorOptions) {
+	r.Operators = protocols.CloneOperators(r.Operators)
+	r.CompiledOperators = nil
+	if r.options == nil {
+		if opts != nil {
+			r.options = opts.Copy()
+		}
+		return
+	}
+	r.options = r.options.Copy()
 	r.options.ApplyNewEngineOptions(opts)
 }

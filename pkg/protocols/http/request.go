@@ -21,7 +21,6 @@ import (
 	"go.uber.org/multierr"
 	"moul.io/http2curl"
 
-	"github.com/projectdiscovery/fastdialer/fastdialer"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/fuzz/analyzers"
 	"github.com/projectdiscovery/nuclei/v3/pkg/fuzz/component"
@@ -38,7 +37,9 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/hostbackoff"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/hostratelimit"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/interactsh"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/marker"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/utils/vardump"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/httpclientpool"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/httputils"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/signer"
@@ -46,6 +47,7 @@ import (
 	templateTypes "github.com/projectdiscovery/nuclei/v3/pkg/templates/types"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types/nucleierr"
+	"github.com/projectdiscovery/nuclei/v3/pkg/utils/httpbody"
 	"github.com/projectdiscovery/rawhttp"
 	"github.com/projectdiscovery/retryablehttp-go"
 	convUtil "github.com/projectdiscovery/utils/conversion"
@@ -163,7 +165,7 @@ func (request *Request) executeRaceRequest(input *contextargs.Context, dynamicVa
 	if !ok {
 		return nil
 	}
-	ctx := request.newContext(input)
+	ctx := input.Context()
 	requestForDump, err := generator.Make(ctx, input, inputData, payloads, dynamicValues)
 	if err != nil {
 		return err
@@ -174,21 +176,23 @@ func (request *Request) executeRaceRequest(input *contextargs.Context, dynamicVa
 	if !request.SkipSecretFile {
 		requestForDump.ApplyAuth(request.options.AuthProvider)
 	}
-	dumpedRequest, err := dump(requestForDump, reqURL)
+	dumpedRequest, err := dump(requestForDump, reqURL, 0)
 	if err != nil {
 		return err
 	}
+	dumpedRequestString := convUtil.String(dumpedRequest.data)
+	savedRequest := convUtil.String(capDumpBody(dumpedRequest.data, request.options.Options.RequestSaveSize))
 	if request.options.Options.Debug || request.options.Options.DebugRequests || request.options.Options.StoreResponse {
 		msg := fmt.Sprintf("[%s] Dumped HTTP request for %s\n\n", request.options.TemplateID, reqURL)
 		if request.options.Options.Debug || request.options.Options.DebugRequests {
 			gologger.Info().Msg(msg)
-			gologger.Print().Msgf("%s", string(dumpedRequest))
+			gologger.Print().Msgf("%s", savedRequest)
 		}
 		if request.options.Options.StoreResponse {
-			request.options.Output.WriteStoreDebugData(reqURL, request.options.TemplateID, request.Type().String(), fmt.Sprintf("%s\n%s", msg, dumpedRequest))
+			request.options.Output.WriteStoreDebugData(reqURL, request.options.TemplateID, request.Type().String(), fmt.Sprintf("%s\n%s", msg, savedRequest))
 		}
 	}
-	previous["request"] = string(dumpedRequest)
+	previous["request"] = dumpedRequestString
 
 	// Pre-Generate requests
 	for i := 0; i < request.RaceNumberRequests; i++ {
@@ -197,7 +201,7 @@ func (request *Request) executeRaceRequest(input *contextargs.Context, dynamicVa
 		if !ok {
 			break
 		}
-		ctx := request.newContext(input)
+		ctx := input.Context()
 		generatedRequest, err := generator.Make(ctx, input, inputData, payloads, dynamicValues)
 		if err != nil {
 			return err
@@ -207,7 +211,7 @@ func (request *Request) executeRaceRequest(input *contextargs.Context, dynamicVa
 
 	shouldStop := (request.options.Options.StopAtFirstMatch || request.StopAtFirstMatch || request.options.StopAtFirstMatch)
 
-	childCtx, cancel := context.WithCancel(context.Background())
+	childCtx, cancel := context.WithCancel(input.Context())
 	defer cancel()
 
 	spmHandler := httputils.NewNonBlockingSPMHandler[error](childCtx, maxErrorsWhenParallel, shouldStop)
@@ -239,7 +243,9 @@ func (request *Request) executeRaceRequest(input *contextargs.Context, dynamicVa
 			// stop sending more requests condition is met
 			break
 		}
-		spmHandler.Acquire()
+		if err := spmHandler.Acquire(); err != nil {
+			break
+		}
 		// execute http request
 		go func(httpRequest *generatedRequest, requestInput *contextargs.Context) {
 			defer spmHandler.Release()
@@ -344,7 +350,9 @@ func (request *Request) executeParallelHTTP(input *contextargs.Context, dynamicV
 				if spmHandler.FoundFirstMatch() || request.isUnresponsiveAddress(t.updatedInput) || spmHandler.Cancelled() {
 					continue
 				}
-				spmHandler.Acquire()
+				if err := spmHandler.Acquire(); err != nil {
+					continue
+				}
 				if spmHandler.FoundFirstMatch() || request.isUnresponsiveAddress(t.updatedInput) || spmHandler.Cancelled() {
 					spmHandler.Release()
 					continue
@@ -440,7 +448,7 @@ func (request *Request) executeParallelHTTP(input *contextargs.Context, dynamicV
 			break
 		}
 
-		ctx := request.newContext(input)
+		ctx := input.Context()
 		generatedHttpRequest, err := generator.Make(ctx, input, inputData, payloads, dynamicValues)
 		if err != nil {
 			if err == types.ErrNoMoreRequests {
@@ -511,7 +519,8 @@ func (request *Request) executeTurboHTTP(input *contextargs.Context, dynamicValu
 	if dialers := protocolstate.GetDialersWithId(request.options.Options.ExecutionId); dialers != nil && dialers.Fastdialer != nil {
 		fd := dialers.Fastdialer
 		pipeOptions.Dialer = func(addr string) (net.Conn, error) {
-			return fd.Dial(context.Background(), "tcp", addr)
+			// the input context carries the pinned ip of the target, if any
+			return fd.Dial(input.Context(), "tcp", addr)
 		}
 	}
 	if request.PipelineConcurrentConnections > 0 {
@@ -530,7 +539,7 @@ func (request *Request) executeTurboHTTP(input *contextargs.Context, dynamicValu
 	// parallelly using threads
 	shouldStop := (request.options.Options.StopAtFirstMatch || request.StopAtFirstMatch || request.options.StopAtFirstMatch)
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(input.Context())
 	defer cancel()
 
 	spmHandler := httputils.NewBlockingSPMHandler[error](ctx, maxWorkers, maxErrorsWhenParallel, shouldStop)
@@ -571,7 +580,7 @@ func (request *Request) executeTurboHTTP(input *contextargs.Context, dynamicValu
 			break
 		}
 
-		ctx := request.newContext(input)
+		ctx := input.Context()
 		generatedHttpRequest, err := generator.Make(ctx, input, inputData, payloads, dynamicValues)
 		if err != nil {
 			request.options.Progress.IncrementFailedRequestsBy(int64(generator.Total()))
@@ -587,7 +596,9 @@ func (request *Request) executeTurboHTTP(input *contextargs.Context, dynamicValu
 			return nil
 		}
 		generatedHttpRequest.pipelinedClient = pipeClient
-		spmHandler.Acquire()
+		if err := spmHandler.Acquire(); err != nil {
+			break
+		}
 		go func(httpRequest *generatedRequest, requestInput *contextargs.Context) {
 			defer spmHandler.Release()
 			if spmHandler.FoundFirstMatch() || request.isUnresponsiveAddress(requestInput) {
@@ -663,7 +674,7 @@ executionLoop:
 		executeFunc := func(data string, payloads, dynamicValue map[string]interface{}, previousEvent output.InternalEvent) (skipBranch, stop bool, extracted map[string][]string, err error) {
 			hasInteractMatchers := interactsh.HasMatchers(request.CompiledOperators)
 
-			ctx := request.newContext(input)
+			ctx := input.Context()
 			ctxWithTimeout, cancel := context.WithTimeoutCause(ctx, request.options.Options.GetTimeouts().HttpTimeout, ErrHttpEngineRequestDeadline)
 			defer cancel()
 
@@ -1011,15 +1022,17 @@ func looksLikeHTTPToHTTPSMismatch(resp *http.Response) bool {
 // post-send dump reads one while the transport may still be writing another.
 // GET, HEAD, and chunked requests keep their existing content length.
 func reuseRequestBody(req *retryablehttp.Request) error {
+	// Bodies set through httpbody already hand out independent copies.
+	if _, ok := req.Body.(*httpbody.Body); ok {
+		return nil
+	}
 	body, err := io.ReadAll(req.Body)
 	if err != nil {
 		return err
 	}
 	keepLength := stringsutil.EqualFoldAny(req.Method, http.MethodGet, http.MethodHead) || req.Header.Get("Transfer-Encoding") == "chunked"
 	contentLength := req.ContentLength
-	if err = req.SetBody(body); err != nil {
-		return err
-	}
+	httpbody.Set(req, body)
 	if keepLength {
 		req.ContentLength = contentLength
 	}
@@ -1066,7 +1079,7 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 	var (
 		resp            *http.Response
 		fromCache       bool
-		dumpedRequest   []byte
+		dumpedRequest   requestDump
 		projectCacheKey []byte
 		// executingClient preserves the request's cookie jar, fuzz protection,
 		// and timeout for network execution and analyzer follow-up requests,
@@ -1095,28 +1108,38 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 
 		var dumpError error
 		// TODO: dump is currently not working with post-processors - somehow it alters the signature
-		dumpedRequest, dumpError = dump(generatedRequest, input.MetaInput.Input)
+		dumpedRequest, dumpError = dump(generatedRequest, input.MetaInput.Input, request.options.Options.RequestSaveSize)
 		if dumpError != nil {
 			return dumpError
 		}
-		maxBodylimit := request.getEffectiveReadLimit()
-		if generatedRequest.request != nil && generatedRequest.request.Request != nil && generatedRequest.request.Request.URL != nil {
-			projectCacheKey = getHTTPProjectCacheScope(dumpedRequest, generatedRequest.request.Scheme, generatedRequest.request.Request.URL.Host)
-		} else {
-			projectCacheKey = dumpedRequest
-		}
-		if maxBodylimit > 0 {
-			projectCacheKey = append(projectCacheKey, []byte(fmt.Sprintf(":limit:%d", maxBodylimit))...)
-		}
-		dumpedRequestString := string(dumpedRequest)
-
-		if ignoreList := GetVariablesNamesSkipList(generatedRequest.original.Signature.Value); ignoreList != nil {
-			if varErr := expressions.ContainsVariablesWithIgnoreList(ignoreList, dumpedRequestString); varErr != nil && !request.SkipVariablesCheck {
-				gologger.Warning().Msgf("[%s] Could not make http request for %s: %v\n", request.options.TemplateID, input.MetaInput.Input, varErr)
-				return ErrMissingVars
+		if request.options.ProjectFile != nil {
+			var scheme, host string
+			if generatedRequest.request != nil && generatedRequest.request.Request != nil && generatedRequest.request.Request.URL != nil {
+				scheme, host = generatedRequest.request.Scheme, generatedRequest.request.Request.URL.Host
 			}
-		} else { // Check if are there any unresolved variables. If yes, skip unless overridden by user.
-			if varErr := expressions.ContainsUnresolvedVariables(dumpedRequestString); varErr != nil && !request.SkipVariablesCheck {
+			projectCacheKey = getHTTPProjectCacheScope(dumpedRequest, generatedRequest.body(), scheme, host)
+			if maxBodylimit := request.getEffectiveReadLimit(); maxBodylimit > 0 {
+				projectCacheKey = append(projectCacheKey, []byte(fmt.Sprintf(":limit:%d", maxBodylimit))...)
+			}
+		}
+
+		// A truncated dump leaves part of the body out, so check the rest
+		// of the body too. Each part is checked on its own since the
+		// checks stop at the first item without variables.
+		checked := []string{convUtil.String(dumpedRequest.data)}
+		if dumpedRequest.truncated > 0 {
+			if body := convUtil.String(generatedRequest.body()); strings.Contains(body, "{{") {
+				checked = append(checked, body)
+			}
+		}
+		for _, item := range checked {
+			var varErr error
+			if ignoreList := GetVariablesNamesSkipList(generatedRequest.original.Signature.Value); ignoreList != nil {
+				varErr = expressions.ContainsVariablesWithIgnoreList(ignoreList, item)
+			} else { // Check if are there any unresolved variables. If yes, skip unless overridden by user.
+				varErr = expressions.ContainsUnresolvedVariables(item)
+			}
+			if varErr != nil && !request.SkipVariablesCheck {
 				gologger.Warning().Msgf("[%s] Could not make http request for %s: %v\n", request.options.TemplateID, input.MetaInput.Input, varErr)
 				return ErrMissingVars
 			}
@@ -1231,7 +1254,13 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 				connConfig.ResponseHeaderTimeout = updatedTimeout.Timeout
 			}
 
-			httpclient, clientErr := httpclientpool.Get(request.options.Options, connConfig, hostname)
+			// a pinned target gets its own client, so a keep-alive connection
+			// to one ip never serves a request pinned to another
+			poolKey := hostname
+			if input.MetaInput.CustomIP != "" {
+				poolKey += "@" + input.MetaInput.CustomIP
+			}
+			httpclient, clientErr := httpclientpool.Get(request.options.Options, connConfig, poolKey)
 			if clientErr != nil {
 				return errors.Wrap(clientErr, "could not get http client")
 			}
@@ -1333,14 +1362,20 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 	// converts whitespace and other chars that cannot be printed to url encoded values
 	formedURL = urlutil.URLEncodeWithEscapes(formedURL)
 
-	// Dump the requests containing all headers
-	if !generatedRequest.original.Race {
+	// Dump the requests containing all headers. A race reuses the full dump
+	// stored on previous["request"]; the pre-send dump is capped.
+	if generatedRequest.original != nil && generatedRequest.original.Race {
+		if full, ok := previousEvent["request"].(string); ok && full != "" {
+			dumpedRequest.data = []byte(full)
+			dumpedRequest.truncated = 0
+		}
+	} else {
 		var dumpError error
-		dumpedRequest, dumpError = dump(generatedRequest, input.MetaInput.Input)
+		dumpedRequest, dumpError = dump(generatedRequest, input.MetaInput.Input, 0)
 		if dumpError != nil {
 			return dumpError
 		}
-		dumpedRequestString := string(dumpedRequest)
+		dumpedRequestString := convUtil.String(capDumpBody(dumpedRequest.data, request.options.Options.RequestSaveSize))
 		if request.options.Options.Debug || request.options.Options.DebugRequests || request.options.Options.StoreResponse {
 			msg := fmt.Sprintf("[%s] Dumped HTTP request for %s\n\n", request.options.TemplateID, formedURL)
 
@@ -1376,7 +1411,7 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 		// In case of interactsh markers and request times out, still send
 		// a callback event so in case we receive an interaction, correlation is possible.
 		// Also, to log failed use-cases.
-		outputEvent := request.responseToDSLMap(&http.Response{}, input.MetaInput.Input, formedURL, convUtil.String(dumpedRequest), "", "", "", 0, generatedRequest.meta)
+		outputEvent := request.responseToDSLMap(&http.Response{}, input.MetaInput.Input, formedURL, convUtil.String(dumpedRequest.data), "", "", "", 0, generatedRequest.meta)
 		if i := strings.LastIndex(hostname, ":"); i != -1 {
 			hostname = hostname[:i]
 		}
@@ -1401,13 +1436,23 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 
 	var curlCommand string
 	if !request.Unsafe && resp != nil && generatedRequest.request != nil && resp.Request != nil && !request.Race {
-		bodyBytes, _ := generatedRequest.request.BodyBytes()
+		body := generatedRequest.body()
 		// Use a clone to avoid a race condition with the http transport
 		req := resp.Request.Clone(resp.Request.Context())
-		req.Body = io.NopCloser(bytes.NewReader(bodyBytes))
+		// Large bodies are left out to keep the command readable.
+		omitBody := len(body) > maxCurlBodySize
+		if omitBody {
+			req.Body = nil
+			req.Header.Del("Content-Length")
+		} else {
+			req.Body = io.NopCloser(bytes.NewReader(body))
+		}
 		command, err := http2curl.GetCurlCommand(req)
 		if err == nil && command != nil {
 			curlCommand = command.String()
+			if omitBody {
+				curlCommand += fmt.Sprintf(" # body omitted: %d bytes", len(body))
+			}
 		}
 	}
 
@@ -1429,9 +1474,9 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 	var errx error
 	// Race skips the dumps above because the body is already waiting on the
 	// gate. executeRaceRequest stored those bytes for DSL use.
-	if generatedRequest.original != nil && generatedRequest.original.Race && len(dumpedRequest) == 0 {
+	if generatedRequest.original != nil && generatedRequest.original.Race && len(dumpedRequest.data) == 0 {
 		if raw, ok := previousEvent["request"].(string); ok {
-			dumpedRequest = []byte(raw)
+			dumpedRequest = requestDump{data: []byte(raw)}
 		}
 	}
 	// One executed request is replayed once, even when several responses in
@@ -1457,11 +1502,23 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 		// Cache response strings once per Fill() to avoid repeated allocs.
 		// NOTE(dwisiswant0): These are valid until Previous() (which reloads
 		// the buffer).
-		fullResponseStr := respChain.FullResponseString()
 		bodyStr := respChain.BodyString()
 		headersStr := respChain.HeadersString()
 
 		statusCode := respChain.Response().StatusCode
+
+		needsFullResponse := request.needsFullResponse(generatedRequest)
+		var fullResponseStr string
+		var fullResponseOnce sync.Once
+		getFullResponse := func() string {
+			fullResponseOnce.Do(func() {
+				fullResponseStr = respChain.FullResponseString()
+			})
+			return fullResponseStr
+		}
+		if needsFullResponse {
+			fullResponseStr = getFullResponse()
+		}
 
 		// Detect HTTP-to-HTTPS port mismatch (400 error with specific message) so
 		// later requests to the same host:port are auto-upgraded to https. For the
@@ -1535,7 +1592,7 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 			}
 		}
 
-		outputEvent := request.responseToDSLMap(respChain.Response(), input.MetaInput.Input, matchedURL, convUtil.String(dumpedRequest), fullResponseStr, bodyStr, headersStr, duration, generatedRequest.meta)
+		outputEvent := request.responseToDSLMap(respChain.Response(), input.MetaInput.Input, matchedURL, convUtil.String(dumpedRequest.data), fullResponseStr, bodyStr, headersStr, duration, generatedRequest.meta)
 		// add response fields to template context and merge templatectx variables to output event
 		request.options.AddTemplateVars(input.MetaInput, request.Type(), request.ID, outputEvent)
 		if request.options.HasTemplateCtx(input.MetaInput) {
@@ -1579,6 +1636,9 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 		isDebug := request.options.Options.Debug || request.options.Options.DebugResponse
 		event := eventcreator.CreateEventWithAdditionalOptions(request, interimEvent, isDebug, func(internalWrappedEvent *output.InternalWrappedEvent) {
 			internalWrappedEvent.OperatorsResult.PayloadValues = generatedRequest.meta
+			if internalWrappedEvent.InternalEvent["response"] == "" || internalWrappedEvent.InternalEvent["response"] == nil {
+				internalWrappedEvent.InternalEvent["response"] = getFullResponse()
+			}
 		})
 
 		if hasInteractMatchers {
@@ -1589,6 +1649,9 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 		if request.options.GlobalMatchers.HasMatchers() {
 			request.options.GlobalMatchers.Match(interimEvent, request.Match, request.Extract, isDebug, func(event output.InternalEvent, result *operators.Result) {
 				globalMatched = true
+				if event["response"] == "" || event["response"] == nil {
+					event["response"] = getFullResponse()
+				}
 				callback(eventcreator.CreateEventWithOperatorResults(request, event, result))
 			})
 		}
@@ -1603,7 +1666,11 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 		localMatched := event.OperatorsResult != nil && event.OperatorsResult.Matched
 		if !replayed && (localMatched || globalMatched) {
 			replayed = true
-			request.replayRequest(dumpedRequest, formedURL)
+			var replayBody []byte
+			if dumpedRequest.truncated > 0 {
+				replayBody = generatedRequest.body()
+			}
+			request.replayRequest(dumpedRequest.data, replayBody, formedURL)
 		}
 
 		if request.options.FuzzStatsDB != nil && generatedRequest.fuzzGeneratedRequest.Request != nil {
@@ -1615,8 +1682,8 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 				PayloadSent:   generatedRequest.fuzzGeneratedRequest.Value,
 				StatusCode:    respChain.Response().StatusCode,
 				Matched:       event.HasResults(),
-				RawRequest:    string(dumpedRequest),
-				RawResponse:   fullResponseStr,
+				RawRequest:    string(capDumpBody(dumpedRequest.data, request.options.Options.RequestSaveSize)),
+				RawResponse:   getFullResponse(),
 				Severity:      request.options.TemplateInfo.SeverityHolder.Severity.String(),
 			})
 		}
@@ -1756,6 +1823,7 @@ func (request *Request) handleSignature(generatedRequest *generatedRequest) erro
 // setCustomHeaders sets the custom headers for generated request
 func (request *Request) setCustomHeaders(req *generatedRequest) {
 	for k, v := range request.customHeaders {
+		v = request.evaluateCustomHeaderValue(req, v)
 		if req.rawRequest != nil {
 			req.rawRequest.Headers[k] = v
 		} else {
@@ -1771,6 +1839,31 @@ func (request *Request) setCustomHeaders(req *generatedRequest) {
 			req.request.Header[kk] = []string{vv}
 		}
 	}
+}
+
+// evaluateCustomHeaderValue resolves helper expressions inside a global custom
+// header value. It runs once per generated request, so helpers such as
+// rand_user_agent() yield a fresh value per request instead of being frozen at
+// compile time. A bad expression degrades the header instead of failing the
+// scan.
+func (request *Request) evaluateCustomHeaderValue(req *generatedRequest, value string) string {
+	values := generators.MergeMaps(req.dynamicValues, req.meta)
+	return evaluateCustomHeaderExpressions(request.options.TemplateID, value, values)
+}
+
+// evaluateCustomHeaderExpressions resolves helper expressions in a global custom
+// header string. Unsafe raw requests splice the -H line straight into the
+// request bytes, so they resolve it here instead of in setCustomHeaders.
+func evaluateCustomHeaderExpressions(templateID, value string, values map[string]interface{}) string {
+	if !strings.Contains(value, marker.ParenthesisOpen) {
+		return value
+	}
+	evaluated, err := expressions.Evaluate(value, values)
+	if err != nil {
+		gologger.Debug().Msgf("[%s] could not evaluate custom header value %q: %s", templateID, value, err)
+		return value
+	}
+	return evaluated
 }
 
 const CRLF = "\r\n"
@@ -1832,13 +1925,6 @@ func (request *Request) pruneSignatureInternalValues(maps ...map[string]interfac
 	}
 }
 
-func (request *Request) newContext(input *contextargs.Context) context.Context {
-	if input.MetaInput.CustomIP != "" {
-		return context.WithValue(input.Context(), fastdialer.IP, input.MetaInput.CustomIP)
-	}
-	return input.Context()
-}
-
 // recordHostResult updates the host-errors cache with the outcome of a request.
 // A failure is counted; a success resets the host, so only consecutive failures
 // with no success in between can mark a host unresponsive.
@@ -1859,6 +1945,61 @@ func (request *Request) recordHostResultAndCancelIfUnresponsive(input *contextar
 func (request *Request) isUnresponsiveAddress(input *contextargs.Context) bool {
 	if request.options.HostErrorsCache != nil {
 		return request.options.HostErrorsCache.Check(request.options.ProtocolType.String(), input)
+	}
+	return false
+}
+
+// needsFullResponse returns true if operators, debug flags, or stats require the full HTTP response.
+// RequireFullResponse keeps the full response when a caller matches this
+// request's event with operators the request does not own. Clustered templates do that.
+func (request *Request) RequireFullResponse() {
+	if request == nil {
+		return
+	}
+	request.requireFullResponse = true
+}
+
+// FullResponseRequired reports whether RequireFullResponse has been set.
+func (request *Request) FullResponseRequired() bool {
+	return request != nil && request.requireFullResponse
+}
+
+func (request *Request) needsFullResponse(generatedRequest *generatedRequest) bool {
+	if request.requireFullResponse {
+		return true
+	}
+	if request.options != nil && request.options.Options != nil {
+		cliOptions := request.options.Options
+		if cliOptions.Debug || cliOptions.DebugResponse || cliOptions.StoreResponse || cliOptions.HTTPStats {
+			return true
+		}
+	}
+	if vardump.EnableVarDump {
+		return true
+	}
+	if request.options != nil && request.options.FuzzStatsDB != nil && generatedRequest != nil && generatedRequest.fuzzGeneratedRequest.Request != nil {
+		return true
+	}
+	if request.options != nil && (request.options.IsMultiProtocol || request.options.Flow != "") {
+		return true
+	}
+	// request-condition history copies the event, so later requests can read response_N
+	if request.NeedsRequestCondition() {
+		return true
+	}
+	if request.CompiledOperators != nil && request.CompiledOperators.NeedsResponse() {
+		return true
+	}
+	if request.NeedsResponse() {
+		return true
+	}
+	for _, filter := range request.FuzzPreCondition {
+		if filter.NeedsResponse() {
+			return true
+		}
+	}
+	if request.options != nil && request.options.GlobalMatchers != nil && request.options.GlobalMatchers.NeedsResponse() {
+		return true
 	}
 	return false
 }
