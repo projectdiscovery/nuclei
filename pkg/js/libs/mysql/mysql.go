@@ -10,6 +10,7 @@ import (
 	"github.com/go-sql-driver/mysql"
 	"github.com/projectdiscovery/nuclei/v3/pkg/js/utils"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
+	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 )
 
 type (
@@ -214,6 +215,14 @@ func (c *MySQLClient) ExecuteQueryWithOpts(ctx context.Context, opts MySQLOption
 	if err != nil {
 		return nil, err
 	}
+
+	// allowAllFiles is always stripped from the DSN; LOAD DATA LOCAL INFILE
+	// only works for allowlisted files the query names.
+	release, err := protocolstate.RegisterMySQLLocalInfiles(&types.Options{ExecutionId: executionId}, dsn, query)
+	if err != nil {
+		return nil, err
+	}
+	defer release()
 
 	db, err := openDB(executionId, dsn)
 	if err != nil {

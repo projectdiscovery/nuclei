@@ -19,13 +19,13 @@ func TestSandboxDSN(t *testing.T) {
 		require.False(t, cfg.AllowAllFiles)
 	})
 
-	t.Run("keeps allowAllFiles when lfa enabled", func(t *testing.T) {
+	t.Run("strips allowAllFiles when lfa enabled", func(t *testing.T) {
 		got, err := protocolstate.SanitizeMySQLDSN("root:x@nucleitcp(127.0.0.1:3306)/?allowAllFiles=true", &types.Options{AllowLocalFileAccess: true})
 		require.NoError(t, err)
 
 		cfg, err := mysql.ParseDSN(got)
 		require.NoError(t, err)
-		require.True(t, cfg.AllowAllFiles)
+		require.False(t, cfg.AllowAllFiles, "-lfa must never disable the allowlist")
 	})
 
 	t.Run("leaves dsn without allowAllFiles untouched", func(t *testing.T) {

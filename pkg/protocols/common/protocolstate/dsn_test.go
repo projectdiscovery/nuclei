@@ -2,6 +2,7 @@ package protocolstate_test
 
 import (
 	"net/url"
+	"os"
 	"path/filepath"
 	"testing"
 
@@ -24,7 +25,7 @@ func TestSanitizeMySQLDSNStripsAllowAllFilesWithoutLFA(t *testing.T) {
 	require.False(t, cfg.AllowAllFiles)
 }
 
-func TestSanitizeMySQLDSNKeepsAllowAllFilesWithLFA(t *testing.T) {
+func TestSanitizeMySQLDSNStripsAllowAllFilesWithLFA(t *testing.T) {
 	got, err := protocolstate.SanitizeMySQLDSN(
 		"root:secret@nucleitcp(127.0.0.1:3306)/?allowAllFiles=true",
 		&types.Options{ExecutionId: t.Name(), AllowLocalFileAccess: true},
@@ -33,7 +34,7 @@ func TestSanitizeMySQLDSNKeepsAllowAllFilesWithLFA(t *testing.T) {
 
 	cfg, err := mysql.ParseDSN(got)
 	require.NoError(t, err)
-	require.True(t, cfg.AllowAllFiles)
+	require.False(t, cfg.AllowAllFiles, "-lfa must never disable the allowlist")
 }
 
 func TestSanitizeMySQLDSNRejectsInvalidDSN(t *testing.T) {
@@ -105,4 +106,81 @@ func TestSanitizePostgresDatabaseNameEscapesInjection(t *testing.T) {
 	got := protocolstate.SanitizePostgresDatabaseName(malicious)
 	require.NotEqual(t, malicious, got)
 	require.Equal(t, url.PathEscape(malicious), got)
+}
+
+// recordMySQLRegistry swaps the mysql driver file registry for a recorder.
+func recordMySQLRegistry(t *testing.T) map[string]bool {
+	t.Helper()
+	registered := map[string]bool{}
+	restore := protocolstate.SwapMySQLLocalFileRegistry(
+		func(path string) { registered[path] = true },
+		func(path string) { delete(registered, path) },
+	)
+	t.Cleanup(restore)
+	return registered
+}
+
+const mysqlLocalFilesDSN = "root:x@nucleitcp(127.0.0.1:3306)/?allowAllFiles=true"
+
+func TestRegisterMySQLLocalInfilesAllowsOnlyAllowlistedFiles(t *testing.T) {
+	templatesDir := t.TempDir()
+	restoreTemplatesDir(t, templatesDir)
+	registered := recordMySQLRegistry(t)
+	opts := &types.Options{ExecutionId: t.Name(), AllowLocalFileAccess: true}
+
+	inside := filepath.Join(templatesDir, "data.csv")
+	require.NoError(t, os.WriteFile(inside, []byte("1\n"), 0o600))
+	release, err := protocolstate.RegisterMySQLLocalInfiles(opts, mysqlLocalFilesDSN, "LOAD DATA LOCAL INFILE '"+inside+"' INTO TABLE t")
+	require.NoError(t, err)
+	require.Equal(t, map[string]bool{inside: true}, registered)
+	release()
+	require.Empty(t, registered, "release must deregister the file")
+
+	outside := outsideHomePath(t, ".nuclei-mysql-infile-"+t.Name())
+	_, err = protocolstate.RegisterMySQLLocalInfiles(opts, mysqlLocalFilesDSN, `load data low_priority local infile "`+outside+`" into table t`)
+	require.ErrorIs(t, err, protocolstate.ErrPathDenied)
+	require.Empty(t, registered)
+
+	_, err = protocolstate.RegisterMySQLLocalInfiles(opts, mysqlLocalFilesDSN, "LOAD DATA LOCAL INFILE 'relative.csv' INTO TABLE t")
+	require.ErrorIs(t, err, protocolstate.ErrPathDenied)
+	require.Empty(t, registered)
+}
+
+func TestRegisterMySQLLocalInfilesNeedsLFAAndDSNOptIn(t *testing.T) {
+	templatesDir := t.TempDir()
+	restoreTemplatesDir(t, templatesDir)
+	registered := recordMySQLRegistry(t)
+	inside := filepath.Join(templatesDir, "data.csv")
+	query := "LOAD DATA LOCAL INFILE '" + inside + "' INTO TABLE t"
+
+	release, err := protocolstate.RegisterMySQLLocalInfiles(&types.Options{ExecutionId: t.Name()}, mysqlLocalFilesDSN, query)
+	require.NoError(t, err)
+	release()
+	require.Empty(t, registered, "nothing may be registered without -lfa")
+
+	release, err = protocolstate.RegisterMySQLLocalInfiles(&types.Options{ExecutionId: t.Name(), AllowLocalFileAccess: true}, "root:x@nucleitcp(127.0.0.1:3306)/", query)
+	require.NoError(t, err)
+	release()
+	require.Empty(t, registered, "nothing may be registered when the DSN does not ask for local files")
+}
+
+func TestRegisterMySQLLocalInfilesRefcountsSharedFiles(t *testing.T) {
+	templatesDir := t.TempDir()
+	restoreTemplatesDir(t, templatesDir)
+	registered := recordMySQLRegistry(t)
+	opts := &types.Options{ExecutionId: t.Name(), AllowLocalFileAccess: true}
+	inside := filepath.Join(templatesDir, "it's.csv")
+	query := `LOAD DATA LOCAL INFILE '` + filepath.Join(templatesDir, "it''s.csv") + `' INTO TABLE t`
+
+	first, err := protocolstate.RegisterMySQLLocalInfiles(opts, mysqlLocalFilesDSN, query)
+	require.NoError(t, err)
+	second, err := protocolstate.RegisterMySQLLocalInfiles(opts, mysqlLocalFilesDSN, query)
+	require.NoError(t, err)
+	require.True(t, registered[inside], "escaped quote must decode to the real file name")
+
+	first()
+	first()
+	require.True(t, registered[inside], "a concurrent query still needs the file")
+	second()
+	require.Empty(t, registered)
 }
