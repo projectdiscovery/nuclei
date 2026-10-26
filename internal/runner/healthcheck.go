@@ -1,6 +1,7 @@
 package runner
 
 import (
+	"errors"
 	"fmt"
 	"net"
 	"runtime"
@@ -100,9 +101,8 @@ func DoHealthCheck(options *types.Options) string {
 
 	fmt.Fprintf(&test, "IPv4 UDP connectivity to scanme.sh:53 => %s\n", testResult)
 
-	appendPDCPHealthCheck(&test, (&pdcpauth.PDCPCredHandler{}).GetCreds, func(key, server, tool string) (*pdcpauth.PDCPCredentials, error) {
-		return (&pdcpauth.PDCPCredHandler{}).ValidateAPIKey(key, server, tool)
-	})
+	pdcpHandler := &pdcpauth.PDCPCredHandler{}
+	appendPDCPHealthCheck(&test, pdcpHandler.GetCreds, pdcpHandler.ValidateAPIKey)
 
 	return test.String()
 }
@@ -116,6 +116,9 @@ func appendPDCPHealthCheck(
 	creds, err := getCreds()
 	if err != nil {
 		// Only check when an API key is configured.
+		if !errors.Is(err, pdcpauth.ErrNoCreds) {
+			fmt.Fprintf(test, "PDCP API => Ko (%s)\n", err)
+		}
 		return
 	}
 	if creds == nil || creds.APIKey == "" {

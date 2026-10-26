@@ -5,6 +5,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
 	pdcpauth "github.com/projectdiscovery/utils/auth/pdcp"
 	"github.com/stretchr/testify/require"
 )
@@ -27,6 +28,7 @@ func TestAppendPDCPHealthCheckOk(t *testing.T) {
 	}, func(key, server, tool string) (*pdcpauth.PDCPCredentials, error) {
 		require.Equal(t, "key", key)
 		require.Equal(t, "https://api.example", server)
+		require.Equal(t, config.BinaryName, tool)
 		return &pdcpauth.PDCPCredentials{Username: "alice", Email: "a@b.c", APIKey: key, Server: server}, nil
 	})
 	require.Equal(t, "PDCP API (https://api.example) => Ok (@alice)\n", b.String())
@@ -40,4 +42,15 @@ func TestAppendPDCPHealthCheckKo(t *testing.T) {
 		return nil, errors.New("invalid status code: 401")
 	})
 	require.Equal(t, "PDCP API (https://api.example) => Ko (invalid status code: 401)\n", b.String())
+}
+
+func TestAppendPDCPHealthCheckCredsError(t *testing.T) {
+	var b strings.Builder
+	appendPDCPHealthCheck(&b, func() (*pdcpauth.PDCPCredentials, error) {
+		return nil, errors.New("invalid creds file")
+	}, func(key, server, tool string) (*pdcpauth.PDCPCredentials, error) {
+		t.Fatal("validate should not be called")
+		return nil, nil
+	})
+	require.Equal(t, "PDCP API => Ko (invalid creds file)\n", b.String())
 }
