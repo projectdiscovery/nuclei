@@ -305,14 +305,14 @@ func TestHTTPMakeResult(t *testing.T) {
 	require.Equal(t, operators.ConfidenceMedium, finalEvent.Results[0].Confidence, "could not get correct confidence tier")
 	require.Equal(t, 63, finalEvent.Results[0].ConfidenceScore, "could not get correct confidence score")
 
-	// out-of-band confirmation pins confidence to certain regardless of the
-	// in-band matcher strength.
+	// interactsh_protocol alone does not pin confidence: the template has no
+	// interactsh matcher, so the field may come from a header the target sets.
 	event["interactsh_protocol"] = "dns"
 	oobEvent := &output.InternalWrappedEvent{InternalEvent: event, OperatorsResult: finalEvent.OperatorsResult}
 	oobResults := request.MakeResultEvent(oobEvent)
-	require.NotEmpty(t, oobResults, "expected an out-of-band result event")
-	require.Equal(t, operators.ConfidenceHigh, oobResults[0].Confidence, "out-of-band match should be high confidence")
-	require.Equal(t, operators.ConfidenceCertain, oobResults[0].ConfidenceScore, "out-of-band match should be certain")
+	require.NotEmpty(t, oobResults, "expected a result event")
+	require.Equal(t, operators.ConfidenceMedium, oobResults[0].Confidence, "a spoofable interactsh field must not raise confidence")
+	require.Equal(t, 63, oobResults[0].ConfidenceScore, "a spoofable interactsh field must not change the score")
 
 	// a catch-all baseline match clamps confidence down for in-band matches.
 	delete(event, "interactsh_protocol")
