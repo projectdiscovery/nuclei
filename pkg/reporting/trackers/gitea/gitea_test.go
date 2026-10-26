@@ -31,6 +31,7 @@ type fakeGitea struct {
 	issueHandler func(http.ResponseWriter, *http.Request, issueRequest)
 }
 
+// newFakeGitea starts a local Gitea API stub and returns its tracker integration.
 func newFakeGitea(t *testing.T, issueHandler func(http.ResponseWriter, *http.Request, issueRequest)) (*Integration, *fakeGitea) {
 	t.Helper()
 
@@ -49,6 +50,7 @@ func newFakeGitea(t *testing.T, issueHandler func(http.ResponseWriter, *http.Req
 	return integration, fake
 }
 
+// serveHTTP records tracker requests and serves the configured fake API responses.
 func (f *fakeGitea) serveHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	switch {
@@ -79,10 +81,12 @@ func (f *fakeGitea) serveHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// writeIssuePage writes issue objects as a JSON API response.
 func writeIssuePage(w http.ResponseWriter, issues ...map[string]any) {
 	_ = json.NewEncoder(w).Encode(issues)
 }
 
+// TestCreateIssueFollowsLinkAfterCappedPageAndComments verifies duplicate detection continues after a capped page.
 func TestCreateIssueFollowsLinkAfterCappedPageAndComments(t *testing.T) {
 	var server *httptest.Server
 	integration, fake := newFakeGitea(t, func(w http.ResponseWriter, r *http.Request, request issueRequest) {
@@ -114,6 +118,7 @@ func TestCreateIssueFollowsLinkAfterCappedPageAndComments(t *testing.T) {
 	}
 }
 
+// TestFindIssueByTitleRespectsMaxPages verifies the configured page limit stops further requests.
 func TestFindIssueByTitleRespectsMaxPages(t *testing.T) {
 	var server *httptest.Server
 	integration, fake := newFakeGitea(t, func(w http.ResponseWriter, r *http.Request, request issueRequest) {
@@ -130,6 +135,7 @@ func TestFindIssueByTitleRespectsMaxPages(t *testing.T) {
 	require.Equal(t, "1", fake.requests[0].Page)
 }
 
+// TestFindIssueByTitleStopsWhenLinkHeaderHasNoNextPage verifies pagination ends without a next link.
 func TestFindIssueByTitleStopsWhenLinkHeaderHasNoNextPage(t *testing.T) {
 	integration, fake := newFakeGitea(t, func(w http.ResponseWriter, _ *http.Request, _ issueRequest) {
 		writeIssuePage(w, map[string]any{"number": 1, "title": "unrelated"})
@@ -141,6 +147,22 @@ func TestFindIssueByTitleStopsWhenLinkHeaderHasNoNextPage(t *testing.T) {
 	require.Len(t, fake.requests, 1)
 }
 
+// TestFindIssueByTitleRejectsNonAdvancingPage verifies malformed links return an error instead of looping.
+func TestFindIssueByTitleRejectsNonAdvancingPage(t *testing.T) {
+	var server *httptest.Server
+	integration, fake := newFakeGitea(t, func(w http.ResponseWriter, r *http.Request, _ issueRequest) {
+		w.Header().Set("Link", fmt.Sprintf("<%s%s?page=1>; rel=\"next\"", server.URL, r.URL.Path))
+		writeIssuePage(w, map[string]any{"number": 1, "title": "unrelated"})
+	})
+	server = fake.server
+
+	issue, err := integration.findIssueByTitle(testIssueTitle)
+	require.ErrorContains(t, err, "non-advancing issue page")
+	require.Nil(t, issue)
+	require.Len(t, fake.requests, 1)
+}
+
+// testGiteaEvent builds a small result event for tracker tests.
 func testGiteaEvent() *output.ResultEvent {
 	return &output.ResultEvent{
 		TemplateID: "template-id",

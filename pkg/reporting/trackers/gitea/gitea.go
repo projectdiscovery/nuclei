@@ -156,6 +156,7 @@ func (i *Integration) ShouldFilter(event *output.ResultEvent) bool {
 	return true
 }
 
+// findIssueByTitle searches every linked issue page for an exact title match.
 func (i *Integration) findIssueByTitle(title string) (*gitea.Issue, error) {
 	// Fetch issues in pages to ensure older issues are also checked for duplicates.
 	pageSize := i.options.DuplicateIssuePageSize
@@ -191,6 +192,9 @@ func (i *Integration) findIssueByTitle(title string) (*gitea.Issue, error) {
 		if response == nil || response.NextPage == 0 {
 			// Gitea's Link header indicates there is no next page.
 			return nil, nil
+		}
+		if response.NextPage <= opts.Page {
+			return nil, fmt.Errorf("Gitea returned a non-advancing issue page: current page %d, next page %d", opts.Page, response.NextPage)
 		}
 		opts.Page = response.NextPage
 	}
