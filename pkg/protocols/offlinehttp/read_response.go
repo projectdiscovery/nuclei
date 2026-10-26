@@ -3,20 +3,32 @@ package offlinehttp
 import (
 	"bufio"
 	"errors"
+	"io"
 	"net/http"
 	"regexp"
 	"strings"
 )
 
-var noMinor = regexp.MustCompile(`^HTTP/([0-9]) `)
+var (
+	noMinor             = regexp.MustCompile(`^HTTP/([0-9]) `)
+	responseStatusRegex = regexp.MustCompile(`(?m)^HTTP/[0-9](?:\.[0-9])?\s+[0-9]{3}`)
+)
 
 // readResponseFromString reads a raw http response from a string.
 func readResponseFromString(data string) (*http.Response, error) {
 	// Check if "data" contains RFC compatible Request followed by a response
 	br := bufio.NewReader(strings.NewReader(data))
 	if req, err := http.ReadRequest(br); err == nil {
-		if resp, err := http.ReadResponse(br, req); err == nil {
-			return resp, nil
+		if req.Body != nil {
+			_, _ = io.Copy(io.Discard, req.Body)
+			_ = req.Body.Close()
+		}
+		remaining, _ := io.ReadAll(br)
+		if len(remaining) > 0 {
+			remainingStr := addMinorVersionToHTTP(string(remaining))
+			if resp, err := http.ReadResponse(bufio.NewReader(strings.NewReader(remainingStr)), req); err == nil {
+				return resp, nil
+			}
 		}
 	}
 
@@ -25,13 +37,11 @@ func readResponseFromString(data string) (*http.Response, error) {
 	if strings.HasPrefix(data, "HTTP/") {
 		final = addMinorVersionToHTTP(data)
 	} else {
-		lastIndex := strings.LastIndex(data, "HTTP/")
-		if lastIndex == -1 {
+		loc := responseStatusRegex.FindStringIndex(data)
+		if loc == nil {
 			return nil, errors.New("malformed raw http response")
 		}
-		final = data[lastIndex:] // choose last http/ in case of it being later.
-
-		final = addMinorVersionToHTTP(final)
+		final = addMinorVersionToHTTP(data[loc[0]:])
 	}
 	return http.ReadResponse(bufio.NewReader(strings.NewReader(final)), nil)
 }
