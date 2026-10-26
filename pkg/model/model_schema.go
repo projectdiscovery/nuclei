@@ -112,14 +112,8 @@ var infoSectionMetadata = []schema.PropertyMetadata{
 			"```",
 		),
 		Example: schema.PropertyExamples(
-			schema.MultiLine(
-				"\n\tmax-request: 1",
-			),
-			schema.MultiLine(
-				"\n\tmax-request: 2",
-				"\tvendor: apache",
-				"\tproduct: log4j2",
-			),
+			map[string]any{"max-request": 1},
+			map[string]any{"max-request": 2, "vendor": "apache", "product": "log4j2"},
 		),
 	},
 	{
@@ -140,14 +134,8 @@ var infoSectionMetadata = []schema.PropertyMetadata{
 			"```",
 		),
 		Example: schema.PropertyExamples(
-			schema.MultiLine(
-				"\n\tcvss-metrics: CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:C/C:H/I:H/A:H",
-				"\tcvss-score: 10",
-				"\tcve-id: CVE-2021-44228",
-			),
-			schema.MultiLine(
-				"\n\tcwe-id: CWE-20,CWE-917",
-			),
+			map[string]any{"cvss-metrics": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:C/C:H/I:H/A:H", "cvss-score": 10, "cve-id": "CVE-2021-44228"},
+			map[string]any{"cwe-id": "CWE-20,CWE-917"},
 		),
 	},
 	{
