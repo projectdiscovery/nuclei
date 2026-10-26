@@ -94,7 +94,7 @@ require (
 	github.com/projectdiscovery/n3iwf v0.0.0-20230523120440-b8cd232ff1f5
 	github.com/projectdiscovery/networkpolicy v0.1.56
 	github.com/projectdiscovery/ratelimit v0.0.94
-	github.com/projectdiscovery/rawhttp v0.2.0
+	github.com/projectdiscovery/rawhttp v0.2.2-0.20261026124657-6176ce87588e
 	github.com/projectdiscovery/rdap v0.9.0
 	github.com/projectdiscovery/retryabledns v1.0.116
 	github.com/projectdiscovery/retryablehttp-go v1.3.31

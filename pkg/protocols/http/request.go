@@ -1177,9 +1177,6 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 			resp, err = generatedRequest.pipelinedClient.Dor(generatedRequest.request)
 			sent = true
 		}
-		if err == nil {
-			dropPipelinedBodylessBody(resp, generatedRequest.method())
-		}
 	} else if generatedRequest.original.Unsafe && generatedRequest.rawRequest != nil {
 		// if request is a unsafe request, use the rawhttp client
 		formedURL = generatedRequest.rawRequest.FullURL
