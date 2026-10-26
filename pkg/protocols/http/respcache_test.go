@@ -4,9 +4,12 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 
@@ -144,4 +147,62 @@ func TestResponseCacheSkipsTruncatedBody(t *testing.T) {
 
 	require.Len(t, execute("small-again", 50), 50, "a cached full body is still cut to the reader's limit")
 	require.Equal(t, int32(2), hits.Load())
+}
+
+// Identical cacheable requests from different templates that run at the same
+// time send one request on the wire. Without the cache each one is sent.
+func TestResponseCacheSharesInFlight(t *testing.T) {
+	var hits atomic.Int32
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		hits.Add(1)
+		time.Sleep(300 * time.Millisecond)
+		_, _ = w.Write([]byte("shared"))
+	}))
+	defer ts.Close()
+
+	opts := testutils.DefaultOptions.Copy()
+	opts.ResponseCache = true
+	opts.FollowRedirects = false
+	opts.FollowHostRedirects = false
+	opts.CustomHeaders = nil
+	testutils.Init(opts)
+
+	run := func(cache *httprespcache.Cache) []string {
+		hits.Store(0)
+		const n = 4
+		bodies := make([]string, n)
+		var wg sync.WaitGroup
+		for i := 0; i < n; i++ {
+			id := "tpl-" + strconv.Itoa(i)
+			request := &Request{ID: id, Method: HTTPMethodTypeHolder{MethodType: HTTPGet}, Path: []string{"{{BaseURL}}/slow"}}
+			executerOptions := testutils.NewMockExecuterOptions(opts, &testutils.TemplateInfo{
+				ID:   id,
+				Info: model.Info{SeverityHolder: severity.Holder{Severity: severity.Low}, Name: "test"},
+			})
+			executerOptions.HTTPResponseCache = cache
+			require.NoError(t, request.Compile(executerOptions))
+			wg.Add(1)
+			go func(i int) {
+				defer wg.Done()
+				err := request.ExecuteWithResults(contextargs.NewWithInput(context.Background(), ts.URL), make(output.InternalEvent), make(output.InternalEvent), func(event *output.InternalWrappedEvent) {
+					if event != nil && event.InternalEvent != nil {
+						bodies[i], _ = event.InternalEvent["body"].(string)
+					}
+				})
+				require.NoError(t, err)
+			}(i)
+		}
+		wg.Wait()
+		return bodies
+	}
+
+	for _, body := range run(httprespcache.New()) {
+		require.Equal(t, "shared", body)
+	}
+	require.Equal(t, int32(1), hits.Load(), "concurrent identical requests must share one request")
+
+	for _, body := range run(nil) {
+		require.Equal(t, "shared", body)
+	}
+	require.Equal(t, int32(4), hits.Load(), "without the cache every request is sent")
 }
