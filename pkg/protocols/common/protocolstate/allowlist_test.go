@@ -88,16 +88,22 @@ func TestSandboxFileRootsCoversStateAndCacheDirs(t *testing.T) {
 	roots := protocolstate.SandboxOwnedFileRoots(opts)
 	allowlist := protocolstate.AllowedFileRoots(opts)
 
-	configDir := config.DefaultConfig.GetConfigDir()
-	for _, dir := range []string{config.DefaultConfig.GetStateDir(), config.DefaultConfig.GetCacheDir()} {
+	for _, dir := range []string{config.DefaultConfig.GetConfigDir(), config.DefaultConfig.GetStateDir(), config.DefaultConfig.GetCacheDir()} {
 		require.NotEmpty(t, dir)
 		require.True(t, rootListContains(roots, dir), "sandbox must own %s: %v", dir, roots)
-		if dir == configDir {
-			// darwin collapses config, state and cache onto one directory
-			continue
-		}
 		require.False(t, rootListContains(allowlist, dir), "templates must not reach %s: %v", dir, allowlist)
 	}
+}
+
+// The config dir holds the template signing private key, so a template must
+// not read it even when nothing else denies the path.
+func TestNormalizePathDeniesSigningKeysDir(t *testing.T) {
+	templatesDir := t.TempDir()
+	restoreTemplatesDir(t, templatesDir)
+
+	keyPath := filepath.Join(config.DefaultConfig.GetKeysDir(), "nuclei-user-private-key.pem")
+	_, err := protocolstate.NormalizePath(&types.Options{ExecutionId: t.Name()}, keyPath)
+	require.ErrorIs(t, err, protocolstate.ErrPathDenied)
 }
 
 // A missing -t path must never be treated as an owned root. Creating it would

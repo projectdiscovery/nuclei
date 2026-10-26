@@ -13,14 +13,12 @@ import (
 
 // AllowedFileRoots returns filesystem roots that template execution may access.
 // Templates dir is always included. When -lfa is enabled the current working
-// directory and any configured AllowedPaths are added as well.
+// directory and any configured AllowedPaths are added as well. The config dir
+// is never included: it holds the template signing key and reporting secrets.
 func AllowedFileRoots(options *types.Options) []string {
 	roots := make([]string, 0, 6)
 	if templateDir := config.DefaultConfig.GetTemplateDir(); templateDir != "" {
 		roots = append(roots, canonicalRoot(templateDir))
-	}
-	if configDir := config.DefaultConfig.GetConfigDir(); configDir != "" {
-		roots = append(roots, canonicalRoot(configDir))
 	}
 	if tempDir := os.TempDir(); tempDir != "" {
 		roots = append(roots, canonicalRoot(tempDir))
