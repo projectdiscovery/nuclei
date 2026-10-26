@@ -105,15 +105,21 @@ func HashRequest(req *types.RequestResponse) (string, error) {
 		body = req.Request.Body
 		headers = req.Request.Headers
 	}
+	// NUL separators keep field boundaries unambiguous, so "ab"+"c" and
+	// "a"+"bc" do not hash the same.
 	hashContent.WriteString(method)
+	hashContent.WriteByte(0)
 	hashContent.WriteString(normalizedURL)
 
 	for _, header := range sortedNonDynamicHeaders(headers) {
+		hashContent.WriteByte(0)
 		hashContent.WriteString(header.Key)
+		hashContent.WriteByte(0)
 		hashContent.WriteString(header.Value)
 	}
 
 	if len(body) > 0 {
+		hashContent.WriteByte(0)
 		hashContent.WriteString(body)
 	}
 
@@ -122,11 +128,17 @@ func HashRequest(req *types.RequestResponse) (string, error) {
 }
 
 // NormalizeURL returns a stable string form of u without mutating the original.
+// Scheme and host are lowercased, query keys and values are sorted and the
+// fragment is dropped since it is never sent to the server.
 func NormalizeURL(u *url.URL) (string, error) {
 	if u == nil {
 		return "", nil
 	}
 	cloned := *u
+	cloned.Scheme = strings.ToLower(cloned.Scheme)
+	cloned.Host = strings.ToLower(cloned.Host)
+	cloned.Fragment = ""
+	cloned.RawFragment = ""
 	query := cloned.Query()
 	sortedQuery := make(url.Values, len(query))
 	for k, v := range query {

@@ -50,9 +50,12 @@ type HttpInputProvider struct {
 // otherwise it will use the input string
 func NewHttpInputProvider(opts *HttpMultiFormatOptions) (*HttpInputProvider, error) {
 	var format formats.Format
-	for _, provider := range providersList {
-		if provider.Name() == opts.InputMode {
+	for _, newProvider := range providersList {
+		// Use a fresh instance per provider so concurrent callers do not
+		// share format options.
+		if provider := newProvider(); provider.Name() == opts.InputMode {
 			format = provider
+			break
 		}
 	}
 	if format == nil {
@@ -155,21 +158,21 @@ func (i *HttpInputProvider) InputType() string {
 func (i *HttpInputProvider) Close() {}
 
 // Supported Providers
-var providersList = []formats.Format{
-	burp.New(),
-	json.New(),
-	yaml.New(),
-	openapi.New(),
-	swagger.New(),
-	raw.New(),
+var providersList = []func() formats.Format{
+	func() formats.Format { return burp.New() },
+	func() formats.Format { return json.New() },
+	func() formats.Format { return yaml.New() },
+	func() formats.Format { return openapi.New() },
+	func() formats.Format { return swagger.New() },
+	func() formats.Format { return raw.New() },
 }
 
 // SupportedFormats returns the list of supported formats in comma-separated
 // manner
 func SupportedFormats() string {
 	var formats []string
-	for _, provider := range providersList {
-		formats = append(formats, provider.Name())
+	for _, newProvider := range providersList {
+		formats = append(formats, newProvider().Name())
 	}
 	return strings.Join(formats, ", ")
 }

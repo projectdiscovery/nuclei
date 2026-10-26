@@ -19,6 +19,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/internal/server/scope"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v3/pkg/fuzz/stats"
+	"github.com/projectdiscovery/nuclei/v3/pkg/input/dedupe"
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
 	"github.com/projectdiscovery/utils/env"
@@ -30,7 +31,7 @@ type DASTServer struct {
 	httpServer   *http.Server
 	options      *Options
 	tasksPool    *pond.WorkerPool
-	deduplicator *requestDeduplicator
+	deduplicator *dedupe.RequestDeduplicator
 	scopeManager *scope.Manager
 	proxy        *proxy.Proxy
 	startTime    time.Time
@@ -96,7 +97,7 @@ func New(options *Options) (*DASTServer, error) {
 	server := &DASTServer{
 		options:      options,
 		tasksPool:    pond.New(maxWorkers, bufferSize),
-		deduplicator: newRequestDeduplicator(),
+		deduplicator: dedupe.NewRequestDeduplicator(),
 		startTime:    time.Now(),
 	}
 	server.setupHandlers(false)

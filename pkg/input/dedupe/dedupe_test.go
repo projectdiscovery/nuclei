@@ -107,3 +107,33 @@ func TestHashRequestEmptyPath(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, ha, hb)
 }
+
+func TestHashRequestFieldBoundaries(t *testing.T) {
+	t.Parallel()
+
+	a := newReq(t, "GET", "https://example.com/x", "", map[string]string{"X-Ab": "c"})
+	b := newReq(t, "GET", "https://example.com/x", "", map[string]string{"X-A": "bc"})
+
+	ha, err := HashRequest(a)
+	require.NoError(t, err)
+	hb, err := HashRequest(b)
+	require.NoError(t, err)
+	require.NotEqual(t, ha, hb)
+}
+
+func TestHashRequestHostCaseAndFragment(t *testing.T) {
+	t.Parallel()
+
+	a := newReq(t, "GET", "https://Example.COM/x?a=1#top", "", nil)
+	b := newReq(t, "GET", "https://example.com/x?a=1", "", nil)
+	c := newReq(t, "GET", "https://example.com/X?a=1", "", nil)
+
+	ha, err := HashRequest(a)
+	require.NoError(t, err)
+	hb, err := HashRequest(b)
+	require.NoError(t, err)
+	hc, err := HashRequest(c)
+	require.NoError(t, err)
+	require.Equal(t, ha, hb, "host case and fragment should not matter")
+	require.NotEqual(t, hb, hc, "path case should matter")
+}
