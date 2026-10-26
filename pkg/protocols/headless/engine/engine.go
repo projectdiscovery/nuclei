@@ -7,7 +7,6 @@ import (
 	"os"
 	"strings"
 	"sync"
-	"time"
 
 	"github.com/go-rod/rod"
 	"github.com/go-rod/rod/lib/launcher"
@@ -20,8 +19,6 @@ import (
 	fileutil "github.com/projectdiscovery/utils/file"
 	osutils "github.com/projectdiscovery/utils/os"
 )
-
-const chromeShellDownloadTimeout = 5 * time.Minute
 
 // Browser is a browser structure for nuclei headless module
 type Browser struct {
@@ -164,14 +161,23 @@ func browserPath(options *types.Options) (string, bool, error) {
 
 	// Prefer chrome-headless-shell for local headless templates; skip it when
 	// headed since the shell binary cannot show a UI.
-	ctx, cancel := context.WithTimeout(context.Background(), chromeShellDownloadTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), chromeshell.DefaultDownloadTimeout)
 	defer cancel()
-	shellPath, err := chromeshell.EnsureContext(ctx)
+	shellPath, err := chromeshell.EnsureWithOptions(ctx, chromeshell.Options{Proxy: downloadProxy(options)})
 	if err != nil {
 		gologger.Warning().Msgf("Could not prepare chrome-headless-shell, using the default browser: %s\n", err)
 		return "", false, nil
 	}
 	return shellPath, true, nil
+}
+
+// downloadProxy returns the scan proxy for the chrome-headless-shell download,
+// or empty to use the environment proxy.
+func downloadProxy(options *types.Options) string {
+	if options.AliveHttpProxy != "" {
+		return options.AliveHttpProxy
+	}
+	return options.AliveSocksProxy
 }
 
 // launchBrowser launches browserPath and, only when it is chrome-headless-shell,

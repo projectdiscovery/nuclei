@@ -4,6 +4,7 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	"github.com/stretchr/testify/require"
 )
 
@@ -44,4 +45,23 @@ func TestLaunchBrowserDoesNotRetryInstalledChrome(t *testing.T) {
 
 	require.ErrorIs(t, err, expected)
 	require.Equal(t, []string{"/usr/bin/google-chrome"}, paths)
+}
+
+// The browser download goes through the scan proxy, or the environment proxy
+// when there is none.
+func TestDownloadProxy(t *testing.T) {
+	cases := []struct {
+		name string
+		opts *types.Options
+		want string
+	}{
+		{"no proxy uses the environment", &types.Options{}, ""},
+		{"http proxy", &types.Options{AliveHttpProxy: "http://127.0.0.1:8080"}, "http://127.0.0.1:8080"},
+		{"socks proxy", &types.Options{AliveSocksProxy: "socks5://127.0.0.1:1080"}, "socks5://127.0.0.1:1080"},
+	}
+	for _, c := range cases {
+		if got := downloadProxy(c.opts); got != c.want {
+			t.Errorf("%s: downloadProxy()=%q want %q", c.name, got, c.want)
+		}
+	}
 }
