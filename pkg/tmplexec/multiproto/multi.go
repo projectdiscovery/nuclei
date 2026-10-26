@@ -95,8 +95,8 @@ func (m *MultiProtocol) ExecuteWithResults(ctx *scan.ScanContext) error {
 		default:
 		}
 		inputItem := ctx.Input.Clone()
-		if m.options.InputHelper != nil && ctx.Input.MetaInput.Input != "" {
-			if inputItem.MetaInput.Input = m.options.InputHelper.Transform(inputItem.MetaInput.Input, req.Type()); inputItem.MetaInput.Input == "" {
+		if m.options.InputHelper != nil && ctx.Input.MetaInput.Input != "" && !utils.HasOfflineHTTPResponse(ctx.Input.MetaInput, req.Type()) {
+			if inputItem.MetaInput.Input = m.options.InputHelper.TransformPinned(inputItem.MetaInput.Input, inputItem.MetaInput.CustomIP, req.Type()); inputItem.MetaInput.Input == "" {
 				return nil
 			}
 		}

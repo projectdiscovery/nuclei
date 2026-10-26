@@ -1,6 +1,10 @@
 package workflow
 
 import (
+	"maps"
+	"slices"
+	"sync"
+
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/loader/filter"
@@ -13,6 +17,14 @@ type workflowLoader struct {
 	pathFilter *filter.PathFilter
 	tagFilter  *templates.TagFilter
 	options    *protocols.ExecutorOptions
+
+	// every workflow step that selects templates by tag searches the whole
+	// templates directory, so it is walked once per loader, and each template
+	// is parsed once: going through the parser per step re-stats every cached
+	// template, which is millions of stats when loading all workflows
+	templatesDirectoryPaths func() []string
+	parsedMu                sync.Mutex
+	parsed                  map[string]*templates.Template
 }
 
 // NewLoader returns a new workflow loader structure
@@ -38,22 +50,50 @@ func NewLoader(options *protocols.ExecutorOptions) (model.WorkflowLoader, error)
 		ExcludedTemplates: options.Options.ExcludedTemplates,
 	}, options.Catalog)
 
-	return &workflowLoader{pathFilter: pathFilter, tagFilter: tagFilter, options: options}, nil
+	loader := &workflowLoader{pathFilter: pathFilter, tagFilter: tagFilter, options: options, parsed: make(map[string]*templates.Template)}
+	loader.templatesDirectoryPaths = sync.OnceValue(loader.listTemplatesDirectory)
+	return loader, nil
 }
 
-func (w *workflowLoader) GetTemplatePathsByTags(templateTags []string) []string {
+func (w *workflowLoader) listTemplatesDirectory() []string {
 	includedTemplates, errs := w.options.Catalog.GetTemplatesPath([]string{config.DefaultConfig.TemplatesDirectory})
 	for template, err := range errs {
 		gologger.Error().Msgf("Could not find template '%s': %s", template, err)
 	}
+	return slices.Collect(maps.Keys(w.pathFilter.Match(includedTemplates)))
+}
 
-	templatePathMap := w.pathFilter.Match(includedTemplates)
+// parseTemplate returns the template at path, or nil if it does not parse.
+// The parser is called outside the lock: parsing a workflow compiles it, which
+// looks templates up by tag again on the same goroutine.
+func (w *workflowLoader) parseTemplate(path string) *templates.Template {
+	w.parsedMu.Lock()
+	template, ok := w.parsed[path]
+	w.parsedMu.Unlock()
+	if ok {
+		return template
+	}
 
-	loadedTemplates := make([]string, 0, len(templatePathMap))
-	for templatePath := range templatePathMap {
-		loaded, _ := w.options.Parser.LoadTemplate(templatePath, w.tagFilter, templateTags, w.options.Catalog)
-		if loaded {
-			loadedTemplates = append(loadedTemplates, templatePath)
+	value, err := w.options.Parser.ParseTemplate(path, w.options.Catalog)
+	template, _ = value.(*templates.Template)
+	if err != nil {
+		template = nil
+	}
+	w.parsedMu.Lock()
+	w.parsed[path] = template
+	w.parsedMu.Unlock()
+	return template
+}
+
+func (w *workflowLoader) GetTemplatePathsByTags(templateTags []string) []string {
+	var loadedTemplates []string
+	for _, path := range w.templatesDirectoryPaths() {
+		template := w.parseTemplate(path)
+		if template == nil {
+			continue
+		}
+		if loaded, _ := templates.MatchLoadFilters(template, path, w.tagFilter, templateTags); loaded {
+			loadedTemplates = append(loadedTemplates, path)
 		}
 	}
 	return loadedTemplates
