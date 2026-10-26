@@ -100,3 +100,5 @@ For each crawled endpoint it produces a fuzzable request:
 - When only discrete fields are present (method, endpoint, headers, body), a raw request is synthesized from them and parsed back, so the result has the same shape as every other input format.
 
 The parser is tolerant of mixed input: blank and malformed lines are skipped with a warning, and a bare URL line (katana's default non-JSONL output) is treated as a `GET` request.
+
+A single record may be up to 32MB, which is well above a realistic worst case crawl record. Larger records, including a malformed one that never terminates, are drained and skipped with a warning rather than buffered, so one bad line cannot exhaust memory and end the scan.
