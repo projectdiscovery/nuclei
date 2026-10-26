@@ -4,6 +4,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/go-sql-driver/mysql"
@@ -122,6 +123,12 @@ func recordMySQLRegistry(t *testing.T) map[string]bool {
 
 const mysqlLocalFilesDSN = "root:x@nucleitcp(127.0.0.1:3306)/?allowAllFiles=true"
 
+// sqlPath escapes backslashes the way a MySQL string literal needs them, so
+// Windows paths survive the round trip.
+func sqlPath(p string) string {
+	return strings.ReplaceAll(p, `\`, `\\`)
+}
+
 func TestRegisterMySQLLocalInfilesAllowsOnlyAllowlistedFiles(t *testing.T) {
 	templatesDir := t.TempDir()
 	restoreTemplatesDir(t, templatesDir)
@@ -130,14 +137,14 @@ func TestRegisterMySQLLocalInfilesAllowsOnlyAllowlistedFiles(t *testing.T) {
 
 	inside := filepath.Join(templatesDir, "data.csv")
 	require.NoError(t, os.WriteFile(inside, []byte("1\n"), 0o600))
-	release, err := protocolstate.RegisterMySQLLocalInfiles(opts, mysqlLocalFilesDSN, "LOAD DATA LOCAL INFILE '"+inside+"' INTO TABLE t")
+	release, err := protocolstate.RegisterMySQLLocalInfiles(opts, mysqlLocalFilesDSN, "LOAD DATA LOCAL INFILE '"+sqlPath(inside)+"' INTO TABLE t")
 	require.NoError(t, err)
 	require.Equal(t, map[string]bool{inside: true}, registered)
 	release()
 	require.Empty(t, registered, "release must deregister the file")
 
 	outside := outsideHomePath(t, ".nuclei-mysql-infile-"+t.Name())
-	_, err = protocolstate.RegisterMySQLLocalInfiles(opts, mysqlLocalFilesDSN, `load data low_priority local infile "`+outside+`" into table t`)
+	_, err = protocolstate.RegisterMySQLLocalInfiles(opts, mysqlLocalFilesDSN, `load data low_priority local infile "`+sqlPath(outside)+`" into table t`)
 	require.ErrorIs(t, err, protocolstate.ErrPathDenied)
 	require.Empty(t, registered)
 
@@ -151,7 +158,7 @@ func TestRegisterMySQLLocalInfilesNeedsLFAAndDSNOptIn(t *testing.T) {
 	restoreTemplatesDir(t, templatesDir)
 	registered := recordMySQLRegistry(t)
 	inside := filepath.Join(templatesDir, "data.csv")
-	query := "LOAD DATA LOCAL INFILE '" + inside + "' INTO TABLE t"
+	query := "LOAD DATA LOCAL INFILE '" + sqlPath(inside) + "' INTO TABLE t"
 
 	release, err := protocolstate.RegisterMySQLLocalInfiles(&types.Options{ExecutionId: t.Name()}, mysqlLocalFilesDSN, query)
 	require.NoError(t, err)
@@ -170,7 +177,7 @@ func TestRegisterMySQLLocalInfilesRefcountsSharedFiles(t *testing.T) {
 	registered := recordMySQLRegistry(t)
 	opts := &types.Options{ExecutionId: t.Name(), AllowLocalFileAccess: true}
 	inside := filepath.Join(templatesDir, "it's.csv")
-	query := `LOAD DATA LOCAL INFILE '` + filepath.Join(templatesDir, "it''s.csv") + `' INTO TABLE t`
+	query := `LOAD DATA LOCAL INFILE '` + sqlPath(filepath.Join(templatesDir, "it''s.csv")) + `' INTO TABLE t`
 
 	first, err := protocolstate.RegisterMySQLLocalInfiles(opts, mysqlLocalFilesDSN, query)
 	require.NoError(t, err)
