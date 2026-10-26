@@ -935,8 +935,8 @@ github.com/projectdiscovery/cdncheck v1.3.2 h1:I453ZWNBeG0WWIy3wi9412l4PTzorLgeb
 github.com/projectdiscovery/cdncheck v1.3.2/go.mod h1:5IkUMMlcGaeg1DWW5oJVd3r9X3EpJ88j5HxBeF4Me9M=
 github.com/projectdiscovery/clistats v0.1.7 h1:NXf4lUzx1QcbJd6QycNwwYHTv2FsW9MchQ2LsgSL6C0=
 github.com/projectdiscovery/clistats v0.1.7/go.mod h1:RxRGxhMzkT344VTTvZWIrojurUXdQQRN1yfwgg/88I8=
-github.com/projectdiscovery/dsl v0.8.24 h1:rN2w6LSIjA16qKGRjyj70oxdwXGaspe6sAjEkP7F2fk=
-github.com/projectdiscovery/dsl v0.8.24/go.mod h1:V+EludvS5PS19UNMlM3CuBwZ+sFnMaQhCFGxysDUanQ=
+github.com/projectdiscovery/dsl v0.9.0 h1:i1KyCbKJyKfHkgdbfh0JkWdd14APUjpEYf+GaYANlCg=
+github.com/projectdiscovery/dsl v0.9.0/go.mod h1:ntNFkkiYCTEosGFTbApA61RMrvJTCjnakPxnWj56MyY=
 github.com/projectdiscovery/fastdialer v0.6.0 h1:4ZeFQ6LyRH4D8e3qO/yzqIP4Cf9Fr0DduaVpJD6ENnE=
 github.com/projectdiscovery/fastdialer v0.6.0/go.mod h1:FpHwa9S5PUgfPbh+irOm+cdU6AO631XidxkhPwPv7yY=
 github.com/projectdiscovery/fasttemplate v0.0.2 h1:h2cISk5xDhlJEinlBQS6RRx0vOlOirB2y3Yu4PJzpiA=
@@ -1001,8 +1001,8 @@ github.com/projectdiscovery/useragent v0.0.109 h1:b86BPdZvmgbJousa04jAugDRY4Y+rA
 github.com/projectdiscovery/useragent v0.0.109/go.mod h1:sRyBqDAcD31RKYrO8fyXGowLd36fNwY1g0MNW9mp7zk=
 github.com/projectdiscovery/utils v0.11.12-0.20261025172519-64b3c221cfe5 h1:AOspf7ScbwZr8A2YnjCFd4ZJAMSFqzfEaIJIbJPuu10=
 github.com/projectdiscovery/utils v0.11.12-0.20261025172519-64b3c221cfe5/go.mod h1:TJgsyVjB02CavwZVFzUzPg6YOSJXQxLhL808JCiQKlU=
-github.com/projectdiscovery/wappalyzergo v0.3.5 h1:UZradYF1GIcruSIV5wwo/Coph9/VnM17oajLD9eXR2U=
-github.com/projectdiscovery/wappalyzergo v0.3.5/go.mod h1:4E6+fh/ckaY3wo5tlM7lNYSkhuTYRHzu2YmGIRraXP0=
+github.com/projectdiscovery/wappalyzergo v0.3.6 h1:1FXCMeCa1xVu2zaW+eeBcbVxtlMStqGOlKcMLyh2pzI=
+github.com/projectdiscovery/wappalyzergo v0.3.6/go.mod h1:4E6+fh/ckaY3wo5tlM7lNYSkhuTYRHzu2YmGIRraXP0=
 github.com/projectdiscovery/yamldoc-go v1.0.7 h1:Odmjd1o4EkMff2F6QHi1dIYPIQPZUFy24YqmQCprmTk=
 github.com/projectdiscovery/yamldoc-go v1.0.7/go.mod h1:nqD1iPMcofpRA1DbXavPByJhWURrshT+l8WN9XjyQag=
 github.com/prometheus/client_golang v0.9.1/go.mod h1:7SWBe2y4D6OKWSNQJUaRYU/AaXPKyh/dDVn+NZz0KFw=

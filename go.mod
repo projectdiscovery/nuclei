@@ -75,7 +75,7 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/praetorian-inc/fingerprintx v1.1.15
 	github.com/projectdiscovery/clistats v0.1.7
-	github.com/projectdiscovery/dsl v0.8.24
+	github.com/projectdiscovery/dsl v0.9.0
 	github.com/projectdiscovery/fastdialer v0.6.0
 	github.com/projectdiscovery/fasttemplate v0.0.2
 	github.com/projectdiscovery/gcache v0.0.0-20241015120333-12546c6e3f4c
@@ -103,7 +103,7 @@ require (
 	github.com/projectdiscovery/uncover v1.2.1
 	github.com/projectdiscovery/useragent v0.0.109
 	github.com/projectdiscovery/utils v0.11.12-0.20261025172519-64b3c221cfe5
-	github.com/projectdiscovery/wappalyzergo v0.3.5
+	github.com/projectdiscovery/wappalyzergo v0.3.6
 	github.com/projectdiscovery/yamldoc-go v1.0.7
 	github.com/redis/go-redis/v9 v9.19.0
 	github.com/remeh/sizedwaitgroup v1.0.0
