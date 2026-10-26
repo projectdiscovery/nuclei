@@ -37,7 +37,11 @@ const (
 // strongest in-band signal. Out-of-band confirmation (handled by the caller)
 // outranks all of these.
 const (
-	weightStatusOrSize  = 25
+	weightStatusOrSize = 25
+	// weightLLM scores an llm matcher. A model verdict is a judgement rather
+	// than a deterministic check of the response, so it sits below word
+	// matching and needs deterministic matchers to reach a higher tier.
+	weightLLM           = 40
 	weightWordHeader    = 45
 	weightStrongHeader  = 55
 	weightWordContent   = 60
@@ -111,7 +115,7 @@ func patternCount(m *matchers.Matcher) int {
 var metadataParts = map[string]struct{}{
 	"header": {}, "all_headers": {}, "headers": {},
 	"status": {}, "status_code": {}, "size": {}, "content_length": {}, "duration": {},
-	"rcode": {},
+	"rcode":   {},
 	"request": {}, "host": {}, "ip": {}, "port": {}, "matched": {}, "type": {},
 	// common HTTP response header fields that templates match on directly
 	"content_type": {}, "content-type": {}, "server": {}, "location": {},
@@ -166,6 +170,11 @@ func classify(m *matchers.Matcher) (evidenceClass, int) {
 			return evidenceClass{kind: "word", content: true}, weightWordContent
 		}
 		return evidenceClass{kind: "word"}, weightWordHeader
+	case matchers.LLMMatcher:
+		// one class whatever part it reads: several llm matchers are not
+		// independent evidence, but an llm matcher AND-combined with a
+		// deterministic matcher still counts as corroboration.
+		return evidenceClass{kind: "llm"}, weightLLM
 	case matchers.DSLMatcher:
 		if dslWeakOnly(m) {
 			// a dsl that only checks status_code/content_length is metadata
@@ -220,7 +229,8 @@ func (operators *Operators) Confidence() (int, string) {
 		// a single matcher that requires several distinct content patterns to
 		// all hold is highly specific. Status/size and weak-dsl matchers are
 		// excluded (weight gate) since matching any of several codes broadens.
-		multi := weight > weightStatusOrSize && requiresAllPatterns(m) && patternCount(m) > 1
+		// An llm matcher gets no bonus: its inputs are not independent patterns.
+		multi := weight > weightStatusOrSize && class.kind != "llm" && requiresAllPatterns(m) && patternCount(m) > 1
 		if m.Negative {
 			negCount++
 			negClasses[class] = struct{}{}

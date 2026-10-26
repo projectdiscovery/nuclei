@@ -73,6 +73,27 @@ func TestResultEventSerializesZeroConfidenceScore(t *testing.T) {
 	require.Contains(t, string(data), `"confidence-score":0`)
 }
 
+func TestWriteFailureReportsNoConfidence(t *testing.T) {
+	w, err := NewStandardWriter(&types.Options{JSONL: true, MatcherStatus: true})
+	require.NoError(t, err)
+	out := &testWriteCloser{}
+	w.outputFile = out
+	w.DisableStdout = true
+
+	err = w.WriteFailure(&InternalWrappedEvent{InternalEvent: InternalEvent{
+		"template-id": "failed-template",
+		"host":        "https://example.com",
+		"type":        "http",
+	}})
+	require.NoError(t, err)
+
+	var event map[string]interface{}
+	require.NoError(t, json.Unmarshal([]byte(strings.TrimSpace(out.String())), &event))
+	require.Equal(t, false, event["matcher-status"])
+	require.Equal(t, ConfidenceNone, event["confidence"])
+	require.Equal(t, float64(0), event["confidence-score"])
+}
+
 type testWriteCloser struct {
 	strings.Builder
 }

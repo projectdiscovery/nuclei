@@ -382,3 +382,89 @@ func TestScoreToTier(t *testing.T) {
 	require.Equal(t, ConfidenceHigh, ScoreToTier(confidenceHighThreshold))
 	require.Equal(t, ConfidenceHigh, ScoreToTier(ConfidenceCertain))
 }
+
+func TestConfidenceLLMMatcher(t *testing.T) {
+	llm := func() *matchers.Matcher {
+		m := matcher(matchers.LLMMatcher, "body")
+		m.Prompt = "is this an exposed admin panel?"
+		return m
+	}
+	llmMulti := func() *matchers.Matcher {
+		m := llm()
+		m.Condition = "and"
+		m.MatchAll = true
+		m.Words = []string{"admin", "panel"}
+		return m
+	}
+
+	tests := []struct {
+		name      string
+		operators *Operators
+		wantScore int
+		wantTier  string
+	}{
+		{
+			name:      "single llm matcher",
+			operators: &Operators{Matchers: []*matchers.Matcher{llm()}},
+			wantScore: weightLLM,
+			wantTier:  ConfidenceLow,
+		},
+		{
+			name:      "llm matcher gets no multi-pattern bonus",
+			operators: &Operators{Matchers: []*matchers.Matcher{llmMulti()}},
+			wantScore: weightLLM,
+			wantTier:  ConfidenceLow,
+		},
+		{
+			name: "two llm matchers are one evidence class",
+			operators: &Operators{
+				matchersCondition: matchers.ANDCondition,
+				Matchers:          []*matchers.Matcher{llm(), llm()},
+			},
+			wantScore: weightLLM,
+			wantTier:  ConfidenceLow,
+		},
+		{
+			name: "llm AND body word adds corroboration",
+			operators: &Operators{
+				matchersCondition: matchers.ANDCondition,
+				Matchers:          []*matchers.Matcher{llm(), matcher(matchers.WordsMatcher, "body")},
+			},
+			wantScore: weightWordContent + corroborationPerClass,
+			wantTier:  ConfidenceMedium,
+		},
+		{
+			name: "llm AND status adds corroboration",
+			operators: &Operators{
+				matchersCondition: matchers.ANDCondition,
+				Matchers:          []*matchers.Matcher{llm(), matcher(matchers.StatusMatcher, "")},
+			},
+			wantScore: weightLLM + corroborationPerClass,
+			wantTier:  ConfidenceMedium,
+		},
+		{
+			name: "llm AND body regex AND status caps corroboration",
+			operators: &Operators{
+				matchersCondition: matchers.ANDCondition,
+				Matchers:          []*matchers.Matcher{llm(), matcher(matchers.RegexMatcher, "body"), matcher(matchers.StatusMatcher, "")},
+			},
+			wantScore: weightStrongContent + corroborationCap,
+			wantTier:  ConfidenceHigh,
+		},
+		{
+			name: "llm OR body word takes the best class only",
+			operators: &Operators{
+				Matchers: []*matchers.Matcher{llm(), matcher(matchers.WordsMatcher, "body")},
+			},
+			wantScore: weightWordContent,
+			wantTier:  ConfidenceMedium,
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			score, tier := tc.operators.Confidence()
+			require.Equal(t, tc.wantScore, score)
+			require.Equal(t, tc.wantTier, tier)
+		})
+	}
+}
