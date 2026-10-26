@@ -185,15 +185,28 @@ func addCookieIgnore(exact, prefixes map[string]struct{}, name string) {
 	}
 	if strings.HasSuffix(name, "*") {
 		prefix := strings.TrimSuffix(name, "*")
-		if prefix != "" {
+		if isCookieToken(prefix) {
 			prefixes[prefix] = struct{}{}
 		}
 		return
 	}
-	if strings.Contains(name, "*") {
-		return
+	if isCookieToken(name) {
+		exact[name] = struct{}{}
 	}
-	exact[name] = struct{}{}
+}
+
+// isCookieToken reports whether name is a valid RFC 6265 cookie name.
+// wappalyzergo cookie keys can hold regex fragments such as "(?i)ltpatoken".
+func isCookieToken(name string) bool {
+	if name == "" {
+		return false
+	}
+	for _, r := range name {
+		if r <= ' ' || r >= 0x7f || strings.ContainsRune("()<>@,;:\\\"/[]?={}*", r) {
+			return false
+		}
+	}
+	return true
 }
 
 func sortedKeys(m map[string]struct{}) []string {
