@@ -30,7 +30,7 @@ var infoSectionMetadata = []schema.PropertyMetadata{
 					"Author of the template without any special characters",
 					"It can be a single author or comma-separated multiple authors",
 				),
-				Example: schema.PropertyExample("pdteam,mr.robot"),
+				Example: schema.PropertyExample([]string{"pdteam", "mr.robot"}),
 			},
 		},
 	},
@@ -50,7 +50,7 @@ var infoSectionMetadata = []schema.PropertyMetadata{
 				Description: schema.MultiLine(
 					"Multiple tags for the template separated by commas (No spaces)",
 				),
-				Example: schema.PropertyExamples("cve,http", "http,oast", "cve2024,cve"),
+				Example: schema.PropertyExamples([]string{"cve", "http"}, []string{"http", "oast"}, []string{"cve2024", "cve"}),
 			},
 		},
 	},

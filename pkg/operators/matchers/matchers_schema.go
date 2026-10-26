@@ -95,15 +95,16 @@ var matcherMetadata = []schema.PropertyMetadata{
 	},
 }
 
+// matcherAnyOfRequired binds each matcher type to the field that holds its values.
 var matcherAnyOfRequired = []schema.RequiredCombos{
-	schema.Require("type", "status"),
-	schema.Require("type", "size"),
-	schema.Require("type", "words"),
-	schema.Require("type", "regex"),
-	schema.Require("type", "binary"),
-	schema.Require("type", "dsl"),
-	schema.Require("type", "xpath"),
-	schema.Require("type", "prompt"),
+	schema.RequireConst("type", "status", "status"),
+	schema.RequireConst("type", "size", "size"),
+	schema.RequireConst("type", "word", "words"),
+	schema.RequireConst("type", "regex", "regex"),
+	schema.RequireConst("type", "binary", "binary"),
+	schema.RequireConst("type", "dsl", "dsl"),
+	schema.RequireConst("type", "xpath", "xpath"),
+	schema.RequireConst("type", "llm", "prompt"),
 }
 
 // JSONSchemaExtend extends the Matcher JSON schema.

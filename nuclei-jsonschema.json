@@ -428,36 +428,66 @@
       "additionalProperties": false,
       "anyOf": [
         {
+          "properties": {
+            "type": {
+              "const": "regex"
+            }
+          },
           "required": [
             "type",
             "regex"
           ]
         },
         {
+          "properties": {
+            "type": {
+              "const": "kval"
+            }
+          },
           "required": [
             "type",
             "kval"
           ]
         },
         {
+          "properties": {
+            "type": {
+              "const": "json"
+            }
+          },
           "required": [
             "type",
             "json"
           ]
         },
         {
+          "properties": {
+            "type": {
+              "const": "xpath"
+            }
+          },
           "required": [
             "type",
             "xpath"
           ]
         },
         {
+          "properties": {
+            "type": {
+              "const": "dsl"
+            }
+          },
           "required": [
             "type",
             "dsl"
           ]
         },
         {
+          "properties": {
+            "type": {
+              "const": "llm"
+            }
+          },
           "required": [
             "type",
             "prompt"
@@ -1076,6 +1106,11 @@
           ]
         },
         {
+          "properties": {
+            "global-matchers": {
+              "const": true
+            }
+          },
           "required": [
             "global-matchers"
           ]
@@ -1304,9 +1339,15 @@
         "path": {
           "description": "Path contains HTTP URL[s] to be sent. Here only Path portion is generally specified and host is templatetized\nExample: \n```yaml\n- path:\n\t{{BaseURL}}/admin\n```",
           "examples": [
-            "\n\t- '{{BaseURL}}'",
-            "\n\t- '{{RootURL}}'",
-            "\n\t- '{{Hostname}}:8080/ca-cert'"
+            [
+              "{{BaseURL}}"
+            ],
+            [
+              "{{RootURL}}"
+            ],
+            [
+              "{{Hostname}}:8080/ca-cert"
+            ]
           ],
           "items": {
             "type": "string"
@@ -1319,8 +1360,20 @@
           "$ref": "#/$defs/map[string]interface {}",
           "description": "Payloads contains key-value pairs of payloads to be used\nThese payloads when referenced in http request will be iterated appropriately and replaced\nOptionally payload also support loading values from file instead of defining them inline\nExample: \n```yaml\n- payloads:\n\tusername:\n\t\t- admin\n\t\t- root\n\tpassword:\n\t\t- password\n\t\t- admin\n```",
           "examples": [
-            "  # inline payloads\n\tusername:\n\t\t- admin\n\t\t- root\n\tpassword:\n\t\t- password\n\t\t- admin\n\n",
-            "  # file payloads\n\tusername: /path/to/usernames.txt\n\tpassword: /path/to/passwords.txt\n\n"
+            {
+              "password": [
+                "password",
+                "admin"
+              ],
+              "username": [
+                "admin",
+                "root"
+              ]
+            },
+            {
+              "password": "/path/to/passwords.txt",
+              "username": "/path/to/usernames.txt"
+            }
           ],
           "markdownDescription": "Payloads contains key-value pairs of payloads to be used\nThese payloads when referenced in http request will be iterated appropriately and replaced\nOptionally payload also support loading values from file instead of defining them inline\nExample: \n```yaml\n- payloads:\n\tusername:\n\t\t- admin\n\t\t- root\n\tpassword:\n\t\t- password\n\t\t- admin\n```",
           "title": "payloads for the http request"
@@ -1355,10 +1408,40 @@
         "pre-condition": {
           "description": "Pre-condition is only applicable for fuzzing/DAST requests and specifies whether fuzzing should run on this input\nIt is a twin of matchers and can express pre-conditions that must be met before fuzzing\nExample: \n```yaml\n- pre-condition:\n\t- type: dsl\n\t\tdsl:\n\t\t\t- 'len(query) \u003e 0'\n```\nWith this pre-condition only inputs that have query params will be fuzzed by this template",
           "examples": [
-            " # has query params\n\t- type: dsl\n\t\tdsl:\n\t\t\t- 'len(query) \u003e 0'\n\n",
-            " # has request body\n\t- type: dsl\n\t\tdsl:\n\t\t\t- 'len(body) \u003e 0'\n\n",
-            " # has post method\n\t- type: dsl\n\t\tdsl:\n\t\t\t- 'method == \"POST\"'\n\n",
-            " # has post method and body\n\t- type: dsl\n\t\tdsl:\n\t\t\t- 'method == \"POST\"'\n\t\t\t- 'len(body) \u003e 0'\n\t\tcondition: and\n\n"
+            [
+              {
+                "dsl": [
+                  "len(query) \u003e 0"
+                ],
+                "type": "dsl"
+              }
+            ],
+            [
+              {
+                "dsl": [
+                  "len(body) \u003e 0"
+                ],
+                "type": "dsl"
+              }
+            ],
+            [
+              {
+                "dsl": [
+                  "method == \"POST\""
+                ],
+                "type": "dsl"
+              }
+            ],
+            [
+              {
+                "condition": "and",
+                "dsl": [
+                  "method == \"POST\"",
+                  "len(body) \u003e 0"
+                ],
+                "type": "dsl"
+              }
+            ]
           ],
           "items": {
             "$ref": "#/$defs/matchers.Matcher"
@@ -1408,8 +1491,12 @@
         "raw": {
           "description": "Raw contains HTTP Request[s] in raw or request dump format\nExample: \n- raw:\n\t- |\n\t\tGET / HTTP/1.1\n\t\tHost: {{Hostname}}\n\n\n\nNote: If input contains any path/query-params they are automerged unless explicitly disabled using 'disable-path-automerge'",
           "examples": [
-            "\n# raw-get-request\n\t- |\n\t\tGET / HTTP/1.1\n\t\tHost: {{Hostname}}\n\n",
-            "\n# raw-post-request\n\t- |\n\t\tPOST / HTTP/1.1\n\t\tHost: {{Hostname}}\n\t\tContent-Type: application/json\n\t\tContent-Length: 13\n\n\n\t\t{\"key\": \"value\"}\n\n"
+            [
+              "GET / HTTP/1.1\nHost: {{Hostname}}\n\n"
+            ],
+            [
+              "POST / HTTP/1.1\nHost: {{Hostname}}\nContent-Type: application/json\nContent-Length: 13\n\n{\"key\": \"value\"}"
+            ]
           ],
           "items": {
             "type": "string"
@@ -1632,48 +1719,88 @@
       "additionalProperties": false,
       "anyOf": [
         {
+          "properties": {
+            "type": {
+              "const": "status"
+            }
+          },
           "required": [
             "type",
             "status"
           ]
         },
         {
+          "properties": {
+            "type": {
+              "const": "size"
+            }
+          },
           "required": [
             "type",
             "size"
           ]
         },
         {
+          "properties": {
+            "type": {
+              "const": "word"
+            }
+          },
           "required": [
             "type",
             "words"
           ]
         },
         {
+          "properties": {
+            "type": {
+              "const": "regex"
+            }
+          },
           "required": [
             "type",
             "regex"
           ]
         },
         {
+          "properties": {
+            "type": {
+              "const": "binary"
+            }
+          },
           "required": [
             "type",
             "binary"
           ]
         },
         {
+          "properties": {
+            "type": {
+              "const": "dsl"
+            }
+          },
           "required": [
             "type",
             "dsl"
           ]
         },
         {
+          "properties": {
+            "type": {
+              "const": "xpath"
+            }
+          },
           "required": [
             "type",
             "xpath"
           ]
         },
         {
+          "properties": {
+            "type": {
+              "const": "llm"
+            }
+          },
           "required": [
             "type",
             "prompt"
@@ -2025,7 +2152,10 @@
             {
               "description": "Author of the template without any special characters\nIt can be a single author or comma-separated multiple authors",
               "examples": [
-                "pdteam,mr.robot"
+                [
+                  "pdteam",
+                  "mr.robot"
+                ]
               ],
               "items": {
                 "type": "string"
@@ -2147,9 +2277,18 @@
             {
               "description": "Multiple tags for the template separated by commas (No spaces)",
               "examples": [
-                "cve,http",
-                "http,oast",
-                "cve2024,cve"
+                [
+                  "cve",
+                  "http"
+                ],
+                [
+                  "http",
+                  "oast"
+                ],
+                [
+                  "cve2024",
+                  "cve"
+                ]
               ],
               "items": {
                 "type": "string"
@@ -2256,8 +2395,12 @@
         "host": {
           "description": "Host(s) to send network requests to\nSupports network helpers like `tls://` and port suffixes\nExample:\n```yaml\nhost:\n  - \"{{Hostname}}\"\n  - \"tls://{{Hostname}}\"\n```",
           "examples": [
-            "{{Hostname}}",
-            "tls://{{Hostname}}"
+            [
+              "{{Hostname}}"
+            ],
+            [
+              "tls://{{Hostname}}"
+            ]
           ],
           "items": {
             "type": "string"

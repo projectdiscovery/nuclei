@@ -29,9 +29,9 @@ var httpRequestMetadata = []schema.PropertyMetadata{
 			"```",
 		),
 		Example: schema.PropertyExamples(
-			"\n\t- '{{BaseURL}}'",
-			"\n\t- '{{RootURL}}'",
-			"\n\t- '{{Hostname}}:8080/ca-cert'",
+			[]string{"{{BaseURL}}"},
+			[]string{"{{RootURL}}"},
+			[]string{"{{Hostname}}:8080/ca-cert"},
 		),
 	},
 	{
@@ -49,24 +49,8 @@ var httpRequestMetadata = []schema.PropertyMetadata{
 			"\nNote: If input contains any path/query-params they are automerged unless explicitly disabled using 'disable-path-automerge'",
 		),
 		Example: schema.PropertyExamples(
-			schema.MultiLine(
-				"\n# raw-get-request",
-				"\t- |",
-				"\t\tGET / HTTP/1.1",
-				"\t\tHost: {{Hostname}}",
-				"\n",
-			),
-			schema.MultiLine(
-				"\n# raw-post-request",
-				"\t- |",
-				"\t\tPOST / HTTP/1.1",
-				"\t\tHost: {{Hostname}}",
-				"\t\tContent-Type: application/json",
-				"\t\tContent-Length: 13",
-				"\n",
-				"\t\t{\"key\": \"value\"}",
-				"\n",
-			),
+			[]string{"GET / HTTP/1.1\nHost: {{Hostname}}\n\n"},
+			[]string{"POST / HTTP/1.1\nHost: {{Hostname}}\nContent-Type: application/json\nContent-Length: 13\n\n{\"key\": \"value\"}"},
 		),
 	},
 	{
@@ -285,36 +269,14 @@ var httpRequestMetadata = []schema.PropertyMetadata{
 			"With this pre-condition only inputs that have query params will be fuzzed by this template",
 		),
 		Example: schema.PropertyExamples(
-			schema.MultiLine(
-				" # has query params",
-				"\t- type: dsl",
-				"\t\tdsl:",
-				"\t\t\t- 'len(query) > 0'",
-				"\n",
-			),
-			schema.MultiLine(
-				" # has request body",
-				"\t- type: dsl",
-				"\t\tdsl:",
-				"\t\t\t- 'len(body) > 0'",
-				"\n",
-			),
-			schema.MultiLine(
-				" # has post method",
-				"\t- type: dsl",
-				"\t\tdsl:",
-				"\t\t\t- 'method == \"POST\"'",
-				"\n",
-			),
-			schema.MultiLine(
-				" # has post method and body",
-				"\t- type: dsl",
-				"\t\tdsl:",
-				"\t\t\t- 'method == \"POST\"'",
-				"\t\t\t- 'len(body) > 0'",
-				"\t\tcondition: and",
-				"\n",
-			),
+			// has query params
+			[]map[string]any{{"type": "dsl", "dsl": []string{"len(query) > 0"}}},
+			// has request body
+			[]map[string]any{{"type": "dsl", "dsl": []string{"len(body) > 0"}}},
+			// has post method
+			[]map[string]any{{"type": "dsl", "dsl": []string{`method == "POST"`}}},
+			// has post method and body
+			[]map[string]any{{"type": "dsl", "dsl": []string{`method == "POST"`, "len(body) > 0"}, "condition": "and"}},
 		),
 	},
 	{
@@ -348,22 +310,10 @@ var httpRequestMetadata = []schema.PropertyMetadata{
 			"```",
 		),
 		Example: schema.PropertyExamples(
-			schema.MultiLine(
-				"  # inline payloads",
-				"\tusername:",
-				"\t\t- admin",
-				"\t\t- root",
-				"\tpassword:",
-				"\t\t- password",
-				"\t\t- admin",
-				"\n",
-			),
-			schema.MultiLine(
-				"  # file payloads",
-				"\tusername: /path/to/usernames.txt",
-				"\tpassword: /path/to/passwords.txt",
-				"\n",
-			),
+			// inline payloads
+			map[string]any{"username": []string{"admin", "root"}, "password": []string{"password", "admin"}},
+			// file payloads
+			map[string]any{"username": "/path/to/usernames.txt", "password": "/path/to/passwords.txt"},
 		),
 	},
 	{
@@ -493,5 +443,5 @@ var httpRequestAnyOfRequired = []schema.RequiredCombos{
 	schema.Require("raw"),
 	schema.Require("fuzzing"),
 	// global matchers run on the results of other templates and send nothing
-	schema.Require("global-matchers"),
+	schema.RequireConst("global-matchers", true),
 }

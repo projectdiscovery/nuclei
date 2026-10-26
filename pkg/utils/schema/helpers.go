@@ -102,6 +102,9 @@ type RequiredCombos struct {
 	RequireBase []string
 	Require     []string
 	required    []RequiredCombos
+	// constField and constValue, when set, bind this combination to a fixed value of a field.
+	constField string
+	constValue any
 }
 
 // RequireBase builds combinations of a shared base with each nested require set.
@@ -112,6 +115,17 @@ func RequireBase(base []string, requires ...RequiredCombos) RequiredCombos {
 // Require builds a single required-fields combination.
 func Require(require ...string) RequiredCombos {
 	return RequiredCombos{Require: require}
+}
+
+// RequireConst builds a combination that requires field to equal value and
+// the other fields to be present. It binds required fields to a discriminator
+// such as a matcher type, or requires a boolean flag to be true.
+func RequireConst(field string, value any, require ...string) RequiredCombos {
+	return RequiredCombos{
+		Require:    append([]string{field}, require...),
+		constField: field,
+		constValue: value,
+	}
 }
 
 // ApplyAnyOfRequired applies anyOf required field combinations.
@@ -133,9 +147,14 @@ func ApplyAnyOfRequired(meta []RequiredCombos, base *jsonschema.Schema) {
 			}
 		}
 		if len(anyOf.Require) > 0 {
-			base.AnyOf = append(base.AnyOf, &jsonschema.Schema{
+			combo := &jsonschema.Schema{
 				Required: anyOf.Require,
-			})
+			}
+			if anyOf.constField != "" {
+				combo.Properties = jsonschema.NewProperties()
+				combo.Properties.Set(anyOf.constField, &jsonschema.Schema{Const: anyOf.constValue})
+			}
+			base.AnyOf = append(base.AnyOf, combo)
 		}
 	}
 }

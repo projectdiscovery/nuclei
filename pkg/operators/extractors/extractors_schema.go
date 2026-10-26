@@ -80,13 +80,14 @@ var extractorMetadata = []schema.PropertyMetadata{
 	},
 }
 
+// extractorAnyOfRequired binds each extractor type to the field that holds its values.
 var extractorAnyOfRequired = []schema.RequiredCombos{
-	schema.Require("type", "regex"),
-	schema.Require("type", "kval"),
-	schema.Require("type", "json"),
-	schema.Require("type", "xpath"),
-	schema.Require("type", "dsl"),
-	schema.Require("type", "prompt"),
+	schema.RequireConst("type", "regex", "regex"),
+	schema.RequireConst("type", "kval", "kval"),
+	schema.RequireConst("type", "json", "json"),
+	schema.RequireConst("type", "xpath", "xpath"),
+	schema.RequireConst("type", "dsl", "dsl"),
+	schema.RequireConst("type", "llm", "prompt"),
 }
 
 // JSONSchemaExtend extends the Extractor JSON schema.

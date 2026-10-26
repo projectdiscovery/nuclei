@@ -22,8 +22,31 @@ func TestRequestJSONSchema(t *testing.T) {
 		require.True(t, hasRequiredAlternative(requestSchema, "fuzzing"))
 	})
 
-	t.Run("accepts global matcher requests", func(t *testing.T) {
+	t.Run("accepts global matcher requests only when enabled", func(t *testing.T) {
 		require.True(t, hasRequiredAlternative(requestSchema, "global-matchers"))
+		for _, alternative := range requestSchema.AnyOf {
+			if slices.Equal([]string{"global-matchers"}, alternative.Required) {
+				globalMatchers, ok := alternative.Properties.Get("global-matchers")
+				require.True(t, ok)
+				require.Equal(t, true, globalMatchers.Const)
+			}
+		}
+	})
+
+	t.Run("uses typed examples for compound fields", func(t *testing.T) {
+		for name, kind := range map[string]reflect.Kind{
+			"path":          reflect.Slice,
+			"raw":           reflect.Slice,
+			"pre-condition": reflect.Slice,
+			"payloads":      reflect.Map,
+		} {
+			property, ok := requestSchema.Properties.Get(name)
+			require.True(t, ok, name)
+			require.NotEmpty(t, property.Examples, name)
+			for _, example := range property.Examples {
+				require.Equal(t, kind, reflect.TypeOf(example).Kind(), name)
+			}
+		}
 	})
 
 	t.Run("uses mappings for header examples", func(t *testing.T) {

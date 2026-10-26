@@ -27,7 +27,7 @@ var networkRequestMetadata = []schema.PropertyMetadata{
 			"  - \"tls://{{Hostname}}\"",
 			"```",
 		),
-		Example: schema.PropertyExamples("{{Hostname}}", "tls://{{Hostname}}"),
+		Example: schema.PropertyExamples([]string{"{{Hostname}}"}, []string{"tls://{{Hostname}}"}),
 	},
 	{
 		PropName: "port",
