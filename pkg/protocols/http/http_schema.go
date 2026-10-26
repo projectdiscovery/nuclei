@@ -492,10 +492,6 @@ var httpRequestAnyOfRequired = []schema.RequiredCombos{
 	schema.Require("path"),
 	schema.Require("raw"),
 	schema.Require("fuzzing"),
-	schema.Require("pre-condition", "payloads", "fuzzing"),
-	schema.RequireBase(
-		[]string{"payloads"},
-		schema.Require("path"),
-		schema.Require("raw"),
-	),
+	// global matchers run on the results of other templates and send nothing
+	schema.Require("global-matchers"),
 }

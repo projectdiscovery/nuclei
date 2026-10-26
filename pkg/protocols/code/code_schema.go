@@ -62,6 +62,7 @@ var codeRequestMetadata = []schema.PropertyMetadata{
 
 var codeRequestAnyOfRequired = []schema.RequiredCombos{
 	schema.Require("engine", "source"),
+	schema.Require("engine", "args"),
 }
 
 // JSONSchemaExtend extends the code request JSON schema.

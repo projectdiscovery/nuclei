@@ -103,6 +103,7 @@ var matcherAnyOfRequired = []schema.RequiredCombos{
 	schema.Require("type", "binary"),
 	schema.Require("type", "dsl"),
 	schema.Require("type", "xpath"),
+	schema.Require("type", "prompt"),
 }
 
 // JSONSchemaExtend extends the Matcher JSON schema.

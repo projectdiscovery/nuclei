@@ -78,7 +78,6 @@ var infoSectionMetadata = []schema.PropertyMetadata{
 	},
 	{
 		PropName: "reference",
-		PropType: "array",
 		Description: schema.MultiLine(
 			"References for the template.",
 			"This should contain links relevant to the template.",

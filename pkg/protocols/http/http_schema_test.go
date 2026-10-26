@@ -22,6 +22,10 @@ func TestRequestJSONSchema(t *testing.T) {
 		require.True(t, hasRequiredAlternative(requestSchema, "fuzzing"))
 	})
 
+	t.Run("accepts global matcher requests", func(t *testing.T) {
+		require.True(t, hasRequiredAlternative(requestSchema, "global-matchers"))
+	})
+
 	t.Run("uses mappings for header examples", func(t *testing.T) {
 		headers, ok := requestSchema.Properties.Get("headers")
 		require.True(t, ok)

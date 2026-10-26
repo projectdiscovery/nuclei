@@ -24,6 +24,12 @@
             "engine",
             "source"
           ]
+        },
+        {
+          "required": [
+            "engine",
+            "args"
+          ]
         }
       ],
       "properties": {
@@ -449,6 +455,12 @@
           "required": [
             "type",
             "dsl"
+          ]
+        },
+        {
+          "required": [
+            "type",
+            "prompt"
           ]
         }
       ],
@@ -1065,21 +1077,7 @@
         },
         {
           "required": [
-            "pre-condition",
-            "payloads",
-            "fuzzing"
-          ]
-        },
-        {
-          "required": [
-            "payloads",
-            "path"
-          ]
-        },
-        {
-          "required": [
-            "payloads",
-            "raw"
+            "global-matchers"
           ]
         }
       ],
@@ -1674,6 +1672,12 @@
             "type",
             "xpath"
           ]
+        },
+        {
+          "required": [
+            "type",
+            "prompt"
+          ]
         }
       ],
       "properties": {
@@ -2092,8 +2096,7 @@
             "\n\t- https://example.com"
           ],
           "markdownDescription": "References for the template.\nThis should contain links relevant to the template.\nExample:\nhttps://logging.apache.org/log4j/2.x/security.html\nhttps://nvd.nist.gov/vuln/detail/CVE-2021-44228",
-          "title": "references for the template",
-          "type": "array"
+          "title": "references for the template"
         },
         "remediation": {
           "description": "Remediation steps for the template.\nYou can go in-depth here on how to mitigate the problem found by this template.\nExample:\nUpgrade to Log4j 2.3.1 (for Java 6), 2.12.3 (for Java 7), or 2.17.0 (for Java 8 and later).",

@@ -86,6 +86,7 @@ var extractorAnyOfRequired = []schema.RequiredCombos{
 	schema.Require("type", "json"),
 	schema.Require("type", "xpath"),
 	schema.Require("type", "dsl"),
+	schema.Require("type", "prompt"),
 }
 
 // JSONSchemaExtend extends the Extractor JSON schema.
