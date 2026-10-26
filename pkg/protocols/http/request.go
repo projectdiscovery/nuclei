@@ -1058,6 +1058,11 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 	if request.isUnresponsiveAddress(contextargs.GetCopyIfHostOutdated(input, generatedRequest.URL())) {
 		return fmt.Errorf("hostErrorsCache : host %s is unresponsive", input.MetaInput.Input)
 	}
+	releaseBody, err := admitLargeBody(input.Context(), generatedRequest)
+	if err != nil {
+		return err
+	}
+	defer releaseBody()
 
 	// wrap one more callback for validation and fixing event
 	callback := func(event *output.InternalWrappedEvent) {
