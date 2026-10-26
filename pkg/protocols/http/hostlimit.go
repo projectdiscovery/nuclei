@@ -98,7 +98,7 @@ func respCacheKey(input *contextargs.Context, req *http.Request) string {
 // an HTTPS port. The scan records a correction for that host:port, so this
 // response must not be cached: a later hit would skip the correction.
 func isHTTPToHTTPSMismatch(statusCode int, body string) bool {
-	return statusCode == http.StatusBadRequest && strings.Contains(body, "The plain HTTP request was sent to HTTPS port")
+	return statusCode == http.StatusBadRequest && strings.Contains(body, httpToHTTPSMismatchSignature)
 }
 
 // endpointKey is host:port with the scheme's default port filled in.

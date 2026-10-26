@@ -1,8 +1,11 @@
 package types
 
 import (
+	"io"
 	"reflect"
 	"testing"
+
+	"github.com/projectdiscovery/nuclei/v3/pkg/catalog"
 )
 
 // Copy must carry every exported option. Fields added later without a matching
@@ -35,6 +38,26 @@ func TestCopyKeepsEveryExportedField(t *testing.T) {
 	}
 	if len(skipped) > 0 {
 		t.Logf("not checked (kind cannot be filled generically): %v", skipped)
+	}
+}
+
+// fillNonZero cannot fill an interface or a func, so check those two directly.
+func TestCopyKeepsParserAndLoadHelperFileFunction(t *testing.T) {
+	parser := &struct{}{}
+	loader := LoadHelperFileFunction(func(string, string, catalog.Catalog) (io.ReadCloser, error) {
+		return nil, nil
+	})
+	src := &Options{
+		Parser:                 parser,
+		LoadHelperFileFunction: loader,
+	}
+
+	got := src.Copy()
+	if got.Parser != parser {
+		t.Fatal("Copy drops Parser")
+	}
+	if got.LoadHelperFileFunction == nil {
+		t.Fatal("Copy drops LoadHelperFileFunction")
 	}
 }
 
