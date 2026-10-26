@@ -73,6 +73,18 @@ For Various use cases like batching etc. you might want to run nuclei in gorouti
 	defer ne.Close()
 ```
 
+## Filesystem Sandbox
+
+The nuclei CLI applies an OS-level filesystem sandbox (landlock on Linux) to its whole process. The CLI turns it off with `-no-sandbox`.
+
+The SDK does not apply it by default. Landlock confines the whole process and cannot be undone, so it would also confine your program. To apply it, pass `nuclei.EnableProcessSandbox()`:
+
+```go
+ne, err := nuclei.NewNucleiEngineCtx(ctx, nuclei.EnableProcessSandbox())
+```
+
+After the engine starts, your process can only use the nuclei roots (templates, config, cache, temp, outputs, the working directory and allowed paths) and the read-only system paths. Use it only when your process does nothing else on the filesystem. The option has no effect on platforms without landlock. Setting `DisableSandbox` in the engine options turns it off.
+
 ## More Documentation
 
 For complete documentation of nuclei library, please refer to [godoc](https://pkg.go.dev/github.com/projectdiscovery/nuclei/v3/lib) which contains all available options and methods.

@@ -383,7 +383,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.DurationVarP(&options.DialerKeepAlive, "dialer-keep-alive", "dka", 0, "keep-alive duration for network requests."),
 		flagSet.BoolVarP(&options.AllowLocalFileAccess, "allow-local-file-access", "lfa", false, "allows local file access from additional allowed directories (cwd and --allowed-paths)"),
 		flagSet.StringSliceVarP(&options.AllowedPaths, "allowed-paths", "ap", nil, "additional filesystem roots allowed with -lfa (repeatable)", goflags.CommaSeparatedStringSliceOptions),
-		flagSet.BoolVar(&options.DisableSandbox, "no-sandbox", false, "disable the OS-level filesystem sandbox and the docker sandbox for code templates"),
+		flagSet.BoolVar(&options.DisableSandbox, "no-sandbox", false, "disable the OS-level filesystem sandbox and the code template sandbox"),
 		flagSet.BoolVarP(&options.RestrictLocalNetworkAccess, "restrict-local-network-access", "lna", false, "blocks connections to the local / private network"),
 		flagSet.StringVarP(&options.Interface, "interface", "i", "", "network interface to use for network scan"),
 		flagSet.StringVarP(&options.AttackType, "attack-type", "at", "", "type of payload combinations to perform (batteringram,pitchfork,clusterbomb)"),
@@ -588,6 +588,11 @@ Additional documentation is available at: https://docs.nuclei.sh/getting-started
 	if resetRequested {
 		resetCallback()
 	}
+
+	// The CLI owns its process, so it applies the process-wide OS filesystem
+	// sandbox by default. -no-sandbox (DisableSandbox) still turns it off. SDK
+	// embedders do not get it unless they ask for it.
+	options.EnableProcessSandbox = true
 
 	// when fuzz flag is enabled, set the dast flag to true
 	if fuzzFlag {

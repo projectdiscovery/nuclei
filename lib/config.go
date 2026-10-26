@@ -411,6 +411,22 @@ func WithSandboxOptions(allowLocalFileAccess bool, restrictLocalNetworkAccess bo
 	}
 }
 
+// EnableProcessSandbox applies the OS-level filesystem sandbox (landlock on
+// Linux) to the whole host process when the engine initializes, the same way
+// the nuclei CLI does by default. It is off for SDK users because the sandbox
+// is process-wide and irreversible: after it is applied, the host program can
+// only reach the nuclei allowlisted roots (templates, config, cache, temp,
+// outputs, cwd and allowed paths) and the read-only runtime paths, for the
+// rest of its life. Enable it only when the host process does nothing else
+// on the filesystem. It has no effect on platforms without landlock, and
+// DisableSandbox in the engine options still turns it off.
+func EnableProcessSandbox() NucleiSDKOptions {
+	return func(e *NucleiEngine) error {
+		e.opts.EnableProcessSandbox = true
+		return nil
+	}
+}
+
 // EnableCodeTemplates allows loading/executing code protocol templates
 func EnableCodeTemplates() NucleiSDKOptions {
 	return func(e *NucleiEngine) error {

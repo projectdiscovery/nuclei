@@ -21,13 +21,12 @@ func Init(options *types.Options) error {
 	}
 	// Landlock is process-wide and irreversible. Under `go test` package CWDs
 	// and fixture trees are not in AllowedFileRoots, so applying it would break
-	// unrelated unit tests that open relative paths. Production/CLI still apply
-	// unless --no-sandbox / DisableSandbox is set. Sandbox package tests call
+	// unrelated unit tests that open relative paths. Sandbox package tests call
 	// Apply directly.
 	_ = sandbox.Apply(sandbox.Config{
 		AllowedRoots:   protocolstate.SandboxFileRoots(options),
 		OwnedRoots:     protocolstate.SandboxOwnedFileRoots(options),
-		Disabled:       options.DisableSandbox || testing.Testing(),
+		Disabled:       !ProcessSandboxEnabled(options) || testing.Testing(),
 		IncludeRuntime: true,
 	})
 	if err := dnsclientpool.Init(options); err != nil {
@@ -46,6 +45,15 @@ func Init(options *types.Options) error {
 		return err
 	}
 	return nil
+}
+
+// ProcessSandboxEnabled reports whether Init applies the process-wide OS
+// filesystem sandbox. It is opt-in through EnableProcessSandbox, which the
+// nuclei CLI sets and SDK callers must request explicitly, because the sandbox
+// confines the whole host process and cannot be undone. -no-sandbox
+// (DisableSandbox) always turns it off.
+func ProcessSandboxEnabled(options *types.Options) bool {
+	return options != nil && options.EnableProcessSandbox && !options.DisableSandbox
 }
 
 func Close(executionId string) {
