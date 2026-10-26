@@ -163,10 +163,3 @@ func (p *Plan) ApplyFiltered(filtered int) {
 		p.ExpectedRequests = int64(filtered)
 	}
 }
-
-func max(a, b int) int {
-	if a > b {
-		return a
-	}
-	return b
-}

@@ -756,17 +756,18 @@ func (r *Runner) RunEnumeration() error {
 	}
 	executorOpts.WorkflowLoader = workflowLoader
 
-	// Lossless reachability prune: if no web port is reachable on any target,
-	// exclude web-protocol templates at load time — they cannot connect, so
-	// cannot produce a finding. Reuses the standard protocol-type exclusion.
-	if r.strictProbeEnabled() && r.noHTTPServiceReachable() {
-		r.options.ExcludeProtocols = append(r.options.ExcludeProtocols,
-			templateTypes.HTTPProtocol, templateTypes.HeadlessProtocol, templateTypes.WebsocketProtocol)
-		gologger.Info().Msgf("reachability prune: no HTTP service on any target; excluding web-protocol templates (lossless)")
-	}
-
 	// If using input-file flags, only load http fuzzing based templates.
 	loaderConfig := loader.NewConfig(r.options, r.catalog, executorOpts)
+
+	// Lossless reachability prune: if no web port is reachable on any target,
+	// exclude web-protocol templates at load time — they cannot connect, so
+	// cannot produce a finding. Reuses the standard protocol-type exclusion on
+	// the loader config only, so shared options stay unchanged across runs.
+	if r.strictProbeEnabled() && r.noHTTPServiceReachable() {
+		loaderConfig.ExcludeProtocols = append(slices.Clone(loaderConfig.ExcludeProtocols),
+			templateTypes.HTTPProtocol, templateTypes.HeadlessProtocol, templateTypes.WebsocketProtocol)
+		r.Logger.Info().Msgf("reachability prune: no HTTP service on any target; excluding web-protocol templates (lossless)")
+	}
 	profiles := r.targetProfiles()
 	if profiles != nil {
 		if r.options.AutomaticScan {
@@ -885,7 +886,7 @@ func (r *Runner) RunEnumeration() error {
 		if r.strictProbeEnabled() {
 			r.Logger.Info().Msgf("Strict probe enabled: hosts without httpx confirmation are skipped for HTTP/headless templates")
 		}
-	} else if r.options.StrictProbe && r.options.DisableHTTPProbe {
+	} else if r.strictProbeEnabled() && r.options.DisableHTTPProbe {
 		r.Logger.Warning().Msgf("strict-probe has no effect with -no-httpx (httpx probing is disabled)")
 	}
 

@@ -91,6 +91,22 @@ func TestDecideReachabilityProbeBudgetSkip(t *testing.T) {
 	require.Contains(t, p.Reason, "reachability=skipped-probe-budget")
 }
 
+func TestDecideReachabilityProbeWithinBudget(t *testing.T) {
+	p := Decide(Input{
+		Hosts:                    100,
+		Templates:                10,
+		Requests:                 1000,
+		StrictProbe:              true,
+		PortsToProbe:             15, // cost = 1500: above baseline, within 2*baseline
+		ConcreteNetworkTemplates: 5,
+		GroupCount:               0,
+	})
+	require.True(t, p.BuildReachability)
+	require.True(t, p.ProbePorts)
+	require.True(t, p.UseReachabilityFilter)
+	require.Contains(t, p.Reason, "reachability=full")
+}
+
 func TestDecideReachabilityFull(t *testing.T) {
 	p := Decide(Input{
 		Hosts:                    5,

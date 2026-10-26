@@ -415,6 +415,9 @@ func (e *ClusterExecuter) operatorsForInput(mi *contextargs.MetaInput) []*cluste
 			out = append(out, op)
 		}
 	}
+	if len(out) == len(base) {
+		return base
+	}
 	return out
 }
 

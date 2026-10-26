@@ -1,6 +1,7 @@
 package runner
 
 import (
+	"context"
 	"net"
 	"testing"
 	"time"
@@ -109,18 +110,23 @@ func TestClassifyDial(t *testing.T) {
 }
 
 func TestClassifyDialDNSFailureIsUnknown(t *testing.T) {
-	d := &net.Dialer{}
 	// NXDOMAIN / resolution failure must not prune (lossless under load).
-	got := classifyDial(d.DialContext, "no-such-host.invalid:6379", reachabilityProbeTimeout)
+	dial := func(ctx context.Context, network, addr string) (net.Conn, error) {
+		return nil, &net.OpError{Op: "dial", Net: network, Err: &net.DNSError{Err: "no such host", Name: "no-such-host.invalid", IsNotFound: true}}
+	}
+	got := classifyDial(dial, "no-such-host.invalid:6379", reachabilityProbeTimeout)
 	if got != portUnknown {
 		t.Fatalf("classifyDial(dns-fail) = %v, want portUnknown", got)
 	}
 }
 
 func TestClassifyDialTimeoutIsUnknown(t *testing.T) {
-	d := &net.Dialer{}
-	// Blackhole-ish: TEST-NET-1 drop. Short timeout should classify unknown.
-	got := classifyDial(d.DialContext, "192.0.2.1:65535", 50*time.Millisecond)
+	// A dropped connect runs into the timeout and must not prune.
+	dial := func(ctx context.Context, network, addr string) (net.Conn, error) {
+		<-ctx.Done()
+		return nil, &net.OpError{Op: "dial", Net: network, Err: ctx.Err()}
+	}
+	got := classifyDial(dial, "192.0.2.1:65535", 50*time.Millisecond)
 	if got != portUnknown {
 		t.Fatalf("classifyDial(timeout) = %v, want portUnknown", got)
 	}
