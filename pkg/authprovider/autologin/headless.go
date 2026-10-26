@@ -115,6 +115,16 @@ func LoginHeadless(ctx context.Context, cfg Config) (*Session, error) {
 		})()
 	}
 
+	// Block a 307/308 replay of the login form submit (which carries the
+	// password) to another origin, as the HTTP engine does. It must be in place
+	// before the first navigation.
+	var replayGuard *redirectReplayGuard
+	if !cfg.AllowCrossOriginAction {
+		if replayGuard, err = guardRedirectReplay(page); err != nil {
+			return nil, errkit.Wrap(err, "auto-login(headless): failed to enable request interception")
+		}
+	}
+
 	// Apply UA / custom headers before navigating so the login request carries
 	// the same identity as the scan.
 	if cfg.UserAgent != "" {
@@ -153,6 +163,9 @@ func LoginHeadless(ctx context.Context, cfg Config) (*Session, error) {
 	// Wait for the post-submit navigation / SPA state to settle.
 	_ = rod.Try(func() { page.Timeout(settle).MustWaitStable() })
 	_ = page.WaitLoad()
+	if blocked := replayGuard.blockedURL(); blocked != "" {
+		return nil, errkit.Newf("auto-login(headless): refused to replay the login form to a different origin (%s); set allow-cross-origin-action to send the credentials there", blocked)
+	}
 
 	session := &Session{}
 	if info, ierr := page.Info(); ierr == nil {
@@ -218,6 +231,93 @@ func LoginHeadless(ctx context.Context, cfg Config) (*Session, error) {
 		return nil, errkit.Wrapf(ErrLoginFailed, "no cookies, token or web storage captured at %s", session.FinalURL)
 	}
 	return session, nil
+}
+
+// redirectReplayGuard fails redirected requests that would replay a request
+// body to another origin. It sees every request of the login page at the
+// request stage (CDP Fetch), so it also covers the browser's own redirects.
+type redirectReplayGuard struct {
+	mu      sync.Mutex
+	urls    map[proto.FetchRequestID]string
+	blocked string
+}
+
+// guardRedirectReplay enables request-stage interception on page. Each paused
+// request continues unchanged, except a redirected request that keeps a body
+// (a 307/308 of a POST, such as the login form submit with the password) to a
+// different origin than the request that was redirected: that one fails before
+// it leaves the browser. Interception is only used for the auto-login page.
+func guardRedirectReplay(page *rod.Page) (*redirectReplayGuard, error) {
+	err := proto.FetchEnable{Patterns: []*proto.FetchRequestPattern{{
+		URLPattern:   "*",
+		RequestStage: proto.FetchRequestStageRequest,
+	}}}.Call(page)
+	if err != nil {
+		return nil, err
+	}
+	g := &redirectReplayGuard{urls: map[proto.FetchRequestID]string{}}
+	go page.EachEvent(func(e *proto.FetchRequestPaused) {
+		if e.Request == nil {
+			_ = proto.FetchContinueRequest{RequestID: e.RequestID}.Call(page)
+			return
+		}
+		g.mu.Lock()
+		g.urls[e.RequestID] = e.Request.URL
+		from, known := g.urls[e.RedirectedRequestID]
+		g.mu.Unlock()
+		if e.RedirectedRequestID != "" && blockRedirectReplay(e.Request.Method, from, known, e.Request.URL) {
+			g.mu.Lock()
+			if g.blocked == "" {
+				g.blocked = redactURL(e.Request.URL)
+			}
+			g.mu.Unlock()
+			gologger.Warning().Msgf("auto-login(headless): blocked a %s redirect of the login form to a different origin (%s)", e.Request.Method, redactURL(e.Request.URL))
+			_ = proto.FetchFailRequest{RequestID: e.RequestID, ErrorReason: proto.NetworkErrorReasonBlockedByClient}.Call(page)
+			return
+		}
+		_ = proto.FetchContinueRequest{RequestID: e.RequestID}.Call(page)
+	})()
+	return g, nil
+}
+
+// blockedURL returns the first blocked redirect target, or "" when nothing was
+// blocked (or the guard is off).
+func (g *redirectReplayGuard) blockedURL() string {
+	if g == nil {
+		return ""
+	}
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	return g.blocked
+}
+
+// blockRedirectReplay decides the headless counterpart of checkLoginRedirect:
+// a redirect that turns into GET/HEAD drops the body and is allowed; one that
+// keeps another method (307/308) is allowed only to the same origin as the
+// request that redirected. An unknown source fails closed.
+func blockRedirectReplay(method, from string, known bool, to string) bool {
+	if method == http.MethodGet || method == http.MethodHead {
+		return false
+	}
+	if !known {
+		return true
+	}
+	fromURL, err := url.Parse(from)
+	if err != nil {
+		return true
+	}
+	toURL, err := url.Parse(to)
+	if err != nil {
+		return true
+	}
+	return !sameOrigin(fromURL, toURL)
+}
+
+func redactURL(raw string) string {
+	if u, err := url.Parse(raw); err == nil {
+		return u.Redacted()
+	}
+	return raw
 }
 
 // sameLoginOrigin reports whether respURL shares the login page's origin
