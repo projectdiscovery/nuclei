@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"math"
+	"net/http"
 	"strings"
 	"time"
 
@@ -16,7 +17,6 @@ import (
 	_ "github.com/projectdiscovery/nuclei/v3/pkg/fuzz/analyzers/time"
 	_ "github.com/projectdiscovery/nuclei/v3/pkg/fuzz/analyzers/xss"
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators"
-	"github.com/projectdiscovery/nuclei/v3/pkg/operators/extractors"
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators/matchers"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/expressions"
@@ -139,16 +139,13 @@ type Request struct {
 
 	CompiledOperators *operators.Operators `yaml:"-" json:"-"`
 
-	options *protocols.ExecutorOptions
-	// hasLLMOperators reports whether any matcher on this request is an llm
-	// matcher, so the audit map is only allocated for responses that can
-	// produce one.
-	hasLLMOperators   bool
+	options           *protocols.ExecutorOptions
 	connConfiguration *httpclientpool.Configuration
 	totalRequests     int
 	customHeaders     map[string]string
 	generator         *generators.PayloadGenerator // optional, only enabled when using payloads
 	rawhttpClient     *rawhttp.Client
+	replayClient      *http.Client // set when -replay-proxy is given
 	dialer            *fastdialer.Dialer
 
 	// description: |
@@ -164,6 +161,9 @@ type Request struct {
 	// connectionReusePolicy stores the analyzed connection reuse policy
 	// This is set during Compile() based on template analysis
 	connectionReusePolicy ConnectionReusePolicy `yaml:"-" json:"-"`
+	// requireFullResponse is set for a clustered request when a sibling template
+	// reads the full response. Those operators are not on this request.
+	requireFullResponse bool `yaml:"-" json:"-"`
 
 	// description: |
 	//   SkipSecretFile skips the authentication or authorization configured in the secret file.
@@ -305,6 +305,7 @@ var RequestPartDefinitions = map[string]string{
 	"headers_from_response": "HTTP response headers in name:value format",
 	"tls_version":           "TLS version negotiated for the HTTP connection",
 	"cipher":                "TLS cipher suite negotiated for the HTTP connection",
+	"key_exchange":          "TLS key exchange group negotiated for the HTTP connection",
 	"sni":                   "SNI value used in the TLS handshake",
 	"subject_cn":            "Leaf certificate subject common name",
 	"subject_dn":            "Leaf certificate subject distinguished name",
@@ -436,6 +437,13 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 		}
 		request.rawhttpClient = httpclientpool.GetRawHTTP(options)
 	}
+	if options.Options != nil && options.Options.ReplayProxy != "" {
+		client, err := newReplayClient(options.Options)
+		if err != nil {
+			return err
+		}
+		request.replayClient = client
+	}
 	if len(request.Matchers) > 0 || len(request.Extractors) > 0 {
 		compiled := &request.Operators
 		compiled.ExcludeMatchers = options.ExcludeMatchers
@@ -443,19 +451,9 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 		if compileErr := compiled.Compile(); compileErr != nil {
 			return errors.Wrap(compileErr, "could not compile operators")
 		}
-		// http is the only protocol that evaluates llm operators today; the
-		// template compiler rejects them elsewhere.
-		for _, matcher := range compiled.Matchers {
-			if matcher != nil && matcher.GetType() == matchers.LLMMatcher {
-				matcher.SetLLMClient(options.LLMClient)
-				request.hasLLMOperators = true
-			}
-		}
-		for _, extractor := range compiled.Extractors {
-			if extractor != nil && extractor.GetType() == extractors.LLMExtractor {
-				extractor.SetLLMClient(options.LLMClient)
-			}
-		}
+		// llm operators only evaluate once they hold the scan's client; without
+		// it every llm path returns a negative result instead of an error.
+		protocols.BindLLMOperators(compiled, options)
 		request.CompiledOperators = compiled
 	}
 
@@ -602,6 +600,11 @@ func (request *Request) RebuildGenerator() error {
 
 // Requests returns the total number of requests the YAML rule will perform
 func (request *Request) Requests() int {
+	// fuzzing requests depend on each input's parameters and add themselves to
+	// the total as they are sent; any path or raw is not sent as such
+	if len(request.Fuzzing) > 0 {
+		return 0
+	}
 	generator := request.newGenerator(false)
 	return generator.Total()
 }
@@ -628,6 +631,15 @@ func init() {
 
 // UpdateOptions replaces this request's options with a new copy
 func (r *Request) UpdateOptions(opts *protocols.ExecutorOptions) {
+	r.Operators = protocols.CloneOperators(r.Operators)
+	r.FuzzPreCondition = protocols.CloneMatchers(r.FuzzPreCondition)
+	if r.options == nil {
+		if opts != nil {
+			r.options = opts.Copy()
+		}
+		return
+	}
+	r.options = r.options.Copy()
 	r.options.ApplyNewEngineOptions(opts)
 }
 
@@ -721,4 +733,37 @@ func hasConnectionCloseHeader(raw string) bool {
 		value = value[:newlineIdx]
 	}
 	return strings.Contains(value, "close")
+}
+
+// IsOriginScoped reports whether every request this block makes is fixed by the
+// target's origin, so two targets differing only by path or query produce byte
+// identical requests. Paths built from {{BaseURL}} or {{Path}} carry the
+// target's own path and are therefore not origin scoped, and raw requests,
+// payloads and fuzzing all vary the request independently of the origin.
+func (request *Request) IsOriginScoped() bool {
+	if len(request.Raw) > 0 || len(request.Path) == 0 {
+		return false
+	}
+	if len(request.Payloads) > 0 || request.Fuzzing != nil {
+		return false
+	}
+	for _, path := range request.Path {
+		if !strings.Contains(path, "{{RootURL}}") || carriesTargetPath(path) {
+			return false
+		}
+	}
+	if carriesTargetPath(request.Body) {
+		return false
+	}
+	for _, value := range request.Headers {
+		if carriesTargetPath(value) {
+			return false
+		}
+	}
+	return true
+}
+
+// carriesTargetPath reports whether a value interpolates the target's own path.
+func carriesTargetPath(value string) bool {
+	return strings.Contains(value, "{{BaseURL}}") || strings.Contains(value, "{{Path}}")
 }

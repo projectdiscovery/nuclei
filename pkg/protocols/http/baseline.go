@@ -1,6 +1,7 @@
 package http
 
 import (
+	"context"
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
@@ -57,8 +58,12 @@ func (request *Request) baselineMatched(input *contextargs.Context, generatedReq
 	if err != nil {
 		return false
 	}
+	ctx := context.Background()
+	if input != nil {
+		ctx = input.Context()
+	}
 	baselineMap, ok := request.options.BaselineCache.GetOrFetch(cacheKey, func() (baseline.Map, error) {
-		return request.fetchBaseline(client, baselineRequest, baseURL)
+		return request.fetchBaseline(ctx, client, baselineRequest, baseURL)
 	})
 	if !ok || baselineMap == nil {
 		return false
@@ -128,14 +133,16 @@ func baselineContextKey(baseURL string, req *retryablehttp.Request, input *conte
 
 // fetchBaseline sends the prepared control request and converts the response
 // into a DSL map a template's operators can replay against.
-func (request *Request) fetchBaseline(client *retryablehttp.Client, req *retryablehttp.Request, baseURL string) (baseline.Map, error) {
-
-	// respect user rate limiting for the extra control request
-	if err := request.rateLimitTake(baseURL); err != nil {
+func (request *Request) fetchBaseline(ctx context.Context, client *retryablehttp.Client, req *retryablehttp.Request, baseURL string) (baseline.Map, error) {
+	// respect user rate limiting and host backoff for the extra control request,
+	// keyed on the full URL like the normal requests to the same host
+	hostKey := req.String()
+	if err := request.rateLimitTake(ctx, hostKey); err != nil {
 		return nil, err
 	}
 
-	resp, err := client.Do(req)
+	resp, err := client.Do(req.WithContext(ctx))
+	request.observeHostBackoff(hostKey, resp, err)
 	if err != nil {
 		return nil, err
 	}
