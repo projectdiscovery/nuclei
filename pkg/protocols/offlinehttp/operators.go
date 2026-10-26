@@ -46,7 +46,8 @@ func (request *Request) Match(data map[string]interface{}, matcher *matchers.Mat
 		return matcher.Result(matcher.MatchXPath(item)), []string{}
 	case matchers.ErrorMatcher:
 		if !requesterr.IsMarked(data) {
-			return false, []string{}
+			// no request error: a response header named "error" is not one
+			return matcher.ResultWithMatchedSnippet(false, []string{})
 		}
 		return matcher.ResultWithMatchedSnippet(matcher.MatchError(data))
 	case matchers.LLMMatcher:

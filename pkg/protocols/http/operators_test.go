@@ -131,6 +131,15 @@ func TestHTTPOperatorMatch(t *testing.T) {
 		require.False(t, isMatched)
 		require.Empty(t, matched)
 
+		negativeMatcher := &matchers.Matcher{
+			Type:     matchers.MatcherTypeHolder{MatcherType: matchers.ErrorMatcher},
+			Errors:   []string{"any"},
+			Negative: true,
+		}
+		require.NoError(t, negativeMatcher.CompileMatchers())
+		isMatched, _ = request.Match(event, negativeMatcher)
+		require.True(t, isMatched, "negative error matcher must match a response without request error")
+
 		headerMatcher := &matchers.Matcher{
 			Part:  "error",
 			Type:  matchers.MatcherTypeHolder{MatcherType: matchers.WordsMatcher},

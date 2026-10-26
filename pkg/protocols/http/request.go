@@ -1412,7 +1412,6 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 		duration := time.Since(timeStart)
 		outputEvent := request.responseToDSLMap(&http.Response{}, input.MetaInput.Input, formedURL, convUtil.String(dumpedRequest.data), "", "", "", duration, generatedRequest.meta)
 		requesterr.Annotate(outputEvent, err, duration)
-		requesterr.Mark(outputEvent)
 		if i := strings.LastIndex(hostname, ":"); i != -1 {
 			hostname = hostname[:i]
 		}
@@ -1435,6 +1434,8 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 				outputEvent[fmt.Sprintf("%s_%d", key, requestCount)] = value
 			}
 		}
+		// mark after the indexed copy so the provenance token gets no "_N" twin
+		requesterr.Mark(outputEvent)
 
 		hasErrorMatchers := request.CompiledOperators != nil && request.CompiledOperators.HasErrorMatchers()
 		if hasErrorMatchers || len(generatedRequest.interactshURLs) > 0 {
