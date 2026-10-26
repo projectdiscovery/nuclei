@@ -173,6 +173,16 @@ func WithResponseReadSize(responseReadSize int) NucleiSDKOptions {
 	}
 }
 
+// EnableResponseCache reuses identical safe GET/HEAD responses within one scan.
+// It is off by default: a template that depends on state or timing could see a
+// different result.
+func EnableResponseCache() NucleiSDKOptions {
+	return func(e *NucleiEngine) error {
+		e.opts.ResponseCache = true
+		return nil
+	}
+}
+
 // WithGlobalRateLimit sets global rate (i.e all hosts combined) limit options
 // Deprecated: will be removed in favour of WithGlobalRateLimitCtx in next release
 func WithGlobalRateLimit(maxTokens int, duration time.Duration) NucleiSDKOptions {

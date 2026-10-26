@@ -239,6 +239,11 @@ type Options struct {
 	// NOTE(dwisiswant0): this is experimental and might be enabled by default
 	// in the future releases.
 	EnableHTTPCache bool
+	// ResponseCache reuses identical safe GET/HEAD responses inside one scan.
+	// Only requests without auth, cookies, Host override, body, cache directives
+	// or non-allowlisted headers are eligible, so the reuse is lossless. Opt-in:
+	// a template that depends on state or timing could see a different result.
+	ResponseCache bool
 	// LeaveDefaultPorts skips normalization of default ports
 	LeaveDefaultPorts bool
 	// AutomaticScan enables automatic tech based template execution
@@ -247,10 +252,6 @@ type Options struct {
 	// target service (web templates on non-HTTP ports, network templates on
 	// closed ports).
 	StrictProbe bool
-	// ResponseCache reuses identical safe GET/HEAD responses inside one scan.
-	// Only requests without auth, cookies, Host override, body, cache directives
-	// or non-allowlisted headers are eligible, so the reuse is lossless.
-	ResponseCache bool
 	// TechFilter is an opt-in heuristic (CLI: -tf). When false (default), scan
 	// behavior matches pre-tech-filter nuclei: no fingerprinting, no product-tag
 	// skipping, no scan-scoped HTTP response cache. When true, fingerprints HTTP
@@ -711,10 +712,10 @@ func (options *Options) Copy() *Options {
 		PerHostRateLimit:               options.PerHostRateLimit,
 		PerHostRateLimitPoolSize:       options.PerHostRateLimitPoolSize,
 		EnableHTTPCache:                options.EnableHTTPCache,
+		ResponseCache:                  options.ResponseCache,
 		LeaveDefaultPorts:              options.LeaveDefaultPorts,
 		AutomaticScan:                  options.AutomaticScan,
 		StrictProbe:                    options.StrictProbe,
-		ResponseCache:                  options.ResponseCache,
 		TechFilter:                     options.TechFilter,
 		Silent:                         options.Silent,
 		Validate:                       options.Validate,
@@ -940,6 +941,12 @@ func (options *Options) ShouldSaveResume() bool {
 // ShouldFollowHTTPRedirects determines if http redirects should be followed
 func (options *Options) ShouldFollowHTTPRedirects() bool {
 	return options.FollowRedirects || options.FollowHostRedirects
+}
+
+// UsesResponseCache reports whether the scan-scoped response cache may be active:
+// -response-cache, or -tech-filter, which seeds the same cache.
+func (options *Options) UsesResponseCache() bool {
+	return options.ResponseCache || options.TechFilter
 }
 
 // HasClientCertificates determines if any client certificate was specified

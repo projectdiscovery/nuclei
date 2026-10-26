@@ -52,6 +52,48 @@ func TestFollowsRedirects(t *testing.T) {
 	}
 }
 
+func TestUsesResponseCache(t *testing.T) {
+	plain := &Request{options: &protocols.ExecutorOptions{Options: &types.Options{}}, connConfiguration: &httpclientpool.Configuration{}}
+	if !plain.usesResponseCache(&generatedRequest{original: &Request{}}) {
+		t.Fatal("an ordinary request may use the cache")
+	}
+	optOut := &Request{DisableHTTPCache: true, options: plain.options, connConfiguration: plain.connConfiguration}
+	if optOut.usesResponseCache(&generatedRequest{original: optOut}) {
+		t.Fatal("disable-http-cache must keep the request out of the cache")
+	}
+	if plain.usesResponseCache(&generatedRequest{original: &Request{Race: true}}) {
+		t.Fatal("race requests must all reach the server")
+	}
+	redirect := &Request{options: plain.options, connConfiguration: &httpclientpool.Configuration{RedirectFlow: httpclientpool.FollowAllRedirect}}
+	if redirect.usesResponseCache(&generatedRequest{original: redirect}) {
+		t.Fatal("redirect-following requests must stay out of the cache")
+	}
+}
+
+func TestRespCacheKeyIncludesCustomIP(t *testing.T) {
+	req, _ := http.NewRequest(http.MethodGet, "http://example.com/", nil)
+	plain := contextargs.NewWithInput(context.Background(), "http://example.com/")
+	a := contextargs.NewWithInput(context.Background(), "http://example.com/")
+	a.MetaInput.CustomIP = "10.0.0.1"
+	b := contextargs.NewWithInput(context.Background(), "http://example.com/")
+	b.MetaInput.CustomIP = "10.0.0.2"
+	if respCacheKey(a, req) == respCacheKey(b, req) {
+		t.Fatal("inputs that dial different IPs must not share a cache key")
+	}
+	if respCacheKey(plain, req) == respCacheKey(a, req) {
+		t.Fatal("an IP-pinned input must not share the plain input's key")
+	}
+}
+
+func TestIsHTTPToHTTPSMismatch(t *testing.T) {
+	if !isHTTPToHTTPSMismatch(400, "<h1>The plain HTTP request was sent to HTTPS port</h1>") {
+		t.Fatal("expected the mismatch to be recognised")
+	}
+	if isHTTPToHTTPSMismatch(400, "bad request") || isHTTPToHTTPSMismatch(200, "The plain HTTP request was sent to HTTPS port") {
+		t.Fatal("only the 400 with the mismatch message counts")
+	}
+}
+
 // A body read up to a template's max-size may be cut short. The cache must not
 // keep it, or a later template with a larger limit matches against a cut body.
 func TestResponseCacheSkipsTruncatedBody(t *testing.T) {

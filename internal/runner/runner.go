@@ -698,7 +698,7 @@ func (r *Runner) RunEnumeration() error {
 	// Attach scan-scoped HTTP response cache only for opt-in -tf, and only
 	// before templates compile so request executers share the same pointer.
 	// Default scans leave this nil (no behavioral change).
-	if r.options.TechFilter || r.options.ResponseCache {
+	if r.options.UsesResponseCache() {
 		executorOpts.HTTPResponseCache = httprespcache.New()
 	}
 

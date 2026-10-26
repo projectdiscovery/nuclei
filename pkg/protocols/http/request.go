@@ -1244,11 +1244,11 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 		}
 		// Scan-scoped in-memory cache (tech-filter / response reuse). Prefer this
 		// over a network round-trip for identical safe GET/HEAD requests.
-		if resp == nil && request.options.HTTPResponseCache != nil && !request.followsRedirects() &&
+		if resp == nil && request.options.HTTPResponseCache != nil && request.usesResponseCache(generatedRequest) &&
 			generatedRequest.request != nil && generatedRequest.request.Request != nil &&
 			httprespcache.CacheableRequest(generatedRequest.request.Request) &&
 			httprespcache.JarAllows(input.CookieJar, generatedRequest.request.Request.URL) {
-			if key := httprespcache.KeyFromRequest(generatedRequest.request.Request); key != "" {
+			if key := respCacheKey(input, generatedRequest.request.Request); key != "" {
 				if cached := request.options.HTTPResponseCache.Get(key, request.options.TemplateID, generatedRequest.request.Request); cached != nil {
 					resp = cached
 					fromCache = true
@@ -1505,15 +1505,16 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 				errx = errors.Wrap(err, "could not store in project file")
 			}
 		}
-		if request.options.HTTPResponseCache != nil && !fromCache && !request.followsRedirects() &&
+		if request.options.HTTPResponseCache != nil && !fromCache && request.usesResponseCache(generatedRequest) &&
 			generatedRequest.request != nil && generatedRequest.request.Request != nil &&
 			httprespcache.CacheableRequest(generatedRequest.request.Request) &&
 			httprespcache.JarAllows(input.CookieJar, generatedRequest.request.Request.URL) &&
 			!httprespcache.ResponseSetsCookie(resp) &&
 			httprespcache.StoredStatus(resp.StatusCode) &&
 			httprespcache.CompleteBody(respChain.BodyBytes(), int64(maxBodylimit)) &&
-			httprespcache.ReplayableEncoding(resp.Header, respChain.BodyBytes()) {
-			if key := httprespcache.KeyFromRequest(generatedRequest.request.Request); key != "" {
+			httprespcache.ReplayableEncoding(resp.Header, respChain.BodyBytes()) &&
+			!isHTTPToHTTPSMismatch(resp.StatusCode, respChain.BodyString()) {
+			if key := respCacheKey(input, generatedRequest.request.Request); key != "" {
 				request.options.HTTPResponseCache.Set(key, request.options.TemplateID, resp, respChain.BodyBytes())
 			}
 		}
@@ -1974,30 +1975,6 @@ func (request *Request) isUnresponsiveAddress(input *contextargs.Context) bool {
 		return request.options.HostErrorsCache.Check(request.options.ProtocolType.String(), input)
 	}
 	return false
-}
-
-// followsRedirects reports whether this request's client follows redirects,
-// resolving the policy the same way httpclientpool does: the template setting,
-// overridden by the global follow flags, cancelled by -disable-redirects.
-//
-// The scan response cache must stay out of such requests. A redirect chain is
-// several responses, and a cache entry is one: serving it would hide the chain
-// from matchers that walk it. The cache key also does not carry the redirect
-// policy, so a followed and an unfollowed request for the same URL would
-// otherwise share one entry and each see the other's response.
-func (request *Request) followsRedirects() bool {
-	if request.options == nil || request.options.Options == nil {
-		return true // unknown policy: stay out of the cache
-	}
-	opts := request.options.Options
-	if opts.DisableRedirects {
-		return false
-	}
-	if opts.ShouldFollowHTTPRedirects() {
-		return true
-	}
-	return request.connConfiguration == nil ||
-		request.connConfiguration.RedirectFlow != httpclientpool.DontFollowRedirect
 }
 
 // needsFullResponse returns true if operators, debug flags, or stats require the full HTTP response.
