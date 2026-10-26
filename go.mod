@@ -87,7 +87,7 @@ require (
 	github.com/projectdiscovery/gologger v1.1.73
 	github.com/projectdiscovery/gostruct v0.0.2
 	github.com/projectdiscovery/govaluate v0.0.0-20260615100919-5ee2581bbf7e
-	github.com/projectdiscovery/gozero v0.1.1-0.20261026121646-affb50189c97
+	github.com/projectdiscovery/gozero v0.1.1-0.20261026122302-786e195b6314
 	github.com/projectdiscovery/hmap v0.0.102
 	github.com/projectdiscovery/httpx v1.12.0
 	github.com/projectdiscovery/interactsh v1.4.1
