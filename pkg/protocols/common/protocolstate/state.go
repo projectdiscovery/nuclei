@@ -91,6 +91,7 @@ func Init(options *types.Options) error {
 func initDialers(options *types.Options) error {
 	opts := fastdialer.DefaultOptions
 	opts.DialerTimeout = options.GetTimeouts().DialTimeout
+	opts.OnDialResult = reportDialResult
 	if options.DialerKeepAlive > 0 {
 		opts.DialerKeepAlive = options.DialerKeepAlive
 	}
@@ -216,6 +217,7 @@ func initDialers(options *types.Options) error {
 		Fastdialer:                 dialer,
 		NetworkPolicy:              networkPolicy,
 		HTTPClientPool:             httpClientPool,
+		HTTPDesyncHosts:            NewExpiringSet(time.Minute),
 		LocalFileAccessAllowed:     options.AllowLocalFileAccess,
 		RestrictLocalNetworkAccess: options.RestrictLocalNetworkAccess,
 		ExcludeTargets:             options.ExcludeTargets,

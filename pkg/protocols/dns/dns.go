@@ -159,6 +159,9 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 		if err := compiled.Compile(); err != nil {
 			return errors.Wrap(err, "could not compile operators")
 		}
+		// llm operators only evaluate once they hold the scan's client; without
+		// it every llm path returns a negative result instead of an error.
+		protocols.BindLLMOperators(compiled, options)
 		request.CompiledOperators = compiled
 	}
 	request.class = classToInt(request.Class)
@@ -224,7 +227,7 @@ func (request *Request) getDnsClient(options *protocols.ExecutorOptions, metadat
 					// Defer resolution to the per-request runtime path.
 					continue
 				}
-				result, err := render.Render(render.Input{Text: resolver, Values: metadata})
+				result, err := render.Render(render.Input{Options: options.GetOptions(), Text: resolver, Values: metadata})
 				if err != nil {
 					return nil, errors.Wrap(err, "could not resolve resolvers expressions")
 				}
@@ -348,5 +351,14 @@ func classToInt(class string) uint16 {
 
 // UpdateOptions replaces this request's options with a new copy
 func (r *Request) UpdateOptions(opts *protocols.ExecutorOptions) {
+	r.Operators = protocols.CloneOperators(r.Operators)
+	r.CompiledOperators = nil
+	if r.options == nil {
+		if opts != nil {
+			r.options = opts.Copy()
+		}
+		return
+	}
+	r.options = r.options.Copy()
 	r.options.ApplyNewEngineOptions(opts)
 }

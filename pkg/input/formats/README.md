@@ -53,7 +53,25 @@ For unsupported media types, no appropriate content type is found for the body. 
 
 This module converts each operation into one or more example HTTP requests. Each request is dumped into a string format, accompanied by its method, URL, headers, and body. These are send as a callback for further processing.
 
-_Please note: This document does not cover other features of OpenAPI specification like responses, security schemes, links, callbacks, etc. as these are not currently handled by the module._
+### Security Schemes
+
+The OpenAPI input supports HTTP basic and bearer authentication, API keys in headers, query parameters or cookies, and OAuth2/OpenID Connect access tokens. Security requirements can be declared globally or per operation.
+
+For OAuth2 (`type: oauth2`) and OpenID Connect (`type: openIdConnect`), supply an existing access token as the full `Authorization` header value:
+
+```sh
+nuclei -l openapi.yaml -im openapi -var 'Authorization=Bearer YOUR_ACCESS_TOKEN'
+```
+
+The same variable is used for HTTP bearer authentication. For basic authentication, provide the full `Basic ...` value; for API keys, use the parameter name specified by the security scheme.
+
+Nuclei does not perform OAuth authorization flows, discover OpenID Connect providers, acquire tokens, or refresh them. Obtain an access token with the scopes required by the API before running the scan. The provided header value is used unchanged.
+
+Security requirement objects are alternatives. The generator selects the first supported alternative, in document order, for which all required credentials are supplied, and includes every scheme in that object. An empty object (`{}`) permits anonymous access. If no supported alternative has all its credentials, the first supported alternative is used to report missing values; credentials from different alternatives are not combined.
+
+Operations declaring `security: []` can be generated without the global token. Absent, nil or empty credential values cause affected requests to be skipped. Normal parameter validation reports missing credentials even when another required parameter is also missing. With `-skip-format-validation`, requests with missing credentials are silently skipped and the remaining operations are generated without inventing placeholder credentials.
+
+_Please note: Other OpenAPI features such as responses, links and callbacks are not currently handled by the module._
 
 ## Postman Collection file
 

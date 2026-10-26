@@ -5,6 +5,7 @@ import (
 
 	"github.com/itchyny/gojq"
 	"github.com/projectdiscovery/govaluate"
+	"github.com/projectdiscovery/nuclei/v3/pkg/operators/matchers"
 )
 
 // Extractor is used to extract part of response using a regex.
@@ -117,7 +118,11 @@ type Extractor struct {
 	// description: |
 	//   Prompt is the natural-language instruction for an llm extractor. The
 	//   model reads the response part and returns the values named by Schema.
-	Prompt string `yaml:"prompt,omitempty" json:"prompt,omitempty" jsonschema:"title=llm extraction prompt,description=Natural language instruction describing what to extract"`
+	//
+	//   {{...}} placeholders are interpolated from the template variables,
+	//   -var and target. Response derived values are not interpolated, since
+	//   the response is attacker controlled.
+	Prompt string `yaml:"prompt,omitempty" json:"prompt,omitempty" jsonschema:"title=llm extraction prompt,description=Natural language instruction describing what to extract; supports {{...}} interpolation of variables and target values"`
 	// description: |
 	//   Schema names the fields an llm extractor returns, mapping each field to
 	//   its type (string, number, boolean). It shapes both the prompt and the
@@ -129,4 +134,27 @@ type Extractor struct {
 	MaxInputTokens int `yaml:"max-input-tokens,omitempty" json:"max-input-tokens,omitempty" jsonschema:"title=max llm input tokens,description=Approximate cap on response tokens sent to the model"`
 
 	llmClient LLMClient
+}
+
+// NeedsResponse returns true if the extractor reads the full response.
+func (extractor *Extractor) NeedsResponse() bool {
+	if extractor == nil {
+		return false
+	}
+	if matchers.IsResponseVar(extractor.Part) {
+		return true
+	}
+	for _, k := range extractor.KVal {
+		if matchers.IsResponseVar(k) {
+			return true
+		}
+	}
+	for _, expr := range extractor.dslCompiled {
+		for _, v := range expr.Vars() {
+			if matchers.IsResponseVar(v) {
+				return true
+			}
+		}
+	}
+	return matchers.MentionsResponse(extractor.DSL, extractor.Regex)
 }

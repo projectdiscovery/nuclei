@@ -2,6 +2,7 @@ package matchers
 
 import (
 	"regexp"
+	"strings"
 
 	"github.com/projectdiscovery/govaluate"
 )
@@ -107,9 +108,13 @@ type Matcher struct {
 	//   Prompt is the natural-language question for an llm matcher. The model
 	//   judges the selected response part and returns a verdict; the matcher
 	//   fires when the verdict equals Expect with at least MinConfidence.
+	//
+	//   {{...}} placeholders are interpolated from the template variables,
+	//   -var and target. Response derived values are not interpolated, since
+	//   the response is attacker controlled.
 	// examples:
 	//   - value: "\"Is this a working admin login form rather than a marketing page?\""
-	Prompt string `yaml:"prompt,omitempty" json:"prompt,omitempty" jsonschema:"title=llm prompt,description=Natural language question the model answers about the response part"`
+	Prompt string `yaml:"prompt,omitempty" json:"prompt,omitempty" jsonschema:"title=llm prompt,description=Natural language question the model answers about the response part; supports {{...}} interpolation of variables and target values"`
 	// description: |
 	//   Expect is the verdict that counts as a match for an llm matcher.
 	//   Defaults to "yes".
@@ -123,6 +128,17 @@ type Matcher struct {
 	//   count as a match. Defaults to 0.
 	MinConfidence float64 `yaml:"min-confidence,omitempty" json:"min-confidence,omitempty" jsonschema:"title=minimum llm confidence,description=Minimum confidence between 0 and 1 for an llm verdict to match"`
 	// description: |
+	// description: |
+	//   Inputs compares several responses instead of a single part, for
+	//   checks that are about the difference between responses (blind
+	//   boolean injection, user enumeration, IDOR). Each entry is resolved
+	//   against the runtime values, so {{body_1}} and {{body_2}} work with
+	//   req-condition, and each response is framed separately for the model.
+	//   Part is ignored when Inputs is set.
+	// examples:
+	//   - value: "[]string{\"{{body_1}}\", \"{{body_2}}\"}"
+	Inputs []string `yaml:"inputs,omitempty" json:"inputs,omitempty" jsonschema:"title=llm inputs to compare,description=Responses to compare instead of a single part; each entry supports {{...}} interpolation"`
+
 	//   MaxInputTokens caps how much of the response part is sent to the model
 	//   for an llm matcher, as an approximate token count.
 	MaxInputTokens int `yaml:"max-input-tokens,omitempty" json:"max-input-tokens,omitempty" jsonschema:"title=max llm input tokens,description=Approximate cap on response tokens sent to the model"`
@@ -197,4 +213,41 @@ func (matcher *Matcher) ResultWithMatchedSnippet(data bool, matchedSnippet []str
 		return !data, []string{}
 	}
 	return data, matchedSnippet
+}
+
+// NeedsResponse returns true if the matcher reads the full response.
+func (matcher *Matcher) NeedsResponse() bool {
+	if matcher == nil {
+		return false
+	}
+	if IsResponseVar(matcher.Part) {
+		return true
+	}
+	for _, expr := range matcher.dslCompiled {
+		for _, v := range expr.Vars() {
+			if IsResponseVar(v) {
+				return true
+			}
+		}
+	}
+	return MentionsResponse(matcher.DSL, matcher.Words, matcher.Regex)
+}
+
+// IsResponseVar reports whether name is the full response or a numbered copy of it.
+func IsResponseVar(name string) bool {
+	name = strings.ToLower(name)
+	return name == "response" || strings.HasPrefix(name, "response_")
+}
+
+// MentionsResponse reports whether any value refers to the response by name,
+// either as a DSL variable or as a {{response}} placeholder.
+func MentionsResponse(values ...[]string) bool {
+	for _, list := range values {
+		for _, value := range list {
+			if strings.Contains(strings.ToLower(value), "response") {
+				return true
+			}
+		}
+	}
+	return false
 }
