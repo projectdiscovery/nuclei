@@ -1751,6 +1751,15 @@
           "title": "expected llm verdict",
           "type": "string"
         },
+        "inputs": {
+          "description": "Responses to compare instead of a single part; each entry supports {{...}} interpolation",
+          "items": {
+            "type": "string"
+          },
+          "markdownDescription": "Responses to compare instead of a single part; each entry supports {{...}} interpolation",
+          "title": "llm inputs to compare",
+          "type": "array"
+        },
         "internal": {
           "description": "Mark matcher as internal (used for flow / internal logic)",
           "examples": [

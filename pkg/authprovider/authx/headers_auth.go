@@ -2,7 +2,9 @@ package authx
 
 import (
 	"net/http"
+	"strings"
 
+	httputil "github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils/http"
 	"github.com/projectdiscovery/retryablehttp-go"
 )
 
@@ -26,6 +28,14 @@ func NewHeadersAuthStrategy(data *Secret) *HeadersAuthStrategy {
 func (s *HeadersAuthStrategy) Apply(req *http.Request) {
 	for _, header := range s.Data.Headers {
 		req.Header[header.Key] = []string{header.Value}
+		if strings.EqualFold(header.Key, "Cookie") {
+			var names []string
+			for _, part := range httputil.SplitCookieHeader(header.Value) {
+				name, _, _ := strings.Cut(part, "=")
+				names = append(names, strings.TrimSpace(name))
+			}
+			markCookieAuth(req, names)
+		}
 	}
 }
 
@@ -33,7 +43,5 @@ func (s *HeadersAuthStrategy) Apply(req *http.Request) {
 // NOTE: This preserves exact header casing (e.g., barAuthToken stays as barAuthToken)
 // This is useful for APIs that require case-sensitive header names
 func (s *HeadersAuthStrategy) ApplyOnRR(req *retryablehttp.Request) {
-	for _, header := range s.Data.Headers {
-		req.Header[header.Key] = []string{header.Value}
-	}
+	s.Apply(req.Request)
 }

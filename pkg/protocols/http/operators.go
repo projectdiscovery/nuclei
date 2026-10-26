@@ -13,7 +13,6 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/helpers/responsehighlighter"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/replacer"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 )
@@ -22,7 +21,8 @@ import (
 // TODO: Try to consolidate this in protocols.MakeDefaultMatchFunc to avoid any inconsistencies
 func (request *Request) Match(data map[string]interface{}, matcher *matchers.Matcher) (bool, []string) {
 	item, ok := request.getMatchPart(matcher.Part, data)
-	if !ok && matcher.Type.MatcherType != matchers.DSLMatcher {
+	// an llm matcher with inputs compares whole responses instead of one part
+	if !ok && matcher.Type.MatcherType != matchers.DSLMatcher && len(matcher.Inputs) == 0 {
 		return false, []string{}
 	}
 
@@ -32,7 +32,11 @@ func (request *Request) Match(data map[string]interface{}, matcher *matchers.Mat
 		if !ok {
 			return false, []string{}
 		}
-		return matcher.Result(matcher.MatchStatusCode(statusCode)), []string{responsehighlighter.CreateStatusCodeSnippet(data["response"].(string), statusCode)}
+		respSnippet := types.ToString(data["response"])
+		if respSnippet == "" {
+			respSnippet = types.ToString(data["header"])
+		}
+		return matcher.Result(matcher.MatchStatusCode(statusCode)), []string{responsehighlighter.CreateStatusCodeSnippet(respSnippet, statusCode)}
 	case matchers.SizeMatcher:
 		return matcher.Result(matcher.MatchSize(len(item))), []string{}
 	case matchers.WordsMatcher:
@@ -46,59 +50,9 @@ func (request *Request) Match(data map[string]interface{}, matcher *matchers.Mat
 	case matchers.XPathMatcher:
 		return matcher.Result(matcher.MatchXPath(item)), []string{}
 	case matchers.LLMMatcher:
-		isMatch, snippets, audit := matcher.MatchLLMWithAudit(item, request.llmPromptValues(data))
-		// The audit rides on the per-response event data until the result event
-		// is built; matchers are shared across concurrent requests, so it cannot
-		// be parked on the matcher itself.
-		if audit != nil {
-			recordLLMAudit(data, matcher, audit)
-		}
-		return matcher.ResultWithMatchedSnippet(isMatch, snippets)
+		return protocols.MatchLLM(data, matcher, item, request.options)
 	}
 	return false, []string{}
-}
-
-// targetValueKeys are the target-derived values an llm prompt may interpolate.
-var targetValueKeys = []string{"BaseURL", "RootURL", "Hostname", "Host", "Port", "Scheme", "Path", "Input", "Type"}
-
-// llmPromptValues returns the values an llm prompt may interpolate: the
-// template variables, -var and constants the operator declared, plus the
-// target. Declared values come from those maps, not the merged response
-// event, so a colliding body, header, or extractor cannot overwrite them.
-// Placeholders inside declared strings are resolved against the target only.
-//
-// Response derived values (body, headers, extracted fields) are deliberately
-// excluded. They are attacker influenced, and putting them in the instruction
-// is what framing the response keeps them out of.
-func (request *Request) llmPromptValues(data map[string]interface{}) map[string]interface{} {
-	values := make(map[string]interface{})
-	if request.options == nil {
-		return values
-	}
-
-	targets := make(map[string]interface{})
-	for _, key := range targetValueKeys {
-		if value, ok := data[key]; ok {
-			targets[key] = value
-		}
-	}
-
-	declared := func(src map[string]interface{}) {
-		for name, value := range src {
-			if str, ok := value.(string); ok {
-				values[name] = replacer.Replace(str, targets)
-			} else {
-				values[name] = value
-			}
-		}
-	}
-	declared(request.options.Variables.GetAll())
-	declared(request.options.Constants)
-	if request.options.Options != nil {
-		declared(request.options.Options.Vars.AsMap())
-	}
-	maps.Copy(values, targets)
-	return values
 }
 
 func getStatusCode(data map[string]interface{}) (int, bool) {
@@ -131,7 +85,7 @@ func (request *Request) Extract(data map[string]interface{}, extractor *extracto
 	case extractors.DSLExtractor:
 		return extractor.ExtractDSLWithOptions(data, request.options.GetOptions())
 	case extractors.LLMExtractor:
-		return extractor.ExtractLLM(item, request.llmPromptValues(data))
+		return protocols.ExtractLLM(data, extractor, item, request.options)
 	}
 	return nil
 }
@@ -175,13 +129,6 @@ func (request *Request) responseToDSLMap(resp *http.Response, host, matched, raw
 	data["host"] = host
 	data["type"] = request.Type().String()
 	data["matched"] = matched
-	if request.hasLLMOperators {
-		// Seeded here rather than on first write: Execute replaces the data map
-		// with a merged copy when dynamic values exist, and only a reference
-		// that already existed is shared with the event the result is built
-		// from.
-		data[llmAuditKey] = make(map[string]*matchers.LLMAudit)
-	}
 	request.setHashOrDefault(data, "request", rawReq)
 	request.setHashOrDefault(data, "response", rawResp)
 	data["status_code"] = resp.StatusCode
@@ -214,15 +161,7 @@ func (request *Request) setHashOrDefault(data output.InternalEvent, k string, v 
 
 // MakeResultEvent creates a result event from internal wrapped event
 func (request *Request) MakeResultEvent(wrapped *output.InternalWrappedEvent) []*output.ResultEvent {
-	results := protocols.MakeDefaultResultEvent(request, wrapped)
-	// Done here, not in MakeResultEventItem: the matcher name each result
-	// belongs to is only assigned once the default builder has split them.
-	for _, result := range results {
-		if audit := llmAuditFor(wrapped.InternalEvent, result.MatcherName); audit != nil {
-			result.LLM = audit
-		}
-	}
-	return results
+	return protocols.MakeDefaultResultEvent(request, wrapped)
 }
 
 func (request *Request) GetCompiledOperators() []*operators.Operators {
@@ -269,8 +208,8 @@ func (request *Request) MakeResultEventItem(wrapped *output.InternalWrappedEvent
 		MatcherStatus:    true,
 		IP:               fields.Ip,
 		GlobalMatchers:   isGlobalMatchers,
-		Request:          types.ToString(wrapped.InternalEvent["request"]),
-		Response:         request.truncateResponse(wrapped.InternalEvent["response"]),
+		Request:          request.savedRequest(types.ToString(wrapped.InternalEvent["request"])),
+		Response:         request.truncateResponse(eventResponse(wrapped.InternalEvent)),
 		CURLCommand:      types.ToString(wrapped.InternalEvent["curl-command"]),
 		TemplateEncoded:  request.options.EncodeTemplate(),
 		Error:            types.ToString(wrapped.InternalEvent["error"]),
@@ -280,40 +219,29 @@ func (request *Request) MakeResultEventItem(wrapped *output.InternalWrappedEvent
 	return data
 }
 
+// savedRequest caps the request body stored on a result. The event keeps the
+// full request so matchers can read past RequestSaveSize.
+func (request *Request) savedRequest(dump string) string {
+	if request.options == nil || request.options.Options == nil {
+		return dump
+	}
+	return string(capDumpBody([]byte(dump), request.options.Options.RequestSaveSize))
+}
+
+// eventResponse returns the full response of event. Events matched after the
+// response chain is released, such as interactsh matches, may not carry it, so
+// it is rebuilt from the headers and body they keep.
+func eventResponse(event output.InternalEvent) string {
+	if response := types.ToString(event["response"]); response != "" {
+		return response
+	}
+	return types.ToString(event["all_headers"]) + types.ToString(event["body"])
+}
+
 func (request *Request) truncateResponse(response interface{}) string {
 	responseString := types.ToString(response)
 	if len(responseString) > request.options.Options.ResponseSaveSize {
 		return responseString[:request.options.Options.ResponseSaveSize]
 	}
 	return responseString
-}
-
-// llmAuditKey holds the per-response llm audits inside the event data. It is
-// read back when the result event is built and never copied into output.
-const llmAuditKey = "__llm_audit"
-
-// recordLLMAudit stores an audit under the matcher's name, so a response with
-// several llm matchers keeps them apart.
-func recordLLMAudit(data map[string]interface{}, matcher *matchers.Matcher, audit *matchers.LLMAudit) {
-	if audits, ok := data[llmAuditKey].(map[string]*matchers.LLMAudit); ok {
-		audits[matcher.Name] = audit
-	}
-}
-
-// llmAuditFor returns the audit belonging to the named matcher, falling back to
-// the only audit present when the event carries no matcher name.
-func llmAuditFor(data map[string]interface{}, matcherName string) *matchers.LLMAudit {
-	audits, ok := data[llmAuditKey].(map[string]*matchers.LLMAudit)
-	if !ok || len(audits) == 0 {
-		return nil
-	}
-	if audit, ok := audits[matcherName]; ok {
-		return audit
-	}
-	if len(audits) == 1 {
-		for _, audit := range audits {
-			return audit
-		}
-	}
-	return nil
 }
