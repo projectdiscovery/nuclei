@@ -1,0 +1,33 @@
+id: js-http-network-policy-denied
+
+info:
+  name: nuclei/http network policy denial
+  author: pdteam
+  severity: info
+  description: |
+    Hardening check for nuclei/http: requesting a host on the exclude list
+    (RFC 5737 TEST-NET-3) must be rejected by network policy before dialing.
+
+javascript:
+  - code: |
+      const http = require('nuclei/http');
+      let out = "";
+      try {
+        http.Get('http://203.0.113.10/');
+      } catch (e) {
+        out = "" + e;
+      }
+      out;
+    args:
+      Host: "{{Host}}"
+    matchers-condition: and
+    matchers:
+      - type: dsl
+        dsl:
+          - "success == true"
+      - type: word
+        part: response
+        words:
+          - "network policy"
+          - "203.0.113.10"
+        condition: and

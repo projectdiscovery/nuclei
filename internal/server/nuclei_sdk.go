@@ -28,6 +28,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/progress"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/globalmatchers"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/hostbackoff"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/hosterrorscache"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/interactsh"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/utils/excludematchers"
@@ -51,7 +52,7 @@ type NucleiExecutorOptions struct {
 	Catalog            catalog.Catalog
 	IssuesClient       reporting.Client
 	RateLimiter        *ratelimit.Limiter
-	Interactsh         *interactsh.Client
+	Interactsh         interactsh.IClient
 	ProjectFile        *projectfile.ProjectFile
 	Browser            *browserEngine.Browser
 	FuzzStatsDB        *stats.Tracker
@@ -106,6 +107,10 @@ func newNucleiExecutor(opts *NucleiExecutorOptions) (*nucleiExecutor, error) {
 		executorOpts.HostErrorsCache = cache
 	}
 
+	if opts.Options.HostBackoff {
+		executorOpts.HostBackoff = hostbackoff.New(hostbackoff.Config{Max: opts.Options.HostBackoffMax})
+	}
+
 	executorEngine := core.New(opts.Options)
 	executorEngine.SetExecuterOptions(executorOpts)
 
@@ -117,8 +122,8 @@ func newNucleiExecutor(opts *NucleiExecutorOptions) (*nucleiExecutor, error) {
 
 	// If using input-file flags, only load http fuzzing based templates.
 	loaderConfig := loader.NewConfig(opts.Options, opts.Catalog, executorOpts)
-	if !strings.EqualFold(opts.Options.InputFileMode, "list") || opts.Options.DAST || opts.Options.DASTServer {
-		// if input type is not list (implicitly enable fuzzing)
+	if (!strings.EqualFold(opts.Options.InputFileMode, "list") || opts.Options.DAST || opts.Options.DASTServer || opts.Options.DASTProxy) && !opts.Options.OfflineHTTP {
+		// if input type is not list (implicitly enable fuzzing), unless passive/offlinehttp
 		opts.Options.DAST = true
 	}
 	store, err := loader.New(loaderConfig)
