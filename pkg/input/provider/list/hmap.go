@@ -54,6 +54,7 @@ type ListInputProvider struct {
 	hostMapStream       *filekv.FileDB
 	hostMapStreamOnce   sync.Once
 	profiles            *targetprofile.Registry
+	pinned              bool
 	// normalizeURLs collapses targets that address the same resource onto one
 	// form before they are deduplicated.
 	normalizeURLs bool
@@ -205,7 +206,8 @@ func (i *ListInputProvider) set(executionId string, value string, selection *tar
 		// scan all ips
 		dialers := protocolstate.GetDialersWithId(executionId)
 		if dialers == nil {
-			panic("dialers with executionId " + executionId + " not found")
+			gologger.Error().Msgf("dialers with executionId %s not found", executionId)
+			return
 		}
 
 		dnsData, err := dialers.Fastdialer.GetDNSData(urlx.Hostname())
@@ -242,7 +244,8 @@ func (i *ListInputProvider) set(executionId string, value string, selection *tar
 	if i.ipOptions.IPV6 {
 		dialers := protocolstate.GetDialersWithId(executionId)
 		if dialers == nil {
-			panic("dialers with executionId " + executionId + " not found")
+			gologger.Error().Msgf("dialers with executionId %s not found", executionId)
+			return
 		}
 
 		dnsData, err := dialers.Fastdialer.GetDNSData(urlx.Hostname())
@@ -403,11 +406,15 @@ func (i *ListInputProvider) scanInputFromReader(executionId string, reader io.Re
 func (i *ListInputProvider) addInput(executionId string, item string) error {
 	var selection *targetprofile.Selection
 	if targetprofile.IsLine(item) {
-		target, parsed, err := i.profiles.ParseLine(item)
+		line, err := i.profiles.ParseLine(item)
 		if err != nil {
 			return errors.Wrap(err, "could not parse target line")
 		}
-		item, selection = target, parsed
+		if line.IP != "" {
+			i.setPinned(executionId, line)
+			return nil
+		}
+		item, selection = line.Target, line.Selection
 	}
 
 	switch {
@@ -419,6 +426,29 @@ func (i *ListInputProvider) addInput(executionId string, item string) error {
 		i.set(executionId, item, selection)
 	}
 	return nil
+}
+
+// setPinned stores a target pinned to an ip. Its hostname is kept for the Host
+// header, SNI and template variables, and connections go to the ip, so the ip
+// is checked against the network policy (-eh, -lna) here.
+func (i *ListInputProvider) setPinned(executionId string, line targetprofile.Line) {
+	if dialers := protocolstate.GetDialersWithId(executionId); dialers != nil && dialers.NetworkPolicy != nil {
+		if !dialers.NetworkPolicy.Validate(line.IP) {
+			gologger.Warning().Msgf("Skipping %s: ip %s is not allowed by the network policy", line.Target, line.IP)
+			i.skippedCount++
+			return
+		}
+	}
+	metaInput := contextargs.NewMetaInput()
+	metaInput.Input = line.Target
+	metaInput.CustomIP = line.IP
+	i.setItem(metaInput, line.Selection)
+	i.pinned = true
+}
+
+// PinnedTargets reports whether any target was pinned to an ip.
+func (i *ListInputProvider) PinnedTargets() bool {
+	return i.pinned
 }
 
 // isExcluded checks if a URL is in the exclusion list
@@ -467,7 +497,8 @@ func (i *ListInputProvider) Del(executionId string, value string) {
 		// scan all ips
 		dialers := protocolstate.GetDialersWithId(executionId)
 		if dialers == nil {
-			panic("dialers with executionId " + executionId + " not found")
+			gologger.Error().Msgf("dialers with executionId %s not found", executionId)
+			return
 		}
 
 		dnsData, err := dialers.Fastdialer.GetDNSData(urlx.Hostname())
@@ -504,7 +535,8 @@ func (i *ListInputProvider) Del(executionId string, value string) {
 	if i.ipOptions.IPV6 {
 		dialers := protocolstate.GetDialersWithId(executionId)
 		if dialers == nil {
-			panic("dialers with executionId " + executionId + " not found")
+			gologger.Error().Msgf("dialers with executionId %s not found", executionId)
+			return
 		}
 
 		dnsData, err := dialers.Fastdialer.GetDNSData(urlx.Hostname())
@@ -556,19 +588,19 @@ func (i *ListInputProvider) setItem(metaInput *contextargs.MetaInput, selection 
 	if _, ok := i.hostMap.Get(dedupKey); ok {
 		i.dupeCount++
 		if i.profiles != nil {
-			i.profiles.Merge(metaInput.Input, selection)
+			i.profiles.Merge(metaInput, selection)
 		}
 		return
 	}
 	// Past the per-pattern cap the shape is already covered by the targets kept
 	// for it, so scanning another of the same shape buys nothing.
-	if i.patterns != nil && !i.patterns.Accept(metaInput.Input) {
+	if i.patterns != nil && !i.patterns.AcceptOn(metaInput.Input, metaInput.CustomIP) {
 		i.patternSkippedCount++
 		return
 	}
 
 	if i.profiles != nil {
-		i.profiles.Bind(metaInput.Input, selection)
+		i.profiles.Bind(metaInput, selection)
 	}
 	i.inputCount++ // tracks target count
 	// the entry is keyed by the collapsed form and carries the original, which

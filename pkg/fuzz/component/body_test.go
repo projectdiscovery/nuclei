@@ -9,6 +9,7 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/projectdiscovery/nuclei/v3/pkg/utils/httpbody"
 	"github.com/projectdiscovery/retryablehttp-go"
 	urlutil "github.com/projectdiscovery/utils/url"
 	"github.com/stretchr/testify/require"
@@ -45,6 +46,7 @@ func TestBodyComponent(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	require.IsType(t, &httpbody.Body{}, rebuilt.Body, "rebuilt body must not be copied per read")
 	newBody, err := io.ReadAll(rebuilt.Body)
 	if err != nil {
 		t.Fatal(err)
