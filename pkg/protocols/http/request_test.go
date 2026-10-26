@@ -1417,6 +1417,9 @@ func TestExecuteParallelHTTP_GoroutineLeaks(t *testing.T) {
 		// (e.g. windows) that teardown can outlast goleak's retry window, so ignore them.
 		goleak.IgnoreAnyFunction("net/http.(*persistConn).writeLoop"),
 		goleak.IgnoreAnyFunction("net/http.(*persistConn).readLoop"),
+		// pipelined connections are kept by the rawhttp pipeline client until
+		// they are idle for 10s, the same as the net/http idle pool above.
+		goleak.IgnoreAnyContainingPkg("github.com/projectdiscovery/rawhttp/clientpipeline"),
 	)
 
 	options := testutils.DefaultOptions

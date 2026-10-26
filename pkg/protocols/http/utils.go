@@ -188,3 +188,34 @@ func (g *generatedRequest) body() []byte {
 	}
 	return nil
 }
+
+// method returns the HTTP method of the generated request.
+func (g *generatedRequest) method() string {
+	if g.request != nil {
+		return g.request.Method
+	}
+	if g.rawRequest != nil {
+		return g.rawRequest.Method
+	}
+	return ""
+}
+
+// dropPipelinedBodylessBody empties the body of a pipelined response that
+// can not have one (RFC 9112 section 6.3): a response to HEAD, or a 1xx, 204
+// or 304 response. The pipeline client only bounds a body with Content-Length
+// or chunked encoding. Without them it hands back the connection reader, so
+// reading the body waits for the next responses or the read timeout.
+func dropPipelinedBodylessBody(resp *http.Response, method string) {
+	if resp == nil {
+		return
+	}
+	switch {
+	case strings.EqualFold(method, http.MethodHead),
+		resp.StatusCode >= 100 && resp.StatusCode < 200,
+		resp.StatusCode == http.StatusNoContent,
+		resp.StatusCode == http.StatusNotModified:
+	default:
+		return
+	}
+	resp.Body = http.NoBody
+}
