@@ -215,10 +215,15 @@ func (i *Instance) Run(ctx *contextargs.Context, actions []*Action, payloads map
 	// at the end of actions pull out the cookies from the browser. They are
 	// exposed as DSL variables, since the browser does not report Set-Cookie
 	// in the intercepted response headers, and they are injected into the
-	// shared cookie jar unless cookie reuse is disabled.
+	// shared cookie jar unless cookie reuse is disabled. The cookies are read
+	// for the whole host, because a cookie scoped to another path than the
+	// input URL is still set by the response.
 	var httpCookies []*http.Cookie
-	if cookies, err := page.Cookies([]string{URL.String()}); err == nil {
+	if cookies, err := page.Browser().GetCookies(); err == nil {
 		for _, cookie := range cookies {
+			if !cookieMatchesHost(cookie.Domain, URL.Hostname()) {
+				continue
+			}
 			httpCookie := &http.Cookie{
 				Name:     cookie.Name,
 				Value:    cookie.Value,

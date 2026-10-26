@@ -85,3 +85,13 @@ func TestAddResponseVariablesBrowserCookies(t *testing.T) {
 	require.Equal(t, "dark", data["theme"])
 	require.NotContains(t, data, "data")
 }
+
+func TestCookieMatchesHost(t *testing.T) {
+	require.True(t, cookieMatchesHost("example.com", "example.com"))
+	require.False(t, cookieMatchesHost("example.com", "sub.example.com"))
+	require.True(t, cookieMatchesHost(".example.com", "example.com"))
+	require.True(t, cookieMatchesHost(".example.com", "sub.example.com"))
+	require.False(t, cookieMatchesHost(".example.com", "badexample.com"))
+	require.False(t, cookieMatchesHost("other.com", "example.com"))
+	require.True(t, cookieMatchesHost("127.0.0.1", "127.0.0.1"))
+}

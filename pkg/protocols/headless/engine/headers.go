@@ -68,3 +68,15 @@ func addResponseVariables(data map[string]interface{}, resp *http.Response, brow
 		data[k] = v
 	}
 }
+
+// cookieMatchesHost reports whether a browser cookie with the given domain is
+// sent to host. A host-only cookie has a domain without a leading dot and only
+// matches that exact host; a domain cookie also matches its subdomains.
+func cookieMatchesHost(domain, host string) bool {
+	host = strings.ToLower(host)
+	domain = strings.ToLower(domain)
+	if trimmed, ok := strings.CutPrefix(domain, "."); ok {
+		return host == trimmed || strings.HasSuffix(host, domain)
+	}
+	return host == domain
+}
