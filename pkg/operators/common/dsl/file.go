@@ -43,6 +43,12 @@ func WithFileLoadContext(ctx *FileLoadContext, fn func()) {
 		return
 	}
 	id := goid()
+	if id == 0 {
+		// goid could not be parsed; never share one slot between goroutines,
+		// so file() fails closed with "no template sandbox context".
+		fn()
+		return
+	}
 	var prev *fileLoadFrame
 	if existing, ok := fileLoadByGoid.Load(id); ok {
 		prev = existing.(*fileLoadFrame)
@@ -59,7 +65,11 @@ func WithFileLoadContext(ctx *FileLoadContext, fn func()) {
 }
 
 func currentFileLoadContext() *FileLoadContext {
-	if v, ok := fileLoadByGoid.Load(goid()); ok {
+	id := goid()
+	if id == 0 {
+		return nil
+	}
+	if v, ok := fileLoadByGoid.Load(id); ok {
 		if frame := v.(*fileLoadFrame); frame != nil {
 			return frame.ctx
 		}
