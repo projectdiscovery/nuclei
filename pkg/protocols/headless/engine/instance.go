@@ -7,6 +7,7 @@ import (
 
 	"github.com/go-rod/rod"
 	"github.com/go-rod/rod/lib/utils"
+	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/interactsh"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/render"
 )
@@ -21,6 +22,8 @@ type Instance struct {
 	requestLog map[string]string // contains actual request that was sent
 }
 
+const browserCleanupTimeout = 5 * time.Second
+
 // NewInstance creates a new instance for the current browser.
 //
 // The login process is repeated only once for a browser, and the created
@@ -29,7 +32,67 @@ type Instance struct {
 // Users can also choose to run the login->actions process again
 // which uses a new incognito browser instance to run actions.
 func (b *Browser) NewInstance() (*Instance, error) {
-	browser, err := b.engine.Incognito()
+	return b.newInstanceBrowser(b.engine)
+}
+
+// NewInstanceWithContext bounds browser-context creation and all subsequent instance calls.
+func (b *Browser) NewInstanceWithContext(ctx context.Context, timeout time.Duration) (*Instance, error) {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	if err := ctx.Err(); err != nil {
+		return nil, context.Cause(ctx)
+	}
+
+	if timeout <= 0 {
+		timeout = browserCleanupTimeout
+	}
+	creationCtx, cancelCreation := context.WithTimeout(b.engine.GetContext(), timeout)
+	type result struct {
+		instance *Instance
+		err      error
+	}
+	resultCh := make(chan result, 1)
+	go func() {
+		instance, err := b.newInstanceBrowser(b.engine.Context(creationCtx))
+		resultCh <- result{instance: instance, err: err}
+	}()
+
+	cleanup := func(instance *Instance) {
+		if instance == nil {
+			return
+		}
+		if err := instance.Close(); err != nil {
+			gologger.Warning().Msgf("Could not close canceled browser instance: %s", err)
+		}
+	}
+
+	select {
+	case created := <-resultCh:
+		cancelCreation()
+		if created.err != nil {
+			return nil, created.err
+		}
+		if err := ctx.Err(); err != nil {
+			go cleanup(created.instance)
+			return nil, context.Cause(ctx)
+		}
+		created.instance.engine = created.instance.engine.Context(ctx)
+		return created.instance, nil
+	case <-ctx.Done():
+		go func() {
+			created := <-resultCh
+			cancelCreation()
+			if created.err == nil {
+				cleanup(created.instance)
+			}
+		}()
+		return nil, context.Cause(ctx)
+	}
+}
+
+func (b *Browser) newInstanceBrowser(engine *rod.Browser) (*Instance, error) {
+	browser, err := engine.Incognito()
 	if err != nil {
 		return nil, err
 	}
@@ -49,11 +112,27 @@ func (i *Instance) GetRequestLog() map[string]string {
 
 // Close closes all the tabs and pages for a browser instance
 func (i *Instance) Close() error {
-	return i.engine.Close()
+	ctx, cancel := context.WithTimeout(context.Background(), browserCleanupTimeout)
+	defer cancel()
+	return i.close(ctx)
+}
+
+// CloseWithPage closes a page and its isolated browser context within one cleanup deadline.
+func (i *Instance) CloseWithPage(page *Page) error {
+	ctx, cancel := context.WithTimeout(context.Background(), browserCleanupTimeout)
+	defer cancel()
+	if page != nil {
+		page.close(ctx)
+	}
+	return i.close(ctx)
+}
+
+func (i *Instance) close(ctx context.Context) error {
+	return i.engine.Context(ctx).Close()
 }
 
 // SetInteractsh client
-func (i *Instance) SetInteractsh(interactsh *interactsh.Client) {
+func (i *Instance) SetInteractsh(interactsh interactsh.IClient) {
 	i.interactsh = interactsh
 }
 

@@ -66,7 +66,7 @@ func listDir(ctx context.Context, executionId string, host string, port int, use
 		return nil, err
 	}
 	defer sess.Close()
-	return sess.ListDir(share, dir)
+	return sess.ListDirContext(ctx, share, dir)
 }
 
 // @memo
@@ -92,5 +92,5 @@ func listTree(ctx context.Context, executionId string, host string, port int, us
 		return nil, err
 	}
 	defer sess.Close()
-	return sess.ListTree(share, dir, smbsession.DefaultMaxTreeDepth, smbsession.DefaultMaxTreeEntries)
+	return sess.ListTreeContext(ctx, share, dir, smbsession.DefaultMaxTreeDepth, smbsession.DefaultMaxTreeEntries)
 }
