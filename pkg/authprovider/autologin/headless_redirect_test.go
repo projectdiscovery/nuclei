@@ -37,16 +37,16 @@ func redirectApps(t *testing.T, sameOriginTarget bool) (login *httptest.Server, 
 	t.Cleanup(other.Close)
 	login = httptest.NewServer(nil)
 	login.Config.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		switch {
-		case r.URL.Path == "/login":
+		switch r.URL.Path {
+		case "/login":
 			_, _ = w.Write([]byte(`<html><body><form method="post" action="/do-login"><input name="username"><input type="password" name="password"><button type="submit">Sign in</button></form></body></html>`))
-		case r.URL.Path == "/do-login":
+		case "/do-login":
 			target := other.URL + "/steal"
 			if sameOriginTarget {
 				target = login.URL + "/final"
 			}
 			http.Redirect(w, r, target, http.StatusTemporaryRedirect)
-		case r.URL.Path == "/final":
+		case "/final":
 			http.SetCookie(w, &http.Cookie{Name: "session", Value: "ok", Path: "/"})
 			_, _ = w.Write([]byte("<html><body>welcome</body></html>"))
 		default:
