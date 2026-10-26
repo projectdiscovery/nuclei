@@ -146,6 +146,9 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 	if err := compiled.Compile(); err != nil {
 		return errors.Wrap(err, "could not compile operators")
 	}
+	// llm operators only evaluate once they hold the scan's client; without
+	// it every llm path returns a negative result instead of an error.
+	protocols.BindLLMOperators(compiled, options)
 	request.CompiledOperators = compiled
 
 	// By default, use default max size if not defined
@@ -231,5 +234,14 @@ func (request *Request) Requests() int {
 
 // UpdateOptions replaces this request's options with a new copy
 func (r *Request) UpdateOptions(opts *protocols.ExecutorOptions) {
+	r.Operators = protocols.CloneOperators(r.Operators)
+	r.CompiledOperators = nil
+	if r.options == nil {
+		if opts != nil {
+			r.options = opts.Copy()
+		}
+		return
+	}
+	r.options = r.options.Copy()
 	r.options.ApplyNewEngineOptions(opts)
 }
