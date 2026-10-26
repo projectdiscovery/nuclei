@@ -569,7 +569,7 @@ func MakeDefaultResultEvent(request Request, wrapped *output.InternalWrappedEven
 	// match (the same matchers fire on a non-existent path) only clamps in-band
 	// matches: real out-of-band proof is unaffected.
 	switch {
-	case isOutOfBandConfirmed(wrapped.InternalEvent):
+	case isOutOfBandConfirmed(wrapped.OperatorsResult.Operators, wrapped.InternalEvent):
 		confidenceScore, confidenceTier = operators.ConfidenceCertain, operators.ConfidenceHigh
 	case isCatchAllBaselineMatch(wrapped.InternalEvent):
 		confidenceScore, confidenceTier = operators.ConfidenceCatchAll, operators.ConfidenceLow
@@ -607,9 +607,11 @@ func MakeDefaultResultEvent(request Request, wrapped *output.InternalWrappedEven
 
 // isOutOfBandConfirmed reports whether the match was corroborated by an
 // out-of-band interaction (interactsh), which the interactsh client records on
-// the event before re-running the result builder.
-func isOutOfBandConfirmed(event output.InternalEvent) bool {
-	if event == nil {
+// the event before re-running the result builder. A response header named
+// Interactsh-Protocol also lands on this key, so only templates that match on
+// interactsh data, whose results come from the interactsh client, count.
+func isOutOfBandConfirmed(ops *operators.Operators, event output.InternalEvent) bool {
+	if event == nil || !interactsh.HasMatchers(ops) {
 		return false
 	}
 	return types.ToString(event["interactsh_protocol"]) != ""
