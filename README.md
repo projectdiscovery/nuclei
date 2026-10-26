@@ -390,7 +390,7 @@ AUTHENTICATION:
    -ps, -prefetch-secrets                   prefetch secrets from the secrets file
    -alu, -auth-login-url string             login page url for turnkey auto-login authenticated scan
    -au, -auth-username string               username for auto-login (-auth-login-url)
-   -ap, -auth-password string               password for auto-login (-auth-login-url); prefer NUCLEI_AUTH_PASSWORD to avoid argv exposure
+   -apw, -auth-password string              password for auto-login (-auth-login-url); prefer NUCLEI_AUTH_PASSWORD to avoid argv exposure
    -auf, -auth-username-field string        override the detected username form field name for auto-login
    -apf, -auth-password-field string        override the detected password form field name for auto-login
    -ah, -auth-headless                      drive auto-login through a real browser (JS/SPA/SSO login pages)
