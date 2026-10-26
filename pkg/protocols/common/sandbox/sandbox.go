@@ -13,6 +13,8 @@ var (
 	// (missing roots, transient apply errors) do not latch, so a later call with
 	// a valid Config can still succeed.
 	applied bool
+	// enforced is set only when the OS-level sandbox is actually in force.
+	enforced bool
 )
 
 // Config configures filesystem sandbox enforcement.
@@ -38,6 +40,7 @@ func ResetForTesting() {
 	applyMu.Lock()
 	defer applyMu.Unlock()
 	applied = false
+	enforced = false
 }
 
 // Apply enforces the OS-level filesystem sandbox when supported.
@@ -67,7 +70,17 @@ func Apply(cfg Config) error {
 		return err
 	}
 	applied = true
+	enforced = true
 	return nil
+}
+
+// Enforced reports whether the OS-level filesystem sandbox is in force for
+// this process. Landlock forbids mount(2) for the rest of the process life, so
+// tools that need mounts (such as bubblewrap) cannot run once it is enforced.
+func Enforced() bool {
+	applyMu.Lock()
+	defer applyMu.Unlock()
+	return enforced
 }
 
 // Supported reports whether an OS-level filesystem sandbox is available.
