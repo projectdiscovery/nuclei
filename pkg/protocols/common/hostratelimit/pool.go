@@ -319,26 +319,42 @@ func newPerHostRateLimiter(options *types.Options) (*PerHostRateLimiter, error) 
 	if options == nil {
 		return &PerHostRateLimiter{ctx: ctx, cancel: cancel, unlimited: true, limit: math.MaxUint32, duration: time.Millisecond}, nil
 	}
-	if options.RateLimit < 0 {
+	limit, duration := hostRateLimit(options)
+	if limit < 0 {
 		cancel()
-		return nil, fmt.Errorf("rate limit must not be negative: %d", options.RateLimit)
+		return nil, fmt.Errorf("rate limit must not be negative: %d", limit)
 	}
-	if options.RateLimitDuration < 0 {
+	if duration < 0 {
 		cancel()
-		return nil, fmt.Errorf("rate limit duration must not be negative: %s", options.RateLimitDuration)
+		return nil, fmt.Errorf("rate limit duration must not be negative: %s", duration)
 	}
-	if options.RateLimit == 0 || options.RateLimitDuration == 0 {
+	if limit == 0 || duration == 0 {
 		return &PerHostRateLimiter{ctx: ctx, cancel: cancel, unlimited: true, limit: math.MaxUint32, duration: time.Millisecond}, nil
 	}
-	requestsPerSecond := rate.Limit(float64(options.RateLimit) / options.RateLimitDuration.Seconds())
+	requestsPerSecond := rate.Limit(float64(limit) / duration.Seconds())
 	return &PerHostRateLimiter{
-		limiter:   rate.NewLimiter(requestsPerSecond, options.RateLimit),
+		limiter:   rate.NewLimiter(requestsPerSecond, limit),
 		ctx:       ctx,
 		cancel:    cancel,
 		admission: make(chan struct{}, 1),
-		limit:     uint(options.RateLimit),
-		duration:  options.RateLimitDuration,
+		limit:     uint(limit),
+		duration:  duration,
 	}, nil
+}
+
+// hostRateLimit returns the budget of one host: -rate-limit-host per
+// -rate-limit-host-duration when it is set, so the per-host budget is separate
+// from the global rate limit, and -rate-limit per -rate-limit-duration
+// otherwise (-per-host-rate-limit).
+func hostRateLimit(options *types.Options) (int, time.Duration) {
+	if options.RateLimitHost > 0 {
+		duration := options.RateLimitHostDuration
+		if duration <= 0 {
+			duration = time.Second
+		}
+		return options.RateLimitHost, duration
+	}
+	return options.RateLimit, options.RateLimitDuration
 }
 
 func (p *PerHostRateLimitPool) EvictHost(host string) bool {

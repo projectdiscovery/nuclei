@@ -30,7 +30,6 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/globalmatchers"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/hostbackoff"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/hosterrorscache"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/hostratelimit"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/interactsh"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/utils/excludematchers"
 	browserEngine "github.com/projectdiscovery/nuclei/v3/pkg/protocols/headless/engine"
@@ -53,7 +52,6 @@ type NucleiExecutorOptions struct {
 	Catalog            catalog.Catalog
 	IssuesClient       reporting.Client
 	RateLimiter        *ratelimit.Limiter
-	HostRateLimiter    *hostratelimit.Pool
 	Interactsh         interactsh.IClient
 	ProjectFile        *projectfile.ProjectFile
 	Browser            *browserEngine.Browser
@@ -77,7 +75,6 @@ func newNucleiExecutor(opts *NucleiExecutorOptions) (*nucleiExecutor, error) {
 		Catalog:             opts.Catalog,
 		IssuesClient:        opts.IssuesClient,
 		RateLimiter:         opts.RateLimiter,
-		HostRateLimiter:     opts.HostRateLimiter,
 		Interactsh:          opts.Interactsh,
 		ProjectFile:         opts.ProjectFile,
 		Browser:             opts.Browser,

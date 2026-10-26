@@ -60,7 +60,6 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/honeypotdetector"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/hostbackoff"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/hosterrorscache"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/hostratelimit"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/interactsh"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolinit"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
@@ -98,7 +97,6 @@ type Runner struct {
 	issuesClient       reporting.Client
 	browser            *engine.Browser
 	rateLimiter        *ratelimit.Limiter
-	hostRateLimiter    *hostratelimit.Pool
 	hostErrors         hosterrorscache.CacheInterface
 	resumeCfg          *types.ResumeCfg
 	pprofServer        *pprofutil.PprofServer
@@ -460,14 +458,6 @@ func New(options *types.Options) (*Runner, error) {
 		runner.rateLimiter = utils.GetRateLimiter(context.Background(), options.RateLimit, options.RateLimitDuration)
 	}
 
-	if options.RateLimitHost > 0 {
-		// non-positive durations are normalized to 1s by the pool
-		runner.hostRateLimiter = hostratelimit.NewPool(context.Background(), hostratelimit.Options{
-			MaxCount: uint(options.RateLimitHost),
-			Duration: options.RateLimitHostDuration,
-		})
-	}
-
 	// Initialization successful, disable cleanup on error
 	cleanupOnError = false
 
@@ -541,7 +531,6 @@ func (r *Runner) Close() {
 	if r.rateLimiter != nil {
 		r.rateLimiter.Stop()
 	}
-	r.hostRateLimiter.Stop()
 	r.progress.Stop()
 	if r.browser != nil {
 		r.browser.Close()
@@ -610,7 +599,6 @@ func (r *Runner) RunEnumeration() error {
 			Catalog:            r.catalog,
 			IssuesClient:       r.issuesClient,
 			RateLimiter:        r.rateLimiter,
-			HostRateLimiter:    r.hostRateLimiter,
 			Interactsh:         r.interactsh,
 			ProjectFile:        r.projectFile,
 			Browser:            r.browser,
@@ -687,7 +675,6 @@ func (r *Runner) RunEnumeration() error {
 		Catalog:             r.catalog,
 		IssuesClient:        r.issuesClient,
 		RateLimiter:         r.rateLimiter,
-		HostRateLimiter:     r.hostRateLimiter,
 		Interactsh:          r.interactsh,
 		ProjectFile:         r.projectFile,
 		Browser:             r.browser,

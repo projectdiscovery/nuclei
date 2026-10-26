@@ -255,7 +255,7 @@ func (request *Request) executeRaceRequest(input *contextargs.Context, dynamicVa
 			}
 			waitCtx, cancelWait := stopWithHandler(requestInput.Context(), spmHandler)
 			err := request.waitHostBackoff(waitCtx, hostBackoffKey(httpRequest, requestInput))
-			if err == nil && request.options.HostRateLimiter != nil {
+			if err == nil && request.options.HostRateLimitEnabled() {
 				// only -rate-limit-host applies here: the global limiter is not
 				// consulted on the race and pipeline paths
 				err = request.options.RateLimitTakeContext(waitCtx, hostBackoffKey(httpRequest, requestInput))
@@ -612,7 +612,7 @@ func (request *Request) executeTurboHTTP(input *contextargs.Context, dynamicValu
 			}
 			waitCtx, cancelWait := stopWithHandler(requestInput.Context(), spmHandler)
 			err := request.waitHostBackoff(waitCtx, hostBackoffKey(httpRequest, requestInput))
-			if err == nil && request.options.HostRateLimiter != nil {
+			if err == nil && request.options.HostRateLimitEnabled() {
 				// only -rate-limit-host applies here: the global limiter is not
 				// consulted on the race and pipeline paths
 				err = request.options.RateLimitTakeContext(waitCtx, hostBackoffKey(httpRequest, requestInput))
@@ -1285,7 +1285,7 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 				}
 			}
 			executingClient = httpclient
-			if request.options.HostRateLimiter != nil {
+			if request.options.HostRateLimitEnabled() {
 				generatedRequest.request = generatedRequest.request.WithContext(
 					httpclientpool.WithRedirectCallback(generatedRequest.request.Context(), func(ctx context.Context, host string) error {
 						return request.options.RateLimitTakeContext(ctx, host)

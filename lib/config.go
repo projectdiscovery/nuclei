@@ -207,8 +207,7 @@ func WithHostRateLimit(ctx context.Context, maxTokens int, duration time.Duratio
 	return func(e *NucleiEngine) error {
 		e.opts.RateLimitHost = maxTokens
 		e.opts.RateLimitHostDuration = duration
-		// Lazily constructed in init() so we honor whichever ctx the
-		// engine ultimately runs under; this option only records intent.
+		// the per-host limiters are created on first use for each host
 		return nil
 	}
 }

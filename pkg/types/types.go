@@ -562,6 +562,13 @@ type Options struct {
 	templateThreadRelease func()
 }
 
+// PerHostRateLimitEnabled reports whether requests are paced by a limiter per
+// host: with -per-host-rate-limit, or with -rate-limit-host, which also sets
+// a per-host budget separate from the global rate limit.
+func (options *Options) PerHostRateLimitEnabled() bool {
+	return options.PerHostRateLimit || options.RateLimitHost > 0
+}
+
 // SetTemplateThreadsProvider configures a dynamic template concurrency source.
 // The provider is consulted while an execution schedules templates, allowing an
 // embedding application to redistribute a fixed concurrency budget as peer

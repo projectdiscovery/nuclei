@@ -28,6 +28,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/hostratelimit"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/interactsh"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 	"github.com/projectdiscovery/ratelimit"
 	"github.com/projectdiscovery/rawhttp/clientpipeline"
 	"github.com/projectdiscovery/retryablehttp-go"
@@ -60,6 +61,12 @@ func TestHostRateLimiterSpecialExecutionPaths(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			options := testutils.DefaultOptions
+			options.RateLimitHost = 100
+			options.RateLimitHostDuration = time.Second
+			defer func() {
+				options.RateLimitHost = 0
+				options.RateLimitHostDuration = 0
+			}()
 			testutils.Init(options)
 			defer testutils.Cleanup(options)
 
@@ -72,16 +79,18 @@ func TestHostRateLimiterSpecialExecutionPaths(t *testing.T) {
 				ID:   tt.request.ID,
 				Info: model.Info{SeverityHolder: severity.Holder{Severity: severity.Low}, Name: "test"},
 			})
-			executerOpts.HostRateLimiter = hostratelimit.NewPool(context.Background(), hostratelimit.Options{
-				MaxCount: 100,
-				Duration: time.Second,
-			})
-			defer executerOpts.HostRateLimiter.Stop()
 
 			require.NoError(t, tt.request.Compile(executerOpts))
 			ctxArgs := contextargs.NewWithInput(context.Background(), server.URL)
 			require.NoError(t, tt.request.ExecuteWithResults(ctxArgs, output.InternalEvent{}, output.InternalEvent{}, func(*output.InternalWrappedEvent) {}))
-			require.Equal(t, 1, executerOpts.HostRateLimiter.Len())
+
+			dialers := protocolstate.GetDialersWithId(options.ExecutionId)
+			require.NotNil(t, dialers)
+			dialers.Lock()
+			pool, ok := dialers.PerHostRateLimitPool.(*hostratelimit.PerHostRateLimitPool)
+			dialers.Unlock()
+			require.True(t, ok, "the race and pipeline paths must take from the per-host limiter")
+			require.Equal(t, 1, pool.Size())
 
 			if tt.request.Pipeline {
 				awaitPipelineClientShutdown(t)

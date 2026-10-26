@@ -106,10 +106,6 @@ type ExecutorOptions struct {
 	Progress progress.Progress
 	// RateLimiter is a rate-limiter for limiting sent number of requests.
 	RateLimiter *ratelimit.Limiter
-	// HostRateLimiter limits requests per target host (-rate-limit-host).
-	// Optional: nil when it is disabled (the default), in which case
-	// RateLimitTake uses -per-host-rate-limit or the global limiter.
-	HostRateLimiter *hostratelimit.Pool
 	// Catalog is a template catalog implementation for nuclei
 	Catalog catalog.Catalog
 	// ProjectFile is the project file for nuclei
@@ -220,29 +216,27 @@ func (e *ExecutorOptions) RateLimitTake(host string) error {
 
 // RateLimitTakeContext waits for admission or returns when ctx is canceled.
 //
-// When -rate-limit-host is set (HostRateLimiter is not nil) it takes priority
-// and is the only limiter consulted for a known host: -rate-limit defaults to
-// 150 rps, so applying both would silently cap the aggregate throughput at the
-// global default and defeat the per-host budget. The aggregate is bounded by
+// With -per-host-rate-limit or -rate-limit-host, the limiter of the host is the
+// only limiter consulted for a known host. -rate-limit-host sets a per-host
+// budget separate from -rate-limit: -rate-limit defaults to 150 rps, so
+// applying both would silently cap the aggregate throughput at the global
+// default and defeat the per-host budget. The aggregate is bounded by
 // num_hosts * rate-limit-host. An empty host falls back to the global limiter
 // so self-contained requests are still paced.
 func (e *ExecutorOptions) RateLimitTakeContext(ctx context.Context, host string) error {
-	if e.HostRateLimiter != nil && host != "" {
+	if e.Options != nil && e.Options.PerHostRateLimitEnabled() && host != "" {
 		if key := HostRateLimitKey(host); key != "" {
-			return e.HostRateLimiter.TakeContext(ctx, key)
-		}
-	}
-	if e.Options != nil && e.Options.PerHostRateLimit && host != "" {
-		limiter, err := hostratelimit.GetPerHostRateLimiter(e.Options, host)
-		if err != nil {
-			return err
-		}
-		if limiter != nil {
-			if err := limiter.Wait(ctx); err != nil {
+			limiter, err := hostratelimit.GetPerHostRateLimiter(e.Options, key)
+			if err != nil {
 				return err
 			}
-			hostratelimit.RecordPerHostRateLimitRequest(e.Options, host)
-			return nil
+			if limiter != nil {
+				if err := limiter.Wait(ctx); err != nil {
+					return err
+				}
+				hostratelimit.RecordPerHostRateLimitRequest(e.Options, key)
+				return nil
+			}
 		}
 	}
 	// The code below can race and there isn't a great way to fix this without adding an idempotent
@@ -259,7 +253,13 @@ func (e *ExecutorOptions) RateLimitTakeContext(ctx context.Context, host string)
 	return nil
 }
 
-// HostRateLimitKey returns the -rate-limit-host bucket for a URL or host[:port]:
+// HostRateLimitEnabled reports whether -rate-limit-host is set. The race and
+// pipeline paths and redirect hops are paced only by this limiter.
+func (e *ExecutorOptions) HostRateLimitEnabled() bool {
+	return e.Options != nil && e.Options.RateLimitHost > 0
+}
+
+// HostRateLimitKey returns the per-host bucket for a URL or host[:port]:
 // the lowercase host with an explicit or scheme default port, so different
 // ports on one hostname stay separate buckets and a redirect to the same
 // origin shares the bucket of the original request.
@@ -417,7 +417,6 @@ func (e *ExecutorOptions) Copy() *ExecutorOptions {
 		IssuesClient:                 e.IssuesClient,
 		Progress:                     e.Progress,
 		RateLimiter:                  e.RateLimiter,
-		HostRateLimiter:              e.HostRateLimiter,
 		Catalog:                      e.Catalog,
 		ProjectFile:                  e.ProjectFile,
 		Browser:                      e.Browser,
@@ -726,7 +725,6 @@ func (e *ExecutorOptions) ApplyNewEngineOptions(n *ExecutorOptions) {
 	e.IssuesClient = n.IssuesClient
 	e.Progress = n.Progress
 	e.RateLimiter = n.RateLimiter
-	e.HostRateLimiter = n.HostRateLimiter
 	e.Catalog = n.Catalog
 	e.ProjectFile = n.ProjectFile
 	e.Browser = n.Browser
