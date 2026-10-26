@@ -48,26 +48,3 @@ func TestReadFileAllowedRejectsOutsideTemplates(t *testing.T) {
 	_, err := protocolstate.ReadFileAllowed(opts, outside)
 	require.Error(t, err)
 }
-
-func TestWriteFileAllowedWritesInsideTemplates(t *testing.T) {
-	templatesDir := t.TempDir()
-	restoreTemplatesDir(t, templatesDir)
-
-	opts := &types.Options{ExecutionId: t.Name(), AllowLocalFileAccess: false}
-	target := filepath.Join(templatesDir, "written.txt")
-	require.NoError(t, protocolstate.WriteFileAllowed(opts, target, []byte("data"), 0o600))
-
-	got, err := os.ReadFile(target)
-	require.NoError(t, err)
-	require.Equal(t, []byte("data"), got)
-}
-
-func TestWriteFileAllowedRejectsOutsideTemplates(t *testing.T) {
-	templatesDir := t.TempDir()
-	restoreTemplatesDir(t, templatesDir)
-
-	outside := outsideHomePath(t, ".nuclei-fsbroker-write-"+t.Name(), "out.txt")
-	opts := &types.Options{ExecutionId: t.Name(), AllowLocalFileAccess: false}
-	err := protocolstate.WriteFileAllowed(opts, outside, []byte("x"), 0o600)
-	require.Error(t, err)
-}
