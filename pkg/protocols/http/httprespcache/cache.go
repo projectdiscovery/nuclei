@@ -4,7 +4,6 @@ package httprespcache
 
 import (
 	"bytes"
-	"github.com/cespare/xxhash"
 	"io"
 	"net/http"
 	"net/http/cookiejar"
@@ -13,6 +12,8 @@ import (
 	"strings"
 	"sync"
 	"sync/atomic"
+
+	"github.com/cespare/xxhash"
 )
 
 // representationHeaderNames are folded into the cache key so two requests
@@ -279,12 +280,21 @@ func (c *Cache) Set(key, owner string, resp *http.Response, body []byte) {
 }
 
 // SeedHTTP stores a fingerprint/probe response under the request's full key
-// (method + URL + representation headers).
-func (c *Cache) SeedHTTP(req *http.Request, resp *http.Response, body []byte) {
-	if !CacheableRequest(req) {
+// (method + URL + representation headers). readLimit is the most the probe
+// read of the body; see CompleteBody.
+func (c *Cache) SeedHTTP(req *http.Request, resp *http.Response, body []byte, readLimit int64) {
+	if !CacheableRequest(req) || !CompleteBody(body, readLimit) {
 		return
 	}
 	c.Set(KeyFromRequest(req), "", resp, body)
+}
+
+// CompleteBody reports whether body was read to its end under readLimit. A body
+// that fills the limit may be cut short, and a reader with a larger limit
+// (another template's max-size) would then match against the cut copy, so such
+// a body must not be cached. A readLimit of zero or less means no limit.
+func CompleteBody(body []byte, readLimit int64) bool {
+	return readLimit <= 0 || int64(len(body)) < readLimit
 }
 
 // Reset drops every entry and the counters, keeping the cache usable. It lets a

@@ -1517,9 +1517,7 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 			httprespcache.JarAllows(input.CookieJar, generatedRequest.request.Request.URL) &&
 			!httprespcache.ResponseSetsCookie(resp) &&
 			httprespcache.StoredStatus(resp.StatusCode) &&
-			// a body cut at this request's read limit is not the whole response:
-			// a template with a larger limit would match on the cut copy
-			request.MaxSize <= 0 && respChain.Body().Len() < maxBodylimit &&
+			httprespcache.CompleteBody(respChain.BodyBytes(), int64(maxBodylimit)) &&
 			httprespcache.ReplayableEncoding(resp.Header, respChain.BodyBytes()) &&
 			!isHTTPToHTTPSMismatch(resp.StatusCode, respChain.BodyString()) {
 			if key := respCacheKey(input, generatedRequest.request.Request); key != "" {

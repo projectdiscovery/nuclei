@@ -328,3 +328,36 @@ func TestStoredStatus(t *testing.T) {
 		}
 	}
 }
+
+func TestCompleteBody(t *testing.T) {
+	cases := []struct {
+		name  string
+		body  int
+		limit int64
+		want  bool
+	}{
+		{"shorter than limit", 10, 50, true},
+		{"fills limit, may be cut", 50, 50, false},
+		{"no limit", 50, 0, true},
+	}
+	for _, tc := range cases {
+		if got := CompleteBody(make([]byte, tc.body), tc.limit); got != tc.want {
+			t.Errorf("%s: got %v want %v", tc.name, got, tc.want)
+		}
+	}
+}
+
+func TestSeedHTTPSkipsCutBody(t *testing.T) {
+	c := New()
+	req := httptest.NewRequest(http.MethodGet, "http://example.com/", nil)
+	resp := &http.Response{StatusCode: 200, Header: http.Header{}}
+
+	c.SeedHTTP(req, resp, []byte("12345"), 5)
+	if c.Len() != 0 {
+		t.Fatal("a body that fills the probe limit must not be seeded")
+	}
+	c.SeedHTTP(req, resp, []byte("1234"), 5)
+	if c.Len() != 1 {
+		t.Fatal("a complete body must be seeded")
+	}
+}
