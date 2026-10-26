@@ -155,6 +155,10 @@ func (c *TelnetClient) ConnectWithOptions(ctx context.Context, opts TelnetOption
 		return false, protocolstate.ErrHostDenied.Msgf(opts.Host)
 	}
 
+	// The timeout bounds both the dial and the authentication.
+	ctx, cancel := context.WithTimeout(ctx, telnetTimeout(opts.Timeout))
+	defer cancel()
+
 	// Create TCP connection
 	conn, err := dialer.Fastdialer.Dial(ctx, "tcp", net.JoinHostPort(opts.Host, strconv.Itoa(opts.Port)))
 	if err != nil {
@@ -169,11 +173,7 @@ func (c *TelnetClient) ConnectWithOptions(ctx context.Context, opts TelnetOption
 
 	// Handle authentication if credentials provided
 	if opts.Username != "" && opts.Password != "" {
-		// Set a timeout context for authentication
-		authCtx, cancel := context.WithTimeout(ctx, telnetTimeout(opts.Timeout))
-		defer cancel()
-
-		if err := client.Auth(authCtx, opts.Username, opts.Password); err != nil {
+		if err := client.Auth(ctx, opts.Username, opts.Password); err != nil {
 			return false, err
 		}
 	}

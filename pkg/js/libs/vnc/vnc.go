@@ -82,6 +82,11 @@ func connectWithOptions(ctx context.Context, executionId string, opts VNCOptions
 		return false, fmt.Errorf("dialers not initialized for %s", executionId)
 	}
 
+	// The timeout bounds the dial and, through the conn deadline, the handshake.
+	timeout := vncTimeout(opts.Timeout)
+	ctx, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
+
 	conn, err := dialer.Fastdialer.Dial(ctx, "tcp", net.JoinHostPort(opts.Host, strconv.Itoa(opts.Port)))
 	if err != nil {
 		return false, err
@@ -90,8 +95,7 @@ func connectWithOptions(ctx context.Context, executionId string, opts VNCOptions
 		_ = conn.Close()
 	}()
 
-	// Set connection timeout
-	_ = conn.SetDeadline(time.Now().Add(vncTimeout(opts.Timeout)))
+	_ = conn.SetDeadline(time.Now().Add(timeout))
 
 	// Create VNC client config with password
 	vncConfig := vnclib.NewClientConfig(opts.Password)
