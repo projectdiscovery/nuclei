@@ -88,7 +88,7 @@ func (k *KatanaFormat) Parse(input io.Reader, resultsCb formats.ParseReqRespCall
 
 		if oversized {
 			gologger.Warning().Msgf("katana: skipping record larger than %d bytes\n", MaxRecordSize)
-		} else if len(record) > 0 && k.handleRecord(record, resultsCb) {
+		} else if len(record) > 0 && !k.handleRecord(record, resultsCb) {
 			return nil
 		}
 
@@ -128,20 +128,20 @@ func readRecord(reader *bufio.Reader) (record []byte, oversized bool, err error)
 	}
 }
 
-// handleRecord parses a single record and reports whether the callback asked to
-// stop parsing.
+// handleRecord parses a single record and reports whether parsing should
+// continue. A skipped record continues; the callback returns false to stop.
 func (k *KatanaFormat) handleRecord(record []byte, resultsCb formats.ParseReqRespCallback) bool {
 	if record[0] != '{' {
 		// Bare URL line (katana default output without -jsonl): treat as GET.
 		line := string(record)
 		if !isAbsoluteURL(line) {
 			gologger.Warning().Msg("katana: could not parse line as a URL or JSON record\n")
-			return false
+			return true
 		}
 		rr, err := k.buildFromComponents(http.MethodGet, line, nil, "")
 		if err != nil {
 			gologger.Warning().Msgf("katana: could not parse url %s: %s\n", line, err)
-			return false
+			return true
 		}
 		return resultsCb(rr)
 	}
@@ -149,16 +149,20 @@ func (k *KatanaFormat) handleRecord(record []byte, resultsCb formats.ParseReqRes
 	var result katanaResult
 	if err := json.Unmarshal(record, &result); err != nil {
 		gologger.Warning().Msgf("katana: could not decode jsonl line: %s\n", err)
-		return false
+		return true
 	}
 	if result.Request == nil || result.Request.Endpoint == "" {
 		gologger.Warning().Msg("katana: invalid record with missing request or endpoint\n")
-		return false
+		return true
+	}
+	if !isAbsoluteURL(result.Request.Endpoint) {
+		gologger.Warning().Msgf("katana: skipping non http(s) endpoint %s\n", result.Request.Endpoint)
+		return true
 	}
 	rr, err := k.toRequestResponse(result.Request)
 	if err != nil {
 		gologger.Warning().Msgf("katana: could not parse request %s: %s\n", result.Request.Endpoint, err)
-		return false
+		return true
 	}
 	return resultsCb(rr)
 }
@@ -203,9 +207,10 @@ func (k *KatanaFormat) buildFromComponents(method, endpoint string, headers map[
 	sb.WriteString(parsed.Host)
 	sb.WriteString("\r\n")
 
-	// Emit headers in a deterministic order, skipping Host (already written).
+	// Emit headers in a deterministic order, skipping Host (already written)
+	// and any header with a line break, which would split the raw request.
 	for _, key := range sortedHeaderKeys(headers) {
-		if strings.EqualFold(key, "Host") {
+		if strings.EqualFold(key, "Host") || strings.ContainsAny(key+headers[key], "\r\n") {
 			continue
 		}
 		sb.WriteString(key)

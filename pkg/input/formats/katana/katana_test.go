@@ -25,7 +25,7 @@ func TestKatanaFormatParse(t *testing.T) {
 	var got []*types.RequestResponse
 	err = New().Parse(file, func(rr *types.RequestResponse) bool {
 		got = append(got, rr)
-		return false
+		return true
 	}, inputFile)
 	require.NoError(t, err)
 
@@ -78,13 +78,15 @@ func TestKatanaFormatGracefulSkips(t *testing.T) {
 		"garbage",
 		`{"request":null}`,
 		`{"request":{"endpoint":""}}`,
+		`{"request":{"method":"GET","endpoint":"ftp://example.com/file"}}`,
+		`{"request":{"method":"GET","endpoint":"/relative/only"}}`,
 		`{"request":{"method":"GET","endpoint":"https://example.com/ok"}}`,
 	}, "\n")
 
 	var got []*types.RequestResponse
 	err := New().Parse(strings.NewReader(input), func(rr *types.RequestResponse) bool {
 		got = append(got, rr)
-		return false
+		return true
 	}, "test")
 	require.NoError(t, err)
 	require.Len(t, got, 1)
@@ -100,7 +102,7 @@ func TestKatanaFormatCallbackStops(t *testing.T) {
 	var count int
 	err := New().Parse(strings.NewReader(input), func(_ *types.RequestResponse) bool {
 		count++
-		return true // request to stop after the first
+		return false // request to stop after the first
 	}, "test")
 	require.NoError(t, err)
 	require.Equal(t, 1, count)
@@ -130,7 +132,7 @@ func TestKatanaFormatRecordSizeLimit(t *testing.T) {
 	var got []*types.RequestResponse
 	err := New().Parse(strings.NewReader(record(MaxRecordSize+1)), func(rr *types.RequestResponse) bool {
 		got = append(got, rr)
-		return false
+		return true
 	}, "test")
 	require.NoError(t, err)
 	require.Empty(t, got)
@@ -148,7 +150,7 @@ func TestKatanaFormatOversizedRecordSkipped(t *testing.T) {
 	var got []*types.RequestResponse
 	err := New().Parse(input, func(rr *types.RequestResponse) bool {
 		got = append(got, rr)
-		return false
+		return true
 	}, "test")
 	require.NoError(t, err)
 	require.Len(t, got, 1)
@@ -183,7 +185,7 @@ func allocsForUnterminatedRecord(t *testing.T, size int64) uint64 {
 	var got []*types.RequestResponse
 	err := New().Parse(input, func(rr *types.RequestResponse) bool {
 		got = append(got, rr)
-		return false
+		return true
 	}, "test")
 	runtime.ReadMemStats(&after)
 
@@ -209,9 +211,21 @@ func parseSingle(t *testing.T, line string) *types.RequestResponse {
 	var got *types.RequestResponse
 	err := New().Parse(strings.NewReader(line), func(rr *types.RequestResponse) bool {
 		got = rr
-		return false
+		return true
 	}, "test")
 	require.NoError(t, err)
 	require.NotNil(t, got)
 	return got
+}
+
+func TestKatanaFormatHeaderLineBreaksDropped(t *testing.T) {
+	// A crawled header value with a line break must not inject extra headers.
+	rr := parseSingle(t, `{"request":{"method":"GET","endpoint":"https://example.com/x","headers":{"X-Ok":"1","X-Bad":"a\r\nX-Injected: 1"}}}`)
+	value, ok := rr.Request.Headers.Get("X-Ok")
+	require.True(t, ok)
+	require.Equal(t, "1", value)
+	_, ok = rr.Request.Headers.Get("X-Injected")
+	require.False(t, ok)
+	_, ok = rr.Request.Headers.Get("X-Bad")
+	require.False(t, ok)
 }

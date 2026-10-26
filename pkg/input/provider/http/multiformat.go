@@ -89,7 +89,7 @@ func NewHttpInputProvider(opts *HttpMultiFormatOptions) (*HttpInputProvider, err
 
 	parseErr := format.Parse(bytes.NewReader(data), func(request *types.RequestResponse) bool {
 		count++
-		return false
+		return true
 	}, opts.InputFile)
 	if parseErr != nil {
 		return nil, errors.Wrap(parseErr, "could not parse input file")
