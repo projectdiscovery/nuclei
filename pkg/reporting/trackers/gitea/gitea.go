@@ -194,7 +194,7 @@ func (i *Integration) findIssueByTitle(title string) (*gitea.Issue, error) {
 			return nil, nil
 		}
 		if response.NextPage <= opts.Page {
-			return nil, fmt.Errorf("Gitea returned a non-advancing issue page: current page %d, next page %d", opts.Page, response.NextPage)
+			return nil, fmt.Errorf("gitea returned a non-advancing issue page: current page %d, next page %d", opts.Page, response.NextPage)
 		}
 		opts.Page = response.NextPage
 	}
