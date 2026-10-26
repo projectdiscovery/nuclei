@@ -65,7 +65,11 @@ func (c *Cookie) Iterate(callback func(key string, value interface{}) error) (er
 	return
 }
 
+// isIgnoredCookieKey reports whether a cookie is in the default ignore list.
+// The lists are stored in lowercase and the match ignores case, since
+// fingerprint sources such as wappalyzergo lowercase cookie names.
 func isIgnoredCookieKey(key string) bool {
+	key = strings.ToLower(key)
 	if _, ok := defaultIgnoredCookieKeys[key]; ok {
 		return true
 	}

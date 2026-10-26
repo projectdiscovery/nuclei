@@ -34,14 +34,14 @@ var defaultIgnoredHeaderKeys = map[string]struct{}{
 {{- end}}
 }
 
-// defaultIgnoredCookieKeys lists cookies that must not be fuzzed.
+// defaultIgnoredCookieKeys lists cookies that must not be fuzzed, in lowercase.
 var defaultIgnoredCookieKeys = map[string]struct{}{
 {{- range .Cookies}}
 	{{printf "%q" .}}: {},
 {{- end}}
 }
 
-// defaultIgnoredCookiePrefixes holds cookie patterns ending in "*" (from the seed or -wappalyzer).
+// defaultIgnoredCookiePrefixes holds cookie patterns ending in "*" (from the seed or -wappalyzer), in lowercase.
 var defaultIgnoredCookiePrefixes = []string{
 {{- range .CookiePrefixes}}
 	{{printf "%q" .}},
@@ -78,7 +78,13 @@ func main() {
 	}
 	cookies := map[string]struct{}{}
 	cookiePrefixes := map[string]struct{}{}
+	// sessionCookies counts the names dropped by the session cookie rule
+	var sessionCookies int
 	for _, c := range seedCookies {
+		if isSessionCookie(c) {
+			sessionCookies++
+			continue
+		}
 		addCookieIgnore(cookies, cookiePrefixes, c)
 	}
 
@@ -111,6 +117,10 @@ func main() {
 				headers[canon] = struct{}{}
 			}
 			for name := range app.Cookies {
+				if isSessionCookie(name) {
+					sessionCookies++
+					continue
+				}
 				beforeCookies, beforePrefixes := len(cookies), len(cookiePrefixes)
 				addCookieIgnore(cookies, cookiePrefixes, name)
 				if len(cookies) > beforeCookies || len(cookiePrefixes) > beforePrefixes {
@@ -160,6 +170,71 @@ func main() {
 		fmt.Fprintf(os.Stderr, ", +%d wappalyzer", fromWappalyzerCookies)
 	}
 	fmt.Fprintf(os.Stderr, ")\n")
+	fmt.Fprintf(os.Stderr, "session cookies kept fuzzable: %d\n", sessionCookies)
+}
+
+// sessionCookieTokens mark cookie names that carry a session, a login or a
+// CSRF token. Such cookies are real fuzz targets, so they never go in the
+// ignore list, even when a seed or a wappalyzer fingerprint names them.
+var sessionCookieTokens = []string{
+	"session", "sess", "sid", "auth", "token", "csrf", "xsrf", "jwt",
+	"login", "logged_in", "signin", "remember", "saml", "sso", "oidc",
+	"member", "admin", "account", "customer",
+}
+
+// sessionCookieNames are session and auth cookies the token rule misses.
+// A trailing * makes the entry a prefix match.
+// Most are the default session cookie names of web frameworks and CMSes.
+var sessionCookieNames = []string{
+	"cfid",
+	"cfglobals",
+	"wordpress_*",
+	"wp-postpass_*",
+	"cakephp",
+	"phpbb*",
+	"frontend",
+	"concrete5",
+	"prestashop*",
+	"dokuwiki",
+	"pyrocms",
+	"impresscms",
+	"episerver",
+	"collectiveaccess",
+	"jtlshop",
+	"dynamicweb",
+	"moodleid_*",
+	"ushahidi",
+	"merchello",
+	"opengrok",
+	"e107*",
+	"publiccms_user",
+	"_jumpcloud_user_console_*",
+}
+
+// isSessionCookie reports whether a cookie name (or a name pattern ending in
+// "*") belongs to a session or auth cookie. The match ignores case.
+func isSessionCookie(name string) bool {
+	name = strings.ToLower(strings.TrimSuffix(strings.TrimSpace(name), "*"))
+	if name == "" {
+		return false
+	}
+	for _, token := range sessionCookieTokens {
+		if strings.Contains(name, token) {
+			return true
+		}
+	}
+	for _, known := range sessionCookieNames {
+		if prefix, ok := strings.CutSuffix(known, "*"); ok {
+			if strings.HasPrefix(name, prefix) {
+				return true
+			}
+			continue
+		}
+		if name == known {
+			return true
+		}
+	}
+	return false
 }
 
 func readSeedLines(name string) ([]string, error) {
@@ -186,12 +261,12 @@ func addCookieIgnore(exact, prefixes map[string]struct{}, name string) {
 	if strings.HasSuffix(name, "*") {
 		prefix := strings.TrimSuffix(name, "*")
 		if isCookieToken(prefix) {
-			prefixes[prefix] = struct{}{}
+			prefixes[strings.ToLower(prefix)] = struct{}{}
 		}
 		return
 	}
 	if isCookieToken(name) {
-		exact[name] = struct{}{}
+		exact[strings.ToLower(name)] = struct{}{}
 	}
 }
 

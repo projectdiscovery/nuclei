@@ -91,16 +91,8 @@ var defaultIgnoredHeaderKeys = map[string]struct{}{
 	"X-Xss-Protection":                 {},
 }
 
-// defaultIgnoredCookieKeys lists cookies that must not be fuzzed.
+// defaultIgnoredCookieKeys lists cookies that must not be fuzzed, in lowercase.
 var defaultIgnoredCookieKeys = map[string]struct{}{
-	"AWSALB":                     {},
-	"AWSALBCORS":                 {},
-	"GPS":                        {},
-	"JSESSIONID":                 {},
-	"NREUM":                      {},
-	"PREF":                       {},
-	"VISITOR_INFO1_LIVE":         {},
-	"YSC":                        {},
 	"__cfduid":                   {},
 	"__hssc":                     {},
 	"__hssrc":                    {},
@@ -115,27 +107,32 @@ var defaultIgnoredCookieKeys = map[string]struct{}{
 	"_gat":                       {},
 	"_gcl_au":                    {},
 	"_gid":                       {},
-	"_hjIncludedInSample":        {},
+	"_hjincludedinsample":        {},
 	"_pk_cvar":                   {},
 	"_pk_hsr":                    {},
 	"_pk_id":                     {},
 	"_pk_ref":                    {},
 	"_pk_ses":                    {},
-	"awsELB":                     {},
+	"awsalb":                     {},
+	"awsalbcors":                 {},
+	"awselb":                     {},
 	"cf_ob_info":                 {},
 	"cf_use_ob":                  {},
 	"fr":                         {},
+	"gps":                        {},
 	"hubspotutk":                 {},
-	"intercom-session":           {},
 	"mp_mixpanel__c":             {},
-	"optimizelyBuckets":          {},
-	"optimizelyEndUserId":        {},
-	"optimizelyPendingLogEvents": {},
-	"optimizelySegments":         {},
+	"nreum":                      {},
+	"optimizelybuckets":          {},
+	"optimizelyenduserid":        {},
+	"optimizelypendinglogevents": {},
+	"optimizelysegments":         {},
+	"pref":                       {},
+	"visitor_info1_live":         {},
+	"ysc":                        {},
 }
 
-// defaultIgnoredCookiePrefixes holds cookie patterns ending in "*" (from the seed or -wappalyzer).
+// defaultIgnoredCookiePrefixes holds cookie patterns ending in "*" (from the seed or -wappalyzer), in lowercase.
 var defaultIgnoredCookiePrefixes = []string{
-	"intercom-session-",
 	"_ga_",
 }
