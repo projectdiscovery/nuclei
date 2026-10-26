@@ -28,4 +28,11 @@ func TestBaselineContextKeyScopesAuthentication(t *testing.T) {
 	req.RawQuery = "api_key=secret"
 	queryKey := baselineContextKey(baseURL, req, input)
 	require.NotEqual(t, cookieKey, queryKey)
+
+	input.MetaInput.CustomIP = "192.0.2.10"
+	pinnedKey := baselineContextKey(baseURL, req, input)
+	require.NotEqual(t, queryKey, pinnedKey)
+
+	input.MetaInput.CustomIP = "192.0.2.11"
+	require.NotEqual(t, pinnedKey, baselineContextKey(baseURL, req, input))
 }

@@ -92,7 +92,13 @@ func (request *Request) prepareBaseline(input *contextargs.Context, baseURL, hos
 		connConfig = connConfig.Clone()
 		connConfig.Connection.SetCookieJar(input.CookieJar)
 	}
-	client, err := httpclientpool.Get(request.options.Options, connConfig, host)
+	// a pinned target gets its own client, like the normal request path, so a
+	// keep-alive connection to one ip never serves a baseline pinned to another
+	poolKey := host
+	if input != nil && input.MetaInput != nil && input.MetaInput.CustomIP != "" {
+		poolKey += "@" + input.MetaInput.CustomIP
+	}
+	client, err := httpclientpool.Get(request.options.Options, connConfig, poolKey)
 	if err != nil {
 		client, err = httpclientpool.Get(request.options.Options, connConfig, "")
 	}
@@ -107,6 +113,9 @@ func (request *Request) prepareBaseline(input *contextargs.Context, baseURL, hos
 func baselineContextKey(baseURL string, req *retryablehttp.Request, input *contextargs.Context) string {
 	hash := sha256.New()
 	_, _ = fmt.Fprintf(hash, "host=%q\nquery=%q\n", req.Host, req.RawQuery)
+	if input != nil && input.MetaInput != nil {
+		_, _ = fmt.Fprintf(hash, "customip=%q\n", input.MetaInput.CustomIP)
+	}
 	keys := make([]string, 0, len(req.Header))
 	for key := range req.Header {
 		keys = append(keys, key)
