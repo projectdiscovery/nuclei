@@ -37,6 +37,10 @@ func TestAddResponseVariablesCollisions(t *testing.T) {
 	resp.Header.Set("Data", "spoofed")
 	resp.Header.Set("Host", "evil.example")
 	resp.Header.Set("Duration-1", "0")
+	resp.Header.Set("IP", "6.6.6.6")
+	resp.Header.Set("Path", "/spoofed")
+	resp.Header.Set("Request", "spoofed")
+	resp.Header.Set("Error", "spoofed")
 	resp.Header.Set("X-Action", "from header")
 	resp.Header.Add("Set-Cookie", "header=spoofed; Path=/")
 	resp.Header.Add("Set-Cookie", "x_token=cookie; Path=/")
@@ -58,6 +62,9 @@ func TestAddResponseVariablesCollisions(t *testing.T) {
 	require.NotContains(t, data, "data")
 	require.NotContains(t, data, "host")
 	require.NotContains(t, data, "duration_1")
+	for _, key := range []string{"ip", "path", "request", "error"} {
+		require.NotContains(t, data, key)
+	}
 	require.Equal(t, "header", data["x_token"])
 	require.Equal(t, "underscore", data["x_dup"])
 }

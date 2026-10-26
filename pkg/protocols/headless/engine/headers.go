@@ -26,6 +26,11 @@ var reservedResponseKeys = map[string]struct{}{
 	"status_code":   {},
 	"history":       {},
 	"duration":      {},
+	// read by the result event, so a target must not set them
+	"ip":      {},
+	"path":    {},
+	"request": {},
+	"error":   {},
 }
 
 // addResponseVariables exposes response headers and cookies as DSL variables
