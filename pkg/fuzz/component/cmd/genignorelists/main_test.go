@@ -43,3 +43,13 @@ func TestDefaultOutPath(t *testing.T) {
 	_, err := os.Stat(out)
 	require.NoError(t, err)
 }
+
+func TestOutPathFromTrimpath(t *testing.T) {
+	want := defaultOutPath()
+	wd, err := os.Getwd()
+	require.NoError(t, err)
+	// -trimpath records a module-relative file name, so the module root comes from the working directory
+	got := outPathFrom("github.com/projectdiscovery/nuclei/v3/pkg/fuzz/component/cmd/genignorelists/main.go", wd)
+	require.Equal(t, filepath.Clean(want), got)
+	require.Empty(t, outPathFrom("module/main.go", string(filepath.Separator)))
+}

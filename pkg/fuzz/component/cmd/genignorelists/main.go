@@ -294,11 +294,27 @@ func sortedKeys(m map[string]struct{}) []string {
 
 // defaultOutPath returns the ignorelists.gen.go path in the component package, two levels above this tool.
 func defaultOutPath() string {
-	_, file, _, ok := runtime.Caller(0)
-	if !ok {
-		return ""
+	_, file, _, _ := runtime.Caller(0)
+	wd, _ := os.Getwd()
+	return outPathFrom(file, wd)
+}
+
+// outPathFrom uses the source file path when it is absolute. Under -trimpath it is module-relative, so the module root is found from wd instead.
+func outPathFrom(file, wd string) string {
+	if filepath.IsAbs(file) {
+		return filepath.Join(filepath.Dir(file), "..", "..", "ignorelists.gen.go")
 	}
-	return filepath.Join(filepath.Dir(file), "..", "..", "ignorelists.gen.go")
+	for dir := wd; dir != ""; {
+		if _, err := os.Stat(filepath.Join(dir, "go.mod")); err == nil {
+			return filepath.Join(dir, "pkg", "fuzz", "component", "ignorelists.gen.go")
+		}
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			break
+		}
+		dir = parent
+	}
+	return ""
 }
 
 func fatalf(format string, args ...any) {
