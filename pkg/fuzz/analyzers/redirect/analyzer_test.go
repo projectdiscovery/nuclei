@@ -1,10 +1,17 @@
 package redirect
 
 import (
+	"context"
+	"errors"
+	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 
+	"github.com/projectdiscovery/nuclei/v3/pkg/fuzz"
 	"github.com/projectdiscovery/nuclei/v3/pkg/fuzz/analyzers"
+	"github.com/projectdiscovery/nuclei/v3/pkg/fuzz/component"
+	"github.com/projectdiscovery/retryablehttp-go"
 	"github.com/stretchr/testify/require"
 )
 
@@ -93,4 +100,39 @@ func TestRandomCanaryHost(t *testing.T) {
 
 func TestRedirectsToCanaryEmptyCanary(t *testing.T) {
 	require.False(t, RedirectsToCanary("https://anything/", "anything", ""))
+}
+
+func TestAnalyzeUsesRedirectResponseReturnedWithError(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Location", r.URL.Query().Get("q"))
+		w.WriteHeader(http.StatusFound)
+	}))
+	defer srv.Close()
+
+	raw, err := retryablehttp.NewRequest(http.MethodGet, srv.URL+"/?q=%2Fdashboard", nil)
+	require.NoError(t, err)
+	query := component.NewQuery()
+	parsed, err := query.Parse(raw)
+	require.NoError(t, err)
+	require.True(t, parsed)
+
+	client := retryablehttp.NewClient(retryablehttp.DefaultOptionsSingle)
+	client.HTTPClient.CheckRedirect = func(*http.Request, []*http.Request) error {
+		return errors.New("stop redirect")
+	}
+	client.CheckRetry = func(context.Context, *http.Response, error) (bool, error) {
+		return false, nil
+	}
+
+	matched, _, err := (&Analyzer{}).Analyze(&analyzers.Options{
+		FuzzGenerated: fuzz.GeneratedRequest{
+			Request:       raw,
+			Component:     query,
+			Key:           "q",
+			OriginalValue: "/dashboard",
+		},
+		HttpClient: client,
+	})
+	require.NoError(t, err)
+	require.True(t, matched)
 }

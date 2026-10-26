@@ -54,6 +54,12 @@ func TestDetectInjection(t *testing.T) {
 		require.False(t, DetectInjection(h, name, value))
 	})
 
+	t.Run("canary in unrelated cookie is not a hit", func(t *testing.T) {
+		h := http.Header{}
+		h.Add("Set-Cookie", "session="+value+"; Path=/")
+		require.False(t, DetectInjection(h, name, value))
+	})
+
 	t.Run("absent header is not a hit", func(t *testing.T) {
 		h := http.Header{}
 		h.Set("Content-Type", "text/html")

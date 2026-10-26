@@ -90,9 +90,7 @@ func (a *Analyzer) Analyze(options *analyzers.Options) (bool, string, error) {
 		}
 		options.RateLimit()
 		resp, err := options.HttpClient.Do(rebuilt)
-		if err != nil {
-			// A transport error is expected when redirects are followed to the
-			// unresolvable canary host; skip this probe rather than aborting.
+		if resp == nil {
 			continue
 		}
 		location := resp.Header.Get("Location")
@@ -100,10 +98,18 @@ func (a *Analyzer) Analyze(options *analyzers.Options) (bool, string, error) {
 		if resp.Request != nil && resp.Request.URL != nil {
 			finalHost = resp.Request.URL.Hostname()
 		}
-		_ = resp.Body.Close()
+		if resp.Body != nil {
+			_ = resp.Body.Close()
+		}
 
 		if RedirectsToCanary(location, finalHost, canaryHost) {
 			return true, "open redirect: target redirected to canary host via payload " + payload, nil
+		}
+		if err != nil {
+			// A transport error is expected when redirects are followed to the
+			// unresolvable canary host. If the retained response did not prove
+			// the redirect, continue with the remaining probes.
+			continue
 		}
 	}
 	return false, "", nil

@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/fuzz"
+	"github.com/projectdiscovery/nuclei/v3/pkg/fuzz/component"
 	"github.com/projectdiscovery/retryablehttp-go"
 )
 
@@ -105,9 +106,25 @@ func SetValueAndRebuild(gr fuzz.GeneratedRequest, value string) (*retryablehttp.
 		return nil, err
 	}
 	if gr.Request != nil {
+		if gr.Component.Name() == component.RequestCookieComponent {
+			// Done outside the header loop because the live request may no
+			// longer carry a Cookie header at all, and the rebuilt request must
+			// not resurrect the cookies it had at parse time.
+			mergeRequestCookies(rebuilt, gr.Request, gr.Key)
+		} else if !fuzzingCookieHeader(gr) {
+			// Same absence problem for query/path/body/header probes: Rebuild
+			// clones the parse-time request, so a Cookie header dropped after
+			// parse would otherwise survive. The live request is authoritative,
+			// including when it has no cookies. Skip when the header component
+			// is itself fuzzing Cookie so the probe payload is not wiped.
+			syncLiveCookieHeader(rebuilt, gr.Request)
+		}
 		for k, vs := range gr.Request.Header {
 			// don't clobber the header we are actively fuzzing
-			if gr.Component.Name() == "header" && k == gr.Key {
+			if gr.Component.Name() == component.RequestHeaderComponent && k == gr.Key {
+				continue
+			}
+			if strings.EqualFold(k, "Cookie") {
 				continue
 			}
 			// don't clobber headers the component itself manages on the rebuilt
@@ -123,6 +140,60 @@ func SetValueAndRebuild(gr fuzz.GeneratedRequest, value string) (*retryablehttp.
 	return rebuilt, nil
 }
 
+func fuzzingCookieHeader(gr fuzz.GeneratedRequest) bool {
+	return gr.Component != nil && gr.Component.Name() == component.RequestHeaderComponent && strings.EqualFold(gr.Key, "Cookie")
+}
+
+// syncLiveCookieHeader copies Cookie from the live request onto the rebuilt
+// probe, or deletes it when the live request has none. Callers must not use
+// this when Cookie is the value under test.
+func syncLiveCookieHeader(rebuilt, current *retryablehttp.Request) {
+	rebuilt.Header.Del("Cookie")
+	if vs := current.Header.Values("Cookie"); len(vs) > 0 {
+		rebuilt.Header["Cookie"] = append([]string(nil), vs...)
+	}
+}
+
+// mergeRequestCookies rebuilds the probe's Cookie header from the live request,
+// substituting the fuzzed value for the cookie under test. The live request is
+// authoritative for every other cookie, including its order and any duplicate
+// names (Go allows repeated cookie names in a request), so cookies added after
+// the component was parsed survive and cookies removed since then are not
+// resurrected.
+func mergeRequestCookies(rebuilt, current *retryablehttp.Request, fuzzedKey string) {
+	var fuzzed *http.Cookie
+	for _, cookie := range rebuilt.Cookies() {
+		if cookie.Name == fuzzedKey {
+			fuzzed = cookie
+			break
+		}
+	}
+
+	currentCookies := current.Cookies()
+	merged := make([]*http.Cookie, 0, len(currentCookies)+1)
+	var injected bool
+	for _, cookie := range currentCookies {
+		if fuzzed != nil && cookie.Name == fuzzedKey {
+			// servers disagree on which duplicate wins, so every occurrence of
+			// the fuzzed name carries the payload to keep the probe meaningful
+			merged = append(merged, fuzzed)
+			injected = true
+			continue
+		}
+		merged = append(merged, cookie)
+	}
+	if fuzzed != nil && !injected {
+		// the live request dropped the fuzzed cookie; send the payload anyway,
+		// otherwise the probe would be indistinguishable from the baseline
+		merged = append(merged, fuzzed)
+	}
+
+	rebuilt.Header.Del("Cookie")
+	for _, cookie := range merged {
+		rebuilt.AddCookie(cookie)
+	}
+}
+
 // MaxResponseBodyBytes bounds how much of a response body an analyzer reads so a
 // hostile or oversized response cannot exhaust memory.
 const MaxResponseBodyBytes = 10 * 1024 * 1024 // 10 MiB
@@ -134,7 +205,7 @@ const MaxResponseBodyBytes = 10 * 1024 * 1024 // 10 MiB
 func DoAndReadBody(client *retryablehttp.Client, req *retryablehttp.Request) (*http.Response, string, error) {
 	resp, err := client.Do(req)
 	if err != nil {
-		return nil, "", err
+		return resp, "", err
 	}
 	body, err := io.ReadAll(io.LimitReader(resp.Body, MaxResponseBodyBytes))
 	_ = resp.Body.Close()

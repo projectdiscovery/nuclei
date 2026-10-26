@@ -13,9 +13,19 @@ import (
 	"github.com/projectdiscovery/fastdialer/fastdialer"
 	"github.com/projectdiscovery/nuclei/v3/pkg/fuzz"
 	"github.com/projectdiscovery/nuclei/v3/pkg/fuzz/analyzers"
+	_ "github.com/projectdiscovery/nuclei/v3/pkg/fuzz/analyzers/cmdi"
+	_ "github.com/projectdiscovery/nuclei/v3/pkg/fuzz/analyzers/cors"
+	_ "github.com/projectdiscovery/nuclei/v3/pkg/fuzz/analyzers/crlf"
+	_ "github.com/projectdiscovery/nuclei/v3/pkg/fuzz/analyzers/hostheader"
+	_ "github.com/projectdiscovery/nuclei/v3/pkg/fuzz/analyzers/lfi"
+	_ "github.com/projectdiscovery/nuclei/v3/pkg/fuzz/analyzers/redirect"
+	_ "github.com/projectdiscovery/nuclei/v3/pkg/fuzz/analyzers/sqli"
+	_ "github.com/projectdiscovery/nuclei/v3/pkg/fuzz/analyzers/ssrf"
+	_ "github.com/projectdiscovery/nuclei/v3/pkg/fuzz/analyzers/ssti"
 	_ "github.com/projectdiscovery/nuclei/v3/pkg/fuzz/analyzers/time"
 	_ "github.com/projectdiscovery/nuclei/v3/pkg/fuzz/analyzers/xss"
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators"
+	"github.com/projectdiscovery/nuclei/v3/pkg/operators/extractors"
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators/matchers"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/expressions"
@@ -138,7 +148,11 @@ type Request struct {
 
 	CompiledOperators *operators.Operators `yaml:"-" json:"-"`
 
-	options           *protocols.ExecutorOptions
+	options *protocols.ExecutorOptions
+	// hasLLMOperators reports whether any matcher on this request is an llm
+	// matcher, so the audit map is only allocated for responses that can
+	// produce one.
+	hasLLMOperators   bool
 	connConfiguration *httpclientpool.Configuration
 	totalRequests     int
 	customHeaders     map[string]string
@@ -437,6 +451,19 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 		compiled.TemplateID = options.TemplateID
 		if compileErr := compiled.Compile(); compileErr != nil {
 			return errors.Wrap(compileErr, "could not compile operators")
+		}
+		// http is the only protocol that evaluates llm operators today; the
+		// template compiler rejects them elsewhere.
+		for _, matcher := range compiled.Matchers {
+			if matcher != nil && matcher.GetType() == matchers.LLMMatcher {
+				matcher.SetLLMClient(options.LLMClient)
+				request.hasLLMOperators = true
+			}
+		}
+		for _, extractor := range compiled.Extractors {
+			if extractor != nil && extractor.GetType() == extractors.LLMExtractor {
+				extractor.SetLLMClient(options.LLMClient)
+			}
 		}
 		request.CompiledOperators = compiled
 	}

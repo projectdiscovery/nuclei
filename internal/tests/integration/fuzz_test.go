@@ -63,6 +63,7 @@ var fuzzingTestCases = []integrationCase{
 	{Path: "fuzz/fuzz-body-params-sqli.yaml", TestCase: &genericFuzzTestCase{expectedResults: 1}},
 	{Path: "fuzz/fuzz-body-xml-sqli.yaml", TestCase: &genericFuzzTestCase{expectedResults: 1}},
 	{Path: "fuzz/fuzz-body-generic-sqli.yaml", TestCase: &genericFuzzTestCase{expectedResults: 4}},
+	{Path: "fuzz/fuzz-raw-http-input.yaml", TestCase: &rawHttpInputFuzz{}},
 
 	// Analyzer-driven DAST cases: each runs a real fuzzing template whose
 	// detection is delegated to a built-in analyzer, against the dedicated
@@ -97,7 +98,6 @@ var fuzzingTestCases = []integrationCase{
 	{Path: "fuzz/analyzer-header-sqli.yaml", TestCase: &analyzerPositionTestCase{expectedResults: 1}},
 	{Path: "fuzz/analyzer-body-sqli.yaml", TestCase: &analyzerPositionTestCase{expectedResults: 1}},
 	{Path: "fuzz/analyzer-cookie-ssti.yaml", TestCase: &analyzerPositionTestCase{expectedResults: 1}},
-	{Path: "fuzz/fuzz-raw-http-input.yaml", TestCase: &rawHttpInputFuzz{}},
 }
 
 const analyzerPositionsTargetFile = "fuzz/testData/analyzer-positions.proxify.yaml"
