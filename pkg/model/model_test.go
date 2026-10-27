@@ -135,3 +135,21 @@ func TestUnmarshal(t *testing.T) {
 	info2 := assertUnmarshalledTemplateInfo(t, yamlPayload2)
 	require.Equal(t, info1, info2)
 }
+
+func TestInfoFilledFields(t *testing.T) {
+	written := Info{Description: "{{host}} is exposed", Impact: "Data loss"}
+	filled := written
+	filled.Description = "example.com is exposed"
+
+	require.Nil(t, filled.FilledFields(nil))
+	fields := filled.FilledFields(&written)
+	require.Len(t, fields, 1)
+	require.Equal(t, "Description", fields[0].Label)
+	require.Equal(t, "example.com is exposed", *fields[0].Value)
+}
+
+func TestInfoHasPlaceholders(t *testing.T) {
+	require.False(t, (&Info{Description: "Redis is exposed"}).HasPlaceholders())
+	require.True(t, (&Info{Impact: "{{host}} is exposed"}).HasPlaceholders())
+	require.True(t, (&Info{Remediation: "rotate §password§"}).HasPlaceholders())
+}

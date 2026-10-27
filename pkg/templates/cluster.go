@@ -58,7 +58,10 @@ func Cluster(list []*Template) [][]*Template {
 		// it is not possible to cluster flow and multiprotocol due to dependent execution.
 		// A cluster runs with the options of its first template, so a template
 		// with its own interactsh-eviction would lose that TTL.
-		if template.Flow != "" || template.Options.IsMultiProtocol || template.InteractshEviction > 0 {
+		// Info placeholders are filled from the event a finding came from, and a
+		// cluster shares one event that already holds the first template's variables
+		// and extracted values, so a template with them runs on its own.
+		if template.Flow != "" || template.Options.IsMultiProtocol || template.InteractshEviction > 0 || template.Info.HasPlaceholders() {
 			final = append(final, []*Template{template})
 			continue
 		}
