@@ -431,6 +431,78 @@ func TestExport_StableRuleIndices(t *testing.T) {
 	}
 }
 
+// The rule describes the template whatever finding arrives first, and each
+// finding carries the text filled for it, while text the template wrote stays
+// on the rule.
+func TestExport_FilledInfoStaysOnTheFinding(t *testing.T) {
+	out := filepath.Join(t.TempDir(), "report.sarif")
+	exp, err := New(&Options{File: out})
+	require.NoError(t, err)
+
+	written := makeEvent().Info
+	written.Description = "Service {{version}} found on {{host}}:6379"
+	first := makeEvent()
+	first.TemplateInfo = &written
+	first.Info.Description = "Service 6.0.9 found on 10.0.0.2:6379"
+	second := makeEvent()
+	second.TemplateInfo = &written
+	second.Info.Description = "Service 7.2.4 found on 10.0.0.1:6379"
+	require.NoError(t, exp.Export(first))
+	require.NoError(t, exp.Export(second))
+	require.NoError(t, exp.Close())
+
+	bin, err := os.ReadFile(out)
+	require.NoError(t, err)
+	var log upstream.SarifLog
+	require.NoError(t, json.Unmarshal(bin, &log))
+	run := log.Runs[0]
+
+	require.Len(t, run.Tool.Driver.Rules, 1)
+	rule := run.Tool.Driver.Rules[0]
+	require.Contains(t, rule.FullDescription.Text, "Service {{version}} found on {{host}}:6379")
+	require.NotContains(t, rule.FullDescription.Text, "6.0.9")
+	require.Contains(t, rule.Help.Text, "Impact: Severe impact")
+	require.Len(t, run.Result, 2)
+	require.Contains(t, run.Result[0].Message.Text, "Description: Service 6.0.9 found on 10.0.0.2:6379")
+	require.Contains(t, run.Result[1].Message.Text, "Description: Service 7.2.4 found on 10.0.0.1:6379")
+	require.NotContains(t, run.Result[1].Message.Text, "Impact:")
+}
+
+func TestBuildResultMessageKeepsFilledInfoWhole(t *testing.T) {
+	event := makeEvent()
+	written := event.Info
+	event.TemplateInfo = &written
+	event.Info.Description = strings.Repeat("x", 2*maxDetailValueLength)
+
+	message := buildResultMessage(event, "header", "test-template")
+
+	require.Contains(t, message.Text, "Description: "+event.Info.Description)
+}
+
+// A placeholder such as {{body}} cannot pour a whole response into the report.
+func TestBuildResultMessageCapsFilledInfo(t *testing.T) {
+	event := makeEvent()
+	written := event.Info
+	event.TemplateInfo = &written
+	event.Info.Description = strings.Repeat("x", 2*maxInfoValueLength)
+
+	message := buildResultMessage(event, "header", "test-template")
+
+	require.Contains(t, message.Text, "Description: "+strings.Repeat("x", maxInfoValueLength-3)+"...")
+	require.NotContains(t, message.Text, strings.Repeat("x", maxInfoValueLength))
+}
+
+// Static info describes the template, so it stays on the rule as before.
+func TestExport_StaticInfoStaysOnTheRule(t *testing.T) {
+	exp, err := New(&Options{File: filepath.Join(t.TempDir(), "report.sarif")})
+	require.NoError(t, err)
+
+	require.NoError(t, exp.Export(makeEvent()))
+
+	require.Contains(t, exp.rules[0].FullDescription.Text, "A test vulnerability description.")
+	require.NotContains(t, buildResultMessage(makeEvent(), "header", "test-template").Text, "Description:")
+}
+
 func TestExport_CVSSScoreOverridesSeverity(t *testing.T) {
 	out := filepath.Join(t.TempDir(), "report.sarif")
 	exp, err := New(&Options{File: out})
