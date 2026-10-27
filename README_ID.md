@@ -380,8 +380,18 @@ CLOUD:
    -pdu, -dashboard-upload string  upload / view nuclei results file (jsonl) in projectdiscovery cloud (pdcp) UI dashboard
 
 AUTHENTICATION:
-   -sf, -secret-file string[]  path to config file containing secrets for nuclei authenticated scan
-   -ps, -prefetch-secrets      prefetch secrets from the secrets file
+   -sf, -secret-file string[]               path to config file containing secrets for nuclei authenticated scan
+   -ps, -prefetch-secrets                   prefetch secrets from the secrets file
+   -alu, -auth-login-url string             login page url for turnkey auto-login authenticated scan
+   -au, -auth-username string               username for auto-login (-auth-login-url)
+   -apw, -auth-password string              password for auto-login (-auth-login-url); prefer NUCLEI_AUTH_PASSWORD to avoid argv exposure
+   -auf, -auth-username-field string        override the detected username form field name for auto-login
+   -apf, -auth-password-field string        override the detected password form field name for auto-login
+   -ah, -auth-headless                      drive auto-login through a real browser (JS/SPA/SSO login pages)
+   -ar, -auth-recording string              path to a chrome devtools recorder json login flow to replay for auto-login
+   -ac, -auth-capture                       open a browser to log in manually once, then capture the session for the scan
+   -arsc, -auth-reauth-status-codes string  comma-separated status codes (e.g. 401,403) that trigger an auto-login re-authentication during the scan
+   -ari, -auth-refresh-interval string      re-run the auto-login once the captured session is older than this duration (e.g. 15m)
    # NOTE: Headers in secrets files preserve exact casing (useful for case-sensitive APIs)
 
 

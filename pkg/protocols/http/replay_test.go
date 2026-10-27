@@ -386,3 +386,4 @@ func (s staticReplayAuth) LookupURLX(*urlutil.URL) []authx.AuthStrategy {
 }
 func (s staticReplayAuth) GetTemplatePaths() []string { return nil }
 func (s staticReplayAuth) PreFetchSecrets() error     { return nil }
+func (s staticReplayAuth) Close()                     {}

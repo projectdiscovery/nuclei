@@ -98,8 +98,8 @@ func TestDynamicUnmarshalJSON(t *testing.T) {
 		require.Equal(t, "HeadersAuth", d.Type)
 		require.Equal(t, []string{"api.test.com"}, d.Domains)
 		require.Len(t, d.Headers, 1)
-		require.Equal(t, "X-API-Key", d.Secret.Headers[0].Key)
-		require.Equal(t, "secret-key", d.Secret.Headers[0].Value)
+		require.Equal(t, "X-API-Key", d.Headers[0].Key)
+		require.Equal(t, "secret-key", d.Headers[0].Value)
 
 		// Dynamic fields
 		require.Equal(t, "test-template.yaml", d.TemplatePath)
@@ -142,6 +142,8 @@ func TestDynamicFetchConcurrent(t *testing.T) {
 		}
 		require.NoError(t, d.Validate())
 		d.SetLazyFetchCallback(func(_ *Dynamic) error {
+			// a failed login is not retried by the waiting requests: a second
+			// call would close fetchStarted again and panic
 			close(fetchStarted)
 			<-fetchUnblock
 			return wantErr
@@ -601,7 +603,7 @@ func TestSetLazyFetchCallbackAppliesValues(t *testing.T) {
 
 		err := d.Fetch(false)
 		require.NoError(t, err)
-		require.Equal(t, "Bearer jwt-secret-123", d.Secret.Headers[0].Value)
+		require.Equal(t, "Bearer jwt-secret-123", d.Headers[0].Value)
 	})
 
 	t.Run("applies to secrets array", func(t *testing.T) {
@@ -824,5 +826,65 @@ func TestGetDomainAndDomainRegex(t *testing.T) {
 		domains, regexes := d.GetDomainAndDomainRegex()
 		require.Nil(t, domains)
 		require.Nil(t, regexes)
+	})
+}
+
+// A failed login must not be retried on every request: each retry is one more
+// login attempt against the target (account lockout, WAF bans).
+func TestDynamicFailedLoginIsNotRetriedPerRequest(t *testing.T) {
+	newDynamic := func(refresh string, fail *atomic.Bool, calls *atomic.Int32) *Dynamic {
+		d := &Dynamic{
+			TemplatePath:    "test-template.yaml",
+			Variables:       []KV{{Key: "username", Value: "test"}},
+			RefreshInterval: refresh,
+		}
+		require.NoError(t, d.Validate())
+		d.SetLazyFetchCallback(func(d *Dynamic) error {
+			calls.Add(1)
+			if fail.Load() {
+				return errors.New("bad credentials")
+			}
+			d.Extracted = map[string]interface{}{"token": "x"}
+			return nil
+		})
+		return d
+	}
+
+	t.Run("first login fails", func(t *testing.T) {
+		var fail atomic.Bool
+		var calls atomic.Int32
+		fail.Store(true)
+		d := newDynamic("", &fail, &calls)
+		for i := 0; i < 5; i++ {
+			require.Error(t, d.Fetch(false))
+		}
+		require.Equal(t, int32(1), calls.Load())
+	})
+
+	t.Run("re-login after stale fails", func(t *testing.T) {
+		var fail atomic.Bool
+		var calls atomic.Int32
+		d := newDynamic("", &fail, &calls)
+		require.NoError(t, d.Fetch(false))
+		fail.Store(true)
+		d.MarkStale()
+		for i := 0; i < 5; i++ {
+			require.Error(t, d.Fetch(false))
+		}
+		require.Equal(t, int32(2), calls.Load())
+	})
+
+	t.Run("retried after refresh interval", func(t *testing.T) {
+		var fail atomic.Bool
+		var calls atomic.Int32
+		fail.Store(true)
+		d := newDynamic("50ms", &fail, &calls)
+		require.Error(t, d.Fetch(false))
+		require.Error(t, d.Fetch(false))
+		require.Equal(t, int32(1), calls.Load())
+		fail.Store(false)
+		time.Sleep(80 * time.Millisecond)
+		require.NoError(t, d.Fetch(false))
+		require.Equal(t, int32(2), calls.Load())
 	})
 }

@@ -147,6 +147,7 @@ func (request *Request) executeRequestWithPayloads(input *contextargs.Context, p
 		Timeout:       pageTimeout,
 		DisableCookie: request.DisableCookie,
 		Options:       request.options.Options,
+		AuthProvider:  request.options.AuthProvider,
 		// only the navigation's status speaks for the host: a failed step or
 		// a subresource from another origin does not
 		OnNavigationResponse: func(resp *http.Response) {

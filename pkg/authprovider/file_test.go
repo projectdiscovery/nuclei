@@ -41,7 +41,7 @@ dynamic:
 		time.Sleep(75 * time.Millisecond)
 		dynamic.Extracted = map[string]interface{}{"token": "session-token"}
 		return nil
-	})
+	}, nil)
 	require.NoError(t, err)
 
 	const workers = 20

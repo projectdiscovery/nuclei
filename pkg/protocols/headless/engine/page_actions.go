@@ -443,6 +443,7 @@ func (p *Page) NavigateURL(action *Action, out ActionData) error {
 	finalparams.Merge(p.inputURL.Params.Encode())
 	parsedURL.Params = finalparams
 
+	p.prepareAuthForNavigation(parsedURL)
 	if err := p.page.Navigate(parsedURL.String()); err != nil {
 		return errkit.Wrapf(err, "could not navigate to url %s", parsedURL.String())
 	}

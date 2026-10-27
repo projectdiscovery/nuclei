@@ -303,7 +303,7 @@ func newCookieAuthProvider(t *testing.T, authType, domain, cookieName string) au
 		}
 	}
 	require.NoError(t, os.WriteFile(secretFile, []byte(secret), 0o600))
-	provider, err := authprovider.NewFileAuthProvider(secretFile, fetchSecret)
+	provider, err := authprovider.NewFileAuthProvider(secretFile, fetchSecret, nil)
 	require.NoError(t, err)
 	return provider
 }

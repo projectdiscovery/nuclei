@@ -39,6 +39,8 @@ func GetPlaygroundServer() *PlaygroundServer {
 	mux.HandleFunc("POST /user", patchUnsanitizedUserHandler)
 	mux.HandleFunc("GET /blog/posts", getPostsHandler)
 
+	registerAuthRoutes(mux)
+
 	handler := recoverPlaygroundRequest(logPlaygroundRequest(mux))
 	return &PlaygroundServer{handler: handler}
 }
@@ -282,6 +284,12 @@ func writeJSON(w http.ResponseWriter, statusCode int, value interface{}) {
 	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 	w.WriteHeader(statusCode)
 	_ = json.NewEncoder(w).Encode(value)
+}
+
+func writeString(w http.ResponseWriter, statusCode int, value string) {
+	w.Header().Set("Content-Type", "text/plain; charset=UTF-8")
+	w.WriteHeader(statusCode)
+	_, _ = io.WriteString(w, value)
 }
 
 func recoverPlaygroundRequest(next http.Handler) http.Handler {

@@ -14,6 +14,7 @@ import (
 	"github.com/go-rod/rod"
 	"github.com/go-rod/rod/lib/proto"
 	"github.com/projectdiscovery/gologger"
+	"github.com/projectdiscovery/nuclei/v3/pkg/authprovider"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
@@ -43,6 +44,11 @@ type Page struct {
 	variables          map[string]interface{}
 	lastActionNavigate *Action
 	cancel             context.CancelFunc
+	// authSessionGeneration is the dynamic-session generation applied to this
+	// page, used to ignore late expiry signals from an older session.
+	authSessionGeneration uint64
+	authRefreshPending    bool
+	authMutex             *sync.RWMutex
 }
 
 // HistoryData contains the page request/response pairs
@@ -56,6 +62,9 @@ type Options struct {
 	Timeout       time.Duration
 	DisableCookie bool
 	Options       *types.Options
+	// AuthProvider supplies credentials (headers/cookies) that are injected into
+	// the browser so authenticated headless scans work like HTTP ones. May be nil.
+	AuthProvider authprovider.AuthProvider
 	// OnNavigationResponse receives the response to the initial URL once the
 	// actions ran, even when they failed: the browser fails a navigation on
 	// an error status with an empty body, and that status still matters.
@@ -80,12 +89,13 @@ func (i *Instance) Run(ctx *contextargs.Context, actions []*Action, payloads map
 	}
 	page = page.Context(pageContext)
 	createdPage := &Page{
-		options:  options,
-		page:     page,
-		ctx:      ctx,
-		instance: i,
-		mutex:    &sync.RWMutex{},
-		cancel:   cancelPage,
+		options:   options,
+		page:      page,
+		ctx:       ctx,
+		instance:  i,
+		mutex:     &sync.RWMutex{},
+		authMutex: &sync.RWMutex{},
+		cancel:    cancelPage,
 	}
 	successfulPageCreation := false
 	defer func() {
@@ -146,10 +156,17 @@ func (i *Instance) Run(ctx *contextargs.Context, actions []*Action, payloads map
 		createdPage.hijackRouter = hijackRouter
 		go hijackRouter.Run()
 	} else {
+		// Auth headers can only be added before the request is sent, so an
+		// authenticated scan pauses at request stage too. Other scans keep the
+		// single response-stage pause.
+		stage := proto.FetchRequestStageResponse
+		if options.AuthProvider != nil {
+			stage = proto.FetchRequestStageRequest
+		}
 		hijackRouter := NewHijack(page)
 		hijackRouter.SetPattern(&proto.FetchRequestPattern{
 			URLPattern:   "*",
-			RequestStage: proto.FetchRequestStageResponse,
+			RequestStage: stage,
 		})
 		createdPage.hijackNative = hijackRouter
 		hijackRouterHandler := hijackRouter.Start(createdPage.routingRuleHandlerNative)
@@ -202,6 +219,14 @@ func (i *Instance) Run(ctx *contextargs.Context, actions []*Action, payloads map
 		}
 	}
 
+	// Seed domain-scoped authentication cookies before navigation. Headers are
+	// applied per request by the interception handlers so they cannot leak to a
+	// cross-origin request.
+	createdPage.prepareAuthForNavigation(input)
+	// seed any captured browser web storage (e.g. localStorage JWTs from a
+	// headless auto-login) before page scripts run on navigation.
+	createdPage.applyAuthWebStorage()
+
 	data, err := createdPage.ExecuteActions(ctx, actions)
 	if options.OnNavigationResponse != nil {
 		if resp := createdPage.NavigationResponse(); resp != nil {
@@ -234,6 +259,10 @@ func (i *Instance) Run(ctx *contextargs.Context, actions []*Action, payloads map
 	if resp := createdPage.FirstResponse(); resp != nil {
 		data["header"] = utils.HeadersToString(resp.Header)
 		data["status_code"] = fmt.Sprint(resp.StatusCode)
+		// Let any dynamic auth secret inspect the navigation status so an
+		// expired session (reauth-status-codes) is re-authenticated before
+		// the next headless navigation, matching the HTTP protocol.
+		createdPage.notifyAuthResponse(resp.StatusCode)
 	}
 
 	successfulPageCreation = true // avoid closing the page in case of success in deferred function
