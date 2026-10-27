@@ -117,8 +117,10 @@ func TestRunReportsNavigationResponseWhenActionsFail(t *testing.T) {
 
 	var got *http.Response
 	actions := []*Action{{ActionType: ActionTypeHolder{ActionType: ActionNavigate}, Data: map[string]string{"url": "{{BaseURL}}"}}, {ActionType: ActionTypeHolder{ActionType: ActionWaitLoad}}}
-	_, _, err = instance.Run(input, actions, nil, &Options{Timeout: 20 * time.Second, Options: opts, OnNavigationResponse: func(resp *http.Response) { got = resp }})
-	require.Error(t, err, "the browser fails a navigation to an empty error page")
+	// Full Chromium fails a navigation to an empty error page, while
+	// chrome-headless-shell renders it, so only the reported response is
+	// checked: it must arrive whether or not the actions fail.
+	_, _, _ = instance.Run(input, actions, nil, &Options{Timeout: 20 * time.Second, Options: opts, OnNavigationResponse: func(resp *http.Response) { got = resp }})
 	require.NotNil(t, got)
 	require.Equal(t, http.StatusTooManyRequests, got.StatusCode)
 	require.Equal(t, "7", got.Header.Get("Retry-After"))

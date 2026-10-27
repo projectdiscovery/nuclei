@@ -23,6 +23,11 @@ headless:
       args:
         by: x
         xpath: /html/body/form/input[2]
+    # the upload response echoes the file, rendered as text in a pre element
+    - action: waitvisible
+      args:
+        by: xpath
+        xpath: //pre[contains(., "Basic File Upload")]
     matchers:
       - type: word
         words:
