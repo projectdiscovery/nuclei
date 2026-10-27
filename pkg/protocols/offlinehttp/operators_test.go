@@ -7,13 +7,13 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/projectdiscovery/nuclei/v3/internal/tests/testutils"
 	"github.com/projectdiscovery/nuclei/v3/pkg/model"
 	"github.com/projectdiscovery/nuclei/v3/pkg/model/types/severity"
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators"
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators/extractors"
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators/matchers"
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
-	"github.com/projectdiscovery/nuclei/v3/internal/tests/testutils"
 )
 
 func TestResponseToDSLMap(t *testing.T) {
@@ -108,6 +108,19 @@ func TestHTTPOperatorMatch(t *testing.T) {
 		isMatched, matched := request.Match(event, matcher)
 		require.False(t, isMatched, "could match invalid response matcher")
 		require.Equal(t, []string{}, matched)
+	})
+
+	t.Run("error header is not request failure", func(t *testing.T) {
+		event["error"] = "server-controlled"
+		matcher := &matchers.Matcher{
+			Type:   matchers.MatcherTypeHolder{MatcherType: matchers.ErrorMatcher},
+			Errors: []string{"any"},
+		}
+		require.NoError(t, matcher.CompileMatchers())
+
+		isMatched, matched := request.Match(event, matcher)
+		require.False(t, isMatched)
+		require.Empty(t, matched)
 	})
 }
 

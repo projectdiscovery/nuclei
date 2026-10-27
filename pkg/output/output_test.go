@@ -54,6 +54,21 @@ func TestStandardWriterRequest(t *testing.T) {
 	})
 }
 
+func TestStandardWriterWriteErroredEvents(t *testing.T) {
+	outputWriter := &testWriteCloser{}
+	w, err := NewStandardWriter(&types.Options{})
+	require.NoError(t, err)
+	w.outputFile = outputWriter
+
+	// a failure event (skipped or errored request) is only written with -ms
+	require.NoError(t, w.Write(&ResultEvent{TemplateID: "failed", Error: "connection refused"}))
+	require.Empty(t, outputWriter.String())
+
+	// a matched result can carry the request error, e.g. from an error matcher
+	require.NoError(t, w.Write(&ResultEvent{TemplateID: "matched", MatcherStatus: true, Error: "connection refused"}))
+	require.Contains(t, outputWriter.String(), "matched")
+}
+
 // Only the fields filled from a response are redacted; text the template wrote
 // stays as it is, even next to a filled field.
 func TestStandardWriterRedactsFilledInfo(t *testing.T) {

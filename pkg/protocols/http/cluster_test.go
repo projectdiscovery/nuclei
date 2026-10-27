@@ -26,6 +26,12 @@ func TestIsClusterable(t *testing.T) {
 		require.True(t, req.IsClusterable())
 	})
 
+	t.Run("error matchers prevent clustering", func(t *testing.T) {
+		req := &Request{Path: []string{"{{BaseURL}}"}, Method: HTTPMethodTypeHolder{MethodType: HTTPGet}}
+		req.Matchers = []*matchers.Matcher{{Type: matchers.MatcherTypeHolder{MatcherType: matchers.ErrorMatcher}}}
+		require.False(t, req.IsClusterable())
+	})
+
 	t.Run("payloads prevent clustering", func(t *testing.T) {
 		req := &Request{
 			Path:     []string{"{{BaseURL}}"},

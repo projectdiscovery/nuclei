@@ -14,6 +14,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/helpers/responsehighlighter"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils/requesterr"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 )
 
@@ -21,8 +22,7 @@ import (
 // TODO: Try to consolidate this in protocols.MakeDefaultMatchFunc to avoid any inconsistencies
 func (request *Request) Match(data map[string]interface{}, matcher *matchers.Matcher) (bool, []string) {
 	item, ok := request.getMatchPart(matcher.Part, data)
-	// an llm matcher with inputs compares whole responses instead of one part
-	if !ok && matcher.Type.MatcherType != matchers.DSLMatcher && len(matcher.Inputs) == 0 {
+	if !ok && matcher.NeedsPart() {
 		return false, []string{}
 	}
 
@@ -49,6 +49,12 @@ func (request *Request) Match(data map[string]interface{}, matcher *matchers.Mat
 		return matcher.Result(matcher.MatchDSLWithOptions(data, request.options.GetOptions())), []string{}
 	case matchers.XPathMatcher:
 		return matcher.Result(matcher.MatchXPath(item)), []string{}
+	case matchers.ErrorMatcher:
+		if !requesterr.IsMarked(data) {
+			// no request error: a response header named "error" is not one
+			return matcher.ResultWithMatchedSnippet(false, []string{})
+		}
+		return matcher.ResultWithMatchedSnippet(matcher.MatchError(data))
 	case matchers.LLMMatcher:
 		return protocols.MatchLLM(data, matcher, item, request.options)
 	}
@@ -136,6 +142,7 @@ func (request *Request) responseToDSLMap(resp *http.Response, host, matched, raw
 	request.setHashOrDefault(data, "all_headers", headers)
 	request.setHashOrDefault(data, "header", headers)
 	data["duration"] = duration.Seconds()
+	data["timeout"] = false
 	data["template-id"] = request.options.TemplateID
 	data["template-info"] = request.options.TemplateInfo
 	data["template-path"] = request.options.TemplatePath
