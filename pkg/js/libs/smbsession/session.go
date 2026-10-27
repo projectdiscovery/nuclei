@@ -154,6 +154,18 @@ func (s *Session) ListShares() ([]string, error) {
 	return ops.ListShares()
 }
 
+// ListSharesContext enumerates share names and stops waiting when ctx is
+// cancelled by closing the session, matching Dial.
+func (s *Session) ListSharesContext(ctx context.Context) ([]string, error) {
+	ops := s.ops()
+	if ops == nil {
+		return nil, fmt.Errorf("smb session not connected")
+	}
+	return await(ctx, s, func(context.Context) ([]string, error) {
+		return ops.ListShares()
+	})
+}
+
 // ListDir lists one directory on share (share-relative path).
 func (s *Session) ListDir(share, dir string) ([]Entry, error) {
 	return s.ListDirContext(context.Background(), share, dir)
@@ -166,7 +178,7 @@ func (s *Session) ListDirContext(ctx context.Context, share, dir string) ([]Entr
 	if ops == nil {
 		return nil, fmt.Errorf("smb session not connected")
 	}
-	return s.awaitEntries(ctx, func(ctx context.Context) ([]Entry, error) {
+	return await(ctx, s, func(ctx context.Context) ([]Entry, error) {
 		return listDir(ctx, ops, share, dir)
 	})
 }
@@ -192,34 +204,37 @@ func (s *Session) ListTreeContext(ctx context.Context, share, root string, maxDe
 	if ops == nil {
 		return nil, fmt.Errorf("smb session not connected")
 	}
-	return s.awaitEntries(ctx, func(ctx context.Context) ([]Entry, error) {
+	return await(ctx, s, func(ctx context.Context) ([]Entry, error) {
 		return listTree(ctx, ops, share, root, maxDepth, maxEntries)
 	})
 }
 
-func (s *Session) awaitEntries(ctx context.Context, fn func(context.Context) ([]Entry, error)) ([]Entry, error) {
+// await runs fn and closes the session when ctx is cancelled first, which
+// unblocks the pending SMB call.
+func await[T any](ctx context.Context, s *Session, fn func(context.Context) (T, error)) (T, error) {
+	var zero T
 	if ctx == nil {
 		ctx = context.Background()
 	}
 	if err := ctx.Err(); err != nil {
-		return nil, err
+		return zero, err
 	}
 	type rec struct {
-		entries []Entry
-		err     error
+		value T
+		err   error
 	}
 	ch := make(chan rec, 1)
 	go func() {
-		entries, err := fn(ctx)
-		ch <- rec{entries, err}
+		value, err := fn(ctx)
+		ch <- rec{value, err}
 	}()
 	select {
 	case <-ctx.Done():
 		s.Close()
 		<-ch
-		return nil, ctx.Err()
+		return zero, ctx.Err()
 	case r := <-ch:
-		return r.entries, r.err
+		return r.value, r.err
 	}
 }
 

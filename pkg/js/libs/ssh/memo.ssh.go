@@ -2,6 +2,7 @@
 package ssh
 
 import (
+	"context"
 	"errors"
 	"fmt"
 
@@ -10,11 +11,11 @@ import (
 	"github.com/zmap/zgrab2/lib/ssh"
 )
 
-func memoizedconnectSSHInfoMode(opts *connectOptions) (*ssh.HandshakeLog, error) {
+func memoizedconnectSSHInfoMode(ctx context.Context, opts *connectOptions) (*ssh.HandshakeLog, error) {
 	hash := "connectSSHInfoMode" + ":" + fmt.Sprint(opts)
 
 	v, err, _ := protocolstate.Memoizer.Do(hash, func() (interface{}, error) {
-		return connectSSHInfoMode(opts)
+		return connectSSHInfoMode(ctx, opts)
 	})
 	if err != nil {
 		return nil, err
