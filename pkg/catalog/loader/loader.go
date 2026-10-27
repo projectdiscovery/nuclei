@@ -631,10 +631,10 @@ func (store *Store) noteMissingCapabilities(templatePath string, missingCaps []t
 // erroring out on discovering any faulty templates.
 func (store *Store) ValidateTemplates() error {
 	templatePaths, errs := store.config.Catalog.GetTemplatesPath(store.finalTemplates)
-	store.logErroredTemplates(errs)
+	notFound := store.logErroredTemplates(errs)
 
 	workflowPaths, errs := store.config.Catalog.GetTemplatesPath(store.finalWorkflows)
-	store.logErroredTemplates(errs)
+	notFound += store.logErroredTemplates(errs)
 
 	templatePathsMap := make(map[string]struct{}, len(templatePaths))
 	for _, path := range templatePaths {
@@ -646,7 +646,8 @@ func (store *Store) ValidateTemplates() error {
 		workflowPathsMap[path] = struct{}{}
 	}
 
-	if store.areTemplatesValid(templatePathsMap) && store.areWorkflowsValid(workflowPathsMap) {
+	// a path that can't be resolved is not validated, so it can't count as valid
+	if store.areTemplatesValid(templatePathsMap) && store.areWorkflowsValid(workflowPathsMap) && notFound == 0 {
 		return nil
 	}
 
@@ -1056,10 +1057,15 @@ func workflowContainsProtocol(workflow []*workflows.WorkflowTemplate) bool {
 	return false
 }
 
-func (s *Store) logErroredTemplates(erred map[string]error) {
+// logErroredTemplates logs the templates that could not be found and returns
+// how many of them were not handled by the NotFoundCallback.
+func (s *Store) logErroredTemplates(erred map[string]error) int {
+	notFound := 0
 	for template, err := range erred {
 		if s.NotFoundCallback == nil || !s.NotFoundCallback(template) {
 			s.logger.Error().Msgf("Could not find template '%s': %s", template, err)
+			notFound++
 		}
 	}
+	return notFound
 }
