@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net"
 	"net/url"
+	"regexp"
 	"slices"
 	"time"
 
@@ -18,6 +19,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/httpcache"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils/expand"
+	iputil "github.com/projectdiscovery/utils/ip"
 	mapsutil "github.com/projectdiscovery/utils/maps"
 )
 
@@ -101,8 +103,11 @@ func initDialers(options *types.Options) error {
 		switch {
 		case asn.IsASN(excludeTarget):
 			expandedDenyList = append(expandedDenyList, expand.ASN(excludeTarget)...)
-		default:
+		case iputil.IsIP(excludeTarget) || iputil.IsCIDR(excludeTarget):
 			expandedDenyList = append(expandedDenyList, excludeTarget)
+		default:
+			// networkpolicy treats non-IP entries as unanchored regexes, so "test.com" would also deny "latest.com"
+			expandedDenyList = append(expandedDenyList, "(?i)^"+regexp.QuoteMeta(excludeTarget)+"$")
 		}
 	}
 
