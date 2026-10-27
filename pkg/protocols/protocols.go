@@ -573,10 +573,12 @@ func MakeDefaultResultEvent(request Request, wrapped *output.InternalWrappedEven
 		data := request.MakeResultEventItem(wrapped)
 		results = append(results, data)
 	}
-	// Every protocol builds its results here, so attaching the llm audit at this
-	// one point keeps the verdict on findings from all of them rather than only
-	// the protocol that remembers to ask. It is a no-op when no llm operator ran.
-	return AttachLLMAudits(results, wrapped.InternalEvent)
+	// Every protocol builds its results here, so attaching the llm audit and
+	// rendering the info at this one point covers findings from all of them
+	// rather than only the protocol that remembers to ask. Each is a no-op when
+	// it has nothing to do: no llm operator ran, or the info has no placeholders.
+	results = AttachLLMAudits(results, wrapped.InternalEvent)
+	return renderInfo(results, wrapped.InternalEvent)
 }
 
 // MakeDefaultExtractFunc performs extracting operation for an extractor on model and returns true or false.

@@ -337,6 +337,53 @@ func TestHTTPMakeResult(t *testing.T) {
 	require.Equal(t, "1.1.1.1", finalEvent.Results[0].ExtractedResults[0], "could not get correct extracted results")
 }
 
+func TestHTTPMakeResultRendersInfo(t *testing.T) {
+	options := testutils.DefaultOptions
+
+	testutils.Init(options)
+	templateID := "testing-http-info"
+	request := &Request{
+		ID:     templateID,
+		Path:   []string{"{{BaseURL}}"},
+		Method: HTTPMethodTypeHolder{MethodType: HTTPGet},
+		Operators: operators.Operators{
+			Matchers: []*matchers.Matcher{{
+				Part:  "body",
+				Type:  matchers.MatcherTypeHolder{MatcherType: matchers.WordsMatcher},
+				Words: []string{"version"},
+			}},
+			Extractors: []*extractors.Extractor{{
+				Name:       "version",
+				Part:       "body",
+				Type:       extractors.ExtractorTypeHolder{ExtractorType: extractors.RegexExtractor},
+				Regex:      []string{`version: ([0-9.]+)`},
+				RegexGroup: 1,
+				Internal:   true,
+			}},
+		},
+	}
+	description := "Version {{version}} on {{host}}:{{port}} accepts password {{replace_regex(password, '^(.{2}).*$', '$1***')}}"
+	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
+		ID:   templateID,
+		Info: model.Info{SeverityHolder: severity.Holder{Severity: severity.High}, Name: "test", Description: description},
+	})
+	require.NoError(t, request.Compile(executerOpts))
+
+	resp := &http.Response{Header: make(http.Header)}
+	// The payload values of the request that matched travel in the event.
+	payloads := map[string]interface{}{"password": "s3cr3t"}
+	event := request.responseToDSLMap(resp, "https://example.com:8443/", "https://example.com:8443/", "", "", "server version: 7.2.4", "", time.Second, payloads)
+	finalEvent := &output.InternalWrappedEvent{InternalEvent: event}
+	result, ok := request.CompiledOperators.Execute(event, request.Match, request.Extract, false)
+	require.True(t, ok)
+	finalEvent.OperatorsResult = result
+	finalEvent.Results = request.MakeResultEvent(finalEvent)
+
+	require.Len(t, finalEvent.Results, 1)
+	require.Equal(t, "Version 7.2.4 on example.com:8443 accepts password s3***", finalEvent.Results[0].Info.Description)
+	require.Equal(t, description, executerOpts.TemplateInfo.Description, "the template info must stay as written")
+}
+
 const exampleRawRequest = `GET / HTTP/1.1
 Host: example.com
 Upgrade-Insecure-Requests: 1

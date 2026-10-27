@@ -203,16 +203,18 @@ func init() {
 	MODELInfoDoc.Fields[3].Name = "description"
 	MODELInfoDoc.Fields[3].Type = "string"
 	MODELInfoDoc.Fields[3].Note = ""
-	MODELInfoDoc.Fields[3].Description = "Description of the template.\n\nYou can go in-depth here on what the template actually does."
+	MODELInfoDoc.Fields[3].Description = "Description of the template.\n\nYou can go in-depth here on what the template actually does.\n\nDescription, impact and remediation may hold {{placeholders}} filled for\neach finding: named extractors, payloads, variables and DSL helpers\n(network helpers excluded), and the result fields host, port, ip, url,\nscheme, path, matched-at, matcher-name and extractor-name, which win over\nvalues of the same name. Use join(\", \", name) for an extractor with\nseveral values, and brackets for a hyphenated name inside a helper:\nto_upper([matcher-name]). Unknown placeholders stay as written, and so\ndoes a field whose expression fails. Global matcher templates match on\nother templates' responses, so only the result fields fill their text."
 	MODELInfoDoc.Fields[3].Comments[encoder.LineComment] = "Description of the template."
 
 	MODELInfoDoc.Fields[3].AddExample("", "Bower is a package manager which stores package information in the bower.json file")
 
 	MODELInfoDoc.Fields[3].AddExample("", "Subversion ALM for the enterprise before 8.8.2 allows reflected XSS at multiple locations")
+
+	MODELInfoDoc.Fields[3].AddExample("", "Redis {{version}} on {{host}}:{{port}} accepts the default password")
 	MODELInfoDoc.Fields[4].Name = "impact"
 	MODELInfoDoc.Fields[4].Type = "string"
 	MODELInfoDoc.Fields[4].Note = ""
-	MODELInfoDoc.Fields[4].Description = "Impact of the template.\n\nYou can go in-depth here on impact of the template."
+	MODELInfoDoc.Fields[4].Description = "Impact of the template.\n\nYou can go in-depth here on impact of the template.\n\nSupports the same placeholders as description."
 	MODELInfoDoc.Fields[4].Comments[encoder.LineComment] = "Impact of the template."
 
 	MODELInfoDoc.Fields[4].AddExample("", "Successful exploitation of this vulnerability could allow an attacker to execute arbitrary SQL queries, potentially leading to unauthorized access, data leakage, or data manipulation.")
@@ -245,7 +247,7 @@ func init() {
 	MODELInfoDoc.Fields[9].Name = "remediation"
 	MODELInfoDoc.Fields[9].Type = "string"
 	MODELInfoDoc.Fields[9].Note = ""
-	MODELInfoDoc.Fields[9].Description = "Remediation steps for the template.\n\nYou can go in-depth here on how to mitigate the problem found by this template."
+	MODELInfoDoc.Fields[9].Description = "Remediation steps for the template.\n\nYou can go in-depth here on how to mitigate the problem found by this template.\n\nSupports the same placeholders as description."
 	MODELInfoDoc.Fields[9].Comments[encoder.LineComment] = "Remediation steps for the template."
 
 	MODELInfoDoc.Fields[9].AddExample("", "Change the default administrative username and password of Apache ActiveMQ by editing the file jetty-realm.properties")

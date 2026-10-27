@@ -1,9 +1,13 @@
 package model
 
 import (
+	"slices"
+	"strings"
+
 	"github.com/invopop/jsonschema"
 	"github.com/projectdiscovery/nuclei/v3/pkg/model/types/severity"
 	"github.com/projectdiscovery/nuclei/v3/pkg/model/types/stringslice"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/marker"
 )
 
 type schemaMetadata struct {
@@ -47,14 +51,27 @@ type Info struct {
 	//
 	//   You can go in-depth here on what the template actually does.
 	//
+	//   Description, impact and remediation may hold {{placeholders}} filled for
+	//   each finding: named extractors, payloads, variables and DSL helpers
+	//   (network helpers excluded), and the result fields host, port, ip, url,
+	//   scheme, path, matched-at, matcher-name and extractor-name, which win over
+	//   values of the same name. Use join(", ", name) for an extractor with
+	//   several values, and brackets for a hyphenated name inside a helper:
+	//   to_upper([matcher-name]). Unknown placeholders stay as written, and so
+	//   does a field whose expression fails. Global matcher templates match on
+	//   other templates' responses, so only the result fields fill their text.
+	//
 	// examples:
 	//   - value: "\"Bower is a package manager which stores package information in the bower.json file\""
 	//   - value: "\"Subversion ALM for the enterprise before 8.8.2 allows reflected XSS at multiple locations\""
+	//   - value: "\"Redis {{version}} on {{host}}:{{port}} accepts the default password\""
 	Description string `json:"description,omitempty" yaml:"description,omitempty" jsonschema:"title=description of the template,description=In-depth explanation on what the template does,type=string,example=Bower is a package manager which stores package information in the bower.json file"`
 	// description: |
 	//   Impact of the template.
 	//
 	//   You can go in-depth here on impact of the template.
+	//
+	//   Supports the same placeholders as description.
 	//
 	// examples:
 	//   - value: "\"Successful exploitation of this vulnerability could allow an attacker to execute arbitrary SQL queries, potentially leading to unauthorized access, data leakage, or data manipulation.\""
@@ -89,9 +106,55 @@ type Info struct {
 	//
 	//   You can go in-depth here on how to mitigate the problem found by this template.
 	//
+	//   Supports the same placeholders as description.
+	//
 	// examples:
 	//   - value: "\"Change the default administrative username and password of Apache ActiveMQ by editing the file jetty-realm.properties\""
 	Remediation string `json:"remediation,omitempty" yaml:"remediation,omitempty" jsonschema:"title=remediation steps for the template,description=In-depth explanation on how to fix the issues found by the template,example=Change the default administrative username and password of Apache ActiveMQ by editing the file jetty-realm.properties,type=string"`
+}
+
+// TextField is a free-text field of the info, labeled as reports show it.
+type TextField struct {
+	Label string
+	Value *string
+}
+
+// PlaceholderFields returns the free-text fields that may hold {{placeholders}}
+// filled for each finding. Rendering, redaction and the sarif export all walk
+// this one list, so a field added here is handled by every one of them.
+func (i *Info) PlaceholderFields() []TextField {
+	return []TextField{
+		{Label: "Description", Value: &i.Description},
+		{Label: "Impact", Value: &i.Impact},
+		{Label: "Remediation", Value: &i.Remediation},
+	}
+}
+
+// HasPlaceholders reports whether the field holds a {{...}} or §...§ marker
+// the renderer could fill.
+func (f TextField) HasPlaceholders() bool {
+	return strings.Contains(*f.Value, marker.ParenthesisOpen) || strings.Contains(*f.Value, marker.General)
+}
+
+// HasPlaceholders reports whether any placeholder field holds a marker.
+func (i *Info) HasPlaceholders() bool {
+	return slices.ContainsFunc(i.PlaceholderFields(), TextField.HasPlaceholders)
+}
+
+// FilledFields returns the placeholder fields whose text differs from written,
+// the info as the template wrote it. A nil written means nothing was filled.
+func (i *Info) FilledFields(written *Info) []TextField {
+	if written == nil {
+		return nil
+	}
+	writtenFields := written.PlaceholderFields()
+	var filled []TextField
+	for n, field := range i.PlaceholderFields() {
+		if *field.Value != *writtenFields[n].Value {
+			filled = append(filled, field)
+		}
+	}
+	return filled
 }
 
 // JSONSchemaProperty returns the JSON schema property for the Info object.

@@ -237,6 +237,11 @@ type ResultEvent struct {
 	FileToIndexPosition map[string]int `json:"-"`
 	TemplateVerifier    string         `json:"-"`
 	Error               string         `json:"error,omitempty"`
+	// TemplateInfo is the info as the template wrote it, kept only when
+	// placeholders changed the text. The changed fields can carry response data,
+	// so they are redacted like the raw request and response. It is bookkeeping,
+	// so no exporter writes it; mongo serializes with bson tags, not json ones.
+	TemplateInfo *model.Info `json:"-" bson:"-"`
 }
 
 type IssueTrackerMetadata struct {
@@ -366,6 +371,9 @@ func (w *StandardWriter) Write(event *ResultEvent) error {
 	event.Response = redactWithPatterns(event.Response, patterns)
 	event.CURLCommand = redactWithPatterns(event.CURLCommand, patterns)
 	event.Matched = redactWithPatterns(event.Matched, patterns)
+	for _, field := range event.Info.FilledFields(event.TemplateInfo) {
+		*field.Value = redactWithPatterns(*field.Value, patterns)
+	}
 
 	event.Timestamp = time.Now()
 
