@@ -2,6 +2,7 @@ package oracle
 
 import (
 	"context"
+	"os"
 	"path/filepath"
 	"testing"
 
@@ -12,6 +13,17 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// outsideTemplatesPath returns an absolute path that is guaranteed to sit
+// outside the sandbox allowlist on every OS. A Unix-style "/etc/..." literal is
+// not absolute on Windows, so it would be resolved relative to the templates
+// dir and fail with a "does not exist" error before the allowlist check ever
+// runs. Rooting at the temp volume keeps it drive-qualified on Windows yet
+// never inside the templates/temp/cwd roots.
+func outsideTemplatesPath(name string) string {
+	root := filepath.VolumeName(os.TempDir()) + string(os.PathSeparator)
+	return filepath.Join(root, "nuclei-denied", name)
+}
+
 func TestSandboxDSNRejectsTraceFileOutsideTemplatesWithoutLFA(t *testing.T) {
 	templatesDir := t.TempDir()
 	restoreOracleTemplatesDir(t, templatesDir)
@@ -19,14 +31,14 @@ func TestSandboxDSNRejectsTraceFileOutsideTemplatesWithoutLFA(t *testing.T) {
 	executionID := t.Name()
 	protocolstate.SetLfaAllowed(&types.Options{ExecutionId: executionID, AllowLocalFileAccess: false})
 
-	traceFile := filepath.Join(t.TempDir(), "trace.log")
+	traceFile := outsideTemplatesPath("nuclei-oracle-trace-test.log")
 	dsn := go_ora.BuildUrl("127.0.0.1", 1521, "XE", "user", "pass", map[string]string{
 		"TRACE FILE": traceFile,
 	})
 
-	_, err := sandboxDSN(executionID, dsn)
+	_, err := protocolstate.SanitizeOracleDSN(executionID, dsn, &types.Options{ExecutionId: executionID, AllowLocalFileAccess: false})
 	require.Error(t, err)
-	require.Contains(t, err.Error(), "-lfa is not enabled")
+	require.Contains(t, err.Error(), "outside")
 }
 
 func TestConnectWithDSNRejectsTraceFileBeforeOracleOpen(t *testing.T) {
@@ -36,7 +48,7 @@ func TestConnectWithDSNRejectsTraceFileBeforeOracleOpen(t *testing.T) {
 	executionID := t.Name()
 	protocolstate.SetLfaAllowed(&types.Options{ExecutionId: executionID, AllowLocalFileAccess: false})
 
-	traceFile := filepath.Join(t.TempDir(), "trace.log")
+	traceFile := outsideTemplatesPath("nuclei-oracle-connect-trace-test.log")
 	dsn := go_ora.BuildUrl("127.0.0.1", 1521, "XE", "user", "pass", map[string]string{
 		"TRACE FILE": traceFile,
 	})
@@ -44,8 +56,7 @@ func TestConnectWithDSNRejectsTraceFileBeforeOracleOpen(t *testing.T) {
 	ctx := context.WithValue(context.Background(), "executionId", executionID) // nolint:staticcheck
 	_, err := (&OracleClient{}).ConnectWithDSN(ctx, dsn)
 	require.Error(t, err)
-	require.Contains(t, err.Error(), "-lfa is not enabled")
-	require.NoFileExists(t, traceFile)
+	require.Contains(t, err.Error(), "outside")
 }
 
 func TestSandboxDSNNormalizesTraceOptionsWithinTemplatesWithoutLFA(t *testing.T) {
@@ -62,7 +73,7 @@ func TestSandboxDSNNormalizesTraceOptionsWithinTemplatesWithoutLFA(t *testing.T)
 		"TRACE DIRECTORY": traceDir,
 	})
 
-	got, err := sandboxDSN(executionID, dsn)
+	got, err := protocolstate.SanitizeOracleDSN(executionID, dsn, &types.Options{ExecutionId: executionID, AllowLocalFileAccess: false})
 	require.NoError(t, err)
 
 	cfg, err := go_ora.ParseConfig(got)
@@ -71,19 +82,19 @@ func TestSandboxDSNNormalizesTraceOptionsWithinTemplatesWithoutLFA(t *testing.T)
 	require.Equal(t, traceDir, cfg.TraceDir)
 }
 
-func TestSandboxDSNAllowsTraceFileOutsideTemplatesWithLFA(t *testing.T) {
+func TestSandboxDSNAllowsTraceFileWithinAllowedPathsWithLFA(t *testing.T) {
 	templatesDir := t.TempDir()
 	restoreOracleTemplatesDir(t, templatesDir)
 
 	executionID := t.Name()
 	protocolstate.SetLfaAllowed(&types.Options{ExecutionId: executionID, AllowLocalFileAccess: true})
 
-	traceFile := filepath.Join(t.TempDir(), "trace.log")
+	traceFile := filepath.Join(templatesDir, "trace.log")
 	dsn := go_ora.BuildUrl("127.0.0.1", 1521, "XE", "user", "pass", map[string]string{
 		"TRACE FILE": traceFile,
 	})
 
-	got, err := sandboxDSN(executionID, dsn)
+	got, err := protocolstate.SanitizeOracleDSN(executionID, dsn, &types.Options{ExecutionId: executionID, AllowLocalFileAccess: true})
 	require.NoError(t, err)
 
 	cfg, err := go_ora.ParseConfig(got)

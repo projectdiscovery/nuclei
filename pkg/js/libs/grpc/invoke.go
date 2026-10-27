@@ -4,10 +4,10 @@ import (
 	"bytes"
 	"context"
 	"crypto/tls"
+	"errors"
 	"fmt"
 	"io"
 	"net"
-	"os"
 	"strings"
 
 	"github.com/fullstorydev/grpcurl"
@@ -20,6 +20,7 @@ import (
 	"google.golang.org/protobuf/types/descriptorpb"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
+	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 )
 
 // connConfig holds the low level knobs used to build a gRPC client connection.
@@ -34,7 +35,7 @@ type connConfig struct {
 
 // dialTarget builds a *grpc.ClientConn whose every connection is routed through
 // nuclei's network policy. The host is validated up front and the actual dial
-// is delegated to the execution's fastdialer via a custom context dialer, so
+// is delegated to the execution's fastdialer via DialAllowedWithExecutionID, so
 // IP/host denylists and RestrictLocalNetworkAccess are always enforced. The
 // passthrough scheme guarantees the target is handed verbatim to our dialer
 // (instead of gRPC's built in DNS resolver), keeping resolution and policy
@@ -53,13 +54,9 @@ func dialTarget(ctx context.Context, executionID, target string, cfg connConfig)
 	if !protocolstate.IsHostAllowed(executionID, host) {
 		return nil, protocolstate.ErrHostDenied.Msgf(host)
 	}
-	dialers := protocolstate.GetDialersWithId(executionID)
-	if dialers == nil || dialers.Fastdialer == nil {
-		return nil, fmt.Errorf("grpc: dialers not initialized for executionId %q", executionID)
-	}
 
 	contextDialer := func(dialCtx context.Context, addr string) (net.Conn, error) {
-		return dialers.Fastdialer.Dial(dialCtx, "tcp", addr)
+		return protocolstate.DialAllowedWithExecutionID(dialCtx, executionID, "tcp", addr)
 	}
 
 	var creds credentials.TransportCredentials
@@ -95,14 +92,14 @@ func dialTarget(ctx context.Context, executionID, target string, cfg connConfig)
 func descriptorSource(ctx context.Context, executionID string, cc *grpc.ClientConn, protosetFile string) (grpcurl.DescriptorSource, func(), error) {
 	noop := func() {}
 	if strings.TrimSpace(protosetFile) != "" {
-		// resolve through the local-file-access allowlist: unless -lfa is set,
-		// only files inside the nuclei-templates directory are permitted.
-		normalized, err := protocolstate.NormalizePathWithExecutionId(executionID, protosetFile)
+		// resolve + read through the filesystem allowlist: unless -lfa /
+		// --allowed-paths expand it, only templates/config/temp roots are
+		// permitted.
+		data, err := protocolstate.ReadFileAllowed(&types.Options{ExecutionId: executionID}, protosetFile)
 		if err != nil {
-			return nil, noop, fmt.Errorf("protoset path denied: %w", err)
-		}
-		data, err := os.ReadFile(normalized)
-		if err != nil {
+			if errors.Is(err, protocolstate.ErrPathDenied) {
+				return nil, noop, fmt.Errorf("protoset path denied: %w", err)
+			}
 			return nil, noop, fmt.Errorf("failed to read protoset file: %w", err)
 		}
 		fds := &descriptorpb.FileDescriptorSet{}

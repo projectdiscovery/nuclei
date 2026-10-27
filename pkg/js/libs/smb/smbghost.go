@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"errors"
-	"fmt"
 	"net"
 	"strconv"
 	"time"
@@ -27,7 +26,10 @@ const (
 // const isSMBGhost = smb.DetectSMBGhost('acme.com', 445);
 // ```
 func (c *SMBClient) DetectSMBGhost(ctx context.Context, host string, port int) (bool, error) {
-	executionId := ctx.Value("executionId").(string)
+	executionId := protocolstate.ExecutionIDFromContext(ctx)
+	if executionId == "" {
+		return false, errors.New("smb: missing executionId in context")
+	}
 	return memoizeddetectSMBGhost(ctx, executionId, host, port)
 }
 
@@ -38,11 +40,7 @@ func detectSMBGhost(ctx context.Context, executionId string, host string, port i
 		return false, protocolstate.ErrHostDenied.Msgf(host)
 	}
 	addr := net.JoinHostPort(host, strconv.Itoa(port))
-	dialer := protocolstate.GetDialersWithId(executionId)
-	if dialer == nil {
-		return false, fmt.Errorf("dialers not initialized for %s", executionId)
-	}
-	conn, err := dialer.Fastdialer.Dial(ctx, "tcp", addr)
+	conn, err := protocolstate.DialAllowedWithExecutionID(ctx, executionId, "tcp", addr)
 	if err != nil {
 		return false, err
 

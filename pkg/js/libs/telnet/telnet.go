@@ -88,7 +88,7 @@ func isTelnet(ctx context.Context, executionId string, host string, port int) (I
 		return IsTelnetResponse{}, fmt.Errorf("dialers not initialized for %s", executionId)
 	}
 
-	conn, err := dialer.Fastdialer.Dial(ctx, "tcp", net.JoinHostPort(host, strconv.Itoa(port)))
+	conn, err := protocolstate.DialAllowedWithExecutionID(ctx, executionId, "tcp", net.JoinHostPort(host, strconv.Itoa(port)))
 	if err != nil {
 		return resp, err
 	}
@@ -132,7 +132,7 @@ func (c *TelnetClient) Connect(ctx context.Context, host string, port int, usern
 	}
 
 	// Create TCP connection
-	conn, err := dialer.Fastdialer.Dial(ctx, "tcp", net.JoinHostPort(host, strconv.Itoa(port)))
+	conn, err := protocolstate.DialAllowedWithExecutionID(ctx, executionId, "tcp", net.JoinHostPort(host, strconv.Itoa(port)))
 	if err != nil {
 		return false, err
 	}
@@ -180,7 +180,7 @@ func (c *TelnetClient) Info(ctx context.Context, host string, port int) (TelnetI
 		return TelnetInfoResponse{}, fmt.Errorf("dialers not initialized for %s", executionId)
 	}
 
-	conn, err := dialer.Fastdialer.Dial(ctx, "tcp", net.JoinHostPort(host, strconv.Itoa(port)))
+	conn, err := protocolstate.DialAllowedWithExecutionID(ctx, executionId, "tcp", net.JoinHostPort(host, strconv.Itoa(port)))
 	if err != nil {
 		return TelnetInfoResponse{}, err
 	}
@@ -226,7 +226,7 @@ func (c *TelnetClient) GetTelnetNTLMInfo(ctx context.Context, host string, port 
 	}
 
 	// Create TCP connection
-	conn, err := dialer.Fastdialer.Dial(ctx, "tcp", net.JoinHostPort(host, strconv.Itoa(port)))
+	conn, err := protocolstate.DialAllowedWithExecutionID(ctx, executionId, "tcp", net.JoinHostPort(host, strconv.Itoa(port)))
 	if err != nil {
 		return nil, err
 	}

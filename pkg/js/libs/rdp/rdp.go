@@ -46,13 +46,8 @@ func IsRDP(ctx context.Context, host string, port int) (IsRDPResponse, error) {
 func isRDP(ctx context.Context, executionId string, host string, port int) (IsRDPResponse, error) {
 	resp := IsRDPResponse{}
 
-	dialer := protocolstate.GetDialersWithId(executionId)
-	if dialer == nil {
-		return IsRDPResponse{}, fmt.Errorf("dialers not initialized for %s", executionId)
-	}
-
 	timeout := 5 * time.Second
-	conn, err := dialer.Fastdialer.Dial(ctx, "tcp", fmt.Sprintf("%s:%d", host, port))
+	conn, err := protocolstate.DialAllowedWithExecutionID(ctx, executionId, "tcp", fmt.Sprintf("%s:%d", host, port))
 	if err != nil {
 		return resp, err
 	}
@@ -105,12 +100,8 @@ func CheckRDPAuth(ctx context.Context, host string, port int) (CheckRDPAuthRespo
 func checkRDPAuth(ctx context.Context, executionId string, host string, port int) (CheckRDPAuthResponse, error) {
 	resp := CheckRDPAuthResponse{}
 
-	dialer := protocolstate.GetDialersWithId(executionId)
-	if dialer == nil {
-		return CheckRDPAuthResponse{}, fmt.Errorf("dialers not initialized for %s", executionId)
-	}
 	timeout := 5 * time.Second
-	conn, err := dialer.Fastdialer.Dial(ctx, "tcp", fmt.Sprintf("%s:%d", host, port))
+	conn, err := protocolstate.DialAllowedWithExecutionID(ctx, executionId, "tcp", fmt.Sprintf("%s:%d", host, port))
 	if err != nil {
 		return resp, err
 	}
@@ -193,10 +184,6 @@ func CheckRDPEncryption(ctx context.Context, host string, port int) (RDPEncrypti
 
 // @memo
 func checkRDPEncryption(ctx context.Context, executionId string, host string, port int) (RDPEncryptionResponse, error) {
-	dialer := protocolstate.GetDialersWithId(executionId)
-	if dialer == nil {
-		return RDPEncryptionResponse{}, fmt.Errorf("dialers not initialized for %s", executionId)
-	}
 	resp := RDPEncryptionResponse{}
 	defaultTimeout := 5 * time.Second
 
@@ -211,7 +198,7 @@ func checkRDPEncryption(ctx context.Context, executionId string, host string, po
 
 	for name, value := range protocols {
 		dialCtx, cancel := context.WithTimeout(ctx, defaultTimeout)
-		conn, err := dialer.Fastdialer.Dial(dialCtx, "tcp", net.JoinHostPort(host, strconv.Itoa(port)))
+		conn, err := protocolstate.DialAllowedWithExecutionID(dialCtx, executionId, "tcp", net.JoinHostPort(host, strconv.Itoa(port)))
 		if err != nil {
 			cancel()
 			continue
@@ -252,7 +239,7 @@ func checkRDPEncryption(ctx context.Context, executionId string, host string, po
 
 	for encryptionLevel, value := range ciphers {
 		dialCtx, cancel := context.WithTimeout(ctx, defaultTimeout)
-		conn, err := dialer.Fastdialer.Dial(dialCtx, "tcp", net.JoinHostPort(host, strconv.Itoa(port)))
+		conn, err := protocolstate.DialAllowedWithExecutionID(dialCtx, executionId, "tcp", net.JoinHostPort(host, strconv.Itoa(port)))
 		if err != nil {
 			cancel()
 			continue

@@ -91,7 +91,10 @@ type (
 // log(to_json(info));
 // ```
 func (c *MSSQLClient) FingerprintMssql(ctx context.Context, host string, port int) (MSSQLInfo, error) {
-	executionId := ctx.Value("executionId").(string)
+	executionId := protocolstate.ExecutionIDFromContext(ctx)
+	if executionId == "" {
+		return MSSQLInfo{}, fmt.Errorf("mssql: missing executionId")
+	}
 	return memoizedfingerprintMssql(ctx, executionId, host, port)
 }
 
@@ -109,12 +112,8 @@ func fingerprintMssql(ctx context.Context, executionId string, host string, port
 	if !protocolstate.IsHostAllowed(executionId, host) {
 		return info, protocolstate.ErrHostDenied.Msgf(host)
 	}
-	dialer := protocolstate.GetDialersWithId(executionId)
-	if dialer == nil {
-		return info, fmt.Errorf("dialers not initialized for %s", executionId)
-	}
 
-	conn, err := dialer.Fastdialer.Dial(ctx, "tcp", net.JoinHostPort(host, fmt.Sprintf("%d", port)))
+	conn, err := protocolstate.DialAllowedWithExecutionID(ctx, executionId, "tcp", net.JoinHostPort(host, fmt.Sprintf("%d", port)))
 	if err != nil {
 		return info, err
 	}

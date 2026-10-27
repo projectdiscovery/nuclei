@@ -294,6 +294,8 @@ func New(options *types.Options) (*Runner, error) {
 		return nil, errors.Wrap(err, "could not create temporary directory")
 	}
 	runner.tmpDir = tmpDir
+	// The per-scan temp dir is the only temp location templates may access.
+	protocolstate.SetTemporaryDirectory(options.ExecutionId, tmpDir)
 
 	// Cleanup tmpDir only if initialization fails
 	// On successful initialization, Close() method will handle cleanup
@@ -537,6 +539,7 @@ func (r *Runner) Close() {
 	}
 	if r.tmpDir != "" {
 		_ = os.RemoveAll(r.tmpDir)
+		protocolstate.SetTemporaryDirectory(r.options.ExecutionId, "")
 	}
 
 	//this is no-op unless nuclei is built with stats build tag
