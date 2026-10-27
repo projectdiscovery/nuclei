@@ -176,25 +176,8 @@ func TestLoadTemplatesOnlyMetadataLogsCachedTemplateParseErrors(t *testing.T) {
 	require.Contains(t, output.String(), "Could not load template")
 }
 
-func TestValidateTemplatesRejectsRuntimeCompilationError(t *testing.T) {
-	templatePath := filepath.Join(t.TempDir(), "invalid-regex-group.yaml")
-	require.NoError(t, os.WriteFile(templatePath, []byte(`id: invalid-regex-group
-
-info:
-  name: Invalid Regex Group
-  author: pdteam
-  severity: info
-
-http:
-  - method: GET
-    path:
-      - "{{BaseURL}}"
-    extractors:
-      - type: regex
-        group: -1
-        regex:
-          - "(a)(b)"
-`), 0o600))
+func newValidateStore(t *testing.T, executionID, templatePath string) (*Store, *bytes.Buffer) {
+	t.Helper()
 
 	options := testutils.DefaultOptions.Copy()
 	var output bytes.Buffer
@@ -203,7 +186,7 @@ http:
 	logger.SetWriter(&utils.CaptureWriter{Buffer: &output})
 	logger.SetMaxLevel(levels.LevelDebug)
 	options.Logger = logger
-	options.ExecutionId = "loader-invalid-regex-group"
+	options.ExecutionId = executionID
 	options.Templates = []string{templatePath}
 	options.Validate = true
 	options.TemplateLoadingConcurrency = 1
@@ -226,8 +209,48 @@ http:
 
 	store, err := New(NewConfig(options, catalog, executerOpts))
 	require.NoError(t, err)
+	return store, &output
+}
+
+func TestValidateTemplatesRejectsRuntimeCompilationError(t *testing.T) {
+	templatePath := filepath.Join(t.TempDir(), "invalid-regex-group.yaml")
+	require.NoError(t, os.WriteFile(templatePath, []byte(`id: invalid-regex-group
+
+info:
+  name: Invalid Regex Group
+  author: pdteam
+  severity: info
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}"
+    extractors:
+      - type: regex
+        group: -1
+        regex:
+          - "(a)(b)"
+`), 0o600))
+
+	store, output := newValidateStore(t, "loader-invalid-regex-group", templatePath)
 	require.Error(t, store.ValidateTemplates())
 	require.Contains(t, output.String(), "regex extractor group must be >= 0")
+}
+
+func TestValidateTemplatesRejectsMissingTemplatePath(t *testing.T) {
+	templatePath := filepath.Join(t.TempDir(), "no-such-templates")
+
+	store, output := newValidateStore(t, "loader-missing-template-path", templatePath)
+	require.Error(t, store.ValidateTemplates())
+	require.Contains(t, output.String(), "Could not find template")
+}
+
+func TestValidateTemplatesAcceptsMissingPathHandledByCallback(t *testing.T) {
+	templatePath := filepath.Join(t.TempDir(), "no-such-templates")
+
+	store, _ := newValidateStore(t, "loader-missing-path-callback", templatePath)
+	store.NotFoundCallback = func(string) bool { return true }
+	require.NoError(t, store.ValidateTemplates())
 }
 
 func TestRemoteTemplates(t *testing.T) {
