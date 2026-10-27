@@ -5,11 +5,14 @@ import (
 	"fmt"
 	"net"
 	"net/url"
+	"regexp"
 	"slices"
+	"strings"
 	"time"
 
 	"github.com/go-sql-driver/mysql"
 	"github.com/pkg/errors"
+	"golang.org/x/net/idna"
 	"golang.org/x/net/proxy"
 
 	"github.com/projectdiscovery/fastdialer/fastdialer"
@@ -18,6 +21,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/httpcache"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils/expand"
+	iputil "github.com/projectdiscovery/utils/ip"
 	mapsutil "github.com/projectdiscovery/utils/maps"
 )
 
@@ -101,8 +105,10 @@ func initDialers(options *types.Options) error {
 		switch {
 		case asn.IsASN(excludeTarget):
 			expandedDenyList = append(expandedDenyList, expand.ASN(excludeTarget)...)
-		default:
+		case iputil.IsIP(excludeTarget) || iputil.IsCIDR(excludeTarget):
 			expandedDenyList = append(expandedDenyList, excludeTarget)
+		default:
+			expandedDenyList = append(expandedDenyList, excludeHostRules(excludeTarget)...)
 		}
 	}
 
@@ -334,4 +340,27 @@ func Close(executionId string) {
 		httpcache.Close()
 		StopActiveMemGuardian()
 	}
+}
+
+// excludeHostRules turns an exclude entry into network policy deny rules.
+// networkpolicy treats non-IP entries as unanchored regexes, so a plain
+// "test.com" would also deny "latest.com". Plain hostnames match the host and
+// its subdomains instead; entries with regex syntax are kept as given.
+func excludeHostRules(target string) []string {
+	if strings.ContainsAny(target, `\^$*+?()[]{}|`) {
+		return []string{target}
+	}
+
+	host := strings.TrimSuffix(target, ".")
+	hosts := []string{host}
+	// the network DSL helpers only normalize plain rules, so add the IDNA form here
+	if ascii, err := idna.ToASCII(strings.ToLower(host)); err == nil && !strings.EqualFold(ascii, host) {
+		hosts = append(hosts, ascii)
+	}
+
+	rules := make([]string, 0, len(hosts))
+	for _, h := range hosts {
+		rules = append(rules, `(?i)(^|\.)`+regexp.QuoteMeta(h)+`\.?$`)
+	}
+	return rules
 }
