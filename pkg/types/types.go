@@ -281,6 +281,8 @@ type Options struct {
 	PDFExport string
 	// Redact redacts given keys in
 	Redact goflags.StringSlice
+	// NoRedact disables the built-in redaction of credential headers in output
+	NoRedact bool
 	// EnableProgressBar enables progress bar
 	EnableProgressBar bool
 	// TemplateDisplay displays the template contents
@@ -717,6 +719,7 @@ func (options *Options) Copy() *Options {
 		JSONLExport:                    options.JSONLExport,
 		PDFExport:                      options.PDFExport,
 		Redact:                         options.Redact,
+		NoRedact:                       options.NoRedact,
 		EnableProgressBar:              options.EnableProgressBar,
 		TemplateDisplay:                options.TemplateDisplay,
 		TemplateList:                   options.TemplateList,

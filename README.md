@@ -221,6 +221,7 @@ OUTPUT:
    -jle, -jsonl-export string    file to export results in JSONL(ine) format
    -pe, -pdf-export string       file to export results in PDF format
    -rd, -redact string[]         redact given list of keys from query parameter, request header and body
+   -nrd, -no-redact              disable the built-in redaction of credential headers (Authorization, Cookie, Set-Cookie, ...) in output; keys given with -redact are still redacted
 
 CONFIGURATIONS:
    -config string                        path to the nuclei configuration file

@@ -72,6 +72,80 @@ func TestStandardWriterRedactsFilledInfo(t *testing.T) {
 	require.Equal(t, "send the password: header", static.Info.Description)
 }
 
+// Credential headers are masked by default; -no-redact keeps them while keys
+// given with -redact are still masked.
+func TestStandardWriterNoRedact(t *testing.T) {
+	const request = "GET /?tracking=1&x=2 HTTP/1.1\r\nCookie: tracking=1; session=abc\r\nX-Token: secret\r\n\r\n"
+	const response = "HTTP/1.1 200 OK\r\nSet-Cookie: session=abc; Path=/\r\n\r\n"
+	const curl = "curl -H 'Cookie: tracking=1; session=abc' https://example.com/?tracking=1&x=2"
+	const matched = "https://example.com/?tracking=1&x=2"
+
+	cases := []struct {
+		name     string
+		options  *types.Options
+		request  string
+		response string
+		curl     string
+		matched  string
+	}{
+		{
+			"default", &types.Options{},
+			"GET /?tracking=1&x=2 HTTP/1.1\r\nCookie: ***\r\nX-Token: secret\r\n\r\n",
+			"HTTP/1.1 200 OK\r\nSet-Cookie: ***\r\n\r\n",
+			"curl -H 'Cookie: ***' https://example.com/?tracking=1&x=2",
+			matched,
+		},
+		{"no-redact", &types.Options{NoRedact: true}, request, response, curl, matched},
+		{
+			"no-redact with header key", &types.Options{NoRedact: true, Redact: goflags.StringSlice{"X-Token"}},
+			"GET /?tracking=1&x=2 HTTP/1.1\r\nCookie: tracking=1; session=abc\r\nX-Token: ***\r\n\r\n",
+			response, curl, matched,
+		},
+		// One cookie or query parameter is masked; its neighbours stay.
+		{
+			"no-redact with cookie key", &types.Options{NoRedact: true, Redact: goflags.StringSlice{"tracking"}},
+			"GET /?tracking=***&x=2 HTTP/1.1\r\nCookie: tracking=***; session=abc\r\nX-Token: secret\r\n\r\n",
+			response,
+			"curl -H 'Cookie: tracking=***; session=abc' https://example.com/?tracking=***&x=2",
+			"https://example.com/?tracking=***&x=2",
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			w, err := NewStandardWriter(tc.options)
+			require.NoError(t, err)
+			w.DisableStdout = true
+
+			event := &ResultEvent{Request: request, Response: response, CURLCommand: curl, Matched: matched}
+			require.NoError(t, w.Write(event))
+
+			require.Equal(t, tc.request, event.Request)
+			require.Equal(t, tc.response, event.Response)
+			require.Equal(t, tc.curl, event.CURLCommand)
+			require.Equal(t, tc.matched, event.Matched)
+		})
+	}
+}
+
+// A `;` inside a query value is part of the value; in a cookie header it is a delimiter.
+func TestRedactKeepsSemicolonInsideValue(t *testing.T) {
+	cases := map[string]string{
+		"GET /?password=;s3cr3t&x=2 HTTP/1.1":             "GET /?password=***&x=2 HTTP/1.1",
+		"GET /?password=a;b HTTP/1.1":                     "GET /?password=*** HTTP/1.1",
+		"GET /?password=super;secret=hidden&x=1 HTTP/1.1": "GET /?password=***&x=1 HTTP/1.1",
+		"https://example.com/?password=a;b":               "https://example.com/?password=***",
+		"https://example.com/?password=a;session=abc":     "https://example.com/?password=***",
+		"Cookie: password=x; session=abc\r\n":             "Cookie: password=***; session=abc\r\n",
+		"Set-Cookie: password=x; Path=/; HttpOnly\r\n":    "Set-Cookie: password=***; Path=/; HttpOnly\r\n",
+		"Set-Cookie: password=x; HttpOnly\r\n":            "Set-Cookie: password=***; HttpOnly\r\n",
+		"password=a;b&user=u":                             "password=***&user=u",
+		"curl -H 'Cookie: password=x; session=abc' 'https://example.com/?password=super;secret=hidden&x=1'": "curl -H 'Cookie: password=***; session=abc' 'https://example.com/?password=***&x=1'",
+	}
+	for in, want := range cases {
+		require.Equal(t, want, redactKeys(in, []string{"password"}), in)
+	}
+}
+
 // The mongo exporter serializes results with bson, which ignores json tags.
 func TestResultEventKeepsTemplateInfoOutOfBSON(t *testing.T) {
 	written := model.Info{Description: "{{host}} is exposed"}
