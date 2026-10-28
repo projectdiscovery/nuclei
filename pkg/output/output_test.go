@@ -127,6 +127,23 @@ func TestStandardWriterNoRedact(t *testing.T) {
 	}
 }
 
+// A `;` inside a query value is part of the value; in a cookie header it is a delimiter.
+func TestRedactKeepsSemicolonInsideValue(t *testing.T) {
+	patterns := compileRedactPatterns([]string{"password"})
+	cases := map[string]string{
+		"GET /?password=;s3cr3t&x=2 HTTP/1.1":          "GET /?password=***&x=2 HTTP/1.1",
+		"GET /?password=a;b HTTP/1.1":                  "GET /?password=*** HTTP/1.1",
+		"https://example.com/?password=a;b":            "https://example.com/?password=***",
+		"Cookie: password=x; session=abc\r\n":          "Cookie: password=***; session=abc\r\n",
+		"Set-Cookie: password=x; Path=/; HttpOnly\r\n": "Set-Cookie: password=***; Path=/; HttpOnly\r\n",
+		"Set-Cookie: password=x; HttpOnly\r\n":         "Set-Cookie: password=***; HttpOnly\r\n",
+		"password=a;b&user=u":                          "password=***&user=u",
+	}
+	for in, want := range cases {
+		require.Equal(t, want, redactWithPatterns(in, patterns), in)
+	}
+}
+
 // The mongo exporter serializes results with bson, which ignores json tags.
 func TestResultEventKeepsTemplateInfoOutOfBSON(t *testing.T) {
 	written := model.Info{Description: "{{host}} is exposed"}

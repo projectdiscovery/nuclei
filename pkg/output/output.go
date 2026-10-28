@@ -429,14 +429,16 @@ var defaultRedactKeys = []string{
 var defaultRedactPatterns = compileRedactPatterns(defaultRedactKeys)
 
 // compileRedactPatterns builds the credential-redaction regexes for the given keys.
-// A header value (`Key: ...`) is masked to the end of the line; a cookie or query
-// parameter (`key=...`) also ends at `;` or `&`, so its neighbours stay in place.
+// A header value (`Key: ...`) is masked to the end of the line. A cookie or query
+// parameter (`key=...`) is masked up to the next cookie delimiter (`; name=` or a
+// bare `; flag`), `&`, whitespace, quote or line break, so its neighbours stay in
+// place while a `;` inside the value is kept as part of it.
 func compileRedactPatterns(keys []string) []*regexp.Regexp {
 	patterns := make([]*regexp.Regexp, 0, len(keys))
 	for _, key := range keys {
 		patterns = append(patterns,
-			regexp.MustCompile(fmt.Sprintf(`(?i)(%s\s*:\s*["']?)[^"'\r\n&]+(["'\r\n]?)`, regexp.QuoteMeta(key))),
-			regexp.MustCompile(fmt.Sprintf(`(?i)(%s\s*=\s*["']?)[^"'\r\n&;]+(["'\r\n]?)`, regexp.QuoteMeta(key))),
+			regexp.MustCompile(fmt.Sprintf(`(?i)(%s\s*:\s*["']?)([^"'\r\n&]+)(["'\r\n]?)`, regexp.QuoteMeta(key))),
+			regexp.MustCompile(fmt.Sprintf(`(?i)(%s\s*=\s*["']?)([^"'\r\n&\s]*?)(;\s*[\w.-]+(?:=|;|\r|\n)|["'\r\n&\s]|$)`, regexp.QuoteMeta(key))),
 		)
 	}
 	return patterns
@@ -465,7 +467,7 @@ func (w *StandardWriter) redactionPatterns() []*regexp.Regexp {
 
 func redactWithPatterns(data string, patterns []*regexp.Regexp) string {
 	for _, pattern := range patterns {
-		data = pattern.ReplaceAllString(data, `$1***$2`)
+		data = pattern.ReplaceAllString(data, `$1***$3`)
 	}
 	return data
 }
