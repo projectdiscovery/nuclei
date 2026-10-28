@@ -129,18 +129,20 @@ func TestStandardWriterNoRedact(t *testing.T) {
 
 // A `;` inside a query value is part of the value; in a cookie header it is a delimiter.
 func TestRedactKeepsSemicolonInsideValue(t *testing.T) {
-	patterns := compileRedactPatterns([]string{"password"})
 	cases := map[string]string{
-		"GET /?password=;s3cr3t&x=2 HTTP/1.1":          "GET /?password=***&x=2 HTTP/1.1",
-		"GET /?password=a;b HTTP/1.1":                  "GET /?password=*** HTTP/1.1",
-		"https://example.com/?password=a;b":            "https://example.com/?password=***",
-		"Cookie: password=x; session=abc\r\n":          "Cookie: password=***; session=abc\r\n",
-		"Set-Cookie: password=x; Path=/; HttpOnly\r\n": "Set-Cookie: password=***; Path=/; HttpOnly\r\n",
-		"Set-Cookie: password=x; HttpOnly\r\n":         "Set-Cookie: password=***; HttpOnly\r\n",
-		"password=a;b&user=u":                          "password=***&user=u",
+		"GET /?password=;s3cr3t&x=2 HTTP/1.1":             "GET /?password=***&x=2 HTTP/1.1",
+		"GET /?password=a;b HTTP/1.1":                     "GET /?password=*** HTTP/1.1",
+		"GET /?password=super;secret=hidden&x=1 HTTP/1.1": "GET /?password=***&x=1 HTTP/1.1",
+		"https://example.com/?password=a;b":               "https://example.com/?password=***",
+		"https://example.com/?password=a;session=abc":     "https://example.com/?password=***",
+		"Cookie: password=x; session=abc\r\n":             "Cookie: password=***; session=abc\r\n",
+		"Set-Cookie: password=x; Path=/; HttpOnly\r\n":    "Set-Cookie: password=***; Path=/; HttpOnly\r\n",
+		"Set-Cookie: password=x; HttpOnly\r\n":            "Set-Cookie: password=***; HttpOnly\r\n",
+		"password=a;b&user=u":                             "password=***&user=u",
+		"curl -H 'Cookie: password=x; session=abc' 'https://example.com/?password=super;secret=hidden&x=1'": "curl -H 'Cookie: password=***; session=abc' 'https://example.com/?password=***&x=1'",
 	}
 	for in, want := range cases {
-		require.Equal(t, want, redactWithPatterns(in, patterns), in)
+		require.Equal(t, want, redactKeys(in, []string{"password"}), in)
 	}
 }
 

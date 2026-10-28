@@ -90,10 +90,10 @@ type StandardWriter struct {
 	// NoRedact skips the default credential keys; KeysToRedact still apply.
 	NoRedact bool
 
-	// redactPatterns caches the compiled credential-redaction regexes so they
+	// redactSet caches the compiled credential-redaction regexes so they
 	// are not recompiled on every Write call.
 	redactPatternsOnce sync.Once
-	redactPatterns     []*regexp.Regexp
+	redactSet          compiledRedaction
 
 	// JSONLogRequestHook is a hook that can be used to log request/response
 	// when using custom server code with output
@@ -368,12 +368,12 @@ func (w *StandardWriter) Write(event *ResultEvent) error {
 	// user-supplied -redact keys. patterns are compiled once and cached to
 	// avoid recompiling regexes on every event in the write hot path.
 	patterns := w.redactionPatterns()
-	event.Request = redactWithPatterns(event.Request, patterns)
-	event.Response = redactWithPatterns(event.Response, patterns)
-	event.CURLCommand = redactWithPatterns(event.CURLCommand, patterns)
-	event.Matched = redactWithPatterns(event.Matched, patterns)
+	event.Request = redactWithSet(event.Request, patterns)
+	event.Response = redactWithSet(event.Response, patterns)
+	event.CURLCommand = redactWithSet(event.CURLCommand, patterns)
+	event.Matched = redactWithSet(event.Matched, patterns)
 	for _, field := range event.Info.FilledFields(event.TemplateInfo) {
-		*field.Value = redactWithPatterns(*field.Value, patterns)
+		*field.Value = redactWithSet(*field.Value, patterns)
 	}
 
 	event.Timestamp = time.Now()
@@ -425,47 +425,92 @@ var defaultRedactKeys = []string{
 	"X-Api-Key",
 }
 
-// defaultRedactPatterns are the precompiled regexes for defaultRedactKeys.
-var defaultRedactPatterns = compileRedactPatterns(defaultRedactKeys)
+// cookieHeaderValue is the value of one Cookie or Set-Cookie header, stopping
+// at a quote so a curl -H 'Cookie: ...' does not swallow the rest of the line.
+var cookieHeaderValue = regexp.MustCompile(`(?i)((?:Cookie|Set-Cookie)\s*:\s*)([^"'\r\n]*)`)
+
+// compiledRedaction holds the three shapes a key can take. A header value is
+// masked to the end of the line. Inside a cookie header, key=value stops at
+// the next cookie delimiter so neighbouring cookies stay. A query value keeps
+// an embedded ';' and runs to '&', a quote, or whitespace.
+type compiledRedaction struct {
+	headers []*regexp.Regexp
+	cookies []*regexp.Regexp
+	queries []*regexp.Regexp
+}
+
+func (c compiledRedaction) empty() bool {
+	return len(c.headers) == 0 && len(c.cookies) == 0 && len(c.queries) == 0
+}
 
 // compileRedactPatterns builds the credential-redaction regexes for the given keys.
-// A header value (`Key: ...`) is masked to the end of the line. A cookie or query
-// parameter (`key=...`) is masked up to the next cookie delimiter (`; name=` or a
-// bare `; flag`), `&`, whitespace, quote or line break, so its neighbours stay in
-// place while a `;` inside the value is kept as part of it.
-func compileRedactPatterns(keys []string) []*regexp.Regexp {
-	patterns := make([]*regexp.Regexp, 0, len(keys))
+func compileRedactPatterns(keys []string) compiledRedaction {
+	var set compiledRedaction
 	for _, key := range keys {
-		patterns = append(patterns,
-			regexp.MustCompile(fmt.Sprintf(`(?i)(%s\s*:\s*["']?)([^"'\r\n&]+)(["'\r\n]?)`, regexp.QuoteMeta(key))),
-			regexp.MustCompile(fmt.Sprintf(`(?i)(%s\s*=\s*["']?)([^"'\r\n&\s]*?)(;\s*[\w.-]+(?:=|;|\r|\n)|["'\r\n&\s]|$)`, regexp.QuoteMeta(key))),
-		)
+		quoted := regexp.QuoteMeta(key)
+		set.headers = append(set.headers, regexp.MustCompile(fmt.Sprintf(`(?i)(%s\s*:\s*["']?)([^"'&\r\n]+)(["'\r\n]|$)`, quoted)))
+		set.cookies = append(set.cookies, regexp.MustCompile(fmt.Sprintf(`(?i)(%s\s*=\s*["']?)([^"'&\r\n\s]*?)(;\s*[\w.-]+(?:=|;|\r|\n|$)|["'&\r\n\s]|$)`, quoted)))
+		set.queries = append(set.queries, regexp.MustCompile(fmt.Sprintf(`(?i)(%s\s*=\s*["']?)([^"'&\r\n\s]*)(["'&\r\n\s]|$)`, quoted)))
 	}
-	return patterns
+	return set
 }
 
-// redactionPatterns returns the cached set of redaction patterns for this
-// writer (default keys unless -no-redact is set, plus any user-supplied
-// -redact keys), compiling them on first use.
-func (w *StandardWriter) redactionPatterns() []*regexp.Regexp {
+// redactionPatterns returns the cached redaction set for this writer (default
+// keys unless -no-redact is set, plus any user-supplied -redact keys).
+func (w *StandardWriter) redactionPatterns() compiledRedaction {
 	w.redactPatternsOnce.Do(func() {
-		var defaults []*regexp.Regexp
+		keys := make([]string, 0, len(defaultRedactKeys)+len(w.KeysToRedact))
 		if !w.NoRedact {
-			defaults = defaultRedactPatterns
+			keys = append(keys, defaultRedactKeys...)
 		}
-		if len(w.KeysToRedact) == 0 {
-			w.redactPatterns = defaults
-			return
-		}
-		patterns := make([]*regexp.Regexp, 0, len(defaults)+len(w.KeysToRedact))
-		patterns = append(patterns, defaults...)
-		patterns = append(patterns, compileRedactPatterns(w.KeysToRedact)...)
-		w.redactPatterns = patterns
+		keys = append(keys, w.KeysToRedact...)
+		w.redactSet = compileRedactPatterns(keys)
 	})
-	return w.redactPatterns
+	return w.redactSet
 }
 
-func redactWithPatterns(data string, patterns []*regexp.Regexp) string {
+func redactKeys(data string, keys []string) string {
+	return redactWithSet(data, compileRedactPatterns(keys))
+}
+
+func redactWithSet(data string, set compiledRedaction) string {
+	if data == "" || set.empty() {
+		return data
+	}
+	data = applyRedact(data, set.headers)
+	if len(set.cookies) > 0 {
+		data = cookieHeaderValue.ReplaceAllStringFunc(data, func(match string) string {
+			parts := cookieHeaderValue.FindStringSubmatch(match)
+			if len(parts) != 3 {
+				return match
+			}
+			return parts[1] + applyRedact(parts[2], set.cookies)
+		})
+	}
+	return redactOutsideCookieValues(data, set.queries)
+}
+
+func redactOutsideCookieValues(data string, patterns []*regexp.Regexp) string {
+	if len(patterns) == 0 {
+		return data
+	}
+	locs := cookieHeaderValue.FindAllStringSubmatchIndex(data, -1)
+	if len(locs) == 0 {
+		return applyRedact(data, patterns)
+	}
+	var b strings.Builder
+	prev := 0
+	for _, loc := range locs {
+		valueStart, valueEnd := loc[4], loc[5]
+		b.WriteString(applyRedact(data[prev:valueStart], patterns))
+		b.WriteString(data[valueStart:valueEnd])
+		prev = valueEnd
+	}
+	b.WriteString(applyRedact(data[prev:], patterns))
+	return b.String()
+}
+
+func applyRedact(data string, patterns []*regexp.Regexp) string {
 	for _, pattern := range patterns {
 		data = pattern.ReplaceAllString(data, `$1***$3`)
 	}
