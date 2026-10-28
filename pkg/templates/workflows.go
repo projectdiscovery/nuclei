@@ -23,17 +23,10 @@ func compileWorkflow(path string, preprocessor Preprocessor, options *protocols.
 
 // parseWorkflow parses and compiles all templates in a workflow recursively
 func parseWorkflow(preprocessor Preprocessor, workflow *workflows.WorkflowTemplate, options *protocols.ExecutorOptions, loader model.WorkflowLoader) error {
-	shouldNotValidate := false
-
 	if workflow.Template == "" && workflow.Tags.IsEmpty() {
 		return errors.New("invalid workflow with no templates or tags")
 	}
-	if len(workflow.Subtemplates) > 0 || len(workflow.Matchers) > 0 {
-		shouldNotValidate = true
-	}
-	if err := parseWorkflowTemplate(workflow, preprocessor, options, loader, shouldNotValidate); err != nil {
-		return err
-	}
+
 	for _, subtemplates := range workflow.Subtemplates {
 		if err := parseWorkflow(preprocessor, subtemplates, options, loader); err != nil {
 			gologger.Warning().Msgf("Could not parse workflow: %v\n", err)
@@ -53,7 +46,29 @@ func parseWorkflow(preprocessor Preprocessor, workflow *workflows.WorkflowTempla
 			}
 		}
 	}
+
+	shouldNotValidate := hasActiveChildren(workflow)
+	if err := parseWorkflowTemplate(workflow, preprocessor, options, loader, shouldNotValidate); err != nil {
+		return err
+	}
+
 	return nil
+}
+
+func hasActiveChildren(workflow *workflows.WorkflowTemplate) bool {
+	for _, sub := range workflow.Subtemplates {
+		if len(sub.Executers) > 0 || hasActiveChildren(sub) {
+			return true
+		}
+	}
+	for _, matcher := range workflow.Matchers {
+		for _, sub := range matcher.Subtemplates {
+			if len(sub.Executers) > 0 || hasActiveChildren(sub) {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // parseWorkflowTemplate parses a workflow template creating an executer

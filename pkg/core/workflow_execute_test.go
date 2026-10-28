@@ -399,3 +399,33 @@ func (m *mockExecuter) ExecuteWithResults(ctx *scan.ScanContext) ([]*output.Resu
 	}
 	return ctx.GenerateResult(), nil
 }
+
+func TestWorkflowsEmptyExecutersSkipped(t *testing.T) {
+	progressBar, _ := progress.NewStatsTicker(0, false, false, false, 0)
+
+	var executed bool
+	workflow := &workflows.Workflow{Options: &protocols.ExecutorOptions{Options: &types.Options{TemplateThreads: 10}}, Workflows: []*workflows.WorkflowTemplate{
+		{
+			Template:  "branch_B.yaml",
+			Executers: []*workflows.ProtocolExecuterPair{},
+			Subtemplates: []*workflows.WorkflowTemplate{
+				{Template: "leaf_3.yaml", Executers: []*workflows.ProtocolExecuterPair{}},
+			},
+		},
+		{
+			Template: "branch_A.yaml",
+			Executers: []*workflows.ProtocolExecuterPair{{
+				Executer: &mockExecuter{result: true, executeHook: func(input *contextargs.MetaInput) {
+					executed = true
+				}}, Options: &protocols.ExecutorOptions{Progress: progressBar}},
+			},
+		},
+	}}
+
+	engine := &Engine{}
+	input := contextargs.NewWithInput(context.Background(), "https://test.com")
+	ctx := scan.NewScanContext(context.Background(), input)
+	matched := engine.executeWorkflow(ctx, workflow)
+	require.True(t, matched)
+	require.True(t, executed)
+}
