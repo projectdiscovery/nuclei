@@ -23,27 +23,27 @@ func compileWorkflow(path string, preprocessor Preprocessor, options *protocols.
 
 // parseWorkflow parses and compiles all templates in a workflow recursively
 func parseWorkflow(preprocessor Preprocessor, workflow *workflows.WorkflowTemplate, options *protocols.ExecutorOptions, loader model.WorkflowLoader) error {
-	shouldNotValidate := false
-
 	if workflow.Template == "" && workflow.Tags.IsEmpty() {
 		return errors.New("invalid workflow with no templates or tags")
 	}
-	if len(workflow.Subtemplates) > 0 || len(workflow.Matchers) > 0 {
-		shouldNotValidate = true
-	}
-	if err := parseWorkflowTemplate(workflow, preprocessor, options, loader, shouldNotValidate); err != nil {
-		return err
-	}
+
+	// subtemplates are parsed first: a template that does not pass the
+	// filters is loaded only when one of its subtemplates was loaded, as
+	// subtemplates run only after it
+	shouldNotValidate := false
 	for _, subtemplates := range workflow.Subtemplates {
 		if err := parseWorkflow(preprocessor, subtemplates, options, loader); err != nil {
 			gologger.Warning().Msgf("Could not parse workflow: %v\n", err)
 			continue
 		}
+		shouldNotValidate = shouldNotValidate || len(subtemplates.Executers) > 0
 	}
+	var matcherErr error
 	for _, matcher := range workflow.Matchers {
 		if len(matcher.Name.ToSlice()) > 0 {
 			if err := matcher.Compile(); err != nil {
-				return errors.Wrap(err, "could not compile workflow matcher")
+				matcherErr = errors.Wrap(err, "could not compile workflow matcher")
+				break
 			}
 		}
 		for _, subtemplates := range matcher.Subtemplates {
@@ -51,9 +51,13 @@ func parseWorkflow(preprocessor Preprocessor, workflow *workflows.WorkflowTempla
 				gologger.Warning().Msgf("Could not parse workflow: %v\n", err)
 				continue
 			}
+			shouldNotValidate = shouldNotValidate || len(subtemplates.Executers) > 0
 		}
 	}
-	return nil
+	if err := parseWorkflowTemplate(workflow, preprocessor, options, loader, shouldNotValidate); err != nil {
+		return err
+	}
+	return matcherErr
 }
 
 // parseWorkflowTemplate parses a workflow template creating an executer

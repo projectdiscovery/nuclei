@@ -341,6 +341,148 @@ workflows:
 	require.Equal(t, initialUnverified, stats.GetValue(templates.SkippedUnverifiedTemplateStats))
 }
 
+func Test_ParseWorkflowLoadsTemplatesWithSubtemplatesOnlyForFilteredSubtemplates(t *testing.T) {
+	dir := t.TempDir()
+	path := func(id string) string { return filepath.Join(dir, id+".yaml") }
+	for _, id := range []string{"BA", "BB", "BC", "BC_A", "L1", "L2", "L3", "L4"} {
+		err := os.WriteFile(path(id), []byte(fmt.Sprintf(`id: %s
+
+info:
+  name: %s
+  author: pdteam
+  severity: info
+  tags: %s-tag
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/%s"
+`, id, id, strings.ToLower(id), id)), 0o600)
+		require.NoError(t, err)
+	}
+	workflowPath := filepath.Join(dir, "workflow.yaml")
+	err := os.WriteFile(workflowPath, []byte(fmt.Sprintf(`id: workflow-filters
+
+info:
+  name: Workflow Filters
+  author: pdteam
+  severity: info
+
+workflows:
+  - template: %q
+    subtemplates:
+      - template: %q
+      - template: %q
+  - template: %q
+    subtemplates:
+      - template: %q
+  - template: %q
+    subtemplates:
+      - template: %q
+        subtemplates:
+          - template: %q
+  - template: %q
+    matchers:
+      - name: found
+        subtemplates:
+          - template: %q
+`, path("BA"), path("L1"), path("L2"), path("BB"), path("L3"), path("BC"), path("BC_A"), path("L4"), path("BB"), path("L1"))), 0o600)
+	require.NoError(t, err)
+
+	tests := []struct {
+		name    string
+		ids     []string
+		tags    []string
+		authors []string
+		loaded  []string
+	}{
+		{name: "no filters", loaded: []string{"BA", "L1", "L2", "BB", "L3", "BC", "BC_A", "L4", "BB", "L1"}},
+		{name: "id of a subtemplate", ids: []string{"L1"}, loaded: []string{"BA", "L1", "BB", "L1"}},
+		{name: "tag of a subtemplate", tags: []string{"l1-tag"}, loaded: []string{"BA", "L1", "BB", "L1"}},
+		{name: "id of a nested subtemplate", ids: []string{"L4"}, loaded: []string{"BC", "BC_A", "L4"}},
+		{name: "id of a template with subtemplates", ids: []string{"BB"}, loaded: []string{"BB", "BB"}},
+		{name: "author of no template", authors: []string{"nobody"}},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			setup()
+			options := executerOpts.Options
+			previousIds, previousTags, previousAuthors := options.IncludeIds, options.Tags, options.Authors
+			defer func() {
+				options.IncludeIds, options.Tags, options.Authors = previousIds, previousTags, previousAuthors
+			}()
+			options.IncludeIds, options.Tags, options.Authors = tc.ids, tc.tags, tc.authors
+			workflowLoader, err := workflow.NewLoader(executerOpts)
+			require.NoError(t, err)
+			executerOpts.WorkflowLoader = workflowLoader
+
+			got, err := templates.Parse(workflowPath, nil, executerOpts)
+			require.NoError(t, err)
+			require.NotNil(t, got.CompiledWorkflow)
+
+			var loaded []string
+			var walk func(steps []*workflows.WorkflowTemplate)
+			walk = func(steps []*workflows.WorkflowTemplate) {
+				for _, step := range steps {
+					if len(step.Executers) > 0 {
+						loaded = append(loaded, strings.TrimSuffix(filepath.Base(step.Template), ".yaml"))
+					}
+					walk(step.Subtemplates)
+					for _, matcher := range step.Matchers {
+						walk(matcher.Subtemplates)
+					}
+				}
+			}
+			walk(got.CompiledWorkflow.Workflows)
+			require.Equal(t, tc.loaded, loaded)
+		})
+	}
+}
+
+func Test_ParseWorkflowLoadsTemplateWithUnknownMatcherCondition(t *testing.T) {
+	setup()
+	dir := t.TempDir()
+	templatePath := filepath.Join(dir, "template.yaml")
+	err := os.WriteFile(templatePath, []byte(`id: workflow-unknown-condition-template
+
+info:
+  name: Workflow Unknown Condition Template
+  author: pdteam
+  severity: info
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}"
+`), 0o600)
+	require.NoError(t, err)
+	workflowPath := filepath.Join(dir, "workflow.yaml")
+	err = os.WriteFile(workflowPath, []byte(fmt.Sprintf(`id: workflow-unknown-condition
+
+info:
+  name: Workflow Unknown Condition
+  author: pdteam
+  severity: info
+
+workflows:
+  - template: %q
+    matchers:
+      - name:
+          - a
+          - b
+        condition: xor
+        subtemplates:
+          - template: %q
+`, templatePath, templatePath)), 0o600)
+	require.NoError(t, err)
+
+	got, err := templates.Parse(workflowPath, nil, executerOpts)
+	require.NoError(t, err)
+	require.NotNil(t, got.CompiledWorkflow)
+	require.Len(t, got.CompiledWorkflow.Workflows, 1)
+	require.Len(t, got.CompiledWorkflow.Workflows[0].Executers, 1)
+}
+
 func TestParseTemplateExecutesJavascriptInitAfterVerification(t *testing.T) {
 	options := testutils.DefaultOptions.Copy()
 	options.ExecutionId = "parse-verified-javascript-init"
