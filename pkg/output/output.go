@@ -429,10 +429,15 @@ var defaultRedactKeys = []string{
 var defaultRedactPatterns = compileRedactPatterns(defaultRedactKeys)
 
 // compileRedactPatterns builds the credential-redaction regexes for the given keys.
+// A header value (`Key: ...`) is masked to the end of the line; a cookie or query
+// parameter (`key=...`) also ends at `;` or `&`, so its neighbours stay in place.
 func compileRedactPatterns(keys []string) []*regexp.Regexp {
 	patterns := make([]*regexp.Regexp, 0, len(keys))
 	for _, key := range keys {
-		patterns = append(patterns, regexp.MustCompile(fmt.Sprintf(`(?i)(%s\s*[:=]\s*["']?)[^"'\r\n&]+(["'\r\n]?)`, regexp.QuoteMeta(key))))
+		patterns = append(patterns,
+			regexp.MustCompile(fmt.Sprintf(`(?i)(%s\s*:\s*["']?)[^"'\r\n&]+(["'\r\n]?)`, regexp.QuoteMeta(key))),
+			regexp.MustCompile(fmt.Sprintf(`(?i)(%s\s*=\s*["']?)[^"'\r\n&;]+(["'\r\n]?)`, regexp.QuoteMeta(key))),
+		)
 	}
 	return patterns
 }

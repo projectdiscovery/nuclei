@@ -75,18 +75,40 @@ func TestStandardWriterRedactsFilledInfo(t *testing.T) {
 // Credential headers are masked by default; -no-redact keeps them while keys
 // given with -redact are still masked.
 func TestStandardWriterNoRedact(t *testing.T) {
-	const request = "GET / HTTP/1.1\r\nCookie: session=abc\r\nX-Token: secret\r\n\r\n"
-	const response = "HTTP/1.1 200 OK\r\nSet-Cookie: session=abc\r\n\r\n"
+	const request = "GET /?tracking=1&x=2 HTTP/1.1\r\nCookie: tracking=1; session=abc\r\nX-Token: secret\r\n\r\n"
+	const response = "HTTP/1.1 200 OK\r\nSet-Cookie: session=abc; Path=/\r\n\r\n"
+	const curl = "curl -H 'Cookie: tracking=1; session=abc' https://example.com/?tracking=1&x=2"
+	const matched = "https://example.com/?tracking=1&x=2"
 
 	cases := []struct {
 		name     string
 		options  *types.Options
 		request  string
 		response string
+		curl     string
+		matched  string
 	}{
-		{"default", &types.Options{}, "GET / HTTP/1.1\r\nCookie: ***\r\nX-Token: secret\r\n\r\n", "HTTP/1.1 200 OK\r\nSet-Cookie: ***\r\n\r\n"},
-		{"no-redact", &types.Options{NoRedact: true}, request, response},
-		{"no-redact with keys", &types.Options{NoRedact: true, Redact: goflags.StringSlice{"X-Token"}}, "GET / HTTP/1.1\r\nCookie: session=abc\r\nX-Token: ***\r\n\r\n", response},
+		{
+			"default", &types.Options{},
+			"GET /?tracking=1&x=2 HTTP/1.1\r\nCookie: ***\r\nX-Token: secret\r\n\r\n",
+			"HTTP/1.1 200 OK\r\nSet-Cookie: ***\r\n\r\n",
+			"curl -H 'Cookie: ***' https://example.com/?tracking=1&x=2",
+			matched,
+		},
+		{"no-redact", &types.Options{NoRedact: true}, request, response, curl, matched},
+		{
+			"no-redact with header key", &types.Options{NoRedact: true, Redact: goflags.StringSlice{"X-Token"}},
+			"GET /?tracking=1&x=2 HTTP/1.1\r\nCookie: tracking=1; session=abc\r\nX-Token: ***\r\n\r\n",
+			response, curl, matched,
+		},
+		// One cookie or query parameter is masked; its neighbours stay.
+		{
+			"no-redact with cookie key", &types.Options{NoRedact: true, Redact: goflags.StringSlice{"tracking"}},
+			"GET /?tracking=***&x=2 HTTP/1.1\r\nCookie: tracking=***; session=abc\r\nX-Token: secret\r\n\r\n",
+			response,
+			"curl -H 'Cookie: tracking=***; session=abc' https://example.com/?tracking=***&x=2",
+			"https://example.com/?tracking=***&x=2",
+		},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -94,16 +116,13 @@ func TestStandardWriterNoRedact(t *testing.T) {
 			require.NoError(t, err)
 			w.DisableStdout = true
 
-			event := &ResultEvent{Request: request, Response: response, CURLCommand: "curl -H 'Cookie: session=abc' https://example.com"}
+			event := &ResultEvent{Request: request, Response: response, CURLCommand: curl, Matched: matched}
 			require.NoError(t, w.Write(event))
 
 			require.Equal(t, tc.request, event.Request)
 			require.Equal(t, tc.response, event.Response)
-			if tc.options.NoRedact {
-				require.Equal(t, "curl -H 'Cookie: session=abc' https://example.com", event.CURLCommand)
-			} else {
-				require.Equal(t, "curl -H 'Cookie: ***' https://example.com", event.CURLCommand)
-			}
+			require.Equal(t, tc.curl, event.CURLCommand)
+			require.Equal(t, tc.matched, event.Matched)
 		})
 	}
 }
