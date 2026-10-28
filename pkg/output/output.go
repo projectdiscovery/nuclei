@@ -87,6 +87,8 @@ type StandardWriter struct {
 	DisableStdout         bool
 	AddNewLinesOutputFile bool // by default this is only done for stdout
 	KeysToRedact          []string
+	// NoRedact skips the default credential keys; KeysToRedact still apply.
+	NoRedact bool
 
 	// redactPatterns caches the compiled credential-redaction regexes so they
 	// are not recompiled on every Write call.
@@ -306,6 +308,7 @@ func NewStandardWriter(options *types.Options) (*StandardWriter, error) {
 		storeResponseDir:  options.StoreResponseDir,
 		omitTemplate:      options.OmitTemplate,
 		KeysToRedact:      options.Redact,
+		NoRedact:          options.NoRedact,
 	}
 
 	if v := os.Getenv("DISABLE_STDOUT"); v == "true" || v == "1" {
@@ -412,8 +415,8 @@ func (w *StandardWriter) Write(event *ResultEvent) error {
 	return nil
 }
 
-// defaultRedactKeys are header and parameter names that are always redacted
-// from output regardless of the -redact flag.
+// defaultRedactKeys are header and parameter names that are redacted from
+// output regardless of the -redact flag, unless -no-redact is set.
 var defaultRedactKeys = []string{
 	"Authorization",
 	"Proxy-Authorization",
@@ -435,16 +438,20 @@ func compileRedactPatterns(keys []string) []*regexp.Regexp {
 }
 
 // redactionPatterns returns the cached set of redaction patterns for this
-// writer (default keys plus any user-supplied -redact keys), compiling them on
-// first use.
+// writer (default keys unless -no-redact is set, plus any user-supplied
+// -redact keys), compiling them on first use.
 func (w *StandardWriter) redactionPatterns() []*regexp.Regexp {
 	w.redactPatternsOnce.Do(func() {
+		var defaults []*regexp.Regexp
+		if !w.NoRedact {
+			defaults = defaultRedactPatterns
+		}
 		if len(w.KeysToRedact) == 0 {
-			w.redactPatterns = defaultRedactPatterns
+			w.redactPatterns = defaults
 			return
 		}
-		patterns := make([]*regexp.Regexp, 0, len(defaultRedactPatterns)+len(w.KeysToRedact))
-		patterns = append(patterns, defaultRedactPatterns...)
+		patterns := make([]*regexp.Regexp, 0, len(defaults)+len(w.KeysToRedact))
+		patterns = append(patterns, defaults...)
 		patterns = append(patterns, compileRedactPatterns(w.KeysToRedact)...)
 		w.redactPatterns = patterns
 	})
