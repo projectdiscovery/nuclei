@@ -27,6 +27,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/helpers/eventcreator"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/hostlimit"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/interactsh"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/render"
@@ -98,11 +99,15 @@ type Request struct {
 	preConditionCompiled *goja.Program `yaml:"-" json:"-"`
 
 	scriptCompiled *goja.Program `yaml:"-" json:"-"`
+	// nonHTTPOnly is set when the scripts can only speak dedicated non-HTTP
+	// protocols; see speaksOnlyNonHTTP.
+	nonHTTPOnly bool `yaml:"-" json:"-"`
 }
 
 // Compile compiles the request generators preparing any requests possible.
 func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 	request.options = options
+	request.nonHTTPOnly = speaksOnlyNonHTTP(request.Code, request.PreCondition)
 
 	var err error
 	if len(request.Payloads) > 0 {
@@ -335,6 +340,13 @@ func (request *Request) executeWithResults(port string, target *contextargs.Cont
 		request.options.Progress.IncrementFailedRequestsBy(1)
 		return err
 	}
+	if request.skipOnHTTPPort(target.Context(), port, input, hostPort) {
+		// Requests() already counted the requests this port now skips
+		request.options.Progress.SetRequests(uint64(request.requestsPerPort()))
+		request.options.Output.Request(request.options.TemplateID, hostPort, request.Type().String(), errkit.New(skipReason(port)))
+		return nil
+	}
+
 	hostname, port, _ := net.SplitHostPort(hostPort)
 	if hostname == "" {
 		hostname = hostPort
@@ -675,6 +687,13 @@ func (request *Request) executeRequestWithPayloads(
 		return err
 	}
 
+	// The script holds one stream slot while it runs. Its errors cannot be
+	// classified, so it only counts against the endpoint and never cuts the
+	// limit: this can lower concurrency, never raise it.
+	ticket, err := request.options.StreamLimit.Acquire(input.Context(), hostPort)
+	if err != nil {
+		return err
+	}
 	ctx := input.Context()
 	if request.options.HostBackoff != nil {
 		// the script's own dials are the only signal: report them as they happen
@@ -689,6 +708,7 @@ func (request *Request) executeRequestWithPayloads(
 			Source:          &request.Code,
 		},
 	)
+	ticket.Release(hostlimit.Outcome{})
 	if err != nil {
 		// shouldn't fail even if it returned error instead create a failure event
 		results = compiler.ExecuteResult{"success": false, "error": err.Error()}

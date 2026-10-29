@@ -41,6 +41,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/utils/vardump"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/httpclientpool"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/httprespcache"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/httputils"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/signer"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/signerpool"
@@ -1086,6 +1087,8 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 		// including follow-ups when the initial response came from the cache.
 		executingClient *retryablehttp.Client
 	)
+	// respCacheDone ends this request's response cache flight, if it leads one.
+	respCacheDone := func() {}
 
 	// Dump request for variables checks
 	// For race conditions we can't dump the request body at this point as it's already waiting the open-gate event, already handled with a similar code within the race function
@@ -1241,6 +1244,25 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 				fromCache = false
 			}
 		}
+		// Scan-scoped in-memory cache (tech-filter / response reuse). Prefer this
+		// over a network round-trip for identical safe GET/HEAD requests. An
+		// identical request already on the wire is waited for, not sent again.
+		if resp == nil && request.options.HTTPResponseCache != nil && request.usesResponseCache(generatedRequest) &&
+			generatedRequest.request != nil && generatedRequest.request.Request != nil &&
+			httprespcache.CacheableRequest(generatedRequest.request.Request) &&
+			httprespcache.JarAllows(input.CookieJar, generatedRequest.request.Request.URL) {
+			if key := respCacheKey(input, generatedRequest.request.Request); key != "" {
+				cached, done := request.options.HTTPResponseCache.GetOrLead(key, request.options.TemplateID, generatedRequest.request.Request)
+				// Every return path ends the flight, so waiters never hang.
+				defer done()
+				respCacheDone = done
+				if cached != nil {
+					resp = cached
+					fromCache = true
+					err = nil
+				}
+			}
+		}
 		if resp == nil || (request.Analyzer != nil && cookieFuzzing) {
 			connConfig := request.connConfiguration
 			if input.CookieJar != nil && !request.DisableCookie {
@@ -1301,6 +1323,11 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 				}
 			}
 
+			ticket, releaseDeadline, admitErr := request.admitToEndpoint(input.Context(), generatedRequest)
+			if admitErr != nil {
+				return admitErr
+			}
+			defer releaseDeadline()
 			resp, err = executingClient.Do(generatedRequest.request)
 			sent = true
 
@@ -1347,6 +1374,7 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 				rewindRequestBody(generatedRequest.request)
 				resp, err = executingClient.Do(generatedRequest.request)
 			}
+			request.releaseEndpoint(ticket, generatedRequest, resp, err)
 		}
 	}
 	// A project-file hit never sets sent, so a stored response cannot move the delay.
@@ -1490,6 +1518,21 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 				errx = errors.Wrap(err, "could not store in project file")
 			}
 		}
+		if request.options.HTTPResponseCache != nil && !fromCache && request.usesResponseCache(generatedRequest) &&
+			generatedRequest.request != nil && generatedRequest.request.Request != nil &&
+			httprespcache.CacheableRequest(generatedRequest.request.Request) &&
+			httprespcache.JarAllows(input.CookieJar, generatedRequest.request.Request.URL) &&
+			!httprespcache.ResponseSetsCookie(resp) &&
+			httprespcache.StoredStatus(resp.StatusCode) &&
+			httprespcache.CompleteBody(respChain.BodyBytes(), int64(maxBodylimit)) &&
+			httprespcache.ReplayableEncoding(resp.Header, respChain.BodyBytes()) &&
+			!isHTTPToHTTPSMismatch(resp.StatusCode, respChain.BodyString()) {
+			if key := respCacheKey(input, generatedRequest.request.Request); key != "" {
+				request.options.HTTPResponseCache.Set(key, request.options.TemplateID, resp, respChain.BodyBytes())
+			}
+		}
+		// Wake requests waiting on this one now, not after matching.
+		respCacheDone()
 	})
 
 	// evaluate responses continuously until first redirect request in reverse order

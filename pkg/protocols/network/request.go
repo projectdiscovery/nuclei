@@ -26,6 +26,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/helpers/eventcreator"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/helpers/responsehighlighter"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/hostlimit"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/interactsh"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/render"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/replacer"
@@ -347,11 +348,22 @@ func (request *Request) executeRequestWithPayloads(variables map[string]interfac
 		return errors.Wrap(err, "could not take rate limit")
 	}
 
+	// One stream slot per connection, held until the connection closes. Only
+	// a failed dial counts as strain: a banner read that times out on a port
+	// running another service is expected, not overload.
+	ticket, admitErr := request.options.StreamLimit.Acquire(input.Context(), actualAddress)
+	if admitErr != nil {
+		return errors.Wrap(admitErr, "could not admit request")
+	}
+	var dialErr error
+	defer func() { ticket.Release(hostlimit.Outcome{Overload: hostlimit.IsOverload(dialErr)}) }()
+
 	if shouldUseTLS {
 		conn, err = request.dialer.DialTLS(input.Context(), "tcp", actualAddress)
 	} else {
 		conn, err = request.dialer.Dial(input.Context(), "tcp", actualAddress)
 	}
+	dialErr = err
 	// DialTLS fails the handshake after TCP has connected. Backoff follows the
 	// TCP result; the request still returns the handshake error.
 	request.options.HostBackoffObserveDial(actualAddress, tcpDialError(err))

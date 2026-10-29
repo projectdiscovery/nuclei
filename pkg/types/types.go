@@ -11,6 +11,9 @@ import (
 
 	"github.com/projectdiscovery/goflags"
 	"github.com/projectdiscovery/gologger"
+	"github.com/projectdiscovery/gologger/formatter"
+	"github.com/projectdiscovery/gologger/levels"
+	"github.com/projectdiscovery/gologger/writer"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v3/pkg/model/types/severity"
@@ -141,6 +144,9 @@ type Options struct {
 	BulkSize int
 	// TemplateThreads is the number of templates executed in parallel
 	TemplateThreads int
+	// TemplateThreadsAuto is set when -c was not given and TemplateThreads was
+	// filled in by ResolveTemplateThreads.
+	TemplateThreadsAuto bool
 	// HeadlessBulkSize is the of targets analyzed in parallel for each headless template
 	HeadlessBulkSize int
 	// HeadlessTemplateThreads is the number of headless templates executed in parallel
@@ -211,6 +217,13 @@ type Options struct {
 	// PreflightPortScan enables a preflight resolve + TCP portscan and filters targets
 	// before running templates. Disabled by default.
 	PreflightPortScan bool
+	// DisableServicePlacement turns off skipping JS templates whose only
+	// protocol libraries cannot speak HTTP (SMB, SSH, MySQL, ...) on an input
+	// port that answered HTTP. Placement is on by default.
+	DisableServicePlacement bool
+	// DisableAdaptiveConcurrency turns off the per-endpoint limit that adapts
+	// in-flight requests to each endpoint's latency and errors. On by default.
+	DisableAdaptiveConcurrency bool
 	// HostBackoff slows a host down when it signals it is being overloaded
 	// (429, a run of 403s, or transport failures) instead of scanning it at full
 	// rate until it blocks the scanner. Opt-in, since it changes scan pacing.
@@ -239,6 +252,11 @@ type Options struct {
 	// NOTE(dwisiswant0): this is experimental and might be enabled by default
 	// in the future releases.
 	EnableHTTPCache bool
+	// ResponseCache reuses identical safe GET/HEAD responses inside one scan.
+	// Only requests without auth, cookies, Host override, body, cache directives
+	// or non-allowlisted headers are eligible, so the reuse is lossless. Opt-in:
+	// a template that depends on state or timing could see a different result.
+	ResponseCache bool
 	// LeaveDefaultPorts skips normalization of default ports
 	LeaveDefaultPorts bool
 	// AutomaticScan enables automatic tech based template execution
@@ -661,6 +679,23 @@ func (options *Options) Copy() *Options {
 		NoHostErrors:                   options.NoHostErrors,
 		BulkSize:                       options.BulkSize,
 		TemplateThreads:                options.TemplateThreads,
+		TemplateThreadsAuto:            options.TemplateThreadsAuto,
+		CDPEndpoint:                    options.CDPEndpoint,
+		HostBackoff:                    options.HostBackoff,
+		HostBackoffMax:                 options.HostBackoffMax,
+		MaxURLsPerPattern:              options.MaxURLsPerPattern,
+		DisableURLNormalization:        options.DisableURLNormalization,
+		EnableLLM:                      options.EnableLLM,
+		LLMProvider:                    options.LLMProvider,
+		LLMBaseURL:                     options.LLMBaseURL,
+		LLMModel:                       options.LLMModel,
+		LLMTimeout:                     options.LLMTimeout,
+		LLMMaxCalls:                    options.LLMMaxCalls,
+		LLMConcurrency:                 options.LLMConcurrency,
+		LLMCache:                       options.LLMCache,
+		VarsTextTemplating:             options.VarsTextTemplating,
+		VarsFilePaths:                  options.VarsFilePaths,
+		TemplateLoadingConcurrency:     options.TemplateLoadingConcurrency,
 		templateThreadsProvider:        options.templateThreadsProvider,
 		templateThreadAcquire:          options.templateThreadAcquire,
 		templateThreadRelease:          options.templateThreadRelease,
@@ -698,6 +733,7 @@ func (options *Options) Copy() *Options {
 		PerHostRateLimit:               options.PerHostRateLimit,
 		PerHostRateLimitPoolSize:       options.PerHostRateLimitPoolSize,
 		EnableHTTPCache:                options.EnableHTTPCache,
+		ResponseCache:                  options.ResponseCache,
 		LeaveDefaultPorts:              options.LeaveDefaultPorts,
 		AutomaticScan:                  options.AutomaticScan,
 		Silent:                         options.Silent,
@@ -726,6 +762,8 @@ func (options *Options) Copy() *Options {
 		TagList:                        options.TagList,
 		HangMonitor:                    options.HangMonitor,
 		Stdin:                          options.Stdin,
+		DisableServicePlacement:        options.DisableServicePlacement,
+		DisableAdaptiveConcurrency:     options.DisableAdaptiveConcurrency,
 		StopAtFirstMatch:               options.StopAtFirstMatch,
 		HoneypotDetection:              options.HoneypotDetection,
 		HoneypotThreshold:              options.HoneypotThreshold,
@@ -927,12 +965,43 @@ func (options *Options) ShouldFollowHTTPRedirects() bool {
 	return options.FollowRedirects || options.FollowHostRedirects
 }
 
+// UsesResponseCache reports whether the scan-scoped response cache may be active:
+// -response-cache.
+func (options *Options) UsesResponseCache() bool {
+	return options.ResponseCache
+}
+
 // HasClientCertificates determines if any client certificate was specified
 func (options *Options) HasClientCertificates() bool {
 	return options.ClientCertFile != "" || options.ClientCAFile != "" || options.ClientKeyFile != ""
 }
 
 // DefaultOptions returns default options for nuclei
+// AdaptiveTemplateThreads is the template concurrency used when adaptive
+// concurrency is on and -c was not set. Each endpoint's own limit then decides
+// what the target receives, so more ready templates only keep endpoints busy.
+// Without the endpoint limit this value overloads slow targets and loses
+// findings, so it applies only while adaptive concurrency is on.
+const AdaptiveTemplateThreads = 100
+
+// DefaultTemplateThreads is the template concurrency without adaptive
+// concurrency.
+const DefaultTemplateThreads = 25
+
+// ResolveTemplateThreads fills in -c when it was not set (0). Any explicit
+// value is kept. Without adaptive concurrency the historical default applies,
+// because a higher value overloads slow targets and loses findings.
+func (options *Options) ResolveTemplateThreads() {
+	if options.TemplateThreads > 0 {
+		return
+	}
+	options.TemplateThreadsAuto = true
+	options.TemplateThreads = DefaultTemplateThreads
+	if !options.DisableAdaptiveConcurrency {
+		options.TemplateThreads = AdaptiveTemplateThreads
+	}
+}
+
 func DefaultOptions() *Options {
 	return &Options{
 		RateLimit:                  150,
@@ -951,8 +1020,20 @@ func DefaultOptions() *Options {
 		ResponseSaveSize:           unitutils.Mega,
 		RequestSaveSize:            32 * unitutils.Kilo,
 		ExecutionId:                xid.New().String(),
-		Logger:                     &gologger.Logger{},
+		Logger:                     newQuietLogger(),
 	}
+}
+
+// newQuietLogger returns the default options logger: as quiet as the zero value
+// (fatal only), but with a formatter and a writer, so raising its level (for
+// example with the SDK's WithVerbosity) logs instead of dereferencing a nil
+// formatter.
+func newQuietLogger() *gologger.Logger {
+	l := &gologger.Logger{}
+	l.SetMaxLevel(levels.LevelFatal)
+	l.SetFormatter(formatter.NewCLI(false))
+	l.SetWriter(writer.NewCLI())
+	return l
 }
 
 func (options *Options) ShouldUseHostError() bool {
