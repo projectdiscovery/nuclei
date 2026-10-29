@@ -20,6 +20,8 @@ extend-exclude = [
     "vendor/",
     # Go checksum file
     "go.sum",
+    # Generated history. Commit SHAs are not words.
+    "SECURITY_CONTEXT.md",
 ]
 
 [default.extend-identifiers]

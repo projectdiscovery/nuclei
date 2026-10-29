@@ -358,6 +358,9 @@ func (e *NucleiEngine) init(ctx context.Context) error {
 
 	httpxOptions := httpx.DefaultOptions
 	httpxOptions.Timeout = 5 * time.Second
+	if len(e.opts.InternalResolversList) > 0 {
+		httpxOptions.Resolvers = e.opts.InternalResolversList
+	}
 	if client, err := httpx.New(&httpxOptions); err != nil {
 		return err
 	} else {
