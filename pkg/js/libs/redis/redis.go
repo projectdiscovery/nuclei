@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 	"github.com/redis/go-redis/v9"
 
@@ -269,9 +270,10 @@ var errReadLimit = fmt.Errorf("redis: reply exceeds %d bytes", maxReadBytes)
 // maxReadBytes.
 func newClient(addr, password string) *redis.Client {
 	opts := &redis.Options{
-		Addr:     addr,
-		Password: password,
-		DB:       0,
+		Addr:          addr,
+		Password:      password,
+		DB:            0,
+		DialerRetries: dialAttempts,
 	}
 	dial := redis.NewDialer(opts)
 	opts.Dialer = func(ctx context.Context, network, addr string) (net.Conn, error) {
@@ -419,4 +421,21 @@ func lengthTooLarge(line []byte) bool {
 func timeoutErr(err error) bool {
 	var netErr net.Error
 	return errors.As(err, &netErr) && netErr.Timeout()
+}
+
+// dialAttempts replaces go-redis's default of 5. The extra attempts run in a goroutine that
+// ignores the caller's context, so they kept dialing a filtered port for ~25s after the
+// template had given up on it.
+const dialAttempts = 1
+
+func init() {
+	redis.SetLogger(warningLogger{})
+}
+
+// warningLogger hands go-redis's logs to gologger as warnings. Its default logger writes them
+// straight to stderr, where a failed dial against the scanned host reads as an error.
+type warningLogger struct{}
+
+func (warningLogger) Printf(_ context.Context, format string, v ...interface{}) {
+	gologger.Warning().Msgf(format, v...)
 }
