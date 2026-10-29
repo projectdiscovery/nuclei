@@ -52,6 +52,8 @@ nd = "nd"
 # Base64 encoded test data fragments
 Iif = "Iif"
 ser = "ser"
+# Commit hash fragment (0da993afe6 in SECURITY_CONTEXT.md)
+afe = "afe"
 
 [type.go.extend-identifiers]
 # Short CLI flag names that appear in help strings
