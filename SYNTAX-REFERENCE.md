@@ -3775,6 +3775,8 @@ Part Definitions:
 - <code>req</code> - Headless request made from the client
 - <code>duration</code> - Latest measured operation duration in seconds
 - <code>resp,body,data</code> - Headless response received from client (default)
+- <code>header,all_headers</code> - Headless response headers
+- <code>status_code</code> - Status code received from the server
 
 <hr />
 
