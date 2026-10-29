@@ -16,10 +16,12 @@ import (
 	syncutil "github.com/projectdiscovery/utils/sync"
 
 	_ "github.com/projectdiscovery/nuclei/v3/pkg/js/generated/go/libbytes"
+	_ "github.com/projectdiscovery/nuclei/v3/pkg/js/generated/go/libcompress"
 	_ "github.com/projectdiscovery/nuclei/v3/pkg/js/generated/go/libdcerpc"
 	_ "github.com/projectdiscovery/nuclei/v3/pkg/js/generated/go/libdcom"
 	_ "github.com/projectdiscovery/nuclei/v3/pkg/js/generated/go/libfs"
 	_ "github.com/projectdiscovery/nuclei/v3/pkg/js/generated/go/libgrpc"
+	_ "github.com/projectdiscovery/nuclei/v3/pkg/js/generated/go/libhash"
 	_ "github.com/projectdiscovery/nuclei/v3/pkg/js/generated/go/libhttp"
 	_ "github.com/projectdiscovery/nuclei/v3/pkg/js/generated/go/libhash"
 	_ "github.com/projectdiscovery/nuclei/v3/pkg/js/generated/go/libikev2"

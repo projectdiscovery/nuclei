@@ -1,4 +1,5 @@
 export * as bytes from './bytes';
+export * as compress from './compress';
 export * as dcom from './dcom';
 export * as dcerpc from './dcerpc';
 export * as fs from './fs';
