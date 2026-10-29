@@ -10,6 +10,8 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net/http/httputil"
+	"slices"
 	"strings"
 
 	"github.com/dsnet/compress/brotli"
@@ -69,47 +71,73 @@ type (
 	}
 )
 
-// NewDecoder returns a decoder for a Content-Encoding the HTTP engine
-// decodes: gzip, deflate (zlib), br or zstd. identity and an empty encoding
-// pass the bytes through unchanged.
+// NewDecoder returns a decoder for the codings the HTTP engine decodes:
+// gzip, deflate (zlib), br and zstd, plus chunked for a Transfer-Encoding.
+// encoding may list several, comma-separated in the order they were applied,
+// the way HTTP headers list them; they are decoded last to first. identity
+// and an empty encoding pass the bytes through unchanged.
 // @example
 // ```javascript
 // const compress = require('nuclei/compress');
 // const d = compress.NewDecoder('br');
+// // Content-Encoding: gzip sent with Transfer-Encoding: chunked
+// const c = compress.NewDecoder('gzip, chunked');
 // ```
 func NewDecoder(ctx context.Context, encoding string) (*Decoder, error) {
-	var open func(io.Reader) (io.Reader, func(), error)
-	switch strings.ToLower(strings.TrimSpace(encoding)) {
-	case "gzip":
-		open = func(r io.Reader) (io.Reader, func(), error) {
-			zr, err := gzip.NewReader(r)
-			return zr, func() {}, err
+	var opens []func(io.Reader) (io.Reader, func(), error)
+	for name := range strings.SplitSeq(encoding, ",") {
+		switch name = strings.ToLower(strings.TrimSpace(name)); name {
+		case "gzip":
+			opens = append(opens, func(r io.Reader) (io.Reader, func(), error) {
+				zr, err := gzip.NewReader(r)
+				return zr, func() {}, err
+			})
+		case "deflate":
+			opens = append(opens, func(r io.Reader) (io.Reader, func(), error) {
+				zr, err := zlib.NewReader(r)
+				return zr, func() {}, err
+			})
+		case "br":
+			opens = append(opens, func(r io.Reader) (io.Reader, func(), error) {
+				br, err := brotli.NewReader(r, nil)
+				return br, func() {}, err
+			})
+		case "zstd":
+			opens = append(opens, func(r io.Reader) (io.Reader, func(), error) {
+				// One goroutine so no background workers outlive the stream.
+				zr, err := zstd.NewReader(r, zstd.WithDecoderConcurrency(1))
+				if err != nil {
+					return nil, nil, err
+				}
+				return zr, zr.Close, nil
+			})
+		case "chunked":
+			opens = append(opens, func(r io.Reader) (io.Reader, func(), error) {
+				return httputil.NewChunkedReader(r), func() {}, nil
+			})
+		case "", "identity":
+		default:
+			return nil, fmt.Errorf("unsupported encoding %q, expected gzip, deflate, br, zstd, chunked or identity", name)
 		}
-	case "deflate":
-		open = func(r io.Reader) (io.Reader, func(), error) {
-			zr, err := zlib.NewReader(r)
-			return zr, func() {}, err
+	}
+	slices.Reverse(opens)
+	open := func(r io.Reader) (io.Reader, func(), error) {
+		var closers []func()
+		closeAll := func() {
+			for _, c := range slices.Backward(closers) {
+				c()
+			}
 		}
-	case "br":
-		open = func(r io.Reader) (io.Reader, func(), error) {
-			br, err := brotli.NewReader(r, nil)
-			return br, func() {}, err
-		}
-	case "zstd":
-		open = func(r io.Reader) (io.Reader, func(), error) {
-			// One goroutine so no background workers outlive the stream.
-			zr, err := zstd.NewReader(r, zstd.WithDecoderConcurrency(1))
+		for _, o := range opens {
+			next, c, err := o(r)
 			if err != nil {
+				closeAll()
 				return nil, nil, err
 			}
-			return zr, zr.Close, nil
+			r = next
+			closers = append(closers, c)
 		}
-	case "", "identity":
-		open = func(r io.Reader) (io.Reader, func(), error) {
-			return r, func() {}, nil
-		}
-	default:
-		return nil, fmt.Errorf("unsupported encoding %q, expected gzip, deflate, br, zstd or identity", encoding)
+		return r, closeAll, nil
 	}
 	d := &Decoder{
 		ctx:    ctx,
@@ -181,6 +209,20 @@ func (d *Decoder) Close() ([]byte, error) {
 	d.inputEnded = true
 	d.advance()
 	return d.result()
+}
+
+// Finished reports whether the stream has ended and every decoded byte has
+// been handed back. Only a format that marks its own end can finish before
+// Close: a chunked body finishes at its last chunk, so a template reading one
+// knows when to stop calling Recv.
+// @example
+// ```javascript
+// const compress = require('nuclei/compress');
+// const d = compress.NewDecoder('gzip, chunked');
+// while (!d.Finished()) for (let out = d.Write(conn.Recv(65536)); out.length > 0; out = d.Read()) log(out.length);
+// ```
+func (d *Decoder) Finished() bool {
+	return d.state == finished && len(d.out) == 0
 }
 
 // The module also exposes Decoder as a class, and new compress.Decoder() has

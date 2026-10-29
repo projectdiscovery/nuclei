@@ -5,6 +5,7 @@ import (
 	"context"
 	"io"
 	"math/rand"
+	"net/http/httputil"
 	"testing"
 	"time"
 
@@ -82,11 +83,80 @@ func TestDecoderMatchesWholeBodyDecode(t *testing.T) {
 	}
 }
 
+// chunked frames data the way a server sends Transfer-Encoding: chunked,
+// including the closing CRLF after the last chunk.
+func chunked(t *testing.T, data []byte) []byte {
+	t.Helper()
+	var buf bytes.Buffer
+	w := httputil.NewChunkedWriter(&buf)
+	for len(data) > 0 {
+		n := min(len(data), 8000)
+		_, err := w.Write(data[:n])
+		require.NoError(t, err)
+		data = data[n:]
+	}
+	require.NoError(t, w.Close())
+	buf.WriteString("\r\n")
+	return buf.Bytes()
+}
+
+func TestDecoderDecodesChunkedTransfer(t *testing.T) {
+	data := bytes.Repeat([]byte("nuclei chunked decoder "), 400000)
+	for _, encoding := range []string{"gzip", "deflate", "br", "zstd", "identity"} {
+		t.Run(encoding, func(t *testing.T) {
+			d, err := NewDecoder(t.Context(), encoding+", chunked")
+			require.NoError(t, err)
+			decoded, err := decodeInChunks(t, d, chunked(t, compressed(t, encoding, data)))
+			require.NoError(t, err)
+			require.Equal(t, data, decoded)
+		})
+	}
+}
+
+// A chunked body marks its own end, so the template can stop reading the
+// connection without knowing the length up front.
+func TestDecoderFinishesAtLastChunk(t *testing.T) {
+	data := bytes.Repeat([]byte("finished "), 1000)
+	d, err := NewDecoder(t.Context(), "gzip, chunked")
+	require.NoError(t, err)
+	input := chunked(t, compressed(t, "gzip", data))
+
+	half := len(input) / 2
+	_, err = d.Write(input[:half])
+	require.NoError(t, err)
+	require.False(t, d.Finished())
+
+	out, err := d.Write(input[half:])
+	require.NoError(t, err)
+	var decoded []byte
+	for ; len(out) > 0; out, err = d.Read() {
+		decoded = append(decoded, out...)
+	}
+	require.NoError(t, err)
+	require.Equal(t, data, decoded)
+	require.True(t, d.Finished(), "decoder must finish without Close once the last chunk arrives")
+}
+
+func TestDecoderAppliesCodingsInReverse(t *testing.T) {
+	data := bytes.Repeat([]byte("two codings "), 100000)
+	input := compressed(t, "br", compressed(t, "gzip", data))
+	d, err := NewDecoder(t.Context(), "gzip, br")
+	require.NoError(t, err)
+	decoded, err := decodeInChunks(t, d, input)
+	require.NoError(t, err)
+	require.Equal(t, data, decoded)
+}
+
 func TestDecoderReportsTruncatedStream(t *testing.T) {
 	data := bytes.Repeat([]byte("truncated "), 200000)
-	for _, encoding := range []string{"gzip", "deflate", "br", "zstd"} {
+	for _, encoding := range []string{"gzip", "deflate", "br", "zstd", "identity, chunked"} {
 		t.Run(encoding, func(t *testing.T) {
-			input := compressed(t, encoding, data)
+			var input []byte
+			if encoding == "identity, chunked" {
+				input = chunked(t, data)
+			} else {
+				input = compressed(t, encoding, data)
+			}
 			d, err := NewDecoder(t.Context(), encoding)
 			require.NoError(t, err)
 			decoded, err := decodeInChunks(t, d, input[:len(input)/2])
@@ -113,6 +183,8 @@ func TestDecoderStopsWhenContextEnds(t *testing.T) {
 
 func TestNewDecoderRejectsUnknownEncoding(t *testing.T) {
 	_, err := NewDecoder(t.Context(), "compress")
+	require.Error(t, err)
+	_, err = NewDecoder(t.Context(), "gzip, compress")
 	require.Error(t, err)
 }
 
