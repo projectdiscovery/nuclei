@@ -39,7 +39,7 @@ func (s *DASTServer) consumeTaskRequest(req PostRequestsHandlerRequest) {
 		return
 	}
 
-	if s.deduplicator.isDuplicate(parsedReq) {
+	if s.deduplicator.IsDuplicate(parsedReq) {
 		gologger.Warning().Msgf("Duplicate request detected: %s %s\n", parsedReq.Request.Method, parsedReq.URL.String())
 		return
 	}

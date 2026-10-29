@@ -19,7 +19,7 @@ func TestNetwork(t *testing.T) {
 	t.Run("Basic", func(t *testing.T) {
 		errState := &capturedError{}
 		server := testutils.NewTCPServer(nil, 0, func(conn net.Conn) {
-			defer func() { _ = conn.Close() }()
+			defer testutils.CloseConn(conn)
 
 			data, err := reader.ConnReadNWithTimeout(conn, 4, 5*time.Second)
 			if err != nil {
@@ -48,7 +48,7 @@ func TestNetwork(t *testing.T) {
 
 	t.Run("PinnedTargetLine", func(t *testing.T) {
 		server := testutils.NewTCPServer(nil, 0, func(conn net.Conn) {
-			defer func() { _ = conn.Close() }()
+			defer testutils.CloseConn(conn)
 
 			data, err := reader.ConnReadNWithTimeout(conn, 4, 5*time.Second)
 			if err == nil && string(data) == "PING" {
@@ -81,7 +81,7 @@ func TestNetwork(t *testing.T) {
 	t.Run("Hex", func(t *testing.T) {
 		errState := &capturedError{}
 		server := testutils.NewTCPServer(nil, 0, func(conn net.Conn) {
-			defer func() { _ = conn.Close() }()
+			defer testutils.CloseConn(conn)
 
 			data, err := reader.ConnReadNWithTimeout(conn, 4, 5*time.Second)
 			if err != nil {
@@ -111,7 +111,7 @@ func TestNetwork(t *testing.T) {
 	t.Run("MultiStep", func(t *testing.T) {
 		errState := &capturedError{}
 		server := testutils.NewTCPServer(nil, 0, func(conn net.Conn) {
-			defer func() { _ = conn.Close() }()
+			defer testutils.CloseConn(conn)
 
 			data, err := reader.ConnReadNWithTimeout(conn, 5, 5*time.Second)
 			if err != nil {
@@ -153,7 +153,7 @@ func TestNetwork(t *testing.T) {
 	t.Run("Duration", func(t *testing.T) {
 		errState := &capturedError{}
 		server := testutils.NewTCPServer(nil, 0, func(conn net.Conn) {
-			defer func() { _ = conn.Close() }()
+			defer testutils.CloseConn(conn)
 
 			data, err := reader.ConnReadNWithTimeout(conn, 5, 5*time.Second)
 			if err != nil {
@@ -192,7 +192,7 @@ func TestNetwork(t *testing.T) {
 
 	t.Run("SelfContained", func(t *testing.T) {
 		server := testutils.NewTCPServer(nil, 0, func(conn net.Conn) {
-			defer func() { _ = conn.Close() }()
+			defer testutils.CloseConn(conn)
 			_, _ = conn.Write([]byte("Authentication successful"))
 		})
 		defer server.Close()
@@ -212,7 +212,7 @@ func TestNetwork(t *testing.T) {
 	t.Run("Variables", func(t *testing.T) {
 		errState := &capturedError{}
 		server := testutils.NewTCPServer(nil, 0, func(conn net.Conn) {
-			defer func() { _ = conn.Close() }()
+			defer testutils.CloseConn(conn)
 
 			data, err := reader.ConnReadNWithTimeout(conn, 4, 5*time.Second)
 			if err != nil {
@@ -240,7 +240,7 @@ func TestNetwork(t *testing.T) {
 	t.Run("SameAddress", func(t *testing.T) {
 		errState := &capturedError{}
 		server := testutils.NewTCPServer(nil, 0, func(conn net.Conn) {
-			defer func() { _ = conn.Close() }()
+			defer testutils.CloseConn(conn)
 
 			data, err := reader.ConnReadNWithTimeout(conn, 4, 5*time.Second)
 			if err != nil {
@@ -269,7 +269,7 @@ func TestNetwork(t *testing.T) {
 
 	t.Run("NetworkPort", func(t *testing.T) {
 		server := testutils.NewTCPServer(nil, 23846, func(conn net.Conn) {
-			defer func() { _ = conn.Close() }()
+			defer testutils.CloseConn(conn)
 
 			data, err := reader.ConnReadNWithTimeout(conn, 4, 5*time.Second)
 			if err == nil && string(data) == "PING" {
@@ -292,7 +292,7 @@ func TestNetwork(t *testing.T) {
 		// listener binds without root. The server is started on 8081 and the
 		// template (port 23846) must dial the operator-specified 8081 to match.
 		serverReserved := testutils.NewTCPServer(nil, 8081, func(conn net.Conn) {
-			defer func() { _ = conn.Close() }()
+			defer testutils.CloseConn(conn)
 
 			data, err := reader.ConnReadNWithTimeout(conn, 4, 5*time.Second)
 			if err == nil && string(data) == "PING" {
@@ -310,7 +310,7 @@ func TestNetwork(t *testing.T) {
 		}
 
 		serverOverride := testutils.NewTCPServer(nil, 34567, func(conn net.Conn) {
-			defer func() { _ = conn.Close() }()
+			defer testutils.CloseConn(conn)
 
 			data, err := reader.ConnReadNWithTimeout(conn, 4, 5*time.Second)
 			if err == nil && string(data) == "PING" {
