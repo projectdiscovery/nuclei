@@ -86,6 +86,9 @@ type generatedRequest struct {
 	// sendTimeout, when set, bounds the request from the moment the body
 	// budget admits it, so time spent queued does not count against it.
 	sendTimeout time.Duration
+	// bodyReserved is set when the caller already holds this body's share
+	// of the request body budget.
+	bodyReserved bool
 	// requestURLPattern tracks unmodified request url pattern without values ( it is used for constant vuln_hash)
 	// ex: {{BaseURL}}/api/exp?param={{randstr}}
 	requestURLPattern string

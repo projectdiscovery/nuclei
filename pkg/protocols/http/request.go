@@ -675,6 +675,11 @@ executionLoop:
 			hasInteractMatchers := interactsh.HasMatchers(request.CompiledOperators)
 
 			ctx := input.Context()
+			reservation, err := request.reserveBody(ctx)
+			if err != nil {
+				return false, true, nil, err
+			}
+			defer reservation.done()
 			generatedHttpRequest, err := generator.Make(ctx, input, data, payloads, dynamicValue)
 			if err != nil {
 				if err == types.ErrNoMoreRequests {
@@ -682,6 +687,10 @@ executionLoop:
 				}
 				return false, true, nil, err
 			}
+			if err := reservation.built(ctx, request, generatedHttpRequest.bodyLen()); err != nil {
+				return false, true, nil, err
+			}
+			generatedHttpRequest.bodyReserved = true
 			// An annotation timeout already replaced the request context.
 			if generatedHttpRequest.customCancelFunction == nil {
 				generatedHttpRequest.sendTimeout = request.options.Options.GetTimeouts().HttpTimeout
@@ -1061,7 +1070,7 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 	}
 
 	// Race requests must all be in flight together to reach the open gate.
-	if !generatedRequest.original.Race {
+	if !generatedRequest.original.Race && !generatedRequest.bodyReserved {
 		releaseBody, err := request.options.RequestBodyBudget.Acquire(input.Context(), generatedRequest.bodyLen())
 		if err != nil {
 			return err
