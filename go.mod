@@ -36,7 +36,7 @@ require (
 	github.com/elazarl/goproxy v1.7.2
 	github.com/fatih/structs v1.1.0
 	github.com/fullstorydev/grpcurl v1.9.3
-	github.com/getkin/kin-openapi v0.144.0
+	github.com/getkin/kin-openapi v0.149.0
 	github.com/getsops/sops/v3 v3.9.2
 	github.com/go-echarts/go-echarts/v2 v2.6.0
 	github.com/go-git/go-git/v5 v5.19.2
@@ -385,7 +385,7 @@ require (
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
 	github.com/ryanuber/go-glob v1.0.0 // indirect
 	github.com/saintfish/chardet v0.0.0-20230101081208-5e3ef4b5456d // indirect
-	github.com/santhosh-tekuri/jsonschema/v6 v6.0.2 // indirect
+	github.com/santhosh-tekuri/jsonschema/v6 v6.0.3 // indirect
 	github.com/sergi/go-diff v1.4.0 // indirect
 	github.com/shirou/gopsutil v3.21.11+incompatible // indirect
 	github.com/shirou/gopsutil/v4 v4.26.3 // indirect
