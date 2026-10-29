@@ -56,6 +56,8 @@ func setOperatorPostgresEnv(t *testing.T) {
 	t.Setenv("PGPASSWORD", "OPERATOR-ENV-PGPASSWORD")
 	t.Setenv("PGUSER", "operator-user")
 	t.Setenv("PGDATABASE", "operator-db")
+	t.Setenv("PGOPTIONS", "-c search_path=operator")
+	t.Setenv("PGAPPNAME", "operator-app")
 }
 
 func TestBuildPostgresDSNIgnoresOperatorEnvironment(t *testing.T) {
@@ -67,6 +69,8 @@ func TestBuildPostgresDSNIgnoresOperatorEnvironment(t *testing.T) {
 	require.Empty(t, cfg.Password)
 	require.Empty(t, cfg.Database)
 	require.Empty(t, cfg.Service)
+	require.Empty(t, cfg.Options)
+	require.Empty(t, cfg.ApplicationName)
 }
 
 type startup struct {

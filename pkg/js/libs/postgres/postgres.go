@@ -158,6 +158,8 @@ func buildPostgresDSN(host string, port int, username, password, dbName string) 
 		{"sslmode", "disable"},
 		{"connect_timeout", "10"},
 		{"service", ""},
+		{"options", ""},
+		{"application_name", ""},
 		// a path below a file never exists, so no password file is read
 		{"passfile", filepath.Join(os.DevNull, "pgpass")},
 	}
