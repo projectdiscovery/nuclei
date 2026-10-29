@@ -1156,3 +1156,22 @@ func TestBlockedHeadlessURLS(t *testing.T) {
 		}
 	}
 }
+
+func TestBrowserCookiesOutsideInputPath(t *testing.T) {
+	actions := []*Action{
+		{ActionType: ActionTypeHolder{ActionType: ActionNavigate}, Data: map[string]string{"url": "{{BaseURL}}"}},
+		{ActionType: ActionTypeHolder{ActionType: ActionWaitLoad}},
+	}
+
+	handler := func(w http.ResponseWriter, r *http.Request) {
+		http.SetCookie(w, &http.Cookie{Name: "session", Value: "s1", Path: "/"})
+		http.SetCookie(w, &http.Cookie{Name: "token", Value: "abc", Path: "/admin"})
+		_, _ = fmt.Fprintln(w, `ok`)
+	}
+
+	testHeadless(t, actions, 20*time.Second, handler, func(page *Page, err error, out ActionData) {
+		require.Nil(t, err, "could not run page actions")
+		require.Equal(t, "s1", out["session"])
+		require.Equal(t, "abc", out["token"], "a cookie scoped to another path must still be exposed")
+	})
+}
