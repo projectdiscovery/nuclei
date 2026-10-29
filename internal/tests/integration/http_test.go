@@ -102,6 +102,7 @@ var httpTestcases = []integrationCase{
 	{Path: "protocols/http/raw-unsafe-path-single-slash.yaml", TestCase: &httpRawUnsafePathSingleSlash{}},
 	{Path: "protocols/http/disable-http-cache.yaml", TestCase: &httpDisableCache{}},
 	{Path: "protocols/http/http-cache.yaml", TestCase: &httpCache{}},
+	{Path: "protocols/http/get.yaml", TestCase: &httpExcludeHostsFileComments{}},
 }
 
 type httpMultiVarSharing struct{}
@@ -1981,5 +1982,61 @@ func (h *httpDisableCache) Execute(filePath string) error {
 		return fmt.Errorf("expected 2 requests to server, got %d", count)
 	}
 
+	return nil
+}
+
+// ensure that comments in an -exclude-hosts file are ignored
+type httpExcludeHostsFileComments struct{}
+
+// Execute executes a test case and returns an error if occurred
+func (h *httpExcludeHostsFileComments) Execute(filePath string) error {
+	router := httprouter.New()
+	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+		_, _ = fmt.Fprintf(w, "This is test matcher text")
+	})
+	ts := httptest.NewServer(router)
+	defer ts.Close()
+
+	excludeHosts := func(content string) ([]string, error) {
+		file, err := os.CreateTemp("", "exclude-hosts-*.txt")
+		if err != nil {
+			return nil, err
+		}
+		defer func() { _ = os.Remove(file.Name()) }()
+		_, err = file.WriteString(content)
+		_ = file.Close()
+		if err != nil {
+			return nil, err
+		}
+
+		return testutils.RunNucleiTemplateAndGetResults(filePath, ts.URL, debug, "-eh", file.Name())
+	}
+
+	// a comment line is not a host, even when it reads as an invalid regex
+	results, err := excludeHosts("# hosts out of scope (see ticket\n203.0.113.10\n")
+	if err != nil {
+		return fmt.Errorf("comment line: %w", err)
+	}
+	if err := expectResultsCount(results, 1); err != nil {
+		return fmt.Errorf("comment line: %w", err)
+	}
+
+	// a trailing comment does not stop the host from being excluded
+	results, err = excludeHosts("127.0.0.1 # test server\n")
+	if err != nil {
+		return fmt.Errorf("trailing comment: %w", err)
+	}
+	if err := expectResultsCount(results, 0); err != nil {
+		return fmt.Errorf("trailing comment: %w", err)
+	}
+
+	// comma separated hosts are still split when passed on the command line
+	results, err = testutils.RunNucleiTemplateAndGetResults(filePath, ts.URL, debug, "-eh", "203.0.113.10, 127.0.0.1")
+	if err != nil {
+		return fmt.Errorf("comma separated: %w", err)
+	}
+	if err := expectResultsCount(results, 0); err != nil {
+		return fmt.Errorf("comma separated: %w", err)
+	}
 	return nil
 }
