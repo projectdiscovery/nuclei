@@ -30,6 +30,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	"github.com/projectdiscovery/nuclei/v3/pkg/progress"
 	"github.com/projectdiscovery/nuclei/v3/pkg/projectfile"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/baseline"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/globalmatchers"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/hostbackoff"
@@ -118,6 +119,10 @@ type ExecutorOptions struct {
 	InteractshScope *interactsh.RequestScope
 	// HostErrorsCache is an optional cache for handling host errors
 	HostErrorsCache hosterrorscache.CacheInterface
+	// BaselineCache is an optional per-host catch-all baseline cache used to
+	// lower confidence on likely false-positive matches. Enabled via the
+	// ConfidenceBaseline option.
+	BaselineCache *baseline.Cache
 	// HostBackoff paces a host that signals it is being overloaded, so a scan
 	// slows down for it instead of being blocked outright. Nil disables it.
 	HostBackoff *hostbackoff.Governor
@@ -397,6 +402,7 @@ func (e *ExecutorOptions) Copy() *ExecutorOptions {
 		Browser:                      e.Browser,
 		Interactsh:                   e.Interactsh,
 		HostErrorsCache:              e.HostErrorsCache,
+		BaselineCache:                e.BaselineCache,
 		InteractshScope:              e.InteractshScope,
 		HostBackoff:                  e.HostBackoff,
 		StopAtFirstMatch:             e.StopAtFirstMatch,
@@ -555,11 +561,27 @@ func MakeDefaultResultEvent(request Request, wrapped *output.InternalWrappedEven
 
 	results := make([]*output.ResultEvent, 0, len(wrapped.OperatorsResult.Matches)+1)
 
+	// confidence is a static, deterministic signal derived from the matcher
+	// composition, so it is identical for every result event of this match.
+	confidenceScore, confidenceTier := wrapped.OperatorsResult.Operators.Confidence()
+	// out-of-band confirmation (an interactsh interaction) is unambiguous proof
+	// of the issue, so it outranks any in-band static score. A catch-all baseline
+	// match (the same matchers fire on a non-existent path) only clamps in-band
+	// matches: real out-of-band proof is unaffected.
+	switch {
+	case isOutOfBandConfirmed(wrapped.OperatorsResult.Operators, wrapped.InternalEvent):
+		confidenceScore, confidenceTier = operators.ConfidenceCertain, operators.ConfidenceHigh
+	case isCatchAllBaselineMatch(wrapped.InternalEvent):
+		confidenceScore, confidenceTier = operators.ConfidenceCatchAll, operators.ConfidenceLow
+	}
+
 	// If we have multiple matchers with names, write each of them separately.
 	if len(wrapped.OperatorsResult.Matches) > 0 {
 		for matcherNames := range wrapped.OperatorsResult.Matches {
 			data := request.MakeResultEventItem(wrapped)
 			data.MatcherName = matcherNames
+			data.Confidence = confidenceTier
+			data.ConfidenceScore = confidenceScore
 			results = append(results, data)
 		}
 	} else if len(wrapped.OperatorsResult.Extracts) > 0 {
@@ -567,10 +589,14 @@ func MakeDefaultResultEvent(request Request, wrapped *output.InternalWrappedEven
 			data := request.MakeResultEventItem(wrapped)
 			data.ExtractorName = k
 			data.ExtractedResults = v
+			data.Confidence = confidenceTier
+			data.ConfidenceScore = confidenceScore
 			results = append(results, data)
 		}
 	} else {
 		data := request.MakeResultEventItem(wrapped)
+		data.Confidence = confidenceTier
+		data.ConfidenceScore = confidenceScore
 		results = append(results, data)
 	}
 	// Every protocol builds its results here, so attaching the llm audit and
@@ -579,6 +605,30 @@ func MakeDefaultResultEvent(request Request, wrapped *output.InternalWrappedEven
 	// it has nothing to do: no llm operator ran, or the info has no placeholders.
 	results = AttachLLMAudits(results, wrapped.InternalEvent)
 	return renderInfo(results, wrapped.InternalEvent)
+}
+
+// isOutOfBandConfirmed reports whether the match was corroborated by an
+// out-of-band interaction (interactsh), which the interactsh client records on
+// the event before re-running the result builder. A response header named
+// Interactsh-Protocol also lands on this key, so only templates that match on
+// interactsh data, whose results come from the interactsh client, count.
+func isOutOfBandConfirmed(ops *operators.Operators, event output.InternalEvent) bool {
+	if event == nil || !interactsh.HasMatchers(ops) {
+		return false
+	}
+	return types.ToString(event["interactsh_protocol"]) != ""
+}
+
+// isCatchAllBaselineMatch reports whether the match also fired against the
+// host's catch-all baseline (set by the HTTP baseline detector), indicating a
+// likely false positive. The key mirrors http.BaselineMatchedKey; it is not
+// referenced directly to avoid an import cycle.
+func isCatchAllBaselineMatch(event output.InternalEvent) bool {
+	if event == nil {
+		return false
+	}
+	matched, _ := event["baseline_matched"].(bool)
+	return matched
 }
 
 // MakeDefaultExtractFunc performs extracting operation for an extractor on model and returns true or false.

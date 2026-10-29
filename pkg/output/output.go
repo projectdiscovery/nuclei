@@ -215,6 +215,12 @@ type ResultEvent struct {
 	CURLCommand string `json:"curl-command,omitempty"`
 	// MatcherStatus is the status of the match
 	MatcherStatus bool `json:"matcher-status"`
+	// Confidence is a heuristic detection-reliability tier (low/medium/high),
+	// derived from matcher composition and out-of-band confirmation, and is
+	// independent of severity.
+	Confidence string `json:"confidence,omitempty"`
+	// ConfidenceScore is the 0-100 score (QoD-style) behind Confidence.
+	ConfidenceScore int `json:"confidence-score"`
 	// Lines is the line count for the specified match
 	Lines []int `json:"matched-line,omitempty"`
 	// GlobalMatchers identifies whether the matches was detected in the response
@@ -637,6 +643,10 @@ func (w *StandardWriter) Close() {
 	}
 }
 
+// ConfidenceNone is the confidence of a failure event: no matcher fired, so
+// there is no detection and its confidence score is 0.
+const ConfidenceNone = "none"
+
 // WriteFailure writes the failure event for template to file and/or screen.
 func (w *StandardWriter) WriteFailure(wrappedEvent *InternalWrappedEvent) error {
 	if !w.matcherStatus {
@@ -687,7 +697,9 @@ func (w *StandardWriter) WriteFailure(wrappedEvent *InternalWrappedEvent) error 
 		Request:       types.ToString(event["request"]),
 		Response:      types.ToString(event["response"]),
 		MatcherStatus: false,
-		Timestamp:     time.Now(),
+		// nothing matched, so there is no detection to be confident about
+		Confidence: ConfidenceNone,
+		Timestamp:  time.Now(),
 		//FIXME: this is workaround to encode the template when no results were found
 		TemplateEncoded: w.encodeTemplate(types.ToString(event["template-path"])),
 		Error:           types.ToString(event["error"]),

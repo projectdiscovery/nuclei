@@ -55,6 +55,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/projectfile"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/automaticscan"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/baseline"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/globalmatchers"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/honeypotdetector"
@@ -693,6 +694,10 @@ func (r *Runner) RunEnumeration() error {
 	if config.DefaultConfig.IsDebugArgEnabled(config.DebugExportURLPattern) {
 		// Go StdLib style experimental/debug feature switch
 		executorOpts.ExportReqURLPattern = true
+	}
+
+	if r.options.ConfidenceBaseline {
+		executorOpts.BaselineCache = baseline.New()
 	}
 
 	if len(r.options.SecretsFile) > 0 && !r.options.Validate {
