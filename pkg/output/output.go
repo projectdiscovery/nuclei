@@ -252,7 +252,11 @@ func (r ResultEvent) MarshalJSON() ([]byte, error) {
 	// resultEvent has the fields of ResultEvent but not this method, so marshaling it does not recurse.
 	type resultEvent ResultEvent
 	encoded := resultEvent(r)
-	encoded.Metadata = types.ToJSONMap(r.Metadata)
+	metadata, err := types.ToJSONMap(r.Metadata)
+	if err != nil {
+		return nil, err
+	}
+	encoded.Metadata = metadata
 	return json.Marshal(encoded)
 }
 

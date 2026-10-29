@@ -17,6 +17,15 @@ func TestCopyPreservesPayloadRandomOrder(t *testing.T) {
 	}
 }
 
+func TestToJSONMapRejectsKeysSharingAStringForm(t *testing.T) {
+	metadata := map[string]interface{}{
+		"labels": []interface{}{map[interface{}]interface{}{1: "int", 1.0: "float64"}},
+	}
+	if _, err := ToJSONMap(metadata); err == nil {
+		t.Fatal("keys 1 and 1.0 must be rejected")
+	}
+}
+
 func TestSetTemplateThreadsLimiterRejectsPartialPairs(t *testing.T) {
 	options := &Options{}
 	acquire := func(context.Context) error { return nil }

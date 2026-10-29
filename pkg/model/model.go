@@ -120,7 +120,11 @@ func (i Info) MarshalJSON() ([]byte, error) {
 	// info has the fields of Info but not this method, so marshaling it does not recurse.
 	type info Info
 	encoded := info(i)
-	encoded.Metadata = types.ToJSONMap(i.Metadata)
+	metadata, err := types.ToJSONMap(i.Metadata)
+	if err != nil {
+		return nil, err
+	}
+	encoded.Metadata = metadata
 	return json.Marshal(encoded)
 }
 
