@@ -5,6 +5,7 @@ import (
 	"sync"
 	"sync/atomic"
 
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils/httpbody"
 )
 
@@ -47,6 +48,26 @@ func (request *Request) reserveBody(ctx context.Context) (*bodyReservation, erro
 	}
 	r.release = release
 	return r, nil
+}
+
+// makeReserved builds the next request inside a body reservation, waiting
+// for budget until waitCtx ends. On success the caller owns the reservation
+// and calls done once the send ends.
+func (request *Request) makeReserved(waitCtx context.Context, generator *requestGenerator, input *contextargs.Context, data string, payloads, dynamicValues map[string]interface{}) (*generatedRequest, *bodyReservation, error) {
+	reservation, err := request.reserveBody(waitCtx)
+	if err != nil {
+		return nil, nil, err
+	}
+	generated, err := generator.Make(input.Context(), input, data, payloads, dynamicValues)
+	if err == nil {
+		err = reservation.built(waitCtx, request, generated.bodyLen())
+	}
+	if err != nil {
+		reservation.done()
+		return nil, nil, err
+	}
+	generated.bodyReserved = true
+	return generated, reservation, nil
 }
 
 // built grows the reservation to the body's real size. It releases before

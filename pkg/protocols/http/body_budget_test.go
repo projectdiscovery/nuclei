@@ -2,6 +2,7 @@ package http
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -147,4 +148,53 @@ func TestReserveBodyGrowsToLargerBody(t *testing.T) {
 	_, err = request.reserveBody(ctx)
 	require.ErrorIs(t, err, context.DeadlineExceeded)
 	grown.done()
+}
+
+// Stop-at-first-match ends the workers with tasks still queued. Their
+// reservations must go back to the shared budget.
+func TestRequestBodyBudgetStopAtFirstMatchReleasesQueued(t *testing.T) {
+	const budget = 16 << 20
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = io.Copy(io.Discard, r.Body)
+		time.Sleep(100 * time.Millisecond)
+		_, _ = io.WriteString(w, "match")
+	}))
+	defer ts.Close()
+
+	options := testutils.DefaultOptions.Copy()
+	testutils.Init(options)
+
+	values := make([]string, 64)
+	for i := range values {
+		values[i] = fmt.Sprint(i)
+	}
+	request := &Request{
+		ID:               "body-budget-stop-first",
+		Method:           HTTPMethodTypeHolder{MethodType: HTTPPost},
+		Path:             []string{"{{BaseURL}}/?v={{v}}"},
+		Body:             `{{repeat("A", 1048576)}}`,
+		Threads:          4,
+		Payloads:         map[string]interface{}{"v": values},
+		StopAtFirstMatch: true,
+		Operators: operators.Operators{Matchers: []*matchers.Matcher{{
+			Part:  "body",
+			Type:  matchers.MatcherTypeHolder{MatcherType: matchers.WordsMatcher},
+			Words: []string{"match"},
+		}}},
+	}
+	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
+		ID:   request.ID,
+		Info: model.Info{SeverityHolder: severity.Holder{Severity: severity.Low}, Name: "test"},
+	})
+	executerOpts.RequestBodyBudget = httpbody.NewBudget(budget)
+	require.NoError(t, request.Compile(executerOpts))
+
+	err := request.ExecuteWithResults(contextargs.NewWithInput(context.Background(), ts.URL), make(output.InternalEvent), make(output.InternalEvent), func(*output.InternalWrappedEvent) {})
+	require.NoError(t, err)
+
+	ctx, cancel := context.WithTimeout(t.Context(), time.Second)
+	defer cancel()
+	release, err := executerOpts.RequestBodyBudget.Acquire(ctx, budget)
+	require.NoError(t, err, "every reservation must be released")
+	release()
 }

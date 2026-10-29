@@ -330,6 +330,7 @@ func (request *Request) executeParallelHTTP(input *contextargs.Context, dynamicV
 	// bounded worker-pool to avoid spawning one goroutine per payload
 	type task struct {
 		req                *generatedRequest
+		body               *bodyReservation
 		updatedInput       *contextargs.Context
 		hasInteractMarkers bool
 	}
@@ -337,72 +338,87 @@ func (request *Request) executeParallelHTTP(input *contextargs.Context, dynamicV
 	var workersWg sync.WaitGroup
 	currentWorkers := maxWorkers
 	tasks := make(chan task, maxWorkers)
+	// Workers exit on cancel without draining, and the budget is shared, so
+	// release what they left queued.
+	stopWorkers := func() {
+		close(tasks)
+		workersWg.Wait()
+		for t := range tasks {
+			t.body.done()
+		}
+	}
 	spawnWorker := func(ctx context.Context) {
 		workersWg.Add(1)
 		go func() {
 			defer workersWg.Done()
 			for t := range tasks {
-				select {
-				case <-ctx.Done():
-					return
-				default:
-				}
-				if spmHandler.FoundFirstMatch() || request.isUnresponsiveAddress(t.updatedInput) || spmHandler.Cancelled() {
-					continue
-				}
-				if err := spmHandler.Acquire(); err != nil {
-					continue
-				}
-				if spmHandler.FoundFirstMatch() || request.isUnresponsiveAddress(t.updatedInput) || spmHandler.Cancelled() {
-					spmHandler.Release()
-					continue
-				}
-				// Full URL, so https and an explicit port stay on the same key the observation uses.
-				// The handler context ends the wait when stop-at-first-match fires.
-				waitCtx, cancelWait := stopWithHandler(ctx, spmHandler)
-				err := request.rateLimitTake(waitCtx, hostBackoffKey(t.req, t.updatedInput))
-				cancelWait()
-				if err != nil {
+				if func() (exit bool) {
+					defer t.body.done()
+					select {
+					case <-ctx.Done():
+						return true
+					default:
+					}
+					if spmHandler.FoundFirstMatch() || request.isUnresponsiveAddress(t.updatedInput) || spmHandler.Cancelled() {
+						return false
+					}
+					if err := spmHandler.Acquire(); err != nil {
+						return false
+					}
+					if spmHandler.FoundFirstMatch() || request.isUnresponsiveAddress(t.updatedInput) || spmHandler.Cancelled() {
+						spmHandler.Release()
+						return false
+					}
+					// Full URL, so https and an explicit port stay on the same key the observation uses.
+					// The handler context ends the wait when stop-at-first-match fires.
+					waitCtx, cancelWait := stopWithHandler(ctx, spmHandler)
+					err := request.rateLimitTake(waitCtx, hostBackoffKey(t.req, t.updatedInput))
+					cancelWait()
+					if err != nil {
+						select {
+						case <-spmHandler.Done():
+							spmHandler.Release()
+							return false
+						case <-ctx.Done():
+							spmHandler.Release()
+							return false
+						case spmHandler.ResultChan <- err:
+							spmHandler.Release()
+							return false
+						}
+					}
+					if ctx.Err() != nil || spmHandler.FoundFirstMatch() || request.isUnresponsiveAddress(t.updatedInput) || spmHandler.Cancelled() {
+						spmHandler.Release()
+						return false
+					}
+					hasInteractMatchers := interactsh.HasMatchers(request.CompiledOperators)
+					needsRequestEvent := hasInteractMatchers && request.NeedsRequestCondition()
+					err = request.executeRequest(t.updatedInput, t.req, make(map[string]interface{}), hasInteractMatchers, func(event *output.InternalWrappedEvent) {
+						if (t.hasInteractMarkers || needsRequestEvent) && request.options.Interactsh != nil {
+							requestData := &interactsh.RequestData{
+								MakeResultFunc: request.MakeResultEvent,
+								Event:          event,
+								Operators:      request.CompiledOperators,
+								MatchFunc:      request.Match,
+								ExtractFunc:    request.Extract,
+							}
+							allOASTUrls := httputils.GetInteractshURLSFromEvent(event.InternalEvent)
+							allOASTUrls = append(allOASTUrls, t.req.interactshURLs...)
+							request.options.RegisterInteractshRequest(sliceutil.Dedupe(allOASTUrls), requestData)
+						}
+						wrappedCallback(event)
+					}, 0)
 					select {
 					case <-spmHandler.Done():
 						spmHandler.Release()
-						continue
-					case <-ctx.Done():
-						spmHandler.Release()
-						continue
+						return false
 					case spmHandler.ResultChan <- err:
+						request.recordHostResultAndCancelIfUnresponsive(t.updatedInput, err, spmHandler.Cancel)
 						spmHandler.Release()
-						continue
 					}
-				}
-				if ctx.Err() != nil || spmHandler.FoundFirstMatch() || request.isUnresponsiveAddress(t.updatedInput) || spmHandler.Cancelled() {
-					spmHandler.Release()
-					continue
-				}
-				hasInteractMatchers := interactsh.HasMatchers(request.CompiledOperators)
-				needsRequestEvent := hasInteractMatchers && request.NeedsRequestCondition()
-				err = request.executeRequest(t.updatedInput, t.req, make(map[string]interface{}), hasInteractMatchers, func(event *output.InternalWrappedEvent) {
-					if (t.hasInteractMarkers || needsRequestEvent) && request.options.Interactsh != nil {
-						requestData := &interactsh.RequestData{
-							MakeResultFunc: request.MakeResultEvent,
-							Event:          event,
-							Operators:      request.CompiledOperators,
-							MatchFunc:      request.Match,
-							ExtractFunc:    request.Extract,
-						}
-						allOASTUrls := httputils.GetInteractshURLSFromEvent(event.InternalEvent)
-						allOASTUrls = append(allOASTUrls, t.req.interactshURLs...)
-						request.options.RegisterInteractshRequest(sliceutil.Dedupe(allOASTUrls), requestData)
-					}
-					wrappedCallback(event)
-				}, 0)
-				select {
-				case <-spmHandler.Done():
-					spmHandler.Release()
-					continue
-				case spmHandler.ResultChan <- err:
-					request.recordHostResultAndCancelIfUnresponsive(t.updatedInput, err, spmHandler.Cancel)
-					spmHandler.Release()
+					return false
+				}() {
+					return
 				}
 			}
 		}()
@@ -421,8 +437,7 @@ func (request *Request) executeParallelHTTP(input *contextargs.Context, dynamicV
 
 		select {
 		case <-input.Context().Done():
-			close(tasks)
-			workersWg.Wait()
+			stopWorkers()
 			return input.Context().Err()
 		default:
 		}
@@ -430,8 +445,7 @@ func (request *Request) executeParallelHTTP(input *contextargs.Context, dynamicV
 		// resize check point - nop if there are no changes
 		if shouldFollowGlobal && spmHandler.Size() != request.options.Options.PayloadConcurrency {
 			if err := spmHandler.Resize(input.Context(), request.options.Options.PayloadConcurrency); err != nil {
-				close(tasks)
-				workersWg.Wait()
+				stopWorkers()
 				return err
 			}
 			// if payload concurrency increased, add more workers
@@ -448,15 +462,22 @@ func (request *Request) executeParallelHTTP(input *contextargs.Context, dynamicV
 			break
 		}
 
-		ctx := input.Context()
-		generatedHttpRequest, err := generator.Make(ctx, input, inputData, payloads, dynamicValues)
+		// Queued tasks hold budget and are only released once the workers
+		// stop, so the wait has to end with them.
+		generatedHttpRequest, reservation, err := request.makeReserved(workerCtx, generator, input, inputData, payloads, dynamicValues)
 		if err != nil {
 			if err == types.ErrNoMoreRequests {
 				break
 			}
+			if workerCtx.Err() != nil {
+				stopWorkers()
+				if spmHandler.FoundFirstMatch() {
+					return nil
+				}
+				return context.Cause(workerCtx)
+			}
 			request.options.Progress.IncrementFailedRequestsBy(int64(generator.Total()))
-			close(tasks)
-			workersWg.Wait()
+			stopWorkers()
 			return err
 		}
 		hasInteractMarkers := interactsh.HasMarkers(inputData) || len(generatedHttpRequest.interactshURLs) > 0
@@ -466,33 +487,32 @@ func (request *Request) executeParallelHTTP(input *contextargs.Context, dynamicV
 		updatedInput := contextargs.GetCopyIfHostOutdated(input, generatedHttpRequest.URL())
 		if request.isUnresponsiveAddress(updatedInput) {
 			// skip on unresponsive host no need to continue
+			reservation.done()
 			spmHandler.Cancel()
-			close(tasks)
-			workersWg.Wait()
+			stopWorkers()
 			return nil
 		}
 		select {
 		case <-spmHandler.Done():
-			close(tasks)
-			workersWg.Wait()
+			reservation.done()
+			stopWorkers()
 			spmHandler.Wait()
 			if spmHandler.FoundFirstMatch() {
 				return nil
 			}
 			return multierr.Combine(spmHandler.CombinedResults()...)
 		case <-workerCtx.Done():
-			close(tasks)
-			workersWg.Wait()
+			reservation.done()
+			stopWorkers()
 			if spmHandler.FoundFirstMatch() {
 				return nil
 			}
 			return context.Cause(workerCtx)
-		case tasks <- task{req: generatedHttpRequest, updatedInput: updatedInput, hasInteractMarkers: hasInteractMarkers}:
+		case tasks <- task{req: generatedHttpRequest, body: reservation, updatedInput: updatedInput, hasInteractMarkers: hasInteractMarkers}:
 		}
 		request.options.Progress.IncrementRequests()
 	}
-	close(tasks)
-	workersWg.Wait()
+	stopWorkers()
 	spmHandler.Wait()
 	if spmHandler.FoundFirstMatch() {
 		// ignore any context cancellation and in-transit execution errors
@@ -581,7 +601,7 @@ func (request *Request) executeTurboHTTP(input *contextargs.Context, dynamicValu
 		}
 
 		ctx := input.Context()
-		generatedHttpRequest, err := generator.Make(ctx, input, inputData, payloads, dynamicValues)
+		generatedHttpRequest, reservation, err := request.makeReserved(ctx, generator, input, inputData, payloads, dynamicValues)
 		if err != nil {
 			request.options.Progress.IncrementFailedRequestsBy(int64(generator.Total()))
 			return err
@@ -592,15 +612,18 @@ func (request *Request) executeTurboHTTP(input *contextargs.Context, dynamicValu
 		updatedInput := contextargs.GetCopyIfHostOutdated(input, generatedHttpRequest.URL())
 		if request.isUnresponsiveAddress(updatedInput) {
 			// skip on unresponsive host no need to continue
+			reservation.done()
 			spmHandler.Cancel()
 			return nil
 		}
 		generatedHttpRequest.pipelinedClient = pipeClient
 		if err := spmHandler.Acquire(); err != nil {
+			reservation.done()
 			break
 		}
-		go func(httpRequest *generatedRequest, requestInput *contextargs.Context) {
+		go func(httpRequest *generatedRequest, body *bodyReservation, requestInput *contextargs.Context) {
 			defer spmHandler.Release()
+			defer body.done()
 			if spmHandler.FoundFirstMatch() || request.isUnresponsiveAddress(requestInput) {
 				// skip if first match is found
 				return
@@ -625,7 +648,7 @@ func (request *Request) executeTurboHTTP(input *contextargs.Context, dynamicValu
 				request.recordHostResultAndCancelIfUnresponsive(requestInput, err, spmHandler.Cancel)
 				return
 			}
-		}(generatedHttpRequest, updatedInput)
+		}(generatedHttpRequest, reservation, updatedInput)
 		request.options.Progress.IncrementRequests()
 	}
 	spmHandler.Wait()
@@ -675,22 +698,14 @@ executionLoop:
 			hasInteractMatchers := interactsh.HasMatchers(request.CompiledOperators)
 
 			ctx := input.Context()
-			reservation, err := request.reserveBody(ctx)
-			if err != nil {
-				return false, true, nil, err
-			}
-			defer reservation.done()
-			generatedHttpRequest, err := generator.Make(ctx, input, data, payloads, dynamicValue)
+			generatedHttpRequest, reservation, err := request.makeReserved(ctx, generator, input, data, payloads, dynamicValue)
 			if err != nil {
 				if err == types.ErrNoMoreRequests {
 					return false, true, nil, nil
 				}
 				return false, true, nil, err
 			}
-			if err := reservation.built(ctx, request, generatedHttpRequest.bodyLen()); err != nil {
-				return false, true, nil, err
-			}
-			generatedHttpRequest.bodyReserved = true
+			defer reservation.done()
 			if generatedHttpRequest.customCancelFunction == nil {
 				generatedHttpRequest.sendTimeout = request.options.Options.GetTimeouts().HttpTimeout
 			}
