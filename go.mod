@@ -120,7 +120,6 @@ require (
 	github.com/spf13/cast v1.10.0
 	github.com/stretchr/testify v1.12.1
 	github.com/syndtr/goleveldb v1.0.0
-	github.com/spaolacci/murmur3 v1.1.0
 	github.com/tarunKoyalwar/goleak v0.0.0-20240429141123-0efa90dbdcf9
 	github.com/trivago/tgo v1.0.7
 	github.com/yassinebenaid/godump v0.11.1
