@@ -205,6 +205,10 @@ func TestNewInteractshHTTPClient(t *testing.T) {
 }
 
 func TestInitializeTemplatesHTTPInputUsesResolvers(t *testing.T) {
+	for _, key := range []string{"HTTP_PROXY", "http_proxy", "HTTPS_PROXY", "https_proxy"} {
+		t.Setenv(key, "")
+	}
+
 	listener, err := net.ListenPacket("udp", "127.0.0.1:0")
 	require.NoError(t, err)
 	queries := new(atomic.Int32)
