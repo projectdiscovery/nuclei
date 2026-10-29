@@ -23,9 +23,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// streamHashScript reads one HTTP response over nuclei/net in 64 KB Recv
-// calls, decoding and hashing the body as it goes. A chunked body tells the
-// decoder where it ends; otherwise Content-Length does.
 const streamHashScript = `
 	const net = require('nuclei/net');
 	const compress = require('nuclei/compress');
@@ -83,11 +80,7 @@ func encodeBody(t *testing.T, encoding string, data []byte) []byte {
 	return buf.Bytes()
 }
 
-// The streamed sha256 and mmh3 of a response must equal what a plain HTTP
-// template gets from sha256(body) and mmh3(body): the body the HTTP engine
-// decodes with its response chain, put through the DSL.
 func TestStreamingHashMatchesHTTPEngine(t *testing.T) {
-	// Compressible text with random bytes mixed in, ~6 MB decoded.
 	rng := rand.New(rand.NewSource(1))
 	var body []byte
 	for len(body) < 6<<20 {
@@ -121,8 +114,7 @@ func TestStreamingHashMatchesHTTPEngine(t *testing.T) {
 					_, _ = w.Write(encoded)
 					return
 				}
-				// Flushing before the handler returns makes net/http send
-				// the body chunked.
+				// Flushing before the handler returns makes the body chunked.
 				for rest := encoded; len(rest) > 0; {
 					n := min(len(rest), 50000)
 					_, _ = w.Write(rest[:n])

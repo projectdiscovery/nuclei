@@ -40,8 +40,6 @@ func compressed(t *testing.T, encoding string, data []byte) []byte {
 	return buf.Bytes()
 }
 
-// decodeInChunks feeds input in random chunk sizes the way a template feeds
-// Recv results, and checks no call hands back more than maxDecodedChunk.
 func decodeInChunks(t *testing.T, d *Decoder, input []byte) ([]byte, error) {
 	t.Helper()
 	rng := rand.New(rand.NewSource(1))
@@ -70,7 +68,6 @@ func decodeInChunks(t *testing.T, d *Decoder, input []byte) ([]byte, error) {
 }
 
 func TestDecoderMatchesWholeBodyDecode(t *testing.T) {
-	// Highly compressible, so one small chunk decodes to more than 1 MB.
 	data := bytes.Repeat([]byte("nuclei streaming decoder "), 400000)
 	for _, encoding := range []string{"gzip", "deflate", "br", "zstd", "identity"} {
 		t.Run(encoding, func(t *testing.T) {
@@ -83,8 +80,6 @@ func TestDecoderMatchesWholeBodyDecode(t *testing.T) {
 	}
 }
 
-// chunked frames data the way a server sends Transfer-Encoding: chunked,
-// including the closing CRLF after the last chunk.
 func chunked(t *testing.T, data []byte) []byte {
 	t.Helper()
 	var buf bytes.Buffer
@@ -113,8 +108,6 @@ func TestDecoderDecodesChunkedTransfer(t *testing.T) {
 	}
 }
 
-// A chunked body marks its own end, so the template can stop reading the
-// connection without knowing the length up front.
 func TestDecoderFinishesAtLastChunk(t *testing.T) {
 	data := bytes.Repeat([]byte("finished "), 1000)
 	d, err := NewDecoder(t.Context(), "gzip, chunked")

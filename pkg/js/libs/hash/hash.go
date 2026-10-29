@@ -1,6 +1,4 @@
-// Package hash exposes incremental hashes to nuclei JavaScript templates
-// (require('nuclei/hash')), so a template can hash a response chunk by chunk
-// as it reads it instead of holding the whole body.
+// Package hash exposes incremental hashes to nuclei JavaScript templates.
 package hash
 
 import (
@@ -18,7 +16,7 @@ import (
 )
 
 type (
-	// Hash is a running hash. Its memory does not grow with the data written.
+	// Hash is a running hash.
 	// @example
 	// ```javascript
 	// const hash = require('nuclei/hash');
@@ -32,9 +30,8 @@ type (
 	}
 )
 
-// New returns a running hash for algorithm: md5, sha1, sha256, sha512 or
-// mmh3. Sum gives the same value as the DSL function of the same name over
-// all the data written.
+// New returns a running hash for md5, sha1, sha256, sha512 or mmh3. Sum
+// matches the DSL function of the same name.
 // @example
 // ```javascript
 // const hash = require('nuclei/hash');
@@ -82,8 +79,7 @@ func (h *Hash) WriteString(data string) error {
 	return h.Write([]byte(data))
 }
 
-// Sum returns the hash of the data written so far: lowercase hex, or for
-// mmh3 a signed decimal integer. Writing more afterwards continues the hash.
+// Sum returns the hash of the data written so far, formatted as the DSL does.
 // @example
 // ```javascript
 // const hash = require('nuclei/hash');
@@ -101,6 +97,4 @@ func (h *Hash) Sum() (string, error) {
 	return hex.EncodeToString(h.h.Sum(nil)), nil
 }
 
-// The module also exposes Hash as a class, and new hash.Hash() has no
-// algorithm.
 var errNotCreatedByNew = errors.New("hash was not created with hash.New")

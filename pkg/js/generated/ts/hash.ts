@@ -1,9 +1,8 @@
 
 
 /**
- * New returns a running hash for algorithm: md5, sha1, sha256, sha512 or
- * mmh3. Sum gives the same value as the DSL function of the same name over
- * all the data written.
+ * New returns a running hash for md5, sha1, sha256, sha512 or mmh3. Sum
+ * matches the DSL function of the same name.
  * @example
  * ```javascript
  * const hash = require('nuclei/hash');
@@ -17,7 +16,7 @@ export function New(algorithm: string): Hash | null {
 
 
 /**
- * Hash is a running hash. Its memory does not grow with the data written.
+ * Hash is a running hash.
  * @example
  * ```javascript
  * const hash = require('nuclei/hash');
@@ -60,8 +59,7 @@ export class Hash {
     
 
     /**
-    * Sum returns the hash of the data written so far: lowercase hex, or for
-    * mmh3 a signed decimal integer. Writing more afterwards continues the hash.
+    * Sum returns the hash of the data written so far, formatted as the DSL does.
     * @example
     * ```javascript
     * const hash = require('nuclei/hash');

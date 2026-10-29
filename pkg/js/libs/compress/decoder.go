@@ -1,7 +1,4 @@
-// Package compress exposes streaming decompression to nuclei JavaScript
-// templates (require('nuclei/compress')), so a template can decode a
-// compressed response chunk by chunk as it reads it instead of holding the
-// whole body.
+// Package compress exposes streaming decompression to nuclei JavaScript templates.
 package compress
 
 import (
@@ -20,9 +17,7 @@ import (
 	"github.com/klauspost/compress/zstd"
 )
 
-// maxDecodedChunk caps the decoded bytes one call hands back, give or take
-// one write from the decompressor, so a small compressed chunk that expands a
-// lot never has to be held whole.
+// maxDecodedChunk caps the decoded bytes one call hands back.
 const maxDecodedChunk = 1 << 20
 
 type pauseReason int
@@ -35,9 +30,8 @@ const (
 
 type (
 	// Decoder decodes a compressed stream written to it in chunks. Each call
-	// returns the bytes decoded so far, up to about 1 MB; call Read until it
-	// returns no bytes before writing the next chunk. Memory stays bounded by
-	// the format's window, at most 16 MB for brotli.
+	// returns up to about 1 MB; call Read until it returns nothing before the
+	// next Write.
 	// @example
 	// ```javascript
 	// const compress = require('nuclei/compress');
@@ -52,30 +46,24 @@ type (
 	// ```
 	Decoder struct {
 		ctx context.Context
-		// The decode goroutine runs only between a send on resume and its
-		// next send on paused (or done closing), and the template's calls run
-		// only in between, so out is never touched by both at once.
+		// The decode goroutine and the template's calls take turns over these
+		// channels, so no field is accessed by both at once.
 		resume chan []byte
 		paused chan pauseReason
 		done   chan struct{}
 		out    []byte
 
-		// set by the template's calls
 		state      pauseReason
 		inputEnded bool
 
-		// set by the decode goroutine
 		pending []byte
 		eof     bool
 		err     error
 	}
 )
 
-// NewDecoder returns a decoder for the codings the HTTP engine decodes:
-// gzip, deflate (zlib), br and zstd, plus chunked for a Transfer-Encoding.
-// encoding may list several, comma-separated in the order they were applied,
-// the way HTTP headers list them; they are decoded last to first. identity
-// and an empty encoding pass the bytes through unchanged.
+// NewDecoder returns a decoder for gzip, deflate, br, zstd, chunked or
+// identity. List several comma-separated, in the order they were applied.
 // @example
 // ```javascript
 // const compress = require('nuclei/compress');
@@ -150,8 +138,7 @@ func NewDecoder(ctx context.Context, encoding string) (*Decoder, error) {
 	return d, nil
 }
 
-// Write decodes the next compressed chunk and returns the bytes decoded so
-// far, up to about 1 MB.
+// Write decodes the next chunk and returns up to about 1 MB of output.
 // @example
 // ```javascript
 // const compress = require('nuclei/compress');
@@ -169,15 +156,13 @@ func (d *Decoder) Write(chunk []byte) ([]byte, error) {
 		return nil, errors.New("decoded bytes are waiting: call Read until it returns no bytes before writing more")
 	}
 	if d.state == needInput && len(chunk) > 0 {
-		// The goroutine may keep part of the chunk after Write returns, and
-		// the template may reuse its array.
+		// The decode goroutine may still hold the chunk after Write returns.
 		d.resumeWith(bytes.Clone(chunk))
 	}
 	return d.result()
 }
 
-// Read returns more decoded bytes, up to about 1 MB. It returns no bytes once
-// the decoder needs the next chunk or the stream has ended.
+// Read returns more decoded bytes, or none once the decoder needs input.
 // @example
 // ```javascript
 // const compress = require('nuclei/compress');
@@ -192,9 +177,8 @@ func (d *Decoder) Read() ([]byte, error) {
 	return d.result()
 }
 
-// Close ends the input and returns the last decoded bytes, up to about 1 MB;
-// call Read for the rest. A stream that was cut short raises an error once
-// all the bytes decoded before the cut have been returned.
+// Close ends the input and returns the last decoded bytes. A truncated
+// stream errors once the bytes before the cut have been returned.
 // @example
 // ```javascript
 // const compress = require('nuclei/compress');
@@ -211,10 +195,8 @@ func (d *Decoder) Close() ([]byte, error) {
 	return d.result()
 }
 
-// Finished reports whether the stream has ended and every decoded byte has
-// been handed back. Only a format that marks its own end can finish before
-// Close: a chunked body finishes at its last chunk, so a template reading one
-// knows when to stop calling Recv.
+// Finished reports whether a stream that marks its own end, such as a
+// chunked body, has ended and all its output was read.
 // @example
 // ```javascript
 // const compress = require('nuclei/compress');
@@ -225,20 +207,14 @@ func (d *Decoder) Finished() bool {
 	return d.state == finished && len(d.out) == 0
 }
 
-// The module also exposes Decoder as a class, and new compress.Decoder() has
-// no encoding or decode goroutine.
 var errNotCreatedByNewDecoder = errors.New("decoder was not created with compress.NewDecoder")
 
-// advance runs the decode goroutine until it has bytes to hand back, waits
-// for a chunk the template has not written yet, or has ended.
 func (d *Decoder) advance() {
 	for len(d.out) == 0 && (d.state == outputFull || d.state == needInput && d.inputEnded) {
 		d.resumeWith(nil)
 	}
 }
 
-// result hands back the decoded bytes, and the decode error once no bytes
-// are left before it.
 func (d *Decoder) result() ([]byte, error) {
 	out := d.out
 	d.out = nil
@@ -265,8 +241,6 @@ func (d *Decoder) wait() {
 	}
 }
 
-// run decodes on its own goroutine, pausing whenever it needs input or has
-// decoded maxDecodedChunk bytes.
 func (d *Decoder) run(open func(io.Reader) (io.Reader, func(), error)) {
 	defer close(d.done)
 	r, closeReader, err := open(decoderInput{d})
@@ -279,8 +253,6 @@ func (d *Decoder) run(open func(io.Reader) (io.Reader, func(), error)) {
 	d.err = err
 }
 
-// pause hands control back to the template and returns the chunk it
-// resumes with, nil to continue or to end the input.
 func (d *Decoder) pause(reason pauseReason) ([]byte, error) {
 	select {
 	case d.paused <- reason:
