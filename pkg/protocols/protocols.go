@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"errors"
 	"reflect"
+	"strings"
 	"sync/atomic"
 
 	"github.com/projectdiscovery/fastdialer/fastdialer"
@@ -214,18 +215,28 @@ func (e *ExecutorOptions) RateLimitTake(host string) error {
 }
 
 // RateLimitTakeContext waits for admission or returns when ctx is canceled.
+//
+// With -per-host-rate-limit or -rate-limit-host, the limiter of the host is the
+// only limiter consulted for a known host. -rate-limit-host sets a per-host
+// budget separate from -rate-limit: -rate-limit defaults to 150 rps, so
+// applying both would silently cap the aggregate throughput at the global
+// default and defeat the per-host budget. The aggregate is bounded by
+// num_hosts * rate-limit-host. An empty host falls back to the global limiter
+// so self-contained requests are still paced.
 func (e *ExecutorOptions) RateLimitTakeContext(ctx context.Context, host string) error {
-	if e.Options != nil && e.Options.PerHostRateLimit && host != "" {
-		limiter, err := hostratelimit.GetPerHostRateLimiter(e.Options, host)
-		if err != nil {
-			return err
-		}
-		if limiter != nil {
-			if err := limiter.Wait(ctx); err != nil {
+	if e.Options != nil && e.Options.PerHostRateLimitEnabled() && host != "" {
+		if key := HostRateLimitKey(host); key != "" {
+			limiter, err := hostratelimit.GetPerHostRateLimiter(e.Options, key)
+			if err != nil {
 				return err
 			}
-			hostratelimit.RecordPerHostRateLimitRequest(e.Options, host)
-			return nil
+			if limiter != nil {
+				if err := limiter.Wait(ctx); err != nil {
+					return err
+				}
+				hostratelimit.RecordPerHostRateLimitRequest(e.Options, key)
+				return nil
+			}
 		}
 	}
 	// The code below can race and there isn't a great way to fix this without adding an idempotent
@@ -240,6 +251,20 @@ func (e *ExecutorOptions) RateLimitTakeContext(ctx context.Context, host string)
 		return e.RateLimiter.TakeContext(ctx)
 	}
 	return nil
+}
+
+// HostRateLimitEnabled reports whether -rate-limit-host is set. The race and
+// pipeline paths and redirect hops are paced only by this limiter.
+func (e *ExecutorOptions) HostRateLimitEnabled() bool {
+	return e.Options != nil && e.Options.RateLimitHost > 0
+}
+
+// HostRateLimitKey returns the per-host bucket for a URL or host[:port]:
+// the lowercase host with an explicit or scheme default port, so different
+// ports on one hostname stay separate buckets and a redirect to the same
+// origin shares the bucket of the original request.
+func HostRateLimitKey(host string) string {
+	return strings.ToLower(hostratelimit.NormalizeHostPort(host))
 }
 
 // HostBackoffWait pauses for the delay address has earned with HostBackoff.

@@ -255,6 +255,11 @@ func (request *Request) executeRaceRequest(input *contextargs.Context, dynamicVa
 			}
 			waitCtx, cancelWait := stopWithHandler(requestInput.Context(), spmHandler)
 			err := request.waitHostBackoff(waitCtx, hostBackoffKey(httpRequest, requestInput))
+			if err == nil && request.options.HostRateLimitEnabled() {
+				// only -rate-limit-host applies here: the global limiter is not
+				// consulted on the race and pipeline paths
+				err = request.options.RateLimitTakeContext(waitCtx, hostBackoffKey(httpRequest, requestInput))
+			}
 			cancelWait()
 			if err != nil || spmHandler.FoundFirstMatch() || spmHandler.Cancelled() {
 				if err != nil {
@@ -607,6 +612,11 @@ func (request *Request) executeTurboHTTP(input *contextargs.Context, dynamicValu
 			}
 			waitCtx, cancelWait := stopWithHandler(requestInput.Context(), spmHandler)
 			err := request.waitHostBackoff(waitCtx, hostBackoffKey(httpRequest, requestInput))
+			if err == nil && request.options.HostRateLimitEnabled() {
+				// only -rate-limit-host applies here: the global limiter is not
+				// consulted on the race and pipeline paths
+				err = request.options.RateLimitTakeContext(waitCtx, hostBackoffKey(httpRequest, requestInput))
+			}
 			cancelWait()
 			if err != nil || spmHandler.FoundFirstMatch() || spmHandler.Cancelled() {
 				if err != nil {
@@ -692,11 +702,6 @@ executionLoop:
 			// but this should be replaced once templateCtx is refactored properly
 			updatedInput := contextargs.GetCopyIfHostOutdated(input, generatedHttpRequest.URL())
 
-			// Full URL, so https and an explicit port stay on the same key the observation uses.
-			if err := request.rateLimitTake(ctx, hostBackoffKey(generatedHttpRequest, input)); err != nil {
-				return false, true, nil, err
-			}
-
 			if generatedHttpRequest.customCancelFunction != nil {
 				defer generatedHttpRequest.customCancelFunction()
 			}
@@ -709,6 +714,15 @@ executionLoop:
 			if request.isUnresponsiveAddress(updatedInput) {
 				return false, true, nil, nil
 			}
+
+			// The rate limit token is taken once the final request URL is known, so
+			// host/port rewrites bill the right bucket and skipped (unresponsive)
+			// hosts do not consume tokens. Full URL, so https and an explicit port
+			// stay on the same key the observation uses.
+			if err := request.rateLimitTake(ctx, hostBackoffKey(generatedHttpRequest, input)); err != nil {
+				return false, true, nil, err
+			}
+
 			var gotMatches bool
 			var extractedDynamicValues map[string][]string
 			execReqErr := request.executeRequest(input, generatedHttpRequest, previousEvent, hasInteractMatchers, func(event *output.InternalWrappedEvent) {
@@ -1271,6 +1285,13 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 				}
 			}
 			executingClient = httpclient
+			if request.options.HostRateLimitEnabled() {
+				generatedRequest.request = generatedRequest.request.WithContext(
+					httpclientpool.WithRedirectCallback(generatedRequest.request.Context(), func(ctx context.Context, host string) error {
+						return request.options.RateLimitTakeContext(ctx, host)
+					}),
+				)
+			}
 		}
 		if resp == nil {
 			if errSignature := request.handleSignature(generatedRequest); errSignature != nil {
