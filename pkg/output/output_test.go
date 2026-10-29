@@ -165,3 +165,33 @@ type testWriteCloser struct {
 func (w testWriteCloser) Close() error {
 	return nil
 }
+
+
+func TestFormatJSONSanitizesNestedMetadataMaps(t *testing.T) {
+	w, err := NewStandardWriter(&types.Options{})
+	require.NoError(t, err)
+
+	event := &ResultEvent{
+		TemplateID: "nested-metadata",
+		Type:       "file",
+		Host:       "target",
+		Matched:    "target/input.txt",
+		Info: model.Info{
+			Name: "Nested metadata",
+			Metadata: map[string]interface{}{
+				"labels": map[interface{}]interface{}{
+					"en": "Hello",
+					"nested_list": []interface{}{
+						map[interface{}]interface{}{
+							"inner_key": "inner_val",
+						},
+					},
+				},
+			},
+		},
+	}
+
+	data, err := w.formatJSON(event)
+	require.NoError(t, err, "formatJSON should not fail on nested map[interface{}]interface{} (#7971)")
+	require.Contains(t, string(data), `"labels":{"en":"Hello","nested_list":[{"inner_key":"inner_val"}]}`)
+}
