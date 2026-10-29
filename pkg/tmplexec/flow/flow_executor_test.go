@@ -414,3 +414,34 @@ http:
 		})
 	}
 }
+
+// TestFlowRuntimeIsNotSharedAcrossTemplates checks that a flow which changes the
+// globals of its runtime does not change the flow of a later template.
+func TestFlowRuntimeIsNotSharedAcrossTemplates(t *testing.T) {
+	setup()
+	router := httprouter.New()
+	router.GET("/first", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+		_, _ = fmt.Fprint(w, "first-ok")
+	})
+	router.GET("/second", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+		_, _ = fmt.Fprint(w, "second-ok")
+	})
+	ts := httptest.NewServer(router)
+	defer ts.Close()
+
+	execute := func(path string) bool {
+		tmpl, err := templates.Parse(path, nil, executerOpts)
+		require.Nil(t, err, "could not parse template")
+		require.Nil(t, tmpl.Executer.Compile(), "could not compile template")
+
+		input := contextargs.NewWithInput(context.Background(), ts.URL)
+		gotresults, err := tmpl.Executer.Execute(scan.NewScanContext(context.Background(), input))
+		require.Nil(t, err, "could not execute template")
+		return gotresults
+	}
+
+	for i := 0; i < 10; i++ {
+		execute("testcases/flow-runtime-first.yaml")
+		require.True(t, execute("testcases/flow-runtime-second.yaml"), "second flow ran in a runtime changed by another template (run %d)", i)
+	}
+}

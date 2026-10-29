@@ -1,0 +1,17 @@
+id: flow-runtime-first
+
+info:
+  name: Flow that changes the globals of its runtime
+  author: test
+  severity: info
+
+flow: |
+  // Export
+  globalThis.leftover = true;
+  iterate = function () { return []; };
+  http(1);
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/first"

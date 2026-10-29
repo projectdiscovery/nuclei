@@ -56,7 +56,9 @@ func GetJSRuntimeContext(ctx context.Context, opts *types.Options) (*goja.Runtim
 	return sizedgojapool.Get(ctx)
 }
 
-// PutJSRuntime returns a JS runtime to pool
+// PutJSRuntime returns a JS runtime to pool. With reuse false the runtime is
+// discarded and a fresh one takes its slot; only reuse a runtime that ran no
+// script, as globals changed by a script stay in it.
 func PutJSRuntime(runtime *goja.Runtime, reuse bool) {
 	if reuse {
 		sizedgojapool.Put(runtime)
