@@ -470,6 +470,10 @@ func init() {
 			Value: "TLS cipher suite negotiated for the HTTP connection",
 		},
 		{
+			Key:   "key_exchange",
+			Value: "TLS key exchange group negotiated for the HTTP connection",
+		},
+		{
 			Key:   "sni",
 			Value: "SNI value used in the TLS handshake",
 		},
