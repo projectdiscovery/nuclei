@@ -35,6 +35,34 @@ func TestInfoJsonMarshal(t *testing.T) {
 	require.Equal(t, expected, string(result))
 }
 
+func TestInfoJsonMarshalNestedYAMLMetadata(t *testing.T) {
+	var info Info
+	err := yaml.Unmarshal([]byte(`
+name: Nested metadata
+author: pdteam
+tags: misc
+severity: info
+metadata:
+  labels:
+    en: Hello
+    1: one
+  items:
+    - name: first
+      tags:
+        fr: Bonjour
+  plain: value
+`), &info)
+	require.NoError(t, err)
+	require.IsType(t, map[interface{}]interface{}{}, info.Metadata["labels"])
+
+	for _, value := range []interface{}{info, &info} {
+		result, err := json.Marshal(value)
+		require.NoError(t, err)
+		require.JSONEq(t, `{"name":"Nested metadata","author":["pdteam"],"tags":["misc"],"severity":"info","metadata":{"labels":{"en":"Hello","1":"one"},"items":[{"name":"first","tags":{"fr":"Bonjour"}}],"plain":"value"}}`, string(result))
+	}
+	require.IsType(t, map[interface{}]interface{}{}, info.Metadata["labels"], "marshaling must not modify the info")
+}
+
 func TestInfoYamlMarshal(t *testing.T) {
 	info := Info{
 		Name:           "Test Template Name",

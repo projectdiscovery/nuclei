@@ -171,3 +171,40 @@ func ToStringMap(i interface{}) map[string]interface{} {
 		return nil
 	}
 }
+
+// ToJSONValue returns a copy of value in which every map[interface{}]interface{}
+// nested in maps and slices becomes a map[string]interface{} keyed by the
+// fmt.Sprint form of its keys. Template YAML decodes nested maps with
+// interface keys, which the JSON encoder rejects.
+func ToJSONValue(value interface{}) interface{} {
+	switch typed := value.(type) {
+	case map[interface{}]interface{}:
+		converted := make(map[string]interface{}, len(typed))
+		for key, item := range typed {
+			converted[fmt.Sprint(key)] = ToJSONValue(item)
+		}
+		return converted
+	case map[string]interface{}:
+		return ToJSONMap(typed)
+	case []interface{}:
+		converted := make([]interface{}, len(typed))
+		for i, item := range typed {
+			converted[i] = ToJSONValue(item)
+		}
+		return converted
+	default:
+		return value
+	}
+}
+
+// ToJSONMap applies ToJSONValue to every value of m, returning nil for a nil m.
+func ToJSONMap(m map[string]interface{}) map[string]interface{} {
+	if m == nil {
+		return nil
+	}
+	converted := make(map[string]interface{}, len(m))
+	for key, item := range m {
+		converted[key] = ToJSONValue(item)
+	}
+	return converted
+}

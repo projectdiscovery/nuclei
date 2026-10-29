@@ -246,6 +246,16 @@ type ResultEvent struct {
 	TemplateInfo *model.Info `json:"-" bson:"-"`
 }
 
+// MarshalJSON encodes the event with every map nested in Metadata keyed by
+// strings. Metadata can hold javascript args decoded from template YAML.
+func (r ResultEvent) MarshalJSON() ([]byte, error) {
+	// resultEvent has the fields of ResultEvent but not this method, so marshaling it does not recurse.
+	type resultEvent ResultEvent
+	encoded := resultEvent(r)
+	encoded.Metadata = types.ToJSONMap(r.Metadata)
+	return json.Marshal(encoded)
+}
+
 type IssueTrackerMetadata struct {
 	// IssueID is the ID of the issue created
 	IssueID string `json:"id,omitempty"`
