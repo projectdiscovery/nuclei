@@ -18,6 +18,7 @@ require (
 	github.com/alecthomas/chroma v0.10.0
 	github.com/alexsnet/go-vnc v0.1.0
 	github.com/alitto/pond v1.9.2
+	github.com/andybalholm/brotli v1.2.0
 	github.com/andygrunwald/go-jira v1.16.1
 	github.com/antchfx/htmlquery v1.3.5
 	github.com/antchfx/xmlquery v1.4.4
@@ -33,6 +34,7 @@ require (
 	github.com/clbanning/mxj/v2 v2.7.0
 	github.com/ditashi/jsbeautifier-go v0.0.0-20141206144643-2520a8026a9c
 	github.com/docker/go-units v0.5.0
+	github.com/dsnet/compress v0.0.2-0.20230904184137-39efe44ab707
 	github.com/elazarl/goproxy v1.7.2
 	github.com/fatih/structs v1.1.0
 	github.com/fullstorydev/grpcurl v1.9.3
@@ -61,6 +63,7 @@ require (
 	github.com/jhump/protoreflect v1.17.0
 	github.com/julienschmidt/httprouter v1.3.0
 	github.com/kitabisa/go-ci v1.0.3
+	github.com/klauspost/compress v1.18.7
 	github.com/leslie-qiwa/flat v0.0.0-20230424180412-f9d1cf014baa
 	github.com/lib/pq v1.12.3
 	github.com/logrusorgru/aurora/v4 v4.0.0
@@ -113,6 +116,7 @@ require (
 	github.com/segmentio/ksuid v1.0.4
 	github.com/shurcooL/graphql v0.0.0-20230722043721-ed46e5a46466
 	github.com/sijms/go-ora/v2 v2.9.0
+	github.com/spaolacci/murmur3 v1.1.0
 	github.com/spf13/cast v1.10.0
 	github.com/stretchr/testify v1.12.1
 	github.com/syndtr/goleveldb v1.0.0
@@ -175,7 +179,6 @@ require (
 	github.com/alecthomas/kingpin/v2 v2.4.0 // indirect
 	github.com/alecthomas/template v0.0.0-20190718012654-fb15b899a751 // indirect
 	github.com/alecthomas/units v0.0.0-20211218093645-b94a6e3cc137 // indirect
-	github.com/andybalholm/brotli v1.2.0 // indirect
 	github.com/andybalholm/cascadia v1.3.4 // indirect
 	github.com/asaskevich/govalidator v0.0.0-20230301143203-a9d515a09cc2 // indirect
 	github.com/aws/aws-sdk-go-v2/aws/protocol/eventstream v1.7.8 // indirect
@@ -239,7 +242,6 @@ require (
 	github.com/docker/cli v29.2.0+incompatible // indirect
 	github.com/docker/go-connections v0.7.0 // indirect
 	github.com/dop251/goja v0.0.0-20260311135729-065cd970411c // indirect
-	github.com/dsnet/compress v0.0.2-0.20230904184137-39efe44ab707 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/ebitengine/purego v0.10.0 // indirect
 	github.com/emersion/go-sasl v0.0.0-20241020182733-b788ff22d5a6 // indirect
@@ -323,7 +325,6 @@ require (
 	github.com/kaiakz/ubuffer v0.0.0-20200803053910-dd1083087166 // indirect
 	github.com/kataras/jwt v0.1.10 // indirect
 	github.com/kevinburke/ssh_config v1.2.0 // indirect
-	github.com/klauspost/compress v1.18.7 // indirect
 	github.com/klauspost/cpuid/v2 v2.3.0 // indirect
 	github.com/klauspost/pgzip v1.2.6 // indirect
 	github.com/kylelemons/godebug v1.1.0 // indirect
@@ -392,7 +393,6 @@ require (
 	github.com/sirupsen/logrus v1.10.2 // indirect
 	github.com/skeema/knownhosts v1.3.1 // indirect
 	github.com/sorairolake/lzip-go v0.3.8 // indirect
-	github.com/spaolacci/murmur3 v1.1.0 // indirect
 	github.com/spf13/afero v1.15.0 // indirect
 	github.com/spf13/pflag v1.0.10 // indirect
 	github.com/spiffe/go-spiffe/v2 v2.7.0 // indirect
