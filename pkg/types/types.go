@@ -953,7 +953,6 @@ func DefaultOptions() *Options {
 		ResponseReadSize:           10 * unitutils.Mega,
 		ResponseSaveSize:           unitutils.Mega,
 		RequestSaveSize:            32 * unitutils.Kilo,
-		MaxRequestBodyInFlight:     256 * unitutils.Mega,
 		ExecutionId:                xid.New().String(),
 		Logger:                     &gologger.Logger{},
 	}

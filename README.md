@@ -256,7 +256,7 @@ CONFIGURATIONS:
    -rsr, -response-size-read int         max response size to read in bytes
    -rss, -response-size-save int         max response size to read in bytes (default 1048576)
    -rqss, -request-size-save int         max request body size to save in bytes (0 to save the whole body) (default 32768)
-   -mrbi, -max-request-body-inflight int max request body bytes held by in-flight http requests; requests with bodies of 1MB or more queue past it (0 to disable) (default 268435456)
+   -mrbi, -max-request-body-inflight int max request body bytes held by in-flight http requests; requests with bodies of 1MB or more queue past it (0 disables)
    -reset                                reset removes all nuclei configuration and data files (including nuclei-templates)
    -tlsi, -tls-impersonate               enable experimental client hello (ja3) tls randomization
    -hae, -http-api-endpoint string       experimental http api endpoint

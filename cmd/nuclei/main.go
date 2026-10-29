@@ -391,7 +391,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.IntVarP(&options.ResponseReadSize, "response-size-read", "rsr", 0, "max response size to read in bytes"),
 		flagSet.IntVarP(&options.ResponseSaveSize, "response-size-save", "rss", unitutils.Mega, "max response size to read in bytes"),
 		flagSet.IntVarP(&options.RequestSaveSize, "request-size-save", "rqss", 32*unitutils.Kilo, "max request body size to save in bytes (0 to save the whole body)"),
-		flagSet.IntVarP(&options.MaxRequestBodyInFlight, "max-request-body-inflight", "mrbi", 256*unitutils.Mega, "max request body bytes held by in-flight http requests; requests with bodies of 1MB or more queue past it (0 to disable)"),
+		flagSet.IntVarP(&options.MaxRequestBodyInFlight, "max-request-body-inflight", "mrbi", 0, "max request body bytes held by in-flight http requests; requests with bodies of 1MB or more queue past it (0 disables)"),
 		flagSet.CallbackVar(func() { resetRequested = true }, "reset", "reset removes all nuclei configuration and data files (including nuclei-templates)"),
 		flagSet.BoolVarP(&options.TlsImpersonate, "tls-impersonate", "tlsi", false, "enable experimental client hello (ja3) tls randomization"),
 		flagSet.StringVarP(&options.HttpApiEndpoint, "http-api-endpoint", "hae", "", "experimental http api endpoint"),
