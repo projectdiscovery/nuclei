@@ -39,7 +39,7 @@ func createEphemeralObjects(ctx context.Context, base *NucleiEngine, opts *types
 		Catalog:      base.catalog,
 		IssuesClient: base.rc,
 		RateLimiter:  base.rateLimiter,
-		// one budget per process, shared by every thread-safe execution
+
 		RequestBodyBudget: base.executerOpts.RequestBodyBudget,
 		Interactsh:        base.interactshClient,
 		Colorizer:         aurora.New(aurora.WithColors(true)),

@@ -9,17 +9,12 @@ import (
 )
 
 // bodySizeEstimate is the largest request body a template has built so far.
-// The body size is only known once the template's DSL has run, so the first
-// build of a template runs alone and records it.
 type bodySizeEstimate struct {
-	known atomic.Bool
-	max   atomic.Int64
-	// learning is held by the build that records the first size.
+	known    atomic.Bool
+	max      atomic.Int64
 	learning sync.Mutex
 }
 
-// bodyReservation is the part of the request body budget a request holds
-// from before its body is built until the request is done.
 type bodyReservation struct {
 	budget  *httpbody.Budget
 	size    int64
@@ -29,10 +24,8 @@ type bodyReservation struct {
 
 func noop() {}
 
-// reserveBody takes the template's largest body size seen so far from the
-// body budget, so concurrent builds of multi-MB bodies queue instead of all
-// allocating at once. Before any size is known the caller builds alone
-// instead. Call built once the body exists, and done when the request ends.
+// reserveBody reserves the template's largest body size before the body is
+// built. Until a size is known, builds run one at a time.
 func (request *Request) reserveBody(ctx context.Context) (*bodyReservation, error) {
 	r := &bodyReservation{budget: request.options.RequestBodyBudget, release: noop, unlock: noop}
 	estimate := request.bodySize
@@ -56,9 +49,8 @@ func (request *Request) reserveBody(ctx context.Context) (*bodyReservation, erro
 	return r, nil
 }
 
-// built records the size of the body just built and grows the reservation
-// to it. Growing releases and acquires again rather than waiting while
-// holding part of the budget, which could deadlock two growing requests.
+// built grows the reservation to the body's real size. It releases before
+// acquiring again: waiting while holding part of the budget can deadlock.
 func (r *bodyReservation) built(ctx context.Context, request *Request, size int64) error {
 	if estimate := request.bodySize; estimate != nil {
 		for {

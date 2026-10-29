@@ -691,7 +691,6 @@ executionLoop:
 				return false, true, nil, err
 			}
 			generatedHttpRequest.bodyReserved = true
-			// An annotation timeout already replaced the request context.
 			if generatedHttpRequest.customCancelFunction == nil {
 				generatedHttpRequest.sendTimeout = request.options.Options.GetTimeouts().HttpTimeout
 			}

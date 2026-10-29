@@ -366,8 +366,7 @@ type Options struct {
 	// RequestSaveSize is the maximum request body kept in saved output and
 	// debug dumps. Matchers see the full request. 0 keeps the whole body.
 	RequestSaveSize int
-	// MaxRequestBodyInFlight bounds the request-body bytes held by HTTP
-	// requests in flight. Requests with larger bodies queue. 0 disables it.
+	// MaxRequestBodyInFlight bounds request-body bytes in flight; 0 disables it.
 	MaxRequestBodyInFlight int
 	// Health Check
 	HealthCheck bool

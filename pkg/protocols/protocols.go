@@ -106,8 +106,7 @@ type ExecutorOptions struct {
 	Progress progress.Progress
 	// RateLimiter is a rate-limiter for limiting sent number of requests.
 	RateLimiter *ratelimit.Limiter
-	// RequestBodyBudget bounds the request-body bytes held by HTTP requests
-	// in flight. nil means no limit.
+	// RequestBodyBudget bounds request-body bytes in flight; nil is no limit.
 	RequestBodyBudget *httpbody.Budget
 	// Catalog is a template catalog implementation for nuclei
 	Catalog catalog.Catalog

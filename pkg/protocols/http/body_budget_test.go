@@ -24,9 +24,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils/httpbody"
 )
 
-// The budget fits one 1MB body, so three concurrent requests run one at a
-// time. The third waits about 2.4s to be admitted, longer than the 3s HTTP
-// timeout leaves once its own 1.2s send is added, so it only matches if the
+// The third request queues ~2.4s, so it only beats the 3s timeout if the
 // timeout starts after admission.
 func TestRequestBodyBudgetQueuesHeavyRequests(t *testing.T) {
 	const bodySize = 1 << 20
@@ -99,7 +97,6 @@ func TestReserveBodyQueuesBuildsOnLearnedSize(t *testing.T) {
 		bodySize: &bodySizeEstimate{},
 	}
 
-	// Until a size is known, the first build runs alone.
 	first, err := request.reserveBody(t.Context())
 	require.NoError(t, err)
 	blocked := make(chan struct{})
@@ -118,7 +115,6 @@ func TestReserveBodyQueuesBuildsOnLearnedSize(t *testing.T) {
 	first.done()
 	<-blocked
 
-	// Once known, each build reserves that size before it starts.
 	held, err := request.reserveBody(t.Context())
 	require.NoError(t, err)
 	ctx, cancel := context.WithTimeout(t.Context(), 20*time.Millisecond)
@@ -146,7 +142,6 @@ func TestReserveBodyGrowsToLargerBody(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, grown.built(t.Context(), request, 5<<20))
 
-	// 5MB of 6MB is held, so another 5MB build has to wait.
 	ctx, cancel := context.WithTimeout(t.Context(), 20*time.Millisecond)
 	defer cancel()
 	_, err = request.reserveBody(ctx)

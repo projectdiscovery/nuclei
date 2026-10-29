@@ -226,7 +226,6 @@ func (request *Request) savedRequest(dump string) string {
 	if request.options == nil || request.options.Options == nil {
 		return dump
 	}
-	// capDumpBody does not modify its input, so the dump is not copied first.
 	return string(capDumpBody(convUtil.Bytes(dump), request.options.Options.RequestSaveSize))
 }
 

@@ -84,8 +84,6 @@ func dumpRequest(req *retryablehttp.Request, maxBody int) (requestDump, error) {
 
 	capture := &cappedWriter{headerEnd: -1, maxBody: maxBody}
 	if maxBody <= 0 {
-		// Size the buffer for the whole body up front. Growing it by doubling
-		// allocates several times a multi-MB body per request.
 		capture.buf = make([]byte, 0, len(body)+dumpHeaderRoom)
 	}
 	if err := clone.Write(capture); err != nil {
@@ -131,8 +129,6 @@ var headerTerminator = []byte("\r\n\r\n")
 
 var acceptEncodingGzip = []byte("Accept-Encoding: gzip\r\n")
 
-// dumpHeaderRoom is the space reserved for the request line and headers when
-// a dump keeps the whole body.
 const dumpHeaderRoom = 8 * 1024
 
 // cappedWriter keeps the request line and headers in full and at most
@@ -189,7 +185,6 @@ func getHTTPProjectCacheScope(requestDump requestDump, body []byte, scheme, host
 	return scoped.Bytes()
 }
 
-// bodyLen returns the request body length without reading the body.
 func (g *generatedRequest) bodyLen() int64 {
 	if g.rawRequest != nil {
 		return int64(len(g.rawRequest.Data))
