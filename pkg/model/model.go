@@ -8,6 +8,8 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/model/types/severity"
 	"github.com/projectdiscovery/nuclei/v3/pkg/model/types/stringslice"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/marker"
+	"github.com/projectdiscovery/nuclei/v3/pkg/types"
+	"github.com/projectdiscovery/nuclei/v3/pkg/utils/json"
 )
 
 type schemaMetadata struct {
@@ -111,6 +113,19 @@ type Info struct {
 	// examples:
 	//   - value: "\"Change the default administrative username and password of Apache ActiveMQ by editing the file jetty-realm.properties\""
 	Remediation string `json:"remediation,omitempty" yaml:"remediation,omitempty" jsonschema:"title=remediation steps for the template,description=In-depth explanation on how to fix the issues found by the template,example=Change the default administrative username and password of Apache ActiveMQ by editing the file jetty-realm.properties,type=string"`
+}
+
+// MarshalJSON encodes the info with every map nested in Metadata keyed by strings.
+func (i Info) MarshalJSON() ([]byte, error) {
+	// info has the fields of Info but not this method, so marshaling it does not recurse.
+	type info Info
+	encoded := info(i)
+	metadata, err := types.ToJSONMap(i.Metadata)
+	if err != nil {
+		return nil, err
+	}
+	encoded.Metadata = metadata
+	return json.Marshal(encoded)
 }
 
 // TextField is a free-text field of the info, labeled as reports show it.
