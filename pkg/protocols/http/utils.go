@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"slices"
 	"strings"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
@@ -82,6 +83,11 @@ func dumpRequest(req *retryablehttp.Request, maxBody int) (requestDump, error) {
 	}
 
 	capture := &cappedWriter{headerEnd: -1, maxBody: maxBody}
+	if maxBody <= 0 {
+		// Size the buffer for the whole body up front. Growing it by doubling
+		// allocates several times a multi-MB body per request.
+		capture.buf = make([]byte, 0, len(body)+dumpHeaderRoom)
+	}
 	if err := clone.Write(capture); err != nil {
 		return requestDump{}, err
 	}
@@ -89,7 +95,7 @@ func dumpRequest(req *retryablehttp.Request, maxBody int) (requestDump, error) {
 	// http.Transport asks for gzip unless the caller set an encoding.
 	if clone.Header.Get("Accept-Encoding") == "" && clone.Header.Get("Range") == "" && clone.Method != http.MethodHead && capture.headerEnd >= 2 {
 		end := capture.headerEnd - 2
-		data = append(data[:end:end], append([]byte("Accept-Encoding: gzip\r\n"), data[end:]...)...)
+		data = slices.Insert(data, end, acceptEncodingGzip...)
 	}
 	return requestDump{data: appendTruncationMarker(data, capture.dropped), truncated: capture.dropped}, nil
 }
@@ -122,6 +128,12 @@ func capDumpBody(dump []byte, maxBody int) []byte {
 }
 
 var headerTerminator = []byte("\r\n\r\n")
+
+var acceptEncodingGzip = []byte("Accept-Encoding: gzip\r\n")
+
+// dumpHeaderRoom is the space reserved for the request line and headers when
+// a dump keeps the whole body.
+const dumpHeaderRoom = 8 * 1024
 
 // cappedWriter keeps the request line and headers in full and at most
 // maxBody bytes of the body that follows, counting the rest.
