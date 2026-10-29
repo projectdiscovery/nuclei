@@ -72,6 +72,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils"
+	"github.com/projectdiscovery/nuclei/v3/pkg/utils/httpbody"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils/stats"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils/yaml"
 	"github.com/projectdiscovery/retryablehttp-go"
@@ -675,6 +676,7 @@ func (r *Runner) RunEnumeration() error {
 		Catalog:             r.catalog,
 		IssuesClient:        r.issuesClient,
 		RateLimiter:         r.rateLimiter,
+		RequestBodyBudget:   httpbody.NewBudget(int64(r.options.MaxRequestBodyInFlight)),
 		Interactsh:          r.interactsh,
 		ProjectFile:         r.projectFile,
 		Browser:             r.browser,

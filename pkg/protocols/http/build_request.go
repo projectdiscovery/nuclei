@@ -83,6 +83,9 @@ type generatedRequest struct {
 	dynamicValues        map[string]interface{}
 	interactshURLs       []string
 	customCancelFunction context.CancelFunc
+	// sendTimeout starts after the body budget admits the request.
+	sendTimeout  time.Duration
+	bodyReserved bool
 	// requestURLPattern tracks unmodified request url pattern without values ( it is used for constant vuln_hash)
 	// ex: {{BaseURL}}/api/exp?param={{randstr}}
 	requestURLPattern string

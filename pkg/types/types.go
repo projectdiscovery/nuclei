@@ -366,6 +366,8 @@ type Options struct {
 	// RequestSaveSize is the maximum request body kept in saved output and
 	// debug dumps. Matchers see the full request. 0 keeps the whole body.
 	RequestSaveSize int
+	// MaxRequestBodyInFlight bounds request-body bytes in flight; 0 disables it.
+	MaxRequestBodyInFlight int
 	// Health Check
 	HealthCheck bool
 	// Time to wait between each input read operation before closing the stream
@@ -760,6 +762,7 @@ func (options *Options) Copy() *Options {
 		ResponseReadSize:               options.ResponseReadSize,
 		ResponseSaveSize:               options.ResponseSaveSize,
 		RequestSaveSize:                options.RequestSaveSize,
+		MaxRequestBodyInFlight:         options.MaxRequestBodyInFlight,
 		HealthCheck:                    options.HealthCheck,
 		InputReadTimeout:               options.InputReadTimeout,
 		DisableStdin:                   options.DisableStdin,
