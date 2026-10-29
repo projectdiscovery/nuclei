@@ -39,6 +39,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/interactsh"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/marker"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/unresolvedvars"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/utils/vardump"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/httpclientpool"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/httputils"
@@ -683,6 +684,10 @@ executionLoop:
 				if err == types.ErrNoMoreRequests {
 					return false, true, nil, nil
 				}
+				if unresolvedvars.Is(err) {
+					unresolvedvars.Skip(request.options.Progress, request.options.Options, request.options.TemplateID, input.MetaInput.Input, err)
+					return false, true, nil, nil
+				}
 				return false, true, nil, err
 			}
 			// ideally if http template used a custom port or hostname
@@ -1140,7 +1145,7 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 				varErr = expressions.ContainsUnresolvedVariables(item)
 			}
 			if varErr != nil && !request.SkipVariablesCheck {
-				gologger.Warning().Msgf("[%s] Could not make http request for %s: %v\n", request.options.TemplateID, input.MetaInput.Input, varErr)
+				unresolvedvars.Skip(request.options.Progress, request.options.Options, request.options.TemplateID, input.MetaInput.Input, varErr)
 				return ErrMissingVars
 			}
 		}

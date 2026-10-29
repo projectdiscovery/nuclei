@@ -40,7 +40,12 @@ func TestUnresolvedVariablesCheck(t *testing.T) {
 	}
 	for _, test := range tests {
 		err := ContainsUnresolvedVariables(test.data)
-		require.Equal(t, test.err, err, "could not get unresolved variables")
+		if test.err == nil {
+			require.NoError(t, err, "could not get unresolved variables")
+			continue
+		}
+		require.EqualError(t, err, test.err.Error(), "could not get unresolved variables")
+		require.ErrorIs(t, err, ErrUnresolvedVariables)
 	}
 }
 

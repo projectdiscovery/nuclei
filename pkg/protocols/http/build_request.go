@@ -339,7 +339,7 @@ func (r *requestGenerator) makeSelfContainedRequest(ctx context.Context, input *
 		}
 
 		if err := expressions.ContainsUnresolvedVariables(parts[1]); err != nil && !r.request.SkipVariablesCheck {
-			return nil, errkit.Newf("unresolved variables `%v` found in request", parts[1])
+			return nil, fmt.Errorf("%w `%v` found in request", expressions.ErrUnresolvedVariables, parts[1])
 		}
 
 		parsed, err := urlutil.ParseURL(parts[1], true)
@@ -367,7 +367,7 @@ func (r *requestGenerator) makeSelfContainedRequest(ctx context.Context, input *
 	if err := expressions.ContainsUnresolvedVariables(data); err != nil && !r.request.SkipVariablesCheck {
 		// early exit: if there are any unresolved variables in `path` after evaluation
 		// then return early since this will definitely fail
-		return nil, errkit.Newf("unresolved variables `%v` found in request", data)
+		return nil, fmt.Errorf("%w `%v` found in request", expressions.ErrUnresolvedVariables, data)
 	}
 
 	urlx, err := urlutil.ParseURL(data, true)

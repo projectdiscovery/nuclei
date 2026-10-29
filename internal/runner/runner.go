@@ -910,6 +910,15 @@ func (r *Runner) RunEnumeration() error {
 	r.progress.Stop()
 	timeTaken := time.Since(now)
 
+	if counter, ok := r.progress.(progress.UnresolvedCounter); ok && counter.SkippedUnresolved() > 0 {
+		skipped := counter.SkippedUnresolved()
+		msg := fmt.Sprintf("Skipped %d request(s) due to unresolved variables", skipped)
+		if !r.options.LogUnresolved {
+			msg += " (use -log-unresolved to see details)"
+		}
+		r.Logger.Info().Msg(msg)
+	}
+
 	// Print pool/tracker stats if available (single dialers lookup, reads under lock)
 	if dialers := protocolstate.GetDialersWithId(r.options.ExecutionId); dialers != nil {
 		dialers.Lock()
