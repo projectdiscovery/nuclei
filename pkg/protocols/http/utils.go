@@ -189,6 +189,20 @@ func getHTTPProjectCacheScope(requestDump requestDump, body []byte, scheme, host
 	return scoped.Bytes()
 }
 
+// bodyLen returns the request body length without reading the body.
+func (g *generatedRequest) bodyLen() int64 {
+	if g.rawRequest != nil {
+		return int64(len(g.rawRequest.Data))
+	}
+	if g.request == nil || g.request.Body == nil {
+		return 0
+	}
+	if body, ok := g.request.Body.(*httpbody.Body); ok {
+		return int64(body.Len())
+	}
+	return g.request.ContentLength
+}
+
 // body returns the request body without copying it.
 func (g *generatedRequest) body() []byte {
 	if g.request != nil {

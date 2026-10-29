@@ -675,15 +675,16 @@ executionLoop:
 			hasInteractMatchers := interactsh.HasMatchers(request.CompiledOperators)
 
 			ctx := input.Context()
-			ctxWithTimeout, cancel := context.WithTimeoutCause(ctx, request.options.Options.GetTimeouts().HttpTimeout, ErrHttpEngineRequestDeadline)
-			defer cancel()
-
-			generatedHttpRequest, err := generator.Make(ctxWithTimeout, input, data, payloads, dynamicValue)
+			generatedHttpRequest, err := generator.Make(ctx, input, data, payloads, dynamicValue)
 			if err != nil {
 				if err == types.ErrNoMoreRequests {
 					return false, true, nil, nil
 				}
 				return false, true, nil, err
+			}
+			// An annotation timeout already replaced the request context.
+			if generatedHttpRequest.customCancelFunction == nil {
+				generatedHttpRequest.sendTimeout = request.options.Options.GetTimeouts().HttpTimeout
 			}
 			// ideally if http template used a custom port or hostname
 			// we would want to update it in input but currently templateCtx logic
@@ -1057,6 +1058,20 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 	// Check if hosts keep erroring
 	if request.isUnresponsiveAddress(contextargs.GetCopyIfHostOutdated(input, generatedRequest.URL())) {
 		return fmt.Errorf("hostErrorsCache : host %s is unresponsive", input.MetaInput.Input)
+	}
+
+	// Race requests must all be in flight together to reach the open gate.
+	if !generatedRequest.original.Race {
+		releaseBody, err := request.options.RequestBodyBudget.Acquire(input.Context(), generatedRequest.bodyLen())
+		if err != nil {
+			return err
+		}
+		defer releaseBody()
+	}
+	if generatedRequest.sendTimeout > 0 && generatedRequest.request != nil {
+		ctx, cancel := context.WithTimeoutCause(generatedRequest.request.Context(), generatedRequest.sendTimeout, ErrHttpEngineRequestDeadline)
+		defer cancel()
+		generatedRequest.request.WithContext(ctx)
 	}
 
 	// wrap one more callback for validation and fixing event
