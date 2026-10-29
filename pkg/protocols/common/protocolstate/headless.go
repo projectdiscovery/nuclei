@@ -103,25 +103,13 @@ func isValidHost(options *types.Options, targetUrl string) bool {
 		return true
 	}
 
-	dialers, ok := dialers.Get(options.ExecutionId)
-	if !ok {
-		return true
-	}
-
-	np := dialers.NetworkPolicy
-	if np == nil {
-		// no policy present: deny rather than allow.
-		return false
-	}
-
-	urlx, err := urlutil.Parse(targetUrl)
-	if err != nil {
+	if _, err := urlutil.Parse(targetUrl); err != nil {
 		// not a valid url
 		return false
 	}
-	targetUrl = urlx.Hostname()
-	_, ok = np.ValidateHost(targetUrl)
-	return ok
+	// IsHostAllowed also checks the canonical host, so IPv4-mapped IPv6
+	// literals ([::ffff:127.0.0.1]) match the IPv4 rules
+	return IsHostAllowed(options.ExecutionId, targetUrl)
 }
 
 // CanonicalizeHost normalizes a hostname or IP string:

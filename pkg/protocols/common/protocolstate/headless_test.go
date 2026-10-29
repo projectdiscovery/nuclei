@@ -39,6 +39,18 @@ func TestIsValidHost(t *testing.T) {
 
 	require.True(t, IsHostAllowed(opts.ExecutionId, "ws://example.com:9999"))
 	require.False(t, IsHostAllowed(opts.ExecutionId, "ws://127.0.0.1:9999"))
+
+	// IPv4-mapped IPv6 forms of a blocked IPv4 host
+	for _, target := range []string{
+		"http://[::ffff:127.0.0.1]:8080/",
+		"https://[::ffff:7f00:1]/",
+		"http://[0:0:0:0:0:ffff:127.0.0.1]/",
+		"ws://[::ffff:127.0.0.1]:9999",
+	} {
+		require.False(t, isValidHost(opts, target), target)
+		require.False(t, IsHostAllowed(opts.ExecutionId, target), target)
+	}
+	require.True(t, isValidHost(opts, "http://[::ffff:8.8.8.8]/"))
 }
 
 func TestSetupHeadlessNetworkPolicy_Nil(t *testing.T) {
