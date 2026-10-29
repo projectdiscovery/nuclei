@@ -39,6 +39,9 @@ func (r *Runner) initializeTemplatesHTTPInput() (*hybrid.HybridMap, error) {
 	}
 	httpxOptions.RetryMax = r.options.Retries
 	httpxOptions.Timeout = time.Duration(r.options.Timeout) * time.Second
+	if len(r.options.InternalResolversList) > 0 {
+		httpxOptions.Resolvers = r.options.InternalResolversList
+	}
 
 	dialers := protocolstate.GetDialersWithId(r.options.ExecutionId)
 	if dialers == nil {

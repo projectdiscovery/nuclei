@@ -6,11 +6,17 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strconv"
+	"sync/atomic"
 	"testing"
 	"time"
 
+	"github.com/miekg/dns"
+	"github.com/projectdiscovery/gologger"
 	"github.com/stretchr/testify/require"
 
+	"github.com/projectdiscovery/nuclei/v3/pkg/input"
+	"github.com/projectdiscovery/nuclei/v3/pkg/input/provider"
 	"github.com/projectdiscovery/nuclei/v3/pkg/model/types/severity"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
@@ -196,4 +202,60 @@ func TestNewInteractshHTTPClient(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, proxyURL)
 	require.Equal(t, "http://127.0.0.1:9", proxyURL.String())
+}
+
+func TestInitializeTemplatesHTTPInputUsesResolvers(t *testing.T) {
+	listener, err := net.ListenPacket("udp", "127.0.0.1:0")
+	require.NoError(t, err)
+	queries := new(atomic.Int32)
+	server := &dns.Server{PacketConn: listener, Handler: dns.HandlerFunc(func(writer dns.ResponseWriter, request *dns.Msg) {
+		queries.Add(1)
+		response := new(dns.Msg).SetReply(request)
+		for _, question := range request.Question {
+			if question.Qtype == dns.TypeA {
+				response.Answer = append(response.Answer, &dns.A{Hdr: dns.RR_Header{Name: question.Name, Rrtype: dns.TypeA, Class: dns.ClassINET}, A: net.ParseIP("127.0.0.1")})
+			}
+		}
+		_ = writer.WriteMsg(response)
+	})}
+	started := make(chan struct{})
+	server.NotifyStartedFunc = func() { close(started) }
+	done := make(chan error, 1)
+	go func() { done <- server.ActivateAndServe() }()
+	<-started
+	t.Cleanup(func() { require.NoError(t, server.Shutdown()); require.NoError(t, <-done) })
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+	t.Cleanup(srv.Close)
+
+	resolverFile := filepath.Join(t.TempDir(), "resolv.conf")
+	require.NoError(t, os.WriteFile(resolverFile, nil, 0o600))
+	t.Setenv("RESOLVERS_PATH", resolverFile)
+
+	options := &types.Options{
+		ExecutionId:           t.Name(),
+		Timeout:               5,
+		BulkSize:              1,
+		InternalResolversList: []string{listener.LocalAddr().String()},
+	}
+	require.NoError(t, protocolstate.Init(options))
+	t.Cleanup(func() { protocolstate.Close(options.ExecutionId) })
+
+	target := "probe.nuclei.test:" + strconv.Itoa(srv.Listener.Addr().(*net.TCPAddr).Port)
+	r := &Runner{
+		options:       options,
+		inputProvider: provider.NewSimpleInputProviderWithUrls(options.ExecutionId, target),
+		Logger:        &gologger.Logger{},
+	}
+
+	hm, err := r.initializeTemplatesHTTPInput()
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = hm.Close() })
+
+	probed, ok := hm.Get(input.ProbeKey(target, ""))
+	require.True(t, ok, "the probe should resolve the target through the -r resolver")
+	require.Equal(t, "http://"+target, string(probed))
+	require.Positive(t, queries.Load())
 }
