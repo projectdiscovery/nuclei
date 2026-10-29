@@ -3,6 +3,8 @@ package dsl
 import (
 	"fmt"
 	"net"
+	"os"
+	"path/filepath"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -44,6 +46,12 @@ func networkTestDNS(t *testing.T, address string) (string, *atomic.Int32) {
 
 func networkTestOptions(t *testing.T, options *types.Options) *types.Options {
 	t.Helper()
+	// fastdialer adds the nameservers of the system resolver file before the
+	// stub resolvers and picks them round robin, so the stub answer would
+	// depend on the host. An empty resolver file keeps only the stub.
+	resolverFile := filepath.Join(t.TempDir(), "resolv.conf")
+	require.NoError(t, os.WriteFile(resolverFile, nil, 0o600))
+	t.Setenv("RESOLVERS_PATH", resolverFile)
 	if options.ExecutionId == "" {
 		options.ExecutionId = t.Name()
 	}
