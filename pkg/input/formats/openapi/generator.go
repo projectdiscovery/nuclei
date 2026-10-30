@@ -9,6 +9,7 @@ import (
 	"net/http/httputil"
 	"net/url"
 	"os"
+	"slices"
 	"strings"
 
 	"github.com/clbanning/mxj/v2"
@@ -33,7 +34,9 @@ const (
 
 // GenerateRequestsFromSchema generates http requests from an OpenAPI 3.0 document object
 func GenerateRequestsFromSchema(schema *openapi3.T, opts formats.InputFormatOptions, callback formats.ParseReqRespCallback) error {
-	if len(schema.Servers) == 0 {
+	// Null entries in `servers:` are skipped below, so a list of only null
+	// entries has no usable server, the same as an empty list.
+	if !slices.ContainsFunc(schema.Servers, func(s *openapi3.Server) bool { return s != nil }) {
 		return errors.New("no servers found in openapi schema")
 	}
 	globalParams, globalSecurityErr := selectSecurityParameters(schema, &schema.Security, opts.Variables)
@@ -49,6 +52,11 @@ func GenerateRequestsFromSchema(schema *openapi3.T, opts formats.InputFormatOpti
 	}
 
 	for _, serverURL := range schema.Servers {
+		// A null entry in the `servers:` list decodes to a nil *Server, so skip
+		// it rather than dereferencing it.
+		if serverURL == nil {
+			continue
+		}
 		pathURL := serverURL.URL
 		// Split the server URL into baseURL and serverPath
 		u, err := url.Parse(pathURL)
@@ -268,6 +276,11 @@ func generateRequestsFromOp(opts *generateReqOptions) error {
 
 	if opts.op.RequestBody != nil {
 		for content, value := range opts.op.RequestBody.Value.Content {
+			// A null media-type entry (e.g. `content: {application/json: }`)
+			// decodes to a nil *MediaType, so skip it before dereferencing.
+			if value == nil {
+				continue
+			}
 			cloned := req.Clone(req.Context())
 
 			var val interface{}
