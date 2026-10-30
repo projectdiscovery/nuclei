@@ -72,6 +72,24 @@ paths:
     get:
       responses: {"200": }
 `,
+		"null-response-header": `
+swagger: "2.0"
+info: {title: t, version: "1"}
+host: localhost
+responses:
+  Shared:
+    description: ok
+    headers:
+      X-Shared:
+paths:
+  /x:
+    get:
+      responses:
+        "200":
+          description: ok
+          headers:
+            X-Rate-Limit:
+`,
 	}
 
 	for name, spec := range specs {

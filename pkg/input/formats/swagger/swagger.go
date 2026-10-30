@@ -77,13 +77,22 @@ func (j *SwaggerFormat) Parse(input io.Reader, resultsCb formats.ParseReqRespCal
 func dropNullEntries(doc *openapi2.T) {
 	maps.DeleteFunc(doc.Paths, func(_ string, v *openapi2.PathItem) bool { return v == nil })
 	maps.DeleteFunc(doc.Parameters, func(_ string, v *openapi2.Parameter) bool { return v == nil })
-	maps.DeleteFunc(doc.Responses, func(_ string, v *openapi2.Response) bool { return v == nil })
+	dropNullResponses(doc.Responses)
 	for _, pathItem := range doc.Paths {
 		pathItem.Parameters = slices.DeleteFunc(pathItem.Parameters, func(v *openapi2.Parameter) bool { return v == nil })
 		for _, op := range pathItem.Operations() {
 			op.Parameters = slices.DeleteFunc(op.Parameters, func(v *openapi2.Parameter) bool { return v == nil })
-			maps.DeleteFunc(op.Responses, func(_ string, v *openapi2.Response) bool { return v == nil })
+			dropNullResponses(op.Responses)
 		}
+	}
+}
+
+// dropNullResponses removes null responses, and null headers of the remaining
+// responses, which openapi2conv.ToV3Response also dereferences.
+func dropNullResponses(responses map[string]*openapi2.Response) {
+	maps.DeleteFunc(responses, func(_ string, v *openapi2.Response) bool { return v == nil })
+	for _, response := range responses {
+		maps.DeleteFunc(response.Headers, func(_ string, v *openapi2.Header) bool { return v == nil })
 	}
 }
 

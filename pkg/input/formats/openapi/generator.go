@@ -9,6 +9,7 @@ import (
 	"net/http/httputil"
 	"net/url"
 	"os"
+	"slices"
 	"strings"
 
 	"github.com/clbanning/mxj/v2"
@@ -33,7 +34,9 @@ const (
 
 // GenerateRequestsFromSchema generates http requests from an OpenAPI 3.0 document object
 func GenerateRequestsFromSchema(schema *openapi3.T, opts formats.InputFormatOptions, callback formats.ParseReqRespCallback) error {
-	if len(schema.Servers) == 0 {
+	// Null entries in `servers:` are skipped below, so a list of only null
+	// entries has no usable server, the same as an empty list.
+	if !slices.ContainsFunc(schema.Servers, func(s *openapi3.Server) bool { return s != nil }) {
 		return errors.New("no servers found in openapi schema")
 	}
 	globalParams, globalSecurityErr := selectSecurityParameters(schema, &schema.Security, opts.Variables)

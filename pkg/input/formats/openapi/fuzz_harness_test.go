@@ -3,8 +3,10 @@ package openapi
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
+	"github.com/projectdiscovery/nuclei/v3/pkg/input/types"
 	"github.com/stretchr/testify/require"
 )
 
@@ -64,4 +66,19 @@ paths:
 			require.True(t, fuzzOpenAPIParsing([]byte(spec)))
 		})
 	}
+}
+
+func TestGenerateRequestsOnlyNullServers(t *testing.T) {
+	spec := `
+openapi: 3.0.0
+info: {title: t, version: "1"}
+servers:
+  -
+paths:
+  /users:
+    get:
+      responses: {"200": {description: ok}}
+`
+	err := New().Parse(strings.NewReader(spec), func(*types.RequestResponse) bool { return false }, "spec.yaml")
+	require.ErrorContains(t, err, "no servers found in openapi schema")
 }
