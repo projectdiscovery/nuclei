@@ -3,9 +3,7 @@ package redis
 import (
 	"bytes"
 	"context"
-	"errors"
 	"fmt"
-	"io"
 	"net"
 	"strconv"
 	"time"
@@ -287,140 +285,119 @@ func newClient(addr, password string) *redis.Client {
 	return redis.NewClient(opts)
 }
 
-// limitedConn fails a read once remaining is spent, and withholds a RESP length line whose
-// declared size is over the cap so go-redis never allocates it.
+// maxHeaderLen fits a type byte, any int64, and "\r". Redis never sends a longer length header.
+const maxHeaderLen = 32
+
+// limitedConn fails a read once remaining is spent, and ends a read before the "\n" of a RESP
+// length header whose declared size is over the cap, so go-redis never gets the line to allocate
+// from.
+//
+// It follows the reply's framing as the bytes pass: a bulk payload is skipped by its declared
+// length, so only header lines are checked. A payload line such as "*abc" is data.
 type limitedConn struct {
 	net.Conn
 	remaining int64
-	pending   []byte
-	partial   []byte
-	err       error
-	scratch   [32 << 10]byte
+	// payload is how many bytes of the current bulk payload, "\r\n" included, are still to come.
+	payload int64
+	// header is the start of the current header line, without its "\n".
+	header   []byte
+	overlong bool
+	err      error
 }
 
 func (c *limitedConn) Read(b []byte) (int, error) {
-	if len(b) == 0 {
+	if c.err != nil {
+		return 0, c.err
+	}
+	if c.remaining <= 0 {
+		return 0, errReadLimit
+	}
+	if int64(len(b)) > c.remaining {
+		b = b[:c.remaining]
+	}
+	n, err := c.Conn.Read(b)
+	c.remaining -= int64(n)
+	// Errors from the connection, deadlines included, are returned as they come and not kept: a
+	// read deadline belongs to one call. go-redis peeks for push notifications with a few
+	// microseconds of deadline, and keeping that timeout would fail the command that follows.
+	kept, scanErr := c.scan(b[:n])
+	if scanErr == nil {
+		return n, err
+	}
+	c.err = scanErr
+	if kept == 0 {
+		return 0, scanErr
+	}
+	return kept, nil
+}
+
+// scan follows the RESP framing of p and returns how many of its bytes may be returned.
+func (c *limitedConn) scan(p []byte) (int, error) {
+	for i := 0; i < len(p); {
+		if c.payload > 0 {
+			skip := min(c.payload, int64(len(p)-i))
+			c.payload -= skip
+			i += int(skip)
+			continue
+		}
+		end := bytes.IndexByte(p[i:], '\n')
+		if end < 0 {
+			c.keepHeader(p[i:])
+			return len(p), nil
+		}
+		c.keepHeader(p[i : i+end])
+		payload, err := declaredPayload(c.header, c.overlong)
+		c.header, c.overlong = c.header[:0], false
+		if err != nil {
+			return i + end, err
+		}
+		c.payload = payload
+		i += end + 1
+	}
+	return len(p), nil
+}
+
+func (c *limitedConn) keepHeader(p []byte) {
+	if room := maxHeaderLen - len(c.header); len(p) > room {
+		p = p[:room]
+		c.overlong = true
+	}
+	c.header = append(c.header, p...)
+}
+
+// declaredPayload returns how many payload bytes, "\r\n" included, follow a RESP header line
+// given without its "\n". It returns errReadLimit when go-redis would allocate more than the cap
+// from the line: the declared byte length for bulk strings, one interface per declared element
+// for arrays, sets, maps, attributes, and pushes.
+func declaredPayload(line []byte, overlong bool) (int64, error) {
+	if len(line) == 0 {
 		return 0, nil
 	}
-	if len(c.pending) == 0 {
-		if err := c.fill(); err != nil {
-			return 0, err
-		}
-	}
-	n := copy(b, c.pending)
-	c.pending = c.pending[n:]
-	return n, nil
-}
-
-func (c *limitedConn) fill() error {
-	if len(c.pending) > 0 {
-		return nil
-	}
-	if c.err != nil {
-		return c.err
-	}
-	for len(c.pending) == 0 {
-		if c.remaining <= 0 {
-			c.err = errReadLimit
-			return c.err
-		}
-		want := int64(len(c.scratch))
-		if want > c.remaining {
-			want = c.remaining
-		}
-		n, err := c.Conn.Read(c.scratch[:want])
-		if n > 0 {
-			c.remaining -= int64(n)
-			if aerr := c.accept(c.scratch[:n]); aerr != nil {
-				c.err = aerr
-				if len(c.pending) > 0 {
-					return nil
-				}
-				return aerr
-			}
-		}
-		if err != nil {
-			// A read deadline belongs to one call. go-redis peeks for push notifications
-			// with a few microseconds of deadline, and on Windows that peek always runs.
-			// Keeping the timeout fails the command that follows.
-			if timeoutErr(err) {
-				if len(c.pending) > 0 {
-					return nil
-				}
-				return err
-			}
-			c.err = err
-			if len(c.pending) > 0 {
-				return nil
-			}
-			return err
-		}
-		if n == 0 {
-			c.err = io.ErrUnexpectedEOF
-			return c.err
-		}
-	}
-	return nil
-}
-
-func (c *limitedConn) accept(p []byte) error {
-	c.partial = append(c.partial, p...)
-	for {
-		i := bytes.IndexByte(c.partial, '\n')
-		if i < 0 {
-			if int64(len(c.partial)) > maxReadBytes {
-				c.partial = nil
-				return errReadLimit
-			}
-			return nil
-		}
-		line := c.partial[:i+1]
-		if lengthTooLarge(line) {
-			c.partial = nil
-			return errReadLimit
-		}
-		copied := make([]byte, len(line))
-		copy(copied, line)
-		c.pending = append(c.pending, copied...)
-		rest := make([]byte, len(c.partial)-(i+1))
-		copy(rest, c.partial[i+1:])
-		c.partial = rest
-	}
-}
-
-// lengthTooLarge reports whether line is a RESP length header go-redis would allocate from.
-// Bulk strings allocate the declared byte length. Arrays, sets, maps, attributes, and pushes
-// allocate one interface per declared element.
-func lengthTooLarge(line []byte) bool {
-	if len(line) < 3 {
-		return false
-	}
 	var limit int64
+	bulk := false
 	switch line[0] {
 	case '$', '=', '!':
-		limit = maxReadBytes
+		limit, bulk = maxReadBytes, true
 	case '*', '~', '>', '%', '|':
 		limit = maxAggregate
 	default:
-		return false
+		return 0, nil
 	}
-	body := line[1 : len(line)-1]
-	if len(body) > 0 && body[len(body)-1] == '\r' {
-		body = body[:len(body)-1]
+	if overlong {
+		return 0, errReadLimit
 	}
+	body := bytes.TrimSuffix(line[1:], []byte("\r"))
 	if len(body) == 0 || body[0] == '-' {
-		return false
+		return 0, nil
 	}
 	n, err := strconv.ParseInt(string(body), 10, 64)
-	if err != nil {
-		return true
+	if err != nil || n > limit {
+		return 0, errReadLimit
 	}
-	return n > limit
-}
-
-func timeoutErr(err error) bool {
-	var netErr net.Error
-	return errors.As(err, &netErr) && netErr.Timeout()
+	if !bulk {
+		return 0, nil
+	}
+	return n + 2, nil
 }
 
 // dialAttempts replaces go-redis's default of 5. The extra attempts run in a goroutine that
