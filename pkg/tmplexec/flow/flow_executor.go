@@ -9,7 +9,6 @@ import (
 	"sync/atomic"
 
 	"github.com/projectdiscovery/goja"
-	"github.com/projectdiscovery/nuclei/v3/pkg/js/compiler"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/nuclei/v3/pkg/scan"
@@ -236,9 +235,9 @@ func (f *FlowExecutor) ExecuteWithResults(ctx *scan.ScanContext) error {
 		return err
 	}
 	defer func() {
-		// whether to reuse or not depends on the whether script modifies
-		// global scope or not,
-		PutJSRuntime(runtime, compiler.CanRunAsIIFE(f.options.Flow))
+		// a flow can change any global of its runtime (builtins, prototypes, globalThis)
+		// and the next flow can be from another template, so a used runtime is never reused
+		PutJSRuntime(runtime, false)
 	}()
 	defer func() {
 		// remove set builtin
