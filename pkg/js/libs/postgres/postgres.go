@@ -3,12 +3,12 @@ package postgres
 import (
 	"context"
 	"fmt"
-	"net"
-	"net/url"
+	"os"
+	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
-	"github.com/go-pg/pg/v10"
 	"github.com/praetorian-inc/fingerprintx/pkg/plugins"
 	postgres "github.com/praetorian-inc/fingerprintx/pkg/plugins/services/postgresql"
 	utils "github.com/projectdiscovery/nuclei/v3/pkg/js/utils"
@@ -18,7 +18,7 @@ import (
 
 type (
 	// PGClient is a client for Postgres database.
-	// Internally client uses go-pg/pg driver.
+	// Internally client uses lib/pq driver.
 	// @example
 	// ```javascript
 	// const postgres = require('nuclei/postgres');
@@ -124,9 +124,7 @@ func executeQuery(ctx context.Context, executionId string, host string, port int
 		return nil, protocolstate.ErrHostDenied.Msgf(host)
 	}
 
-	target := net.JoinHostPort(host, fmt.Sprintf("%d", port))
-
-	connStr := buildPostgresConnURL(username, password, target, dbName, executionId)
+	connStr := buildPostgresDSN(host, port, username, password, dbName)
 	db, err := pgwrap.OpenDB(ctx, executionId, connStr)
 	if err != nil {
 		return nil, err
@@ -146,17 +144,30 @@ func executeQuery(ctx context.Context, executionId string, host string, port int
 	return resp, nil
 }
 
-func buildPostgresConnURL(username, password, target, dbName, executionId string) string {
-	values := url.Values{}
-	values.Set("sslmode", "disable")
-	values.Set("executionId", executionId)
-
-	return fmt.Sprintf("postgres://%s@%s/%s?%s",
-		url.UserPassword(username, password).String(),
-		target,
-		url.PathEscape(dbName),
-		values.Encode(),
-	)
+// buildPostgresDSN returns a lib/pq key=value connection string. user, password, dbname, service and passfile
+// are always set, also when empty: lib/pq fills unset values from the scanner's environment (PGUSER, PGPASSWORD,
+// PGDATABASE), a service file (PGSERVICE) and ~/.pgpass (PGPASSFILE), which sends the operator's credentials to the target.
+func buildPostgresDSN(host string, port int, username, password, dbName string) string {
+	quote := strings.NewReplacer(`\`, `\\`, `'`, `\'`)
+	params := []struct{ key, value string }{
+		{"host", host},
+		{"port", strconv.Itoa(port)},
+		{"user", username},
+		{"password", password},
+		{"dbname", dbName},
+		{"sslmode", "disable"},
+		{"connect_timeout", "10"},
+		{"service", ""},
+		{"options", ""},
+		{"application_name", ""},
+		// a path below a file never exists, so no password file is read
+		{"passfile", filepath.Join(os.DevNull, "pgpass")},
+	}
+	kvs := make([]string, 0, len(params))
+	for _, param := range params {
+		kvs = append(kvs, param.key+"='"+quote.Replace(param.value)+"'")
+	}
+	return strings.Join(kvs, " ")
 }
 
 // ConnectWithDB connects to Postgres database using given credentials and database name.
@@ -194,32 +205,20 @@ func connect(ctx context.Context, executionId string, host string, port int, use
 		return false, protocolstate.ErrHostDenied.Msgf(host)
 	}
 
-	target := net.JoinHostPort(host, fmt.Sprintf("%d", port))
-
-	execCtx, cancel := context.WithCancel(ctx)
+	execCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
-	dialer := protocolstate.GetDialersWithId(executionId)
-	if dialer == nil {
-		return false, fmt.Errorf("dialers not initialized for %s", executionId)
+	// lib/pq with every credential set, as go-pg replaces an empty user, password or database
+	// with PGUSER, PGPASSWORD or PGDATABASE from the scanner's environment
+	db, err := pgwrap.OpenDB(execCtx, executionId, buildPostgresDSN(host, port, username, password, dbName))
+	if err != nil {
+		return false, err
 	}
-
-	db := pg.Connect(&pg.Options{
-		Addr:     target,
-		User:     username,
-		Password: password,
-		Database: dbName,
-		Dialer: func(dialCtx context.Context, network, addr string) (net.Conn, error) {
-			return dialer.Fastdialer.Dial(dialCtx, network, addr)
-		},
-		IdleCheckFrequency: -1,
-	}).WithTimeout(10 * time.Second)
-
 	defer func() {
 		_ = db.Close()
 	}()
 
-	_, err := db.ExecContext(execCtx, "select 1")
+	_, err = db.ExecContext(execCtx, "select 1")
 	if err != nil {
 		switch true {
 		case strings.Contains(err.Error(), "connect: connection refused"):
