@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"net"
 	"runtime"
 	"strconv"
@@ -90,37 +91,58 @@ func TestGetServerInfoAuthBoundsAReplyWithoutNewline(t *testing.T) {
 }
 
 func TestGetServerInfoAuthReadsAnInfoReply(t *testing.T) {
-	listener, err := net.Listen("tcp", "127.0.0.1:0")
-	require.NoError(t, err)
-	t.Cleanup(func() {
-		_ = listener.Close()
-	})
+	tests := []struct {
+		name string
+		info string
+	}{
+		{name: "info", info: "# Server\r\nredis_version:7.2.4\r\n"},
+		// A bulk payload's lines are data, even when they start like a RESP length header.
+		{name: "header-like lines", info: "# Server\r\n*abc\r\n$ 5 dollars\r\n%x\r\n$99999999999\r\n"},
+		// Each line used to cost a copy of what was left of the read buffer.
+		{name: "many short lines", info: strings.Repeat("\n", 1<<20)},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			listener, err := net.Listen("tcp", "127.0.0.1:0")
+			require.NoError(t, err)
+			t.Cleanup(func() {
+				_ = listener.Close()
+			})
 
-	const info = "# Server\r\nredis_version:7.2.4\r\n"
-	go func() {
-		for {
-			conn, err := listener.Accept()
-			if err != nil {
-				return
-			}
-			go serveRESP(conn, info)
-		}
-	}()
+			go func() {
+				for {
+					conn, err := listener.Accept()
+					if err != nil {
+						return
+					}
+					go serveRESP(conn, tt.info)
+				}
+			}()
 
-	executionID := "redis-" + strings.ReplaceAll(t.Name(), "/", "-")
-	require.NoError(t, protocolstate.Init(&types.Options{ExecutionId: executionID}))
-	t.Cleanup(func() {
-		protocolstate.Close(executionID)
-	})
+			executionID := "redis-" + strings.ReplaceAll(t.Name(), "/", "-")
+			require.NoError(t, protocolstate.Init(&types.Options{ExecutionId: executionID}))
+			t.Cleanup(func() {
+				protocolstate.Close(executionID)
+			})
 
-	addr, ok := listener.Addr().(*net.TCPAddr)
-	require.True(t, ok)
+			addr, ok := listener.Addr().(*net.TCPAddr)
+			require.True(t, ok)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-	got, err := getServerInfoAuth(ctx, executionID, "127.0.0.1", addr.Port, "")
-	require.NoError(t, err)
-	require.Equal(t, info, got)
+			var before runtime.MemStats
+			runtime.ReadMemStats(&before)
+
+			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+			defer cancel()
+			got, err := getServerInfoAuth(ctx, executionID, "127.0.0.1", addr.Port, "")
+
+			var after runtime.MemStats
+			runtime.ReadMemStats(&after)
+			require.NoError(t, err)
+			require.Equal(t, tt.info, got)
+			growth := int64(after.TotalAlloc - before.TotalAlloc)
+			require.Less(t, growth, int64(64<<20), "allocated %d MiB reading one reply", growth>>20)
+		})
+	}
 }
 
 // serveRESP answers HELLO as a Redis without RESP3 does, so the client falls back to RESP2, and
@@ -182,24 +204,83 @@ func readRESPCommand(rd *bufio.Reader) (string, error) {
 	return command, nil
 }
 
-func TestLengthTooLarge(t *testing.T) {
+func TestDeclaredPayload(t *testing.T) {
 	tests := []struct {
-		line string
-		want bool
+		line     string
+		overlong bool
+		payload  int64
+		tooLarge bool
 	}{
-		{line: fmt.Sprintf("$%d\r\n", maxReadBytes), want: false},
-		{line: fmt.Sprintf("$%d\r\n", maxReadBytes+1), want: true},
-		{line: "$-1\r\n", want: false},
-		{line: "+OK\r\n", want: false},
-		{line: fmt.Sprintf("*%d\r\n", maxAggregate), want: false},
-		{line: fmt.Sprintf("*%d\r\n", maxAggregate+1), want: true},
-		{line: "$999999999999999999999\r\n", want: true},
+		{line: fmt.Sprintf("$%d\r", maxReadBytes), payload: maxReadBytes + 2},
+		{line: fmt.Sprintf("$%d\r", maxReadBytes+1), tooLarge: true},
+		{line: "=10\r", payload: 12},
+		{line: "$-1\r"},
+		{line: "+OK\r"},
+		{line: "+OK\r", overlong: true},
+		{line: fmt.Sprintf("*%d\r", maxAggregate)},
+		{line: fmt.Sprintf("*%d\r", maxAggregate+1), tooLarge: true},
+		{line: "$999999999999999999999\r", tooLarge: true},
+		{line: "*abc\r", tooLarge: true},
+		{line: "$000000000000000000000000000000", overlong: true, tooLarge: true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.line, func(t *testing.T) {
-			require.Equal(t, tt.want, lengthTooLarge([]byte(tt.line)))
+			payload, err := declaredPayload([]byte(tt.line), tt.overlong)
+			if tt.tooLarge {
+				require.ErrorIs(t, err, errReadLimit)
+				return
+			}
+			require.NoError(t, err)
+			require.Equal(t, tt.payload, payload)
 		})
 	}
+}
+
+// The check that rejects a length header has to land on the "\n" when the header arrives over
+// several reads, and payload bytes have to pass whatever they contain.
+func TestLimitedConnFollowsFramingAcrossReads(t *testing.T) {
+	const ok = "*2\r\n$5\r\n*abc\n\r\n$-1\r\n+OK\r\n"
+	tooLarge := fmt.Sprintf("$%d\r\n", maxReadBytes+1)
+
+	tests := []struct {
+		name    string
+		stream  string
+		want    string
+		wantErr error
+	}{
+		{name: "payload passes", stream: ok, want: ok},
+		{name: "header rejected", stream: ok + tooLarge + "x", want: ok + tooLarge[:len(tooLarge)-1], wantErr: errReadLimit},
+	}
+	for _, tt := range tests {
+		for _, size := range []int{1, 3, 64} {
+			t.Run(fmt.Sprintf("%s/%d", tt.name, size), func(t *testing.T) {
+				lc := &limitedConn{Conn: &chunkedConn{data: []byte(tt.stream), size: size}, remaining: maxReadBytes}
+				got, err := io.ReadAll(lc)
+				require.Equal(t, tt.want, string(got))
+				if tt.wantErr != nil {
+					require.ErrorIs(t, err, tt.wantErr)
+					return
+				}
+				require.NoError(t, err)
+			})
+		}
+	}
+}
+
+// chunkedConn returns data at most size bytes per read, then io.EOF.
+type chunkedConn struct {
+	net.Conn
+	data []byte
+	size int
+}
+
+func (c *chunkedConn) Read(b []byte) (int, error) {
+	if len(c.data) == 0 {
+		return 0, io.EOF
+	}
+	n := copy(b[:min(len(b), c.size)], c.data)
+	c.data = c.data[n:]
+	return n, nil
 }
 
 // A short RESP length header used to make go-redis allocate the declared size before reading
