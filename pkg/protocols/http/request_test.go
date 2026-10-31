@@ -8,6 +8,7 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"runtime"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -25,10 +26,114 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators/matchers"
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/hostratelimit"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/interactsh"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 	"github.com/projectdiscovery/ratelimit"
+	"github.com/projectdiscovery/rawhttp/clientpipeline"
 	"github.com/projectdiscovery/retryablehttp-go"
 )
+
+func TestHostRateLimiterSpecialExecutionPaths(t *testing.T) {
+	tests := []struct {
+		name    string
+		request *Request
+	}{
+		{
+			name: "race",
+			request: &Request{
+				ID:                 "race-host-rate-limit",
+				Path:               []string{"{{BaseURL}}"},
+				Race:               true,
+				RaceNumberRequests: 2,
+			},
+		},
+		{
+			name: "pipeline",
+			request: &Request{
+				ID:       "pipeline-host-rate-limit",
+				Path:     []string{"{{BaseURL}}"},
+				Pipeline: true,
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			options := testutils.DefaultOptions
+			options.RateLimitHost = 100
+			options.RateLimitHostDuration = time.Second
+			defer func() {
+				options.RateLimitHost = 0
+				options.RateLimitHostDuration = 0
+			}()
+			testutils.Init(options)
+			defer testutils.Cleanup(options)
+
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+				_, _ = w.Write([]byte("ok"))
+			}))
+			defer server.Close()
+
+			executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
+				ID:   tt.request.ID,
+				Info: model.Info{SeverityHolder: severity.Holder{Severity: severity.Low}, Name: "test"},
+			})
+
+			require.NoError(t, tt.request.Compile(executerOpts))
+			ctxArgs := contextargs.NewWithInput(context.Background(), server.URL)
+			require.NoError(t, tt.request.ExecuteWithResults(ctxArgs, output.InternalEvent{}, output.InternalEvent{}, func(*output.InternalWrappedEvent) {}))
+
+			dialers := protocolstate.GetDialersWithId(options.ExecutionId)
+			require.NotNil(t, dialers)
+			dialers.Lock()
+			pool, ok := dialers.PerHostRateLimitPool.(*hostratelimit.PerHostRateLimitPool)
+			dialers.Unlock()
+			require.True(t, ok, "the race and pipeline paths must take from the per-host limiter")
+			require.Equal(t, 1, pool.Size())
+
+			if tt.request.Pipeline {
+				awaitPipelineClientShutdown(t)
+			}
+		})
+	}
+}
+
+// awaitPipelineClientShutdown blocks until the goroutines of every rawhttp
+// pipeline client have exited.
+//
+// rawhttp exposes no way to release a pipeline client: the worker, reader and
+// writer goroutines it starts per connection own the connection and only retire
+// once clientpipeline's idle timer fires, which is far beyond goleak's retry
+// window. Any test that drives the pipeline execution path must therefore wait
+// here, otherwise those goroutines outlive the test and are reported as leaks by
+// whichever later test runs a goleak check.
+func awaitPipelineClientShutdown(t *testing.T) {
+	t.Helper()
+
+	deadline := time.Now().Add(clientpipeline.DefaultMaxIdleConnDuration + 30*time.Second)
+	for {
+		stacks := goroutineStacks()
+		if !strings.Contains(stacks, "rawhttp/clientpipeline.(*pipelineConnClient)") {
+			return
+		}
+		if time.Now().After(deadline) {
+			t.Fatalf("rawhttp pipeline goroutines are still running after the idle timeout:\n%s", stacks)
+		}
+		time.Sleep(50 * time.Millisecond)
+	}
+}
+
+func goroutineStacks() string {
+	buf := make([]byte, 64*1024)
+	for {
+		n := runtime.Stack(buf, true)
+		if n < len(buf) {
+			return string(buf[:n])
+		}
+		buf = make([]byte, 2*len(buf))
+	}
+}
 
 func executeDynamicHTTPTestRequest(t *testing.T, request *Request, target string) {
 	t.Helper()
@@ -1394,9 +1499,11 @@ func TestExecuteParallelHTTP_SkipOnUnresponsiveFromCache(t *testing.T) {
 	require.Equal(t, int32(0), atomic.LoadInt32(&matches), "expected no matches when host is marked unresponsive")
 }
 
-// TestExecuteParallelHTTP_GoroutineLeaks uses goleak to detect goroutine leaks in all HTTP parallel execution scenarios
-func TestExecuteParallelHTTP_GoroutineLeaks(t *testing.T) {
-	defer goleak.VerifyNone(t,
+// goroutineLeakOptions are the goleak exclusions shared by the leak tests of
+// this package, all of them background workers owned by dependencies rather
+// than by the code under test.
+func goroutineLeakOptions() []goleak.Option {
+	return []goleak.Option{
 		goleak.IgnoreAnyContainingPkg("go.opencensus.io/stats/view"),
 		goleak.IgnoreAnyContainingPkg("github.com/syndtr/goleveldb"),
 		goleak.IgnoreAnyContainingPkg("github.com/go-rod/rod"),
@@ -1417,7 +1524,12 @@ func TestExecuteParallelHTTP_GoroutineLeaks(t *testing.T) {
 		// (e.g. windows) that teardown can outlast goleak's retry window, so ignore them.
 		goleak.IgnoreAnyFunction("net/http.(*persistConn).writeLoop"),
 		goleak.IgnoreAnyFunction("net/http.(*persistConn).readLoop"),
-	)
+	}
+}
+
+// TestExecuteParallelHTTP_GoroutineLeaks uses goleak to detect goroutine leaks in all HTTP parallel execution scenarios
+func TestExecuteParallelHTTP_GoroutineLeaks(t *testing.T) {
+	defer goleak.VerifyNone(t, goroutineLeakOptions()...)
 
 	options := testutils.DefaultOptions
 	testutils.Init(options)
@@ -1554,6 +1666,79 @@ func TestExecuteParallelHTTP_GoroutineLeaks(t *testing.T) {
 		require.Error(t, err)
 		require.Equal(t, context.Canceled, err)
 	})
+}
+
+// TestExecuteTurboHTTP_GoroutineLeaks locks the pipeline execution path: every
+// pipelined request must reach the server over a keep-alive connection, and the
+// pipeline client created for the execution must not leave goroutines behind
+// once it goes idle. A request that asks the server to close the connection
+// breaks both: the rest of the pipeline fails and the client's worker is left
+// waiting on work that never arrives.
+func TestExecuteTurboHTTP_GoroutineLeaks(t *testing.T) {
+	defer goleak.VerifyNone(t, goroutineLeakOptions()...)
+
+	options := testutils.DefaultOptions
+	testutils.Init(options)
+	defer testutils.Cleanup(options)
+
+	var mu sync.Mutex
+	var served int
+	var closeRequested bool
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		mu.Lock()
+		served++
+		closeRequested = closeRequested || r.Close
+		mu.Unlock()
+		_, _ = fmt.Fprint(w, "pipelined response")
+	}))
+	defer ts.Close()
+
+	req := &Request{
+		ID: "pipeline-goroutine-leaks",
+		Raw: []string{
+			`GET /test?param={{payload}} HTTP/1.1
+			Host: {{Hostname}}
+			Accept: */*
+			`,
+		},
+		Pipeline:                      true,
+		PipelineConcurrentConnections: 2,
+		PipelineRequestsPerConnection: 10,
+		Payloads: map[string]interface{}{
+			"payload": []string{"1", "2", "3", "4"},
+		},
+		Operators: operators.Operators{
+			Matchers: []*matchers.Matcher{{
+				Part:  "body",
+				Type:  matchers.MatcherTypeHolder{MatcherType: matchers.WordsMatcher},
+				Words: []string{"pipelined response"},
+			}},
+		},
+	}
+
+	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
+		ID:   req.ID,
+		Info: model.Info{SeverityHolder: severity.Holder{Severity: severity.Low}, Name: "test"},
+	})
+	require.NoError(t, req.Compile(executerOpts))
+
+	var matches int32
+	ctxArgs := contextargs.NewWithInput(context.Background(), ts.URL)
+	err := req.ExecuteWithResults(ctxArgs, output.InternalEvent{}, output.InternalEvent{}, func(event *output.InternalWrappedEvent) {
+		if event.OperatorsResult != nil && event.OperatorsResult.Matched {
+			atomic.AddInt32(&matches, 1)
+		}
+	})
+	require.NoError(t, err)
+	require.Equal(t, int32(4), atomic.LoadInt32(&matches), "expected every pipelined request to match")
+
+	mu.Lock()
+	servedRequests, sawClose := served, closeRequested
+	mu.Unlock()
+	require.Equal(t, 4, servedRequests, "expected every pipelined request to reach the server")
+	require.False(t, sawClose, "pipelined requests must not ask the server to close the connection")
+
+	awaitPipelineClientShutdown(t)
 }
 
 func TestOutputIP(t *testing.T) {

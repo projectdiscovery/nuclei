@@ -435,12 +435,14 @@ on extensive configurability, massive extensibility and ease of use.`)
 	)
 
 	flagSet.CreateGroup("rate-limit", "Rate-Limit",
-		flagSet.IntVarP(&options.RateLimit, "rate-limit", "rl", 150, "maximum number of requests to send per second"),
-		flagSet.DurationVarP(&options.RateLimitDuration, "rate-limit-duration", "rld", time.Second, "maximum number of requests to send per second"),
+		flagSet.IntVarP(&options.RateLimit, "rate-limit", "rl", 150, "maximum number of requests to send per second (ignored when -rate-limit-host is set)"),
+		flagSet.DurationVarP(&options.RateLimitDuration, "rate-limit-duration", "rld", time.Second, "rate-limit interval/window for -rate-limit"),
 		flagSet.BoolVar(&options.HostBackoff, "host-backoff", false, "slow down a host that starts blocking (429, repeated 403s, connection failures)"),
 		flagSet.DurationVar(&options.HostBackoffMax, "host-backoff-max", 30*time.Second, "maximum delay applied to a host that is blocking"),
 		flagSet.BoolVar(&options.PerHostRateLimit, "per-host-rate-limit", false, "enable per-host rate limiting (global rate limit becomes unlimited when enabled)"),
 		flagSet.IntVarP(&options.RateLimitMinute, "rate-limit-minute", "rlm", 0, "maximum number of requests to send per minute (DEPRECATED)"),
+		flagSet.IntVarP(&options.RateLimitHost, "rate-limit-host", "rlh", 0, "maximum number of requests to send per host per rate-limit-host-duration (0 = disabled, takes priority over -rate-limit)"),
+		flagSet.DurationVarP(&options.RateLimitHostDuration, "rate-limit-host-duration", "rlhd", time.Second, "refill interval for the per-host rate limit bucket"),
 		flagSet.IntVarP(&options.BulkSize, "bulk-size", "bs", 25, "maximum number of hosts to be analyzed in parallel per template"),
 		flagSet.IntVarP(&options.TemplateThreads, "concurrency", "c", 25, "maximum number of templates to be executed in parallel"),
 		flagSet.IntVarP(&options.HeadlessBulkSize, "headless-bulk-size", "hbs", 10, "maximum number of headless hosts to be analyzed in parallel per template"),

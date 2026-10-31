@@ -156,6 +156,11 @@ type Options struct {
 	// Rate-Limit is the maximum number of requests per minute for specified target
 	// Deprecated: Use RateLimitDuration - automatically set Rate Limit Duration to 60 seconds
 	RateLimitMinute int
+	// RateLimitHost is the maximum number of requests per RateLimitHostDuration
+	// per host. 0 disables the per-host limiter (only the global RateLimit applies).
+	RateLimitHost int
+	// RateLimitHostDuration is the refill interval for the per-host bucket.
+	RateLimitHostDuration time.Duration
 	// PageTimeout is the maximum time to wait for a page in seconds
 	PageTimeout int
 	// InteractionsCacheSize is the number of interaction-url->req to keep in cache at a time.
@@ -559,6 +564,13 @@ type Options struct {
 	templateThreadRelease func()
 }
 
+// PerHostRateLimitEnabled reports whether requests are paced by a limiter per
+// host: with -per-host-rate-limit, or with -rate-limit-host, which also sets
+// a per-host budget separate from the global rate limit.
+func (options *Options) PerHostRateLimitEnabled() bool {
+	return options.PerHostRateLimit || options.RateLimitHost > 0
+}
+
 // SetTemplateThreadsProvider configures a dynamic template concurrency source.
 // The provider is consulted while an execution schedules templates, allowing an
 // embedding application to redistribute a fixed concurrency budget as peer
@@ -671,6 +683,8 @@ func (options *Options) Copy() *Options {
 		RateLimit:                      options.RateLimit,
 		RateLimitDuration:              options.RateLimitDuration,
 		RateLimitMinute:                options.RateLimitMinute,
+		RateLimitHost:                  options.RateLimitHost,
+		RateLimitHostDuration:          options.RateLimitHostDuration,
 		PageTimeout:                    options.PageTimeout,
 		InteractionsCacheSize:          options.InteractionsCacheSize,
 		InteractionsPollDuration:       options.InteractionsPollDuration,
@@ -937,6 +951,7 @@ func DefaultOptions() *Options {
 	return &Options{
 		RateLimit:                  150,
 		RateLimitDuration:          time.Second,
+		RateLimitHostDuration:      time.Second,
 		BulkSize:                   25,
 		TemplateThreads:            25,
 		HeadlessBulkSize:           10,

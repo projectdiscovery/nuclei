@@ -11,7 +11,7 @@ import (
 // GetPerHostRateLimiter gets or creates a rate limiter for a specific host
 // Returns nil if per-host rate limiting is not enabled
 func GetPerHostRateLimiter(options *types.Options, hostname string) (*PerHostRateLimiter, error) {
-	if !options.PerHostRateLimit {
+	if !options.PerHostRateLimitEnabled() {
 		return nil, nil
 	}
 
@@ -48,7 +48,7 @@ func GetPerHostRateLimiter(options *types.Options, hostname string) (*PerHostRat
 
 // RecordPerHostRateLimitRequest records a request for pps stats calculation
 func RecordPerHostRateLimitRequest(options *types.Options, hostname string) {
-	if !options.PerHostRateLimit || hostname == "" {
+	if !options.PerHostRateLimitEnabled() || hostname == "" {
 		return
 	}
 
