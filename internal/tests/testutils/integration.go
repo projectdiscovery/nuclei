@@ -5,6 +5,7 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
+	"io"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -495,6 +496,18 @@ func NewTCPServer(tlsConfig *tls.Config, port int, handler func(conn net.Conn)) 
 // Close closes the TCP server.
 func (s *TCPServer) Close() {
 	_ = s.listener.Close()
+}
+
+// CloseConn closes a server connection after it drains the unread input.
+// A close with unread input sends a RST, and Windows then drops the reply
+// that the client did not read yet, so the client reads nothing.
+func CloseConn(conn net.Conn) {
+	if tcpConn, ok := conn.(*net.TCPConn); ok {
+		_ = tcpConn.CloseWrite()
+	}
+	_ = conn.SetReadDeadline(time.Now().Add(time.Second))
+	_, _ = io.Copy(io.Discard, conn)
+	_ = conn.Close()
 }
 
 // NewWebsocketServer creates a new websocket server from a handler.
