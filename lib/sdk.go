@@ -9,6 +9,7 @@ import (
 	"sync"
 
 	"github.com/projectdiscovery/gologger"
+	"github.com/projectdiscovery/nuclei/v3/internal/runner"
 	"github.com/projectdiscovery/nuclei/v3/pkg/authprovider"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog"
 	metadataindex "github.com/projectdiscovery/nuclei/v3/pkg/catalog/index"
@@ -331,6 +332,10 @@ func (e *NucleiEngine) ExecuteCallbackWithCtx(ctx context.Context, callback ...f
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
+		// A response cached by an earlier scan of this engine is never served
+		// to this one.
+		e.executerOpts.HTTPResponseCache.Reset()
+		defer runner.AttachScanPlan(e.opts, e.inputProvider, e.opts.Logger, e.engine, templatesAndWorkflows)()
 		_ = e.engine.ExecuteScanWithOpts(ctx, templatesAndWorkflows, e.inputProvider, false)
 	}()
 

@@ -86,8 +86,7 @@ func (e *Engine) ExecuteScanWithOpts(ctx context.Context, templatesList []*templ
 	}
 
 	if stringsutil.EqualFoldAny(e.options.ScanStrategy, scanstrategy.Auto.String(), "") {
-		// TODO: this is only a placeholder, auto scan strategy should choose scan strategy
-		// based on no of hosts , templates , stream and other optimization parameters
+		// Last-resort fallback: runner scan planner normally resolves auto.
 		e.options.ScanStrategy = scanstrategy.TemplateSpray.String()
 	}
 

@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/logrusorgru/aurora/v4"
+	"github.com/projectdiscovery/nuclei/v3/internal/runner"
 	"github.com/projectdiscovery/nuclei/v3/internal/tests/testutils"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/loader"
 	"github.com/projectdiscovery/nuclei/v3/pkg/core"
@@ -12,6 +13,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/loader/workflow"
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/httprespcache"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils"
 	"github.com/projectdiscovery/utils/errkit"
@@ -60,6 +62,11 @@ func createEphemeralObjects(ctx context.Context, base *NucleiEngine, opts *types
 		opts.RateLimitDuration = time.Second
 	}
 	u.executerOpts.RateLimiter = utils.GetRateLimiter(ctx, opts.RateLimit, opts.RateLimitDuration)
+	// Each execution gets its own response cache, created before its
+	// templates compile.
+	if opts.UsesResponseCache() && u.executerOpts.HTTPResponseCache == nil {
+		u.executerOpts.HTTPResponseCache = httprespcache.New()
+	}
 	return u, nil
 }
 
@@ -240,6 +247,7 @@ func (e *ThreadSafeNucleiEngine) ExecuteNucleiWithOptsCtx(ctx context.Context, t
 	engine := core.New(tmpEngine.opts)
 	engine.SetExecuterOptions(unsafeOpts.executerOpts)
 
+	defer runner.AttachScanPlan(tmpEngine.opts, inputProvider, tmpEngine.opts.Logger, engine, store.Templates())()
 	_ = engine.ExecuteScanWithOpts(ctx, store.Templates(), inputProvider, false)
 
 	engine.WorkPool().Wait()

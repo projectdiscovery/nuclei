@@ -319,7 +319,10 @@ OPTIMIZATIONS:
    -stream                          stream mode - start elaborating without sorting the input
    -ss, -scan-strategy value        strategy to use while scanning(auto/host-spray/template-spray) (default auto)
    -irt, -input-read-timeout value  timeout on input read (default 3m0s)
+   -response-cache                  reuse identical safe GET/HEAD responses within a scan (lossless: skips requests with auth, cookies, body or custom headers)
    -nh, -no-httpx                   disable httpx probing for non-url input
+   -stp, -strict-probe              skip templates whose target service is unreachable: HTTP/headless on hosts httpx could not confirm and network templates on closed ports (lossless, no raw-input fallback)
+   -tf, -tech-filter                opt-in: fingerprint HTTP targets and skip product/macro-tagged templates that cannot match (off by default; enables scan-scoped GET cache; fail-open; no-op if no tech-bound templates)
    -preflight-portscan              run preflight resolve + TCP portscan and filter targets before scanning (disabled by default)
    -no-stdin                        disable stdin processing
 

@@ -173,6 +173,16 @@ func WithResponseReadSize(responseReadSize int) NucleiSDKOptions {
 	}
 }
 
+// EnableResponseCache reuses identical safe GET/HEAD responses within one scan.
+// It is off by default: a template that depends on state or timing could see a
+// different result.
+func EnableResponseCache() NucleiSDKOptions {
+	return func(e *NucleiEngine) error {
+		e.opts.ResponseCache = true
+		return nil
+	}
+}
+
 // WithGlobalRateLimit sets global rate (i.e all hosts combined) limit options
 // Deprecated: will be removed in favour of WithGlobalRateLimitCtx in next release
 func WithGlobalRateLimit(maxTokens int, duration time.Duration) NucleiSDKOptions {
@@ -753,6 +763,34 @@ func WithTemporaryDirectory(parentDir string) NucleiSDKOptions {
 			return err
 		}
 		e.tmpDir = tmpDir
+		return nil
+	}
+}
+
+// WithPerHostRateLimit applies the rate limit per host instead of globally.
+func WithPerHostRateLimit(enabled bool) NucleiSDKOptions {
+	return func(e *NucleiEngine) error {
+		e.opts.PerHostRateLimit = enabled
+		return nil
+	}
+}
+
+// EnableStrictProbe skips templates whose target service is unreachable: web
+// templates on hosts that do not speak HTTP and network templates on closed
+// ports. It is the SDK form of -strict-probe.
+func EnableStrictProbe() NucleiSDKOptions {
+	return func(e *NucleiEngine) error {
+		e.opts.StrictProbe = true
+		return nil
+	}
+}
+
+// EnableTechFilter fingerprints HTTP targets and skips product-bound templates
+// that cannot match them. It also turns on the response cache, which the
+// fingerprint requests seed. It is the SDK form of -tech-filter.
+func EnableTechFilter() NucleiSDKOptions {
+	return func(e *NucleiEngine) error {
+		e.opts.TechFilter = true
 		return nil
 	}
 }

@@ -39,6 +39,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/utils/excludematchers"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/variables"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/headless/engine"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/httprespcache"
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting"
 	"github.com/projectdiscovery/nuclei/v3/pkg/scan"
 	templateTypes "github.com/projectdiscovery/nuclei/v3/pkg/templates/types"
@@ -118,6 +119,9 @@ type ExecutorOptions struct {
 	InteractshScope *interactsh.RequestScope
 	// HostErrorsCache is an optional cache for handling host errors
 	HostErrorsCache hosterrorscache.CacheInterface
+	// HTTPResponseCache reuses identical safe GET/HEAD responses inside one
+	// scan. Nil disables it.
+	HTTPResponseCache *httprespcache.Cache
 	// HostBackoff paces a host that signals it is being overloaded, so a scan
 	// slows down for it instead of being blocked outright. Nil disables it.
 	HostBackoff *hostbackoff.Governor
@@ -397,6 +401,7 @@ func (e *ExecutorOptions) Copy() *ExecutorOptions {
 		Browser:                      e.Browser,
 		Interactsh:                   e.Interactsh,
 		HostErrorsCache:              e.HostErrorsCache,
+		HTTPResponseCache:            e.HTTPResponseCache,
 		InteractshScope:              e.InteractshScope,
 		HostBackoff:                  e.HostBackoff,
 		StopAtFirstMatch:             e.StopAtFirstMatch,
@@ -707,6 +712,7 @@ func (e *ExecutorOptions) ApplyNewEngineOptions(n *ExecutorOptions) {
 	e.Browser = n.Browser
 	e.Interactsh = n.Interactsh
 	e.InteractshScope = n.InteractshScope
+	e.HTTPResponseCache = n.HTTPResponseCache
 	e.HostErrorsCache = n.HostErrorsCache
 	e.HostBackoff = n.HostBackoff
 	e.InputHelper = n.InputHelper

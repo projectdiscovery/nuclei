@@ -33,6 +33,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/headless/engine"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/httpclientpool"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/httprespcache"
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	nucleiUtils "github.com/projectdiscovery/nuclei/v3/pkg/utils"
@@ -351,6 +352,12 @@ func (e *NucleiEngine) init(ctx context.Context) error {
 		e.opts.Parser = op
 		e.executerOpts.Parser = op
 		e.executerOpts.Options.Parser = op
+	}
+
+	// Templates compile against e.executerOpts, so the response cache must
+	// exist before they load. Each scan resets it.
+	if e.opts.UsesResponseCache() && e.executerOpts.HTTPResponseCache == nil {
+		e.executerOpts.HTTPResponseCache = httprespcache.New()
 	}
 
 	e.engine = core.New(e.opts)
