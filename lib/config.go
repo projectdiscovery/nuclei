@@ -161,6 +161,25 @@ func WithConcurrency(opts Concurrency) NucleiSDKOptions {
 	}
 }
 
+// DisableServicePlacement runs JS templates that only speak non-HTTP protocols
+// (SMB, SSH, MySQL, ...) even on ports that answer HTTP. Placement is on by
+// default.
+func DisableServicePlacement() NucleiSDKOptions {
+	return func(e *NucleiEngine) error {
+		e.opts.DisableServicePlacement = true
+		return nil
+	}
+}
+
+// DisableAdaptiveConcurrency turns off the per-endpoint limit that adapts
+// in-flight requests to each endpoint's latency and errors. On by default.
+func DisableAdaptiveConcurrency() NucleiSDKOptions {
+	return func(e *NucleiEngine) error {
+		e.opts.DisableAdaptiveConcurrency = true
+		return nil
+	}
+}
+
 // WithResponseReadSize sets the maximum size of response to read in bytes.
 // A value of 0 means no limit. Recommended values: 1MB (1048576) to 10MB (10485760).
 func WithResponseReadSize(responseReadSize int) NucleiSDKOptions {
@@ -169,6 +188,16 @@ func WithResponseReadSize(responseReadSize int) NucleiSDKOptions {
 			return errors.New("response read size must be non-negative")
 		}
 		e.opts.ResponseReadSize = responseReadSize
+		return nil
+	}
+}
+
+// EnableResponseCache reuses identical safe GET/HEAD responses within one scan.
+// It is off by default: a template that depends on state or timing could see a
+// different result.
+func EnableResponseCache() NucleiSDKOptions {
+	return func(e *NucleiEngine) error {
+		e.opts.ResponseCache = true
 		return nil
 	}
 }

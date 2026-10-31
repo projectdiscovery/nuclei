@@ -324,9 +324,22 @@ func (i *ListInputProvider) initializeInputSources(opts *Options) error {
 
 	// Handle stdin
 	if options.Stdin {
-		if err := i.scanInputFromReader(
-			options.ExecutionId,
-			readerutil.TimeoutReader{Reader: os.Stdin, Timeout: time.Duration(options.InputReadTimeout)}); err != nil {
+		var stdin io.Reader = readerutil.TimeoutReader{Reader: os.Stdin, Timeout: time.Duration(options.InputReadTimeout)}
+		if len(options.Targets) > 0 || options.TargetsFilePath != "" {
+			// stdin is not a terminal, so nuclei reads targets from it as well.
+			// When it stays silent, say so instead of hanging without output:
+			// CI jobs and subprocesses often inherit a stdin that never closes.
+			logger := options.Logger
+			if logger == nil {
+				logger = gologger.DefaultLogger
+			}
+			notice := newNoticeReader(stdin, stdinNoticeDelay, func() {
+				logger.Info().Msgf("Waiting for targets on stdin (up to %s, -input-read-timeout); pass -no-stdin if no targets are piped", time.Duration(options.InputReadTimeout))
+			})
+			defer notice.stop()
+			stdin = notice
+		}
+		if err := i.scanInputFromReader(options.ExecutionId, stdin); err != nil {
 			return err
 		}
 	}

@@ -437,12 +437,14 @@ on extensive configurability, massive extensibility and ease of use.`)
 	flagSet.CreateGroup("rate-limit", "Rate-Limit",
 		flagSet.IntVarP(&options.RateLimit, "rate-limit", "rl", 150, "maximum number of requests to send per second"),
 		flagSet.DurationVarP(&options.RateLimitDuration, "rate-limit-duration", "rld", time.Second, "maximum number of requests to send per second"),
+		flagSet.BoolVar(&options.DisableAdaptiveConcurrency, "disable-adaptive-concurrency", false, "do not adapt in-flight requests per host:port to its latency and errors"),
+		flagSet.BoolVar(&options.DisableServicePlacement, "disable-service-placement", false, "run js templates that only speak non-http protocols (smb, ssh, mysql, ...) even on ports that answer http"),
 		flagSet.BoolVar(&options.HostBackoff, "host-backoff", false, "slow down a host that starts blocking (429, repeated 403s, connection failures)"),
 		flagSet.DurationVar(&options.HostBackoffMax, "host-backoff-max", 30*time.Second, "maximum delay applied to a host that is blocking"),
 		flagSet.BoolVar(&options.PerHostRateLimit, "per-host-rate-limit", false, "enable per-host rate limiting (global rate limit becomes unlimited when enabled)"),
 		flagSet.IntVarP(&options.RateLimitMinute, "rate-limit-minute", "rlm", 0, "maximum number of requests to send per minute (DEPRECATED)"),
 		flagSet.IntVarP(&options.BulkSize, "bulk-size", "bs", 25, "maximum number of hosts to be analyzed in parallel per template"),
-		flagSet.IntVarP(&options.TemplateThreads, "concurrency", "c", 25, "maximum number of templates to be executed in parallel"),
+		flagSet.IntVarP(&options.TemplateThreads, "concurrency", "c", 0, "maximum number of templates to be executed in parallel (default 25, or 100 with adaptive concurrency)"),
 		flagSet.IntVarP(&options.HeadlessBulkSize, "headless-bulk-size", "hbs", 10, "maximum number of headless hosts to be analyzed in parallel per template"),
 		flagSet.IntVarP(&options.HeadlessTemplateThreads, "headless-concurrency", "headc", 10, "maximum number of headless templates to be executed in parallel"),
 		flagSet.IntVarP(&options.JsConcurrency, "js-concurrency", "jsc", 120, "maximum number of javascript runtimes to be executed in parallel"),
@@ -467,6 +469,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 			scanstrategy.TemplateSpray.String(): goflags.EnumVariable(2),
 		}),
 		flagSet.DurationVarP(&options.InputReadTimeout, "input-read-timeout", "irt", time.Duration(3*time.Minute), "timeout on input read"),
+		flagSet.BoolVar(&options.ResponseCache, "response-cache", false, "reuse identical safe GET/HEAD responses within a scan (lossless: skips requests with auth, cookies, body or custom headers)"),
 		flagSet.BoolVarP(&options.DisableHTTPProbe, "no-httpx", "nh", false, "disable httpx probing for non-url input"),
 		flagSet.BoolVar(&options.PreflightPortScan, "preflight-portscan", false, "run preflight resolve + TCP portscan and filter targets before scanning (disabled by default)"),
 		flagSet.BoolVar(&options.DisableStdin, "no-stdin", false, "disable stdin processing"),
@@ -575,6 +578,13 @@ Additional documentation is available at: https://docs.nuclei.sh/getting-started
 		fatalf("Could not load configuration: %s\n", err)
 	}
 	pdcpAuth = cliOnlyDynamicValue(flagSet, "auth", pdcpAuth)
+
+	// -c defaults to 0, meaning "not set" on the command line and in every
+	// config file. With adaptive concurrency each endpoint's own limit decides
+	// what a target receives, so a higher template concurrency is safe and keeps
+	// endpoints busy. Any explicit value wins; without the endpoint limit the
+	// historical default stays.
+	options.ResolveTemplateThreads()
 
 	if disableUpdateCheck {
 		config.DefaultConfig.DisableUpdateCheck()
