@@ -6,6 +6,7 @@ import (
 	"errors"
 	"net/http"
 	"net/url"
+	"regexp"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -118,22 +119,39 @@ func TestBaselineIsSharedPerShape(t *testing.T) {
 
 	d.Matches(ctx, mustURL(t, "http://acme.test/a.json"), shell, probe)
 	d.Matches(ctx, mustURL(t, "http://acme.test/admin/a.php"), shell, probe)
+	d.Matches(ctx, mustURL(t, "http://acme.test/api/v1/b.php"), shell, probe)
 	d.Matches(ctx, mustURL(t, "https://acme.test/a.php"), shell, probe)
-	require.EqualValues(t, 4*samples, probes.Load(), "another extension, directory or origin may be routed elsewhere")
+	require.EqualValues(t, 4*samples, probes.Load(), "another extension, nesting or origin may be routed elsewhere")
 }
 
 func TestProbeShapes(t *testing.T) {
-	cases := map[string]string{
-		"http://acme.test/.env":               "/.RANDOM",
-		"http://acme.test/admin/":             "/RANDOM/",
-		"http://acme.test/wp-admin/x.php?a=1": "/wp-admin/RANDOM.php",
-		"http://acme.test/actuator/env":       "/actuator/RANDOM",
-		"http://acme.test/Backup.ZIP":         "/RANDOM.zip",
+	cases := map[string]*regexp.Regexp{
+		"http://acme.test/.env":               regexp.MustCompile(`^/\.RANDOM$`),
+		"http://acme.test/admin/":             regexp.MustCompile(`^/RANDOM/$`),
+		"http://acme.test/Backup.ZIP":         regexp.MustCompile(`^/RANDOM\.zip$`),
+		"http://acme.test/wp-admin/x.php?a=1": regexp.MustCompile(`^/[a-z2-7]{26}/RANDOM\.php$`),
+		"http://acme.test/actuator/env":       regexp.MustCompile(`^/[a-z2-7]{26}/RANDOM$`),
 	}
 	for raw, want := range cases {
 		_, shape := shapeOf(mustURL(t, raw))
-		require.Equal(t, want, shape("RANDOM"), raw)
+		require.Regexp(t, want, shape("RANDOM"), raw)
 	}
+}
+
+// Swagger UI mounted at /api-docs/ answers every path below it with itself.
+// Probing inside that directory would call a real exposure a catch-all page.
+func TestAppMountedInDirectoryIsNotCatchAll(t *testing.T) {
+	const swaggerUI = `<html><head><title>Swagger UI</title></head><body><div id="swagger-ui"></div><script src="swagger-ui-bundle.js"></script></body></html>`
+	probe, _ := prober(func(path string) Response {
+		if strings.HasPrefix(path, "/api-docs/") {
+			return Response{StatusCode: http.StatusOK, Body: swaggerUI}
+		}
+		return Response{StatusCode: http.StatusOK, Body: spaShell}
+	})
+	d := New(0)
+
+	got := d.Matches(context.Background(), mustURL(t, "http://acme.test/api-docs/swagger.json"), Response{StatusCode: http.StatusOK, Body: swaggerUI}, probe)
+	require.False(t, got)
 }
 
 func TestFailedProbeDisablesCalibration(t *testing.T) {

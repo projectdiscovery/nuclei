@@ -22,6 +22,7 @@ import (
 	"path"
 	"regexp"
 	"slices"
+	"strconv"
 	"strings"
 	"sync"
 	"unicode"
@@ -146,13 +147,21 @@ func collect(ctx context.Context, shape func(string) string, probe Prober) []fin
 }
 
 // shapeOf returns the cache key for requestURL and a function that builds a
-// path of the same shape around a random name: same scheme, host and parent
-// directory, same extension or leading dot, same trailing slash.
+// path of the same shape around a random name: same origin, same extension or
+// leading dot, same trailing slash, and nested when the request was.
+//
+// Probes start at the root rather than in the requested directory. An app
+// mounted under a directory, such as Swagger UI under /api-docs/, answers
+// every path below it with itself; probing there would mistake the app for
+// the host's catch-all page.
 func shapeOf(requestURL *url.URL) (string, func(string) string) {
 	p := requestURL.EscapedPath()
 	trailing := strings.HasSuffix(p, "/")
 	p = strings.TrimSuffix(p, "/")
 	dir, name := path.Split(p)
+	if dir != "/" {
+		dir = "/" + strings.ToLower(rand.Text()) + "/"
+	}
 
 	var kind string
 	switch {
@@ -163,7 +172,7 @@ func shapeOf(requestURL *url.URL) (string, func(string) string) {
 	default:
 		kind = strings.ToLower(path.Ext(name))
 	}
-	key := requestURL.Scheme + "://" + requestURL.Host + dir + "\x00" + kind
+	key := requestURL.Scheme + "://" + requestURL.Host + "\x00" + kind + "\x00" + strconv.FormatBool(dir != "/")
 	return key, func(random string) string {
 		switch kind {
 		case "/":
