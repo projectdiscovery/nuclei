@@ -183,13 +183,16 @@ func (i *ListInputProvider) selectedIPs(executionId, hostname string) []string {
 	dnsData, err := dialers.Fastdialer.GetDNSData(hostname)
 	if err != nil {
 		gologger.Warning().Msgf("DNS resolution failed for %s: %v", hostname, err)
-		if !i.ipOptions.ScanAllIPs && i.ipOptions.IPV4 {
+		if i.ipOptions.IPV4 {
 			return []string{""}
 		}
 		return nil
 	}
 	if len(dnsData.A) == 0 && len(dnsData.AAAA) == 0 {
 		gologger.Warning().Msgf("DNS resolution returned no IP addresses for %s", hostname)
+		if i.ipOptions.IPV4 {
+			return []string{""}
+		}
 		return nil
 	}
 	if i.ipOptions.ScanAllIPs {
@@ -209,7 +212,9 @@ func (i *ListInputProvider) selectedIPs(executionId, hostname string) []string {
 	if i.ipOptions.IPV6 && len(dnsData.AAAA) > 0 {
 		ips = append(ips, dnsData.AAAA[0])
 	}
-	if i.ipOptions.IPV4 && (!i.ipOptions.Auto || len(ips) == 0) {
+	// The IPv4 dialer is also needed for dual-stack hosts when IPv6 is
+	// unreachable. Skip the redundant fallback for IPv6-only hosts in auto mode.
+	if i.ipOptions.IPV4 && (!i.ipOptions.Auto || len(dnsData.A) > 0 || len(ips) == 0) {
 		ips = append(ips, "")
 	}
 	if len(ips) == 0 {

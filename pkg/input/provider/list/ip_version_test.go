@@ -24,6 +24,10 @@ func (ipVersionDNSHandler) ServeDNS(w dns.ResponseWriter, r *dns.Msg) {
 		return
 	}
 	question := r.Question[0]
+	if question.Name == "empty.test." {
+		_ = w.WriteMsg(reply)
+		return
+	}
 	if question.Qtype == dns.TypeA && question.Name != "v6only.test." {
 		reply.Answer = append(reply.Answer, &dns.A{Hdr: dns.RR_Header{Name: question.Name, Rrtype: dns.TypeA, Class: dns.ClassINET, Ttl: 60}, A: net.ParseIP("192.0.2.10")})
 	}
@@ -55,9 +59,11 @@ func TestIPVersionsDefaultAndExplicitSelection(t *testing.T) {
 		scanAll, ipv4, ipv6, auto bool
 		want                       []string
 	}{
-		{"auto dual prefers IPv6", "dual.test", false, true, true, true, []string{"2001:db8::10"}},
+		{"auto dual prefers IPv6 with IPv4 fallback", "dual.test", false, true, true, true, []string{"2001:db8::10", ""}},
 		{"auto IPv6 only", "v6only.test", false, true, true, true, []string{"2001:db8::10"}},
 		{"auto IPv4 fallback", "v4only.test", false, true, true, true, []string{""}},
+		{"auto empty DNS response fallback", "empty.test", false, true, true, true, []string{""}},
+		{"all empty DNS response fallback", "empty.test", true, true, true, true, []string{""}},
 		{"all dual", "dual.test", true, true, true, true, []string{"192.0.2.10", "2001:db8::10"}},
 		{"all IPv6 only", "v6only.test", true, true, true, true, []string{"2001:db8::10"}},
 		{"all IPv4 only", "v4only.test", true, true, true, true, []string{"192.0.2.10"}},
