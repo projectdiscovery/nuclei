@@ -471,6 +471,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.BoolVar(&options.PreflightPortScan, "preflight-portscan", false, "run preflight resolve + TCP portscan and filter targets before scanning (disabled by default)"),
 		flagSet.BoolVar(&options.DisableStdin, "no-stdin", false, "disable stdin processing"),
 		flagSet.BoolVar(&options.EnableHTTPCache, "http-cache", false, "enable HTTP cache (RFC 9111) for HTTP requests"),
+		flagSet.BoolVarP(&options.AutoCalibrate, "auto-calibrate", "ac", false, "drop HTTP matches on a host's catch-all page (answers missing paths with 2xx/3xx)"),
 	)
 
 	flagSet.CreateGroup("headless", "Headless",
