@@ -169,10 +169,11 @@ func (i *ListInputProvider) TargetProfiles() *targetprofile.Registry {
 	return i.profiles
 }
 
-// selectedIPs returns address pins for a hostname (empty pin uses the IPv4 dialer).
-// Set and Del share selection to keep target exclusion behavior consistent.
+// selectedIPs returns address pins for a hostname. An empty pin delegates
+// DNS resolution and connection fallback to fastdialer, avoiding duplicate
+// scans of an automatic dual-stack target. Set and Del share this selection.
 func (i *ListInputProvider) selectedIPs(executionId, hostname string) []string {
-	if i.ipOptions == nil || (!i.ipOptions.ScanAllIPs && !i.ipOptions.IPV6) {
+	if i.ipOptions == nil || (!i.ipOptions.ScanAllIPs && (i.ipOptions.Auto || !i.ipOptions.IPV6)) {
 		return []string{""}
 	}
 	dialers := protocolstate.GetDialersWithId(executionId)
@@ -212,9 +213,9 @@ func (i *ListInputProvider) selectedIPs(executionId, hostname string) []string {
 	if i.ipOptions.IPV6 && len(dnsData.AAAA) > 0 {
 		ips = append(ips, dnsData.AAAA[0])
 	}
-	// The IPv4 dialer is also needed for dual-stack hosts when IPv6 is
-	// unreachable. Skip the redundant fallback for IPv6-only hosts in auto mode.
-	if i.ipOptions.IPV4 && (!i.ipOptions.Auto || len(dnsData.A) > 0 || len(ips) == 0) {
+	// Explicit -iv 4,6 requests both address families. Automatic targets
+	// have already returned a single unpinned input above.
+	if i.ipOptions.IPV4 {
 		ips = append(ips, "")
 	}
 	if len(ips) == 0 {

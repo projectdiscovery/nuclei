@@ -145,7 +145,7 @@ TARGET:
    -eh, -exclude-hosts string[]  hosts to exclude to scan from the input list (ip, cidr, hostname)
    -resume string                resume scan from and save to specified file (clustering will be disabled)
    -sa, -scan-all-ips            scan all the IP's associated with dns record
-   -iv, -ip-version string[]     IP version to scan of hostname (4,6); default prefers IPv6 then falls back to IPv4
+   -iv, -ip-version string[]     IP version to scan of hostname (4,6); default uses automatic dual-stack resolution
    -dun, -disable-url-normalization  keep targets exactly as supplied instead of collapsing urls that address the same resource
    -mup, -max-urls-per-pattern int   scan at most this many urls sharing one structural shape, e.g. /user/1 and /user/2 (0 to scan all)
 
