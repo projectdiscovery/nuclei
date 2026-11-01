@@ -90,3 +90,15 @@ func TestReadsTargetsFromStdin(t *testing.T) {
 		})
 	}
 }
+
+// The default must remain empty so the provider can distinguish automatic
+// IPv6 preference from explicit user-supplied -iv selections.
+func TestValidateOptionsIPVersionPreference(t *testing.T) {
+	automatic := &types.Options{}
+	require.NoError(t, ValidateOptions(automatic))
+	require.Empty(t, automatic.IPVersion)
+	for _, versions := range []goflags.StringSlice{{"4"}, {"6"}, {"4", "6"}} {
+		require.NoError(t, ValidateOptions(&types.Options{IPVersion: versions}))
+	}
+	require.ErrorContains(t, ValidateOptions(&types.Options{IPVersion: goflags.StringSlice{"7"}}), "unsupported ip version")
+}
