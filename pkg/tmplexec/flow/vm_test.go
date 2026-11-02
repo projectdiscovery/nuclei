@@ -80,21 +80,34 @@ func TestGetJSRuntimeUnblocksCancelledAcquireWhenPoolIsFull(t *testing.T) {
 func TestPutJSRuntimeReplenishesCleanRuntime(t *testing.T) {
 	opts := &types.Options{JsConcurrency: 100}
 
-	runtime1, err := flow.GetJSRuntimeContext(context.Background(), opts)
-	require.NoError(t, err)
+	var held []*goja.Runtime
+	for len(held) < 100 {
+		ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
+		runtime, err := flow.GetJSRuntimeContext(ctx, opts)
+		cancel()
+		if err != nil {
+			break
+		}
+		_, err = runtime.RunString("globalThis.leakedGlobal = 'tainted';")
+		require.NoError(t, err)
+		held = append(held, runtime)
+	}
+	require.NotEmpty(t, held)
 
-	// Set a global on the first runtime
-	_, err = runtime1.RunString("globalThis.leakedGlobal = 'tainted';")
-	require.NoError(t, err)
+	tainted := make(map[*goja.Runtime]struct{}, len(held))
+	for _, runtime := range held {
+		tainted[runtime] = struct{}{}
+		flow.PutJSRuntime(runtime, false)
+	}
 
-	// Return with reuse = false (as flow execution does)
-	flow.PutJSRuntime(runtime1, false)
-
-	// Next checkout should receive a clean runtime
-	runtime2, err := flow.GetJSRuntimeContext(context.Background(), opts)
-	require.NoError(t, err)
-	defer flow.PutJSRuntime(runtime2, false)
-
-	val := runtime2.Get("leakedGlobal")
-	require.Nil(t, val, "global set in previous runtime must not leak to subsequent runtime")
+	for i := 0; i < len(held); i++ {
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+		runtime, err := flow.GetJSRuntimeContext(ctx, opts)
+		cancel()
+		require.NoError(t, err)
+		_, reused := tainted[runtime]
+		require.False(t, reused, "tainted runtime was returned to the pool")
+		require.Nil(t, runtime.Get("leakedGlobal"))
+		flow.PutJSRuntime(runtime, false)
+	}
 }
