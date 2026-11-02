@@ -617,6 +617,63 @@ func (w *warningRecorder) contain(parts ...string) bool {
 	})
 }
 
+func Test_ParseWorkflowExcludesIdListedInExcludeTags(t *testing.T) {
+	dir := t.TempDir()
+	templatePath := filepath.Join(dir, "dup.yaml")
+	err := os.WriteFile(templatePath, []byte(`id: dup
+
+info:
+  name: dup
+  author: pdteam
+  severity: info
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}"
+`), 0o600)
+	require.NoError(t, err)
+
+	workflowPath := filepath.Join(dir, "workflow.yaml")
+	err = os.WriteFile(workflowPath, fmt.Appendf(nil, `id: wf
+
+info:
+  name: wf
+  author: pdteam
+
+workflows:
+  - template: %q
+`, templatePath), 0o600)
+	require.NoError(t, err)
+
+	tests := []struct {
+		name        string
+		excludeTags []string
+	}{
+		{name: "exclude id"},
+		{name: "exclude id and same tag", excludeTags: []string{"dup"}},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			setup()
+
+			options := executerOpts.Options.Copy()
+			options.ExcludeIds, options.ExcludeTags = []string{"dup"}, tc.excludeTags
+			executerOpts.Options = options
+			workflowLoader, err := workflow.NewLoader(executerOpts)
+			require.NoError(t, err)
+
+			executerOpts.WorkflowLoader = workflowLoader
+
+			got, err := templates.Parse(workflowPath, nil, executerOpts)
+			require.NoError(t, err)
+			require.NotNil(t, got.CompiledWorkflow)
+			require.Len(t, got.CompiledWorkflow.Workflows, 1)
+			require.Empty(t, got.CompiledWorkflow.Workflows[0].Executers)
+		})
+	}
+}
+
 func Test_ParseWorkflowLoadsTemplateWithUnknownMatcherCondition(t *testing.T) {
 	setup()
 	dir := t.TempDir()
