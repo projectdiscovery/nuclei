@@ -2,6 +2,7 @@ package list
 
 import (
 	"net"
+	"strings"
 	"testing"
 	"time"
 
@@ -24,14 +25,20 @@ func (ipVersionDNSHandler) ServeDNS(w dns.ResponseWriter, r *dns.Msg) {
 		return
 	}
 	question := r.Question[0]
-	if question.Name == "empty.test." {
+	// Some resolvers try search suffixes before the absolute name. Match the
+	// test host prefix rather than answering unrelated names as dual-stack.
+	host := strings.ToLower(question.Name)
+	if strings.HasPrefix(host, "empty.") {
 		_ = w.WriteMsg(reply)
 		return
 	}
-	if question.Qtype == dns.TypeA && question.Name != "v6only.test." {
+	isDual := strings.HasPrefix(host, "dual.")
+	isV4 := strings.HasPrefix(host, "v4only.")
+	isV6 := strings.HasPrefix(host, "v6only.")
+	if question.Qtype == dns.TypeA && (isDual || isV4) {
 		reply.Answer = append(reply.Answer, &dns.A{Hdr: dns.RR_Header{Name: question.Name, Rrtype: dns.TypeA, Class: dns.ClassINET, Ttl: 60}, A: net.ParseIP("192.0.2.10")})
 	}
-	if question.Qtype == dns.TypeAAAA && question.Name != "v4only.test." {
+	if question.Qtype == dns.TypeAAAA && (isDual || isV6) {
 		reply.Answer = append(reply.Answer, &dns.AAAA{Hdr: dns.RR_Header{Name: question.Name, Rrtype: dns.TypeAAAA, Class: dns.ClassINET, Ttl: 60}, AAAA: net.ParseIP("2001:db8::10")})
 	}
 	_ = w.WriteMsg(reply)
@@ -77,7 +84,11 @@ func TestIPVersionsDefaultAndExplicitSelection(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			hm, err := hybrid.New(hybrid.DefaultDiskOptions)
 			require.NoError(t, err)
-			input := &ListInputProvider{hostMap: hm, ipOptions: &ipOptions{ScanAllIPs: tc.scanAll, IPV4: tc.ipv4, IPV6: tc.ipv6, Auto: tc.auto}}
+			input := &ListInputProvider{
+				hostMap: hm,
+				excludedHosts: make(map[string]struct{}),
+				ipOptions: &ipOptions{ScanAllIPs: tc.scanAll, IPV4: tc.ipv4, IPV6: tc.ipv6, Auto: tc.auto},
+			}
 			t.Cleanup(input.Close)
 			input.Set(opts.ExecutionId, "https://"+tc.hostname)
 			var got []string
