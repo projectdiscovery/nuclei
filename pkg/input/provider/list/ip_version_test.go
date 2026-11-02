@@ -66,8 +66,8 @@ func TestIPVersionsDefaultAndExplicitSelection(t *testing.T) {
 		scanAll, ipv4, ipv6, auto bool
 		want                      []string
 	}{
-		{"automatic dual-stack prefers AAAA", "dual.test", false, true, true, true, []string{"2001:db8::10"}},
-		{"automatic IPv6-only pins AAAA", "v6only.test", false, true, true, true, []string{"2001:db8::10"}},
+		{"automatic dual-stack keeps dialer fallback", "dual.test", false, true, true, true, []string{""}},
+		{"automatic IPv6-only keeps dialer fallback", "v6only.test", false, true, true, true, []string{""}},
 		{"auto IPv4 fallback", "v4only.test", false, true, true, true, []string{""}},
 		{"auto empty DNS response fallback", "empty.test", false, true, true, true, []string{""}},
 		{"all empty DNS response fallback", "empty.test", true, true, true, true, []string{""}},

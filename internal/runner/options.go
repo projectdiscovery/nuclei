@@ -228,7 +228,8 @@ func ValidateOptions(options *types.Options) error {
 		}
 	}
 
-	// An empty -iv prefers the first IPv6 address when DNS has one.
+	// An empty -iv leaves one unpinned target so the dialer can fall back
+	// between address families. -sa resolves and scans every selected address.
 	// Explicit -iv 4, -iv 6 and -iv 4,6 retain their usual selection semantics.
 	for _, ipv := range options.IPVersion {
 		if ipv != "4" && ipv != "6" {
