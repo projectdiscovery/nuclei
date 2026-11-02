@@ -85,9 +85,9 @@ func TestIPVersionsDefaultAndExplicitSelection(t *testing.T) {
 			hm, err := hybrid.New(hybrid.DefaultDiskOptions)
 			require.NoError(t, err)
 			input := &ListInputProvider{
-				hostMap: hm,
+				hostMap:       hm,
 				excludedHosts: make(map[string]struct{}),
-				ipOptions: &ipOptions{ScanAllIPs: tc.scanAll, IPV4: tc.ipv4, IPV6: tc.ipv6, Auto: tc.auto},
+				ipOptions:     &ipOptions{ScanAllIPs: tc.scanAll, IPV4: tc.ipv4, IPV6: tc.ipv6, Auto: tc.auto},
 			}
 			t.Cleanup(input.Close)
 			input.Set(opts.ExecutionId, "https://"+tc.hostname)
