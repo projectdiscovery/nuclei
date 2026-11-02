@@ -436,12 +436,13 @@ func NewTagFilter(config *TagFilterConfig) (*TagFilter, error) {
 			}
 		}
 	}
+	// an included id does not lift its exclusion: exclusions apply however a
+	// template is selected
 	for _, id := range config.IncludeIds {
 		for _, val := range splitCommaTrim(id) {
 			if _, ok := filter.allowedIds[val]; !ok {
 				filter.allowedIds[val] = struct{}{}
 			}
-			delete(filter.excludeIds, val)
 		}
 	}
 	for _, includeCondition := range config.IncludeConditions {
