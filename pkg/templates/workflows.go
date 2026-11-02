@@ -66,7 +66,7 @@ func parseWorkflowTemplate(workflow *workflows.WorkflowTemplate, preprocessor Pr
 
 	subTemplateTags := workflow.Tags
 	if !subTemplateTags.IsEmpty() {
-		paths = loader.GetTemplatePathsByTags(subTemplateTags.ToSlice())
+		paths = loader.GetTemplatePathsByTags(subTemplateTags.ToSlice(), noValidate)
 	} else {
 		paths = loader.GetTemplatePaths([]string{workflow.Template}, noValidate)
 	}

@@ -36,6 +36,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http"
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates"
 	templatesigner "github.com/projectdiscovery/nuclei/v3/pkg/templates/signer"
+	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils/stats"
 	"github.com/projectdiscovery/nuclei/v3/pkg/workflows"
 	"github.com/projectdiscovery/ratelimit"
@@ -434,6 +435,119 @@ workflows:
 				}
 			}
 			walk(got.CompiledWorkflow.Workflows)
+			require.Equal(t, tc.loaded, loaded)
+		})
+	}
+}
+
+func Test_ParseWorkflowLoadsStepsOfFilteredSubtemplatesUnlessExcluded(t *testing.T) {
+	// tags steps search the templates directory
+	templatesDir := t.TempDir()
+	cfg := config.DefaultConfig
+	previousTemplatesDir := cfg.TemplatesDirectory
+	t.Cleanup(func() { cfg.SetTemplatesDir(previousTemplatesDir) })
+	cfg.SetTemplatesDir(templatesDir)
+
+	path := func(id string) string { return filepath.Join(templatesDir, id+".yaml") }
+	for _, tpl := range []struct{ id, severity, tag string }{
+		{"BA", "low", "ba-tag"},
+		{"L1", "info", "l1-tag"},
+		{"other", "info", "other-tag"},
+	} {
+		err := os.WriteFile(path(tpl.id), fmt.Appendf(nil, `id: %s
+
+info:
+  name: %s
+  author: pdteam
+  severity: %s
+  tags: %s
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/%s"
+`, tpl.id, tpl.id, tpl.severity, tpl.tag, tpl.id), 0o600)
+		require.NoError(t, err)
+	}
+	workflowPath := filepath.Join(t.TempDir(), "workflow.yaml")
+	err := os.WriteFile(workflowPath, fmt.Appendf(nil, `id: workflow-step-filters
+
+info:
+  name: Workflow Step Filters
+  author: pdteam
+  severity: info
+
+workflows:
+  - tags: ba-tag
+    subtemplates:
+      - template: %q
+  - template: %q
+    subtemplates:
+      - template: %q
+`, path("L1"), path("BA"), path("L1")), 0o600)
+	require.NoError(t, err)
+
+	tests := []struct {
+		name   string
+		filter func(options *types.Options)
+		// executers of the tags step, its subtemplate, the template step and
+		// its subtemplate
+		loaded []int
+	}{
+		{name: "no filters", loaded: []int{1, 1, 1, 1}},
+		{name: "id of the subtemplate", filter: func(o *types.Options) {
+			o.IncludeIds = []string{"L1"}
+		}, loaded: []int{1, 1, 1, 1}},
+		{name: "tag of the subtemplate", filter: func(o *types.Options) {
+			o.Tags = []string{"l1-tag"}
+		}, loaded: []int{1, 1, 1, 1}},
+		{name: "id of the step template", filter: func(o *types.Options) {
+			o.IncludeIds = []string{"BA"}
+		}, loaded: []int{1, 0, 1, 0}},
+		{name: "excluded tag of the step template", filter: func(o *types.Options) {
+			o.IncludeIds, o.ExcludeTags = []string{"L1"}, []string{"ba-tag"}
+		}, loaded: []int{0, 1, 0, 1}},
+		{name: "included excluded tag of the step template", filter: func(o *types.Options) {
+			o.IncludeIds, o.ExcludeTags, o.IncludeTags = []string{"L1"}, []string{"ba-tag"}, []string{"ba-tag"}
+		}, loaded: []int{1, 1, 1, 1}},
+		{name: "excluded id of the step template", filter: func(o *types.Options) {
+			o.IncludeIds, o.ExcludeIds = []string{"L1"}, []string{"BA"}
+		}, loaded: []int{0, 1, 0, 1}},
+		{name: "excluded id of the step template and its subtemplate", filter: func(o *types.Options) {
+			o.IncludeIds, o.ExcludeIds = []string{"BA", "L1"}, []string{"BA"}
+		}, loaded: []int{0, 1, 0, 1}},
+		{name: "excluded id of the included step template", filter: func(o *types.Options) {
+			o.IncludeIds, o.ExcludeIds = []string{"BA"}, []string{"BA"}
+		}, loaded: []int{0, 0, 0, 0}},
+		{name: "excluded severity of the step template", filter: func(o *types.Options) {
+			o.IncludeIds, o.ExcludeSeverities = []string{"L1"}, severity.Severities{severity.Low}
+		}, loaded: []int{0, 1, 0, 1}},
+		{name: "excluded path of the step template", filter: func(o *types.Options) {
+			o.IncludeIds, o.ExcludedTemplates = []string{"L1"}, []string{path("BA")}
+		}, loaded: []int{0, 1, 0, 1}},
+		{name: "author of no template", filter: func(o *types.Options) {
+			o.Authors = []string{"nobody"}
+		}, loaded: []int{0, 0, 0, 0}},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			setup()
+			options := executerOpts.Options.Copy()
+			if tc.filter != nil {
+				tc.filter(options)
+			}
+			executerOpts.Options = options
+			workflowLoader, err := workflow.NewLoader(executerOpts)
+			require.NoError(t, err)
+			executerOpts.WorkflowLoader = workflowLoader
+
+			got, err := templates.Parse(workflowPath, nil, executerOpts)
+			require.NoError(t, err)
+			require.NotNil(t, got.CompiledWorkflow)
+			loaded := make([]int, 0, 2*len(got.CompiledWorkflow.Workflows))
+			for _, step := range got.CompiledWorkflow.Workflows {
+				loaded = append(loaded, len(step.Executers), len(step.Subtemplates[0].Executers))
+			}
 			require.Equal(t, tc.loaded, loaded)
 		})
 	}
