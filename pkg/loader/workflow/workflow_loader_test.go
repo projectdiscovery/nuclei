@@ -76,7 +76,7 @@ func TestGetTemplatePathsByTagsReadsTemplatesDirectoryOnce(t *testing.T) {
 	require.Equal(t, map[string]int{"wordpress.yaml": 1, "jira.yaml": 1}, parser.parses, "templates parsed per lookup")
 }
 
-func TestGetTemplatePathsByTagsNoValidateAppliesOnlyExclusions(t *testing.T) {
+func TestGetTemplatePathsByTagsNoValidateAppliesExclusionsButSeverity(t *testing.T) {
 	template := func(id string, tags ...string) *templates.Template {
 		return &templates.Template{ID: id, Info: model.Info{
 			Name:           id,
@@ -117,7 +117,7 @@ func TestGetTemplatePathsByTagsNoValidateAppliesOnlyExclusions(t *testing.T) {
 
 	require.Empty(t, loader.GetTemplatePathsByTags([]string{"step"}, false))
 	loaded := loader.GetTemplatePathsByTags([]string{"step"}, true)
-	require.ElementsMatch(t, []string{"selected.yaml", "included.yaml"}, loaded)
+	require.ElementsMatch(t, []string{"selected.yaml", "included.yaml", "excluded-severity.yaml"}, loaded)
 }
 
 func TestGetTemplatePathsByTagsCountsSyntaxWarningsOfLoadedTemplates(t *testing.T) {

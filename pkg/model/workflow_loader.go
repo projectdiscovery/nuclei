@@ -10,7 +10,7 @@ type WorkflowLoader interface {
 	GetTemplatePathsByTags(tags []string, noValidate bool) []string
 
 	// GetTemplatePaths takes a list of templates and returns paths for them.
-	// With noValidate, only the exclusion filters apply, such as excluded
-	// tags, IDs, severities, protocols and paths.
+	// With noValidate, only the exclusion filters apply, except excluded
+	// severities: excluded tags, IDs, protocols and paths.
 	GetTemplatePaths(templatesList []string, noValidate bool) []string
 }

@@ -16,7 +16,7 @@ import (
 type workflowLoader struct {
 	pathFilter *filter.PathFilter
 	tagFilter  *templates.TagFilter
-	// the exclusions of tagFilter alone, see filters
+	// the exclusions of tagFilter other than severities, see filters
 	exclusions *templates.TagFilter
 	options    *protocols.ExecutorOptions
 
@@ -50,11 +50,10 @@ func NewLoader(options *protocols.ExecutorOptions) (model.WorkflowLoader, error)
 	// IncludeTags is not an inclusion filter: it lifts the exclusion of the
 	// same tags
 	exclusions, err := templates.NewTagFilter(&templates.TagFilterConfig{
-		ExcludeTags:       options.Options.ExcludeTags,
-		IncludeTags:       options.Options.IncludeTags,
-		ExcludeIds:        options.Options.ExcludeIds,
-		ExcludeSeverities: options.Options.ExcludeSeverities,
-		ExcludeProtocols:  options.Options.ExcludeProtocols,
+		ExcludeTags:      options.Options.ExcludeTags,
+		IncludeTags:      options.Options.IncludeTags,
+		ExcludeIds:       options.Options.ExcludeIds,
+		ExcludeProtocols: options.Options.ExcludeProtocols,
 	})
 	if err != nil {
 		return nil, err
@@ -155,7 +154,11 @@ func (w *workflowLoader) GetTemplatePaths(templatesList []string, noValidate boo
 // filters returns the filters that decide which templates a workflow step
 // loads. With noValidate, set for a step whose subtemplates loaded, only the
 // exclusions apply: the step must load for its subtemplates to run, but an
-// excluded template never runs.
+// excluded template never runs. Excluded severities do not apply either: a
+// step with subtemplates does not report its own results, so excluding its
+// severity would only keep its subtemplates from running. A late
+// out-of-band (interactsh) match of the step is the exception: it is
+// reported whatever its severity, as with -s.
 func (w *workflowLoader) filters(noValidate bool) *templates.TagFilter {
 	if noValidate {
 		return w.exclusions

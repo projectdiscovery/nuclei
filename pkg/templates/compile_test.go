@@ -519,9 +519,17 @@ workflows:
 		{name: "excluded id of the included step template", filter: func(o *types.Options) {
 			o.IncludeIds, o.ExcludeIds = []string{"BA"}, []string{"BA"}
 		}, loaded: []int{0, 0, 0, 0}},
+		// a step does not report its own results, so its severity only
+		// matters when no subtemplate loaded
 		{name: "excluded severity of the step template", filter: func(o *types.Options) {
-			o.IncludeIds, o.ExcludeSeverities = []string{"L1"}, severity.Severities{severity.Low}
-		}, loaded: []int{0, 1, 0, 1}},
+			o.ExcludeSeverities = severity.Severities{severity.Low}
+		}, loaded: []int{1, 1, 1, 1}},
+		{name: "excluded severity of the subtemplate", filter: func(o *types.Options) {
+			o.ExcludeSeverities = severity.Severities{severity.Info}
+		}, loaded: []int{1, 0, 1, 0}},
+		{name: "excluded severity of the step template and its subtemplate", filter: func(o *types.Options) {
+			o.ExcludeSeverities = severity.Severities{severity.Low, severity.Info}
+		}, loaded: []int{0, 0, 0, 0}},
 		{name: "excluded path of the step template", filter: func(o *types.Options) {
 			o.IncludeIds, o.ExcludedTemplates = []string{"L1"}, []string{path("BA")}
 		}, loaded: []int{0, 1, 0, 1}},
