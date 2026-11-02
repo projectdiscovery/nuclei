@@ -5,6 +5,7 @@ Formats implements support for passing a number of request source as input provi
 Currently the following formats are implemented - 
 
 - Burp Suite XML Request/Response file
+- HAR (HTTP Archive) file exported by browsers and proxies
 - Proxify JSONL output file
 - OpenAPI Specification file
 - Postman Collection file
