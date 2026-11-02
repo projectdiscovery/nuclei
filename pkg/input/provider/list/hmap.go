@@ -89,8 +89,9 @@ func New(opts *Options) (*ListInputProvider, error) {
 		patterns:      normalize.NewFingerprinter(options.MaxURLsPerPattern),
 		ipOptions: &ipOptions{
 			ScanAllIPs: options.ScanAllIPs,
-			IPV4:       sliceutil.Contains(options.IPVersion, "4"),
-			IPV6:       sliceutil.Contains(options.IPVersion, "6"),
+			IPV4:       len(options.IPVersion) == 0 || sliceutil.Contains(options.IPVersion, "4"),
+			IPV6:       len(options.IPVersion) == 0 || sliceutil.Contains(options.IPVersion, "6"),
+			Auto:       len(options.IPVersion) == 0,
 		},
 		excludedHosts: make(map[string]struct{}),
 		profiles:      targetprofile.NewRegistry(configuration.TemplatesDirectory(options, config.DefaultConfig)),
@@ -168,6 +169,61 @@ func (i *ListInputProvider) TargetProfiles() *targetprofile.Registry {
 	return i.profiles
 }
 
+// selectedIPs returns address pins for a hostname. An empty pin delegates
+// DNS and connection fallback to fastdialer, which races IPv4 and IPv6.
+// Set and Del share this selection. With -iv omitted and without -sa, one
+// unpinned target is returned. -sa returns every selected address.
+func (i *ListInputProvider) selectedIPs(executionId, hostname string) []string {
+	if i.ipOptions == nil || (!i.ipOptions.ScanAllIPs && (i.ipOptions.Auto || !i.ipOptions.IPV6)) {
+		return []string{""}
+	}
+	dialers := protocolstate.GetDialersWithId(executionId)
+	if dialers == nil {
+		gologger.Warning().Msgf("cannot resolve %s: dialer %s not found", hostname, executionId)
+		return nil
+	}
+	dnsData, err := dialers.Fastdialer.GetDNSData(hostname)
+	if err != nil {
+		gologger.Warning().Msgf("DNS resolution failed for %s: %v", hostname, err)
+		if i.ipOptions.IPV4 {
+			return []string{""}
+		}
+		return nil
+	}
+	if len(dnsData.A) == 0 && len(dnsData.AAAA) == 0 {
+		gologger.Warning().Msgf("DNS resolution returned no IP addresses for %s", hostname)
+		if i.ipOptions.IPV4 {
+			return []string{""}
+		}
+		return nil
+	}
+	if i.ipOptions.ScanAllIPs {
+		var ips []string
+		if i.ipOptions.IPV6 {
+			ips = append(ips, dnsData.AAAA...)
+		}
+		if i.ipOptions.IPV4 {
+			ips = append(ips, dnsData.A...)
+		}
+		if len(ips) == 0 {
+			gologger.Warning().Msgf("no DNS addresses matching -iv selection for %s", hostname)
+		}
+		return ips
+	}
+	var ips []string
+	if i.ipOptions.IPV6 && len(dnsData.AAAA) > 0 {
+		ips = append(ips, dnsData.AAAA[0])
+	}
+	// Explicit -iv 4,6 scans the first IPv6 address and one unpinned target.
+	if i.ipOptions.IPV4 {
+		ips = append(ips, "")
+	}
+	if len(ips) == 0 {
+		gologger.Warning().Msgf("no IPv6 DNS address found for %s", hostname)
+	}
+	return ips
+}
+
 // Set normalizes and stores passed input values
 func (i *ListInputProvider) Set(executionId string, value string) {
 	i.set(executionId, value, nil)
@@ -202,75 +258,11 @@ func (i *ListInputProvider) set(executionId string, value string, selection *tar
 		return
 	}
 
-	if i.ipOptions.ScanAllIPs {
-		// scan all ips
-		dialers := protocolstate.GetDialersWithId(executionId)
-		if dialers == nil {
-			gologger.Error().Msgf("dialers with executionId %s not found", executionId)
-			return
-		}
-
-		dnsData, err := dialers.Fastdialer.GetDNSData(urlx.Hostname())
-		if err == nil {
-			if (len(dnsData.A) + len(dnsData.AAAA)) > 0 {
-				var ips []string
-				if i.ipOptions.IPV4 {
-					ips = append(ips, dnsData.A...)
-				}
-				if i.ipOptions.IPV6 {
-					ips = append(ips, dnsData.AAAA...)
-				}
-				for _, ip := range ips {
-					if ip == "" {
-						continue
-					}
-					metaInput := contextargs.NewMetaInput()
-					metaInput.Input = URL
-					metaInput.CustomIP = ip
-					i.setItem(metaInput, selection)
-				}
-				return
-			} else {
-				gologger.Debug().Msgf("scanAllIps: no ip's found reverting to default")
-			}
-		} else {
-			// failed to scanallips falling back to defaults
-			gologger.Debug().Msgf("scanAllIps: dns resolution failed: %v", err)
-		}
-	}
-
-	ips := []string{}
-	// only scan the target but ipv6 if it has one
-	if i.ipOptions.IPV6 {
-		dialers := protocolstate.GetDialersWithId(executionId)
-		if dialers == nil {
-			gologger.Error().Msgf("dialers with executionId %s not found", executionId)
-			return
-		}
-
-		dnsData, err := dialers.Fastdialer.GetDNSData(urlx.Hostname())
-		if err == nil && len(dnsData.AAAA) > 0 {
-			// pick/ prefer 1st
-			ips = append(ips, dnsData.AAAA[0])
-		} else {
-			gologger.Warning().Msgf("target does not have ipv6 address falling back to ipv4 %v\n", err)
-		}
-	}
-	if i.ipOptions.IPV4 {
-		// if IPV4 is enabled do not specify ip let dialer handle it
-		ips = append(ips, "")
-	}
-
-	for _, ip := range ips {
+	for _, ip := range i.selectedIPs(executionId, urlx.Hostname()) {
 		metaInput := contextargs.NewMetaInput()
-		if ip != "" {
-			metaInput.Input = URL
-			metaInput.CustomIP = ip
-			i.setItem(metaInput, selection)
-		} else {
-			metaInput.Input = URL
-			i.setItem(metaInput, selection)
-		}
+		metaInput.Input = URL
+		metaInput.CustomIP = ip
+		i.setItem(metaInput, selection)
 	}
 }
 
@@ -493,75 +485,11 @@ func (i *ListInputProvider) Del(executionId string, value string) {
 		return
 	}
 
-	if i.ipOptions.ScanAllIPs {
-		// scan all ips
-		dialers := protocolstate.GetDialersWithId(executionId)
-		if dialers == nil {
-			gologger.Error().Msgf("dialers with executionId %s not found", executionId)
-			return
-		}
-
-		dnsData, err := dialers.Fastdialer.GetDNSData(urlx.Hostname())
-		if err == nil {
-			if (len(dnsData.A) + len(dnsData.AAAA)) > 0 {
-				var ips []string
-				if i.ipOptions.IPV4 {
-					ips = append(ips, dnsData.A...)
-				}
-				if i.ipOptions.IPV6 {
-					ips = append(ips, dnsData.AAAA...)
-				}
-				for _, ip := range ips {
-					if ip == "" {
-						continue
-					}
-					metaInput := contextargs.NewMetaInput()
-					metaInput.Input = value
-					metaInput.CustomIP = ip
-					i.delItem(metaInput)
-				}
-				return
-			} else {
-				gologger.Debug().Msgf("scanAllIps: no ip's found reverting to default")
-			}
-		} else {
-			// failed to scanallips falling back to defaults
-			gologger.Debug().Msgf("scanAllIps: dns resolution failed: %v", err)
-		}
-	}
-
-	ips := []string{}
-	// only scan the target but ipv6 if it has one
-	if i.ipOptions.IPV6 {
-		dialers := protocolstate.GetDialersWithId(executionId)
-		if dialers == nil {
-			gologger.Error().Msgf("dialers with executionId %s not found", executionId)
-			return
-		}
-
-		dnsData, err := dialers.Fastdialer.GetDNSData(urlx.Hostname())
-		if err == nil && len(dnsData.AAAA) > 0 {
-			// pick/ prefer 1st
-			ips = append(ips, dnsData.AAAA[0])
-		} else {
-			gologger.Warning().Msgf("target does not have ipv6 address falling back to ipv4 %v\n", err)
-		}
-	}
-	if i.ipOptions.IPV4 {
-		// if IPV4 is enabled do not specify ip let dialer handle it
-		ips = append(ips, "")
-	}
-
-	for _, ip := range ips {
+	for _, ip := range i.selectedIPs(executionId, urlx.Hostname()) {
 		metaInput := contextargs.NewMetaInput()
-		if ip != "" {
-			metaInput.Input = URL
-			metaInput.CustomIP = ip
-			i.delItem(metaInput)
-		} else {
-			metaInput.Input = URL
-			i.delItem(metaInput)
-		}
+		metaInput.Input = URL
+		metaInput.CustomIP = ip
+		i.delItem(metaInput)
 	}
 }
 
