@@ -62,12 +62,12 @@ func TestIPVersionsDefaultAndExplicitSelection(t *testing.T) {
 	require.NoError(t, protocolstate.Init(opts))
 	t.Cleanup(func() { protocolstate.Close(opts.ExecutionId) })
 	for _, tc := range []struct {
-		name, hostname             string
+		name, hostname            string
 		scanAll, ipv4, ipv6, auto bool
-		want                       []string
+		want                      []string
 	}{
-		{"automatic dual-stack is one target", "dual.test", false, true, true, true, []string{""}},
-		{"automatic IPv6-only uses DNS dialer", "v6only.test", false, true, true, true, []string{""}},
+		{"automatic dual-stack prefers AAAA", "dual.test", false, true, true, true, []string{"2001:db8::10"}},
+		{"automatic IPv6-only pins AAAA", "v6only.test", false, true, true, true, []string{"2001:db8::10"}},
 		{"auto IPv4 fallback", "v4only.test", false, true, true, true, []string{""}},
 		{"auto empty DNS response fallback", "empty.test", false, true, true, true, []string{""}},
 		{"all empty DNS response fallback", "empty.test", true, true, true, true, []string{""}},

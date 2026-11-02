@@ -170,10 +170,12 @@ func (i *ListInputProvider) TargetProfiles() *targetprofile.Registry {
 }
 
 // selectedIPs returns address pins for a hostname. An empty pin delegates
-// DNS resolution and connection fallback to fastdialer, avoiding duplicate
-// scans of an automatic dual-stack target. Set and Del share this selection.
+// DNS resolution and connection fallback to fastdialer. Set and Del share
+// this selection. With -iv omitted, one target is returned: the first AAAA
+// when DNS has one, otherwise an unpinned IPv4 input. -sa returns every
+// selected address.
 func (i *ListInputProvider) selectedIPs(executionId, hostname string) []string {
-	if i.ipOptions == nil || (!i.ipOptions.ScanAllIPs && (i.ipOptions.Auto || !i.ipOptions.IPV6)) {
+	if i.ipOptions == nil || (!i.ipOptions.ScanAllIPs && !i.ipOptions.IPV6) {
 		return []string{""}
 	}
 	dialers := protocolstate.GetDialersWithId(executionId)
@@ -209,12 +211,21 @@ func (i *ListInputProvider) selectedIPs(executionId, hostname string) []string {
 		}
 		return ips
 	}
+	if i.ipOptions.Auto {
+		if len(dnsData.AAAA) > 0 {
+			return []string{dnsData.AAAA[0]}
+		}
+		if i.ipOptions.IPV4 {
+			return []string{""}
+		}
+		gologger.Warning().Msgf("no IPv6 DNS address found for %s", hostname)
+		return nil
+	}
 	var ips []string
 	if i.ipOptions.IPV6 && len(dnsData.AAAA) > 0 {
 		ips = append(ips, dnsData.AAAA[0])
 	}
-	// Explicit -iv 4,6 requests both address families. Automatic targets
-	// have already returned a single unpinned input above.
+	// Explicit -iv 4,6 requests both address families.
 	if i.ipOptions.IPV4 {
 		ips = append(ips, "")
 	}
