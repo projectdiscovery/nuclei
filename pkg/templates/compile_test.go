@@ -10,6 +10,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -17,6 +18,9 @@ import (
 	"time"
 
 	"github.com/julienschmidt/httprouter"
+	"github.com/projectdiscovery/gologger"
+	"github.com/projectdiscovery/gologger/levels"
+	"github.com/projectdiscovery/gologger/writer"
 	"github.com/projectdiscovery/nuclei/v3/internal/tests/testutils"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
@@ -548,6 +552,8 @@ workflows:
 			workflowLoader, err := workflow.NewLoader(executerOpts)
 			require.NoError(t, err)
 			executerOpts.WorkflowLoader = workflowLoader
+			warnings := recordWarnings(t)
+			skippedSteps := stats.GetValue(templates.SkippedWorkflowStepStats)
 
 			got, err := templates.Parse(workflowPath, nil, executerOpts)
 			require.NoError(t, err)
@@ -557,8 +563,58 @@ workflows:
 				loaded = append(loaded, len(step.Executers), len(step.Subtemplates[0].Executers))
 			}
 			require.Equal(t, tc.loaded, loaded)
+
+			// a step that loads nothing is counted, and with -v logged, as its
+			// loaded subtemplate will not run
+			var blockedSteps int64
+			for i, step := range []string{"tags ba-tag", path("BA")} {
+				blocked := loaded[2*i] == 0 && loaded[2*i+1] > 0
+				if blocked {
+					blockedSteps++
+				}
+				require.Equal(t, blocked, warnings.contain(workflowPath, step, "subtemplates will not run"), step)
+			}
+			require.Equal(t, blockedSteps, stats.GetValue(templates.SkippedWorkflowStepStats)-skippedSteps)
 		})
 	}
+}
+
+// warningRecorder records the warnings gologger writes.
+type warningRecorder struct {
+	mu    sync.Mutex
+	lines []string
+}
+
+// recordWarnings records the warnings gologger writes until t ends.
+func recordWarnings(t *testing.T) *warningRecorder {
+	t.Helper()
+	recorder := &warningRecorder{}
+	gologger.DefaultLogger.SetWriter(recorder)
+	gologger.DefaultLogger.SetMaxLevel(levels.LevelWarning)
+	t.Cleanup(func() {
+		// gologger's own defaults: it has no getter to save the previous ones
+		gologger.DefaultLogger.SetWriter(writer.NewCLI())
+		gologger.DefaultLogger.SetMaxLevel(levels.LevelInfo)
+	})
+	return recorder
+}
+
+func (w *warningRecorder) Write(data []byte, level levels.Level) {
+	if level != levels.LevelWarning {
+		return
+	}
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	w.lines = append(w.lines, string(data))
+}
+
+// contain reports whether a recorded warning contains all of parts.
+func (w *warningRecorder) contain(parts ...string) bool {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	return slices.ContainsFunc(w.lines, func(line string) bool {
+		return !slices.ContainsFunc(parts, func(part string) bool { return !strings.Contains(line, part) })
+	})
 }
 
 func Test_ParseWorkflowLoadsTemplateWithUnknownMatcherCondition(t *testing.T) {

@@ -1072,6 +1072,7 @@ func (r *Runner) displayExecutionInfo(store *loader.Store) {
 	stats.DisplayAsWarning(httpProtocol.SetThreadToCountZero)
 	stats.ForceDisplayWarning(templates.SkippedUnverifiedTemplateStats)
 	stats.ForceDisplayWarning(templates.SkippedRequestSignatureTemplateStats)
+	stats.ForceDisplayWarning(templates.SkippedWorkflowStepStats)
 
 	cfg := config.DefaultConfig
 
