@@ -327,6 +327,7 @@ OPTIMIZATIONS:
    -nh, -no-httpx                   disable httpx probing for non-url input
    -preflight-portscan              run preflight resolve + TCP portscan and filter targets before scanning (disabled by default)
    -no-stdin                        disable stdin processing
+   -ac, -auto-calibrate             drop HTTP matches on a host's catch-all page (answers missing paths with 2xx/3xx)
 
 HEADLESS:
    -headless                        enable templates that require headless browser support (root user on Linux will disable sandbox)

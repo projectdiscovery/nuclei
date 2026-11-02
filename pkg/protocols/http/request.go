@@ -40,6 +40,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/marker"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/utils/vardump"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/catchall"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/httpclientpool"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/httputils"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/signer"
@@ -1482,6 +1483,8 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 	// One executed request is replayed once, even when several responses in
 	// the redirect chain match.
 	replayed := false
+	// The chain is walked from the final response back through its redirects.
+	finalResponse := true
 
 	onceFunc := sync.OnceFunc(func() {
 		// if nuclei-project is enabled store the response if not previously done
@@ -1645,6 +1648,21 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 			event.UsesInteractsh = true
 		}
 
+		// Earlier responses in the chain are redirects the template did not ask
+		// to match on, and the baseline only follows the final answer.
+		if finalResponse {
+			event.CatchAll = request.catchAllCheck(executingClient, generatedRequest, catchall.Response{
+				StatusCode: statusCode,
+				Location:   respChain.Response().Header.Get("Location"),
+				Body:       bodyStr,
+			}, backoffKey)
+		}
+		if event.CatchAll != nil && event.OperatorsResult != nil && catchall.Applies(request.options.TemplateInfo, request.CompiledOperators) && event.CatchAll() {
+			gologger.Verbose().Msgf("[%s] Dropped match on %s: the host serves this page for any missing path", request.options.TemplateID, formedURL)
+			event.OperatorsResult = nil
+			event.Results = nil
+		}
+
 		globalMatched := false
 		if request.options.GlobalMatchers.HasMatchers() {
 			request.options.GlobalMatchers.Match(interimEvent, request.Match, request.Extract, isDebug, func(event output.InternalEvent, result *operators.Result) {
@@ -1692,6 +1710,7 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 		if (request.options.Options.StopAtFirstMatch || request.options.StopAtFirstMatch || request.StopAtFirstMatch) && event.HasResults() {
 			return nil
 		}
+		finalResponse = false
 		// proceed with previous response
 		// we evaluate operators recursively for each response
 		// until we reach the first redirect response

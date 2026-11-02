@@ -127,6 +127,10 @@ type InternalWrappedEvent struct {
 	// Only applicable if interactsh is used
 	// This is used to avoid duplicate successful interactsh events
 	InteractshMatched atomic.Bool
+	// CatchAll reports whether the response is the page the host serves for
+	// any missing path. It probes the host on first call, so it is only asked
+	// once a template matched. Nil when calibration is off or does not apply.
+	CatchAll func() bool
 }
 
 func (iwe *InternalWrappedEvent) CloneShallow() *InternalWrappedEvent {
@@ -135,6 +139,7 @@ func (iwe *InternalWrappedEvent) CloneShallow() *InternalWrappedEvent {
 		Results:         nil,
 		OperatorsResult: nil,
 		UsesInteractsh:  iwe.UsesInteractsh,
+		CatchAll:        iwe.CatchAll,
 	}
 }
 
