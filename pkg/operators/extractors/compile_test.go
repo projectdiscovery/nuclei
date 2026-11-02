@@ -130,3 +130,12 @@ func TestCompileExtractorsIgnoresXPathOnOtherTypes(t *testing.T) {
 	}
 	require.NoError(t, e.CompileExtractors())
 }
+
+func TestCompileExtractorsXPathUndeclaredVariable(t *testing.T) {
+	// Regression test: this expression used to compile and then panic
+	// with a nil pointer dereference inside antchfx/xpath when the
+	// first response was evaluated. It must fail at compile time.
+	var operator Extractor
+	require.NoError(t, yaml.Unmarshal([]byte("type: xpath\nxpath:\n  - \"******$A\"\n"), &operator))
+	require.ErrorContains(t, operator.CompileExtractors(), "undeclared variable")
+}

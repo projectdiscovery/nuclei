@@ -20,9 +20,9 @@ require (
 	github.com/alitto/pond v1.9.2
 	github.com/andybalholm/brotli v1.2.0
 	github.com/andygrunwald/go-jira v1.16.1
-	github.com/antchfx/htmlquery v1.3.5
+	github.com/antchfx/htmlquery v1.3.7
 	github.com/antchfx/xmlquery v1.4.4
-	github.com/antchfx/xpath v1.3.6
+	github.com/antchfx/xpath v1.3.9
 	github.com/aws/aws-sdk-go-v2 v1.41.5
 	github.com/aws/aws-sdk-go-v2/config v1.31.16
 	github.com/aws/aws-sdk-go-v2/credentials v1.18.20
@@ -88,7 +88,7 @@ require (
 	github.com/projectdiscovery/goja_nodejs v0.0.0-20260618132410-8519f75f703d
 	github.com/projectdiscovery/gologger v1.1.73
 	github.com/projectdiscovery/gostruct v0.0.2
-	github.com/projectdiscovery/govaluate v0.0.0-20260615100919-5ee2581bbf7e
+	github.com/projectdiscovery/govaluate v0.0.0-20260729205521-4c61bf19382e
 	github.com/projectdiscovery/gozero v0.1.1-0.20260530071156-fa1dad563d76
 	github.com/projectdiscovery/hmap v0.0.102
 	github.com/projectdiscovery/httpx v1.12.0
