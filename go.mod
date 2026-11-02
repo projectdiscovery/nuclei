@@ -88,7 +88,7 @@ require (
 	github.com/projectdiscovery/goja_nodejs v0.0.0-20260618132410-8519f75f703d
 	github.com/projectdiscovery/gologger v1.1.73
 	github.com/projectdiscovery/gostruct v0.0.2
-	github.com/projectdiscovery/govaluate v0.0.0-20260729205521-4c61bf19382e
+	github.com/projectdiscovery/govaluate v0.0.0-20261102102118-9294133b15a2
 	github.com/projectdiscovery/gozero v0.1.1-0.20260530071156-fa1dad563d76
 	github.com/projectdiscovery/hmap v0.0.102
 	github.com/projectdiscovery/httpx v1.12.0
