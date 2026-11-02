@@ -2,6 +2,7 @@ package websocket
 
 import (
 	"context"
+	"fmt"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -505,4 +506,58 @@ func requireWebsocketDurationField(t *testing.T, event output.InternalEvent, key
 	// Local mocks can finish within one timer tick (esp. on Windows), so 0s is valid.
 	require.GreaterOrEqual(t, value, float64(0))
 	require.Less(t, value, float64(60))
+}
+
+// TestWebSocketSubprotocolNegotiation ensures a Sec-WebSocket-Protocol header is
+// negotiated through the dialer. The server only completes the handshake when the
+// client offers the "vite-hmr" subprotocol and echoes it back (as Vite's HMR
+// endpoint does); without routing the header into Dialer.Protocols, gobwas/ws
+// rejects the server-echoed protocol and the handshake fails.
+func TestWebSocketSubprotocolNegotiation(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		upgrader := ws.HTTPUpgrader{
+			Protocol: func(p string) bool { return p == "vite-hmr" },
+		}
+		conn, _, _, err := upgrader.Upgrade(r, w)
+		if err != nil {
+			return
+		}
+		go func() {
+			defer func() { _ = conn.Close() }()
+			for {
+				_, op, err := wsutil.ReadClientData(conn)
+				if err != nil {
+					return
+				}
+				_ = wsutil.WriteServerMessage(conn, op, []byte("negotiated-ok"))
+			}
+		}()
+	}))
+	defer server.Close()
+
+	options := testutils.DefaultOptions
+	testutils.Init(options)
+
+	target := strings.ReplaceAll(server.URL, "http", "ws")
+	request := &Request{
+		ID:      "subproto-ws",
+		Address: target,
+		Headers: map[string]string{"Sec-WebSocket-Protocol": "vite-hmr"},
+		Inputs:  []*Input{{Data: "ping", Name: "first"}},
+	}
+	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
+		ID:   "testing-websocket-subprotocol",
+		Info: model.Info{SeverityHolder: severity.Holder{Severity: severity.Low}, Name: "test"},
+	})
+	executerOpts.IsMultiProtocol = true
+	require.NoError(t, request.Compile(executerOpts))
+
+	var gotEvent output.InternalEvent
+	ctxArgs := contextargs.NewWithInput(context.Background(), target)
+	err := request.ExecuteWithResults(ctxArgs, nil, nil, func(event *output.InternalWrappedEvent) {
+		gotEvent = event.InternalEvent
+	})
+	require.NoError(t, err)
+	require.NotEmpty(t, gotEvent)
+	require.Contains(t, fmt.Sprintf("%v", gotEvent["response"]), "negotiated-ok")
 }

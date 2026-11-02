@@ -199,6 +199,12 @@ func (request *Request) executeRequestWithPayloads(target *contextargs.Context, 
 	payloadValues = generators.MergeMaps(payloadValues, request.options.Constants)
 
 	requestOptions := request.options
+	// subprotocols requested via a Sec-WebSocket-Protocol header are negotiated
+	// through the dialer rather than sent as a raw header: gobwas/ws validates the
+	// server-selected protocol against Dialer.Protocols and rejects one that was
+	// only set as a header, so a server that echoes the requested subprotocol
+	// (e.g. Vite's "vite-hmr") would otherwise fail the handshake.
+	var subprotocols []string
 	for key, value := range request.Headers {
 		result, dataErr := render.Render(render.Input{Options: request.options.GetOptions(), Text: value, Values: payloadValues})
 		if dataErr != nil {
@@ -206,6 +212,15 @@ func (request *Request) executeRequestWithPayloads(target *contextargs.Context, 
 			requestOptions.Progress.IncrementFailedRequestsBy(1)
 
 			return errors.Wrap(dataErr, evaluateTemplateExpressionErrorMessage)
+		}
+
+		if http.CanonicalHeaderKey(key) == "Sec-Websocket-Protocol" {
+			for _, proto := range strings.Split(result.Text, ",") {
+				if trimmed := strings.TrimSpace(proto); trimmed != "" {
+					subprotocols = append(subprotocols, trimmed)
+				}
+			}
+			continue
 		}
 
 		header.Set(key, result.Text)
@@ -227,8 +242,9 @@ func (request *Request) executeRequestWithPayloads(target *contextargs.Context, 
 	var dialed bool
 	var dialErr error
 	websocketDialer := ws.Dialer{
-		Header:  ws.HandshakeHeaderHTTP(header),
-		Timeout: time.Duration(requestOptions.Options.Timeout) * time.Second,
+		Header:    ws.HandshakeHeaderHTTP(header),
+		Protocols: subprotocols,
+		Timeout:   time.Duration(requestOptions.Options.Timeout) * time.Second,
 		NetDial: func(ctx context.Context, network, address string) (net.Conn, error) {
 			dialed = true
 			conn, err := request.dialer.Dial(ctx, network, address)
