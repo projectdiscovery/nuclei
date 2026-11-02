@@ -515,6 +515,19 @@ func requireWebsocketDurationField(t *testing.T, event output.InternalEvent, key
 // rejects the server-echoed protocol and the handshake fails.
 func TestWebSocketSubprotocolNegotiation(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Require the client to offer the vite-hmr subprotocol: reject the upgrade
+		// otherwise, so the test fails if the subprotocol is not negotiated.
+		offered := false
+		for _, proto := range strings.Split(r.Header.Get("Sec-WebSocket-Protocol"), ",") {
+			if strings.TrimSpace(proto) == "vite-hmr" {
+				offered = true
+				break
+			}
+		}
+		if !offered {
+			http.Error(w, "vite-hmr subprotocol required", http.StatusBadRequest)
+			return
+		}
 		upgrader := ws.HTTPUpgrader{
 			Protocol: func(p string) bool { return p == "vite-hmr" },
 		}

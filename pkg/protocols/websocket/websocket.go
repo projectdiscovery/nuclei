@@ -216,7 +216,10 @@ func (request *Request) executeRequestWithPayloads(target *contextargs.Context, 
 
 		if http.CanonicalHeaderKey(key) == "Sec-Websocket-Protocol" {
 			for _, proto := range strings.Split(result.Text, ",") {
-				if trimmed := strings.TrimSpace(proto); trimmed != "" {
+				// Subprotocol values are written into the handshake request line by
+				// gobwas/ws, so a CR or LF would smuggle extra handshake headers;
+				// reject any such value instead of negotiating it.
+				if trimmed := strings.TrimSpace(proto); trimmed != "" && !strings.ContainsAny(trimmed, "\r\n") {
 					subprotocols = append(subprotocols, trimmed)
 				}
 			}
