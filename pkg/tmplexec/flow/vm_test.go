@@ -77,3 +77,24 @@ func TestGetJSRuntimeUnblocksCancelledAcquireWhenPoolIsFull(t *testing.T) {
 		t.Fatal("blocked acquire did not return after cancel")
 	}
 }
+func TestPutJSRuntimeReplenishesCleanRuntime(t *testing.T) {
+	opts := &types.Options{JsConcurrency: 100}
+
+	runtime1, err := flow.GetJSRuntimeContext(context.Background(), opts)
+	require.NoError(t, err)
+
+	// Set a global on the first runtime
+	_, err = runtime1.RunString("globalThis.leakedGlobal = 'tainted';")
+	require.NoError(t, err)
+
+	// Return with reuse = false (as flow execution does)
+	flow.PutJSRuntime(runtime1, false)
+
+	// Next checkout should receive a clean runtime
+	runtime2, err := flow.GetJSRuntimeContext(context.Background(), opts)
+	require.NoError(t, err)
+	defer flow.PutJSRuntime(runtime2, false)
+
+	val := runtime2.Get("leakedGlobal")
+	require.Nil(t, val, "global set in previous runtime must not leak to subsequent runtime")
+}
