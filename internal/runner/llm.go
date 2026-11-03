@@ -2,7 +2,10 @@ package runner
 
 import (
 	"context"
+	"sync"
 	"time"
+
+	"github.com/projectdiscovery/gologger"
 
 	llmclient "github.com/projectdiscovery/nuclei/v3/pkg/operators/common/llm"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
@@ -26,6 +29,31 @@ func (a *llmMatcherClient) Complete(ctx context.Context, prompt string, asJSON b
 		Prompt: prompt,
 		Format: utilsllm.Format{JSON: asJSON},
 	})
+}
+
+// llmJudgeClient is an llmMatcherClient whose provider classifies natively, so
+// llm matchers ask it through Judge instead of Complete.
+type llmJudgeClient struct {
+	*llmMatcherClient
+	warnComplete sync.Once
+}
+
+func (a *llmJudgeClient) Judge(ctx context.Context, question string, labels, inputs []string) (llmclient.Verdict, error) {
+	verdict, err := a.client.Judge(ctx, utilsllm.JudgeRequest{Question: question, Labels: labels, Inputs: inputs})
+	if err != nil {
+		return llmclient.Verdict{}, err
+	}
+	return llmclient.Verdict{Label: verdict.Label, Confidence: verdict.Confidence, Model: verdict.Model}, nil
+}
+
+// Complete is only reached by llm extractors, which need free text a
+// classifier cannot produce. They fail closed like any failed call; the
+// warning says why they return nothing.
+func (a *llmJudgeClient) Complete(ctx context.Context, prompt string, asJSON bool) (string, error) {
+	a.warnComplete.Do(func() {
+		gologger.Warning().Msgf("llm provider %q cannot run llm extractors, they return nothing", utilsllm.ProviderJev)
+	})
+	return a.llmMatcherClient.Complete(ctx, prompt, asJSON)
 }
 
 // configureLLM builds the scan's llm client from options. It returns nil unless
@@ -52,5 +80,9 @@ func configureLLM(options *types.Options) (llmclient.Client, error) {
 		return nil, err
 	}
 
-	return &llmMatcherClient{client: client, model: options.LLMModel}, nil
+	matcherClient := &llmMatcherClient{client: client, model: options.LLMModel}
+	if client.CanJudge() {
+		return &llmJudgeClient{llmMatcherClient: matcherClient}, nil
+	}
+	return matcherClient, nil
 }
