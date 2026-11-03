@@ -67,6 +67,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/utils/excludematchers"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/headless/engine"
 	httpProtocol "github.com/projectdiscovery/nuclei/v3/pkg/protocols/http"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/catchall"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/httpclientpool"
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting"
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates"
@@ -734,6 +735,9 @@ func (r *Runner) RunEnumeration() error {
 	if r.options.HostBackoff {
 		executorOpts.HostBackoff = hostbackoff.New(hostbackoff.Config{Max: r.options.HostBackoffMax})
 	}
+	if r.options.AutoCalibrate {
+		executorOpts.CatchAll = catchall.New(0)
+	}
 
 	executorEngine := core.New(r.options)
 	executorEngine.SetExecuterOptions(executorOpts)
@@ -1072,6 +1076,7 @@ func (r *Runner) displayExecutionInfo(store *loader.Store) {
 	stats.DisplayAsWarning(httpProtocol.SetThreadToCountZero)
 	stats.ForceDisplayWarning(templates.SkippedUnverifiedTemplateStats)
 	stats.ForceDisplayWarning(templates.SkippedRequestSignatureTemplateStats)
+	stats.ForceDisplayWarning(templates.SkippedWorkflowStepStats)
 
 	cfg := config.DefaultConfig
 

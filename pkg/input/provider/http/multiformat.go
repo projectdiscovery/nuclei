@@ -10,6 +10,7 @@ import (
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/input/formats"
 	"github.com/projectdiscovery/nuclei/v3/pkg/input/formats/burp"
+	"github.com/projectdiscovery/nuclei/v3/pkg/input/formats/har"
 	"github.com/projectdiscovery/nuclei/v3/pkg/input/formats/json"
 	"github.com/projectdiscovery/nuclei/v3/pkg/input/formats/openapi"
 	"github.com/projectdiscovery/nuclei/v3/pkg/input/formats/raw"
@@ -142,6 +143,7 @@ func (i *HttpInputProvider) Close() {}
 // Supported Providers
 var providersList = []formats.Format{
 	burp.New(),
+	har.New(),
 	json.New(),
 	yaml.New(),
 	openapi.New(),

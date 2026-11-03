@@ -145,12 +145,12 @@ TARGET:
    -eh, -exclude-hosts string[]  hosts to exclude to scan from the input list (ip, cidr, hostname)
    -resume string                resume scan from and save to specified file (clustering will be disabled)
    -sa, -scan-all-ips            scan all the IP's associated with dns record
-   -iv, -ip-version string[]     IP version to scan of hostname (4,6) - (default 4)
+   -iv, -ip-version string[]     IP version to scan of hostname (4,6); default uses dialer fallback, -sa scans all addresses
    -dun, -disable-url-normalization  keep targets exactly as supplied instead of collapsing urls that address the same resource
    -mup, -max-urls-per-pattern int   scan at most this many urls sharing one structural shape, e.g. /user/1 and /user/2 (0 to scan all)
 
 TARGET-FORMAT:
-   -im, -input-mode string        mode of input file (list, burp, jsonl, yaml, openapi, swagger, http) (default "list")
+   -im, -input-mode string        mode of input file (list, burp, har, jsonl, yaml, openapi, swagger, http) (default "list")
    -ro, -required-only            use only required fields in input format when generating requests
    -sfv, -skip-format-validation  skip format validation (like missing vars) when parsing input file
    -vtt, -vars-text-templating    enable text templating for vars in input file (only for yaml input mode)
@@ -327,6 +327,7 @@ OPTIMIZATIONS:
    -nh, -no-httpx                   disable httpx probing for non-url input
    -preflight-portscan              run preflight resolve + TCP portscan and filter targets before scanning (disabled by default)
    -no-stdin                        disable stdin processing
+   -ac, -auto-calibrate             drop HTTP matches on a host's catch-all page (answers missing paths with 2xx/3xx)
 
 HEADLESS:
    -headless                        enable templates that require headless browser support (root user on Linux will disable sandbox)
