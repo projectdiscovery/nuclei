@@ -138,11 +138,14 @@ func CanonicalizeHost(host string) string {
 // IsHostAllowed checks if the host is allowed by network policy
 func IsHostAllowed(executionId string, targetUrl string) bool {
 	dialers, ok := dialers.Get(executionId)
-	if !ok {
+	if !ok || dialers == nil {
 		return true
 	}
 
+	dialers.Lock()
 	np := dialers.NetworkPolicy
+	excludedTargets := append([]string(nil), dialers.ExcludeTargets...)
+	dialers.Unlock()
 	if np == nil {
 		// no policy present: deny rather than allow.
 		return false
@@ -174,7 +177,7 @@ func IsHostAllowed(executionId string, targetUrl string) bool {
 	canonHost := CanonicalizeHost(host)
 
 	// Check explicit ExcludeTargets against raw, host, and canonical host
-	for _, excluded := range dialers.ExcludeTargets {
+	for _, excluded := range excludedTargets {
 		ex := CanonicalizeHost(strings.TrimSpace(excluded))
 		if ex != "" {
 			if strings.EqualFold(canonHost, ex) || strings.EqualFold(host, ex) || strings.EqualFold(rawTarget, ex) {
