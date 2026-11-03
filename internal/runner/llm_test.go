@@ -27,6 +27,13 @@ func TestConfigureLLMExposesJudgeOnlyForClassifiers(t *testing.T) {
 
 func TestJevExtractorDoesNotSpendCallBudget(t *testing.T) {
 	t.Setenv("LLM_API_KEY", "key")
+	// ProxyFromEnvironment caches the first request in the process. Match the
+	// proxy the interactsh client test expects, and keep the local server direct.
+	for _, key := range []string{"HTTP_PROXY", "http_proxy", "ALL_PROXY", "all_proxy", "https_proxy", "no_proxy"} {
+		t.Setenv(key, "")
+	}
+	t.Setenv("HTTPS_PROXY", "http://127.0.0.1:9")
+	t.Setenv("NO_PROXY", "127.0.0.1,localhost")
 
 	var calls atomic.Int32
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
