@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"math/rand"
+	"net"
 	"net/http"
 	"net/http/cookiejar"
 	"net/http/httptest"
@@ -15,6 +16,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -317,6 +319,58 @@ func TestActionHeadersChange(t *testing.T) {
 		require.Nil(t, err, "could not run page actions")
 		require.Equal(t, "found", strings.ToLower(strings.TrimSpace(page.Page().MustElement("html").MustText())), "could not set header correctly")
 	})
+}
+
+// Chrome keeps malformed percent-escapes such as "100%.png" in request paths,
+// as the WHATWG URL Standard requires, but net/url rejects them, so go-rod
+// hands the modification-rules hijack handler a request with a nil URL (#8015).
+//
+//nolint:exhaustruct,exhaustruct_v5,paralleltest // like the other action tests, which share browser and dialer state
+func TestRoutingRuleHandlerFailsRequestNetHTTPCannotParse(t *testing.T) {
+	for _, disableCookie := range []bool{false, true} {
+		t.Run(fmt.Sprintf("DisableCookie=%t", disableCookie), func(t *testing.T) {
+			// Count connections, not requests: net/http rejects the request line
+			// before any handler runs. TLS makes the headless proxy tunnel the
+			// request with CONNECT instead of rejecting the unparsable path itself.
+			var imageConns atomic.Int32
+
+			imageServer := httptest.NewUnstartedServer(http.NotFoundHandler())
+			imageServer.Config.ConnState = func(_ net.Conn, state http.ConnState) {
+				if state == http.StateNew {
+					imageConns.Add(1)
+				}
+			}
+
+			imageServer.StartTLS()
+			defer imageServer.Close()
+
+			actions := []*Action{
+				{
+					ActionType: ActionTypeHolder{ActionType: ActionSetHeader},
+					Data:       map[string]string{"part": "request", "key": "Test", "value": "Hello"},
+				},
+				{ActionType: ActionTypeHolder{ActionType: ActionNavigate}, Data: map[string]string{"url": "{{BaseURL}}"}},
+				{ActionType: ActionTypeHolder{ActionType: ActionWaitLoad}},
+			}
+			handler := func(w http.ResponseWriter, r *http.Request) {
+				if r.Header.Get("Test") == "Hello" {
+					_, _ = fmt.Fprintf(w, `<html><body>found<img src="%s/100%%.png"></body></html>`, imageServer.URL)
+				}
+			}
+			options := &Options{Timeout: 20 * time.Second, DisableCookie: disableCookie}
+
+			testHeadlessWithOptions(t, actions, options, handler, func(page *Page, err error, _ ActionData) {
+				require.NoError(t, err)
+
+				body := page.Page().MustElement("body").MustText()
+				require.Equal(t, "found", strings.TrimSpace(body), "modification rules were not applied")
+				require.Zero(t, imageConns.Load(), "unparsable request reached the image server")
+
+				imageDone := page.Page().MustEval(`() => document.querySelector("img").complete`).Bool()
+				require.True(t, imageDone, "unparsable request is still paused")
+			})
+		})
+	}
 }
 
 func TestActionScreenshot(t *testing.T) {
@@ -1003,6 +1057,21 @@ func TestMain(m *testing.M) {
 func testHeadless(t *testing.T, actions []*Action, timeout time.Duration, handler func(w http.ResponseWriter, r *http.Request), assert func(page *Page, pageErr error, extractedData ActionData)) {
 	t.Helper()
 
+	options := &Options{Timeout: timeout} //nolint:exhaustruct,exhaustruct_v5 // zero values are the defaults
+	testHeadlessWithOptions(t, actions, options, handler, assert)
+}
+
+// testHeadlessWithOptions is testHeadless with caller-chosen page options. It
+// overwrites options.Options with the test scan options.
+func testHeadlessWithOptions(
+	t *testing.T,
+	actions []*Action,
+	options *Options,
+	handler func(w http.ResponseWriter, r *http.Request),
+	assert func(page *Page, pageErr error, extractedData ActionData),
+) {
+	t.Helper()
+
 	lfa := envutil.GetEnvOrDefault("LOCAL_FILE_ACCESS", true)
 	rna := envutil.GetEnvOrDefault("RESTRICTED_LOCAL_NETWORK_ACCESS", false)
 
@@ -1027,7 +1096,8 @@ func testHeadless(t *testing.T, actions []*Action, timeout time.Duration, handle
 	input.CookieJar, err = cookiejar.New(nil)
 	require.Nil(t, err)
 
-	extractedData, page, err := instance.Run(input, actions, nil, &Options{Timeout: timeout, Options: opts}) // allow file access in test
+	options.Options = opts // allow file access in test
+	extractedData, page, err := instance.Run(input, actions, nil, options)
 	assert(page, err, extractedData)
 
 	if page != nil {
