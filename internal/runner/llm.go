@@ -2,6 +2,7 @@ package runner
 
 import (
 	"context"
+	"errors"
 	"sync"
 	"time"
 
@@ -47,13 +48,14 @@ func (a *llmJudgeClient) Judge(ctx context.Context, question string, labels, inp
 }
 
 // Complete is only reached by llm extractors, which need free text a
-// classifier cannot produce. They fail closed like any failed call; the
-// warning says why they return nothing.
-func (a *llmJudgeClient) Complete(ctx context.Context, prompt string, asJSON bool) (string, error) {
+// classifier cannot produce. Returning here spends no call budget and
+// makes no provider request. Extractors turn the error into an empty
+// result, and the warning says why.
+func (a *llmJudgeClient) Complete(context.Context, string, bool) (string, error) {
 	a.warnComplete.Do(func() {
 		gologger.Warning().Msgf("llm provider %q cannot run llm extractors, they return nothing", utilsllm.ProviderJev)
 	})
-	return a.llmMatcherClient.Complete(ctx, prompt, asJSON)
+	return "", errors.New("llm provider cannot run extractors")
 }
 
 // configureLLM builds the scan's llm client from options. It returns nil unless
