@@ -956,8 +956,6 @@ github.com/projectdiscovery/gologger v1.1.73 h1:WX2nzq29cL7HdvOHqIttacoid/5lMwap
 github.com/projectdiscovery/gologger v1.1.73/go.mod h1:mJwODZcFDg70ihINpOvZevmBtgvpP8H9/l8Y+OPhZPY=
 github.com/projectdiscovery/gostruct v0.0.2 h1:s8gP8ApugGM4go1pA+sVlPDXaWqNP5BBDDSv7VEdG1M=
 github.com/projectdiscovery/gostruct v0.0.2/go.mod h1:H86peL4HKwMXcQQtEa6lmC8FuD9XFt6gkNR0B/Mu5PE=
-github.com/projectdiscovery/govaluate v0.0.0-20260729205521-4c61bf19382e h1:0vaevfTiQeRCkX2xbY/mR38422kHAxGzpVV8FQJVfoc=
-github.com/projectdiscovery/govaluate v0.0.0-20260729205521-4c61bf19382e/go.mod h1:Z3VjpUJV1pnXDwvAddA8aZ4e839SoeftB7CSdZntAVI=
 github.com/projectdiscovery/govaluate v0.0.0-20261102102118-9294133b15a2 h1:aSLbDvrJQPlp4HvojU+bTU5XV8xdAVCjoc5gX1Wfbw4=
 github.com/projectdiscovery/govaluate v0.0.0-20261102102118-9294133b15a2/go.mod h1:Z3VjpUJV1pnXDwvAddA8aZ4e839SoeftB7CSdZntAVI=
 github.com/projectdiscovery/gozero v0.1.1-0.20260530071156-fa1dad563d76 h1:AN70bbi6BBs7KpIM9w0LxygUN7uzT/oH+owDIQ+Fz/k=
@@ -1000,8 +998,8 @@ github.com/projectdiscovery/uncover v1.2.1 h1:8U46T/96CLT7BPoXBgkTvWqB06lOyeTSLv
 github.com/projectdiscovery/uncover v1.2.1/go.mod h1:0p8onrWxfpXQEYs90ZDzTSpu1107gWmodX1NWqu/+z4=
 github.com/projectdiscovery/useragent v0.0.109 h1:b86BPdZvmgbJousa04jAugDRY4Y+rAvEamE0TFCPmeE=
 github.com/projectdiscovery/useragent v0.0.109/go.mod h1:sRyBqDAcD31RKYrO8fyXGowLd36fNwY1g0MNW9mp7zk=
-github.com/projectdiscovery/utils v0.11.12-0.20261025172519-64b3c221cfe5 h1:AOspf7ScbwZr8A2YnjCFd4ZJAMSFqzfEaIJIbJPuu10=
-github.com/projectdiscovery/utils v0.11.12-0.20261025172519-64b3c221cfe5/go.mod h1:TJgsyVjB02CavwZVFzUzPg6YOSJXQxLhL808JCiQKlU=
+github.com/projectdiscovery/utils v0.11.13-0.20261103094816-5c0b20e35350 h1:uXqpYa6XKV9dCvoti9PbSgIWIsBKPu5YKMywB9G4q0Q=
+github.com/projectdiscovery/utils v0.11.13-0.20261103094816-5c0b20e35350/go.mod h1:TJgsyVjB02CavwZVFzUzPg6YOSJXQxLhL808JCiQKlU=
 github.com/projectdiscovery/wappalyzergo v0.3.6 h1:1FXCMeCa1xVu2zaW+eeBcbVxtlMStqGOlKcMLyh2pzI=
 github.com/projectdiscovery/wappalyzergo v0.3.6/go.mod h1:4E6+fh/ckaY3wo5tlM7lNYSkhuTYRHzu2YmGIRraXP0=
 github.com/projectdiscovery/yamldoc-go v1.0.7 h1:Odmjd1o4EkMff2F6QHi1dIYPIQPZUFy24YqmQCprmTk=
