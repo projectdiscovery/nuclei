@@ -3,6 +3,7 @@ package interactsh
 import (
 	"bytes"
 	"fmt"
+	"math"
 	"os"
 	"regexp"
 	"strings"
@@ -509,6 +510,10 @@ type RequestData struct {
 	Parameter string
 	Request   *retryablehttp.Request
 
+	// Eviction overrides the client-wide Interactsh request cache TTL when > 0.
+	// Used for per-template interactsh-eviction.
+	Eviction time.Duration
+
 	// These fields route delayed results back to the execution that registered
 	// the request when the Interactsh client is shared concurrently.
 	Output              output.Writer
@@ -550,11 +555,37 @@ func (c *Client) RequestEvent(interactshURLs []string, data *RequestData) {
 		} else {
 			c.requestLifecycleMu.RLock()
 			if data.Scope.track(id) {
-				_ = c.requests.SetWithExpire(id, data, c.eviction)
+				_ = c.requests.SetWithExpire(id, data, c.evictionFor(data))
 			}
 			c.requestLifecycleMu.RUnlock()
 		}
 	}
+}
+
+// evictionFor returns the request cache TTL for a RequestEvent.
+// Per-request Eviction overrides the client-wide default when set.
+func (c *Client) evictionFor(data *RequestData) time.Duration {
+	if data != nil && data.Eviction > 0 {
+		return data.Eviction
+	}
+	return c.eviction
+}
+
+// MaxEvictionSeconds is the largest eviction value in seconds that fits in a
+// time.Duration.
+const MaxEvictionSeconds = math.MaxInt64 / int64(time.Second)
+
+// EvictionFromSeconds converts a template/CLI eviction value in seconds to a
+// duration. Non-positive values mean "use the client default". Values above
+// MaxEvictionSeconds are capped, so they cannot overflow to a negative duration.
+func EvictionFromSeconds(seconds int) time.Duration {
+	if seconds <= 0 {
+		return 0
+	}
+	if int64(seconds) > MaxEvictionSeconds {
+		return time.Duration(MaxEvictionSeconds) * time.Second
+	}
+	return time.Duration(seconds) * time.Second
 }
 
 // HasMatchers returns true if an operator has interactsh part
