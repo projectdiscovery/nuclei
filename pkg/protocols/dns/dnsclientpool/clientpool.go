@@ -26,33 +26,42 @@ var defaultResolvers = []string{
 	"8.8.4.4:53", // Google
 }
 
-// Init initializes the client pool implementation
+// Init initializes the client pool implementation.
+// Each resolver list gets its own client, so a later scan is not stuck with the first scan's resolvers.
 func Init(options *types.Options) error {
-	m.Lock()
-	defer m.Unlock()
-
-	// Don't create clients if already created in the past.
-	if normalClient != nil {
-		return nil
-	}
-	clientPool = mapsutil.NewSyncLockMap[string, *retryabledns.Client]()
-
-	resolvers := defaultResolvers
-	if len(options.InternalResolversList) > 0 {
-		resolvers = options.InternalResolversList
-	}
-	var err error
-	normalClient, err = retryabledns.New(resolvers, 1)
+	client, err := cachedClient(resolversFor(options))
 	if err != nil {
 		return errors.Wrap(err, "could not create dns client")
 	}
+	m.Lock()
+	normalClient = client
+	m.Unlock()
 	return nil
 }
 
-func getNormalClient() *retryabledns.Client {
+func resolversFor(options *types.Options) []string {
+	if options != nil && len(options.InternalResolversList) > 0 {
+		return options.InternalResolversList
+	}
+	return defaultResolvers
+}
+
+func cachedClient(resolvers []string) (*retryabledns.Client, error) {
 	m.Lock()
 	defer m.Unlock()
-	return normalClient
+	if clientPool == nil {
+		clientPool = mapsutil.NewSyncLockMap[string, *retryabledns.Client]()
+	}
+	key := strings.Join(resolvers, ",")
+	if client, ok := clientPool.Get(key); ok {
+		return client, nil
+	}
+	client, err := retryabledns.New(resolvers, 1)
+	if err != nil {
+		return nil, err
+	}
+	_ = clientPool.Set(key, client)
+	return client, nil
 }
 
 // Configuration contains the custom configuration options for a client
@@ -81,7 +90,7 @@ func (c *Configuration) Hash() string {
 // Get creates or gets a client for the protocol based on custom configuration
 func Get(options *types.Options, configuration *Configuration) (*retryabledns.Client, error) {
 	if (configuration.Retries <= 1) && len(configuration.Resolvers) == 0 {
-		return getNormalClient(), nil
+		return cachedClient(resolversFor(options))
 	}
 	hash := configuration.Hash()
 	if client, ok := clientPool.Get(hash); ok {

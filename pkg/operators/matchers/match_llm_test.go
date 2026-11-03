@@ -6,6 +6,7 @@ import (
 	"regexp"
 	"testing"
 
+	llmclient "github.com/projectdiscovery/nuclei/v3/pkg/operators/common/llm"
 	"github.com/stretchr/testify/require"
 )
 
@@ -276,4 +277,62 @@ func TestMatchLLMWithoutInputsUsesPart(t *testing.T) {
 	require.True(t, ok)
 	require.Contains(t, stub.lastGot, "the body")
 	require.NotContains(t, stub.lastGot, "Response 1")
+}
+
+type stubJudge struct {
+	stubLLM
+	verdict  llmclient.Verdict
+	err      error
+	question string
+	labels   []string
+	inputs   []string
+}
+
+func (s *stubJudge) Judge(_ context.Context, question string, labels, inputs []string) (llmclient.Verdict, error) {
+	s.question, s.labels, s.inputs = question, labels, inputs
+	return s.verdict, s.err
+}
+
+func TestMatchLLMPrefersJudgeAndKeepsResponseOutOfQuestion(t *testing.T) {
+	m := llmMatcher("login page for {{Hostname}}?")
+	judge := &stubJudge{verdict: llmclient.Verdict{Label: "yes", Confidence: 0.97, Model: "jev-1.14.0"}}
+	m.SetLLMClient(judge)
+
+	ok, snips, audit := m.MatchLLMWithAudit("<form>", nil, map[string]interface{}{"Hostname": "example.com"})
+	require.True(t, ok)
+	require.Empty(t, snips, "a classifier quotes no evidence")
+	require.Zero(t, judge.calls, "Complete must not be used when the client can judge")
+	require.Equal(t, "login page for example.com?", judge.question)
+	require.Nil(t, judge.labels, "no options means a yes or no question")
+	require.Equal(t, []string{"<form>"}, judge.inputs)
+	require.Equal(t, "jev-1.14.0", audit.Model)
+	require.InDelta(t, 0.97, audit.Confidence, 1e-9)
+}
+
+func TestMatchLLMJudgeAppliesExpectOptionsAndConfidence(t *testing.T) {
+	m := llmMatcher("same access?")
+	m.Options = []string{"same", "different"}
+	m.Expect = "different"
+	m.MinConfidence = 0.9
+	judge := &stubJudge{verdict: llmclient.Verdict{Label: "different", Confidence: 0.8}}
+	m.SetLLMClient(judge)
+
+	ok, _, audit := m.MatchLLMWithAudit("", []string{"a", "b"}, nil)
+	require.False(t, ok, "below min-confidence")
+	require.NotNil(t, audit)
+	require.Equal(t, []string{"same", "different"}, judge.labels)
+	require.Equal(t, []string{"a", "b"}, judge.inputs)
+
+	judge.verdict.Confidence = 0.95
+	ok, _, _ = m.MatchLLMWithAudit("", []string{"a", "b"}, nil)
+	require.True(t, ok)
+}
+
+func TestMatchLLMJudgeFailsClosed(t *testing.T) {
+	m := llmMatcher("q")
+	m.SetLLMClient(&stubJudge{err: errors.New("boom")})
+
+	ok, _, audit := m.MatchLLMWithAudit("body", nil, nil)
+	require.False(t, ok)
+	require.Nil(t, audit)
 }

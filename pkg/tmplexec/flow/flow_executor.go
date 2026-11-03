@@ -235,8 +235,9 @@ func (f *FlowExecutor) ExecuteWithResults(ctx *scan.ScanContext) error {
 		return err
 	}
 	defer func() {
-		// a flow can change any global of its runtime (builtins, prototypes, globalThis)
-		// and the next flow can be from another template, so a used runtime is never reused
+		// Flow templates execute arbitrary user-authored scripts that can modify
+		// globals, built-ins, and prototypes. Never return a contaminated runtime
+		// to the shared pool; replenish with a fresh runtime (#7986).
 		PutJSRuntime(runtime, false)
 	}()
 	defer func() {

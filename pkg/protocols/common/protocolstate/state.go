@@ -115,7 +115,10 @@ func initDialers(options *types.Options) error {
 	if options.RestrictLocalNetworkAccess {
 		expandedDenyList = append(expandedDenyList, networkpolicy.DefaultIPv4DenylistRanges...)
 		expandedDenyList = append(expandedDenyList, networkpolicy.DefaultIPv6DenylistRanges...)
+		// the unspecified address connects to the local host
+		expandedDenyList = append(expandedDenyList, "::/128")
 	}
+	expandedDenyList = append(expandedDenyList, mappedDenyRanges(expandedDenyList)...)
 	npOptions := &networkpolicy.Options{
 		DenyList: expandedDenyList,
 	}
@@ -340,6 +343,27 @@ func Close(executionId string) {
 		httpcache.Close()
 		StopActiveMemGuardian()
 	}
+}
+
+// mappedDenyRanges returns the IPv4-mapped IPv6 form (::ffff:a.b.c.d) of each
+// IPv4 address and range in denyList. The network policy checks a mapped
+// address such as [::ffff:127.0.0.1] only against IPv6 ranges, but the dialer
+// connects to the IPv4 host, so without these forms it passes -eh and -lna.
+func mappedDenyRanges(denyList []string) []string {
+	var mapped []string
+	for _, entry := range denyList {
+		cidr := entry
+		if !strings.Contains(cidr, "/") {
+			cidr += "/32"
+		}
+		_, ipNet, err := net.ParseCIDR(cidr)
+		if err != nil || ipNet.IP.To4() == nil || strings.Contains(entry, ":") {
+			continue
+		}
+		ones, _ := ipNet.Mask.Size()
+		mapped = append(mapped, fmt.Sprintf("::ffff:%s/%d", ipNet.IP.To4(), 96+ones))
+	}
+	return mapped
 }
 
 // excludeHostRules turns an exclude entry into network policy deny rules.
