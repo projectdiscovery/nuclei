@@ -38,19 +38,7 @@ func (e *Engine) ExecuteScanWithOpts(ctx context.Context, templatesList []*templ
 
 	totalReqBeforeCluster := getRequestCount(templatesList) * int(target.Count())
 
-	// attempt to cluster templates if noCluster is false
-	var finalTemplates []*templates.Template
-	clusterCount := 0
-	if !noCluster {
-		var clusterMappings map[string][]string
-		finalTemplates, clusterCount, clusterMappings = templates.ClusterTemplates(templatesList, e.executerOpts)
-		// Store cluster mappings in executerOpts for SDK access (thread-safe)
-		if clusterMappings != nil {
-			e.executerOpts.ClusterMappings = types.NewClusterMappingsMap(clusterMappings)
-		}
-	} else {
-		finalTemplates = templatesList
-	}
+	finalTemplates, clusterCount := e.clusterTemplates(templatesList, noCluster)
 
 	totalReqAfterClustering := getRequestCount(finalTemplates) * int(target.Count())
 
@@ -184,6 +172,20 @@ func (e *Engine) executeHostSpray(ctx context.Context, templatesList []*template
 		return true
 	})
 	return results
+}
+
+// clusterTemplates merges templates that send identical requests unless
+// noCluster is set, and returns the templates to run with the number merged.
+func (e *Engine) clusterTemplates(templatesList []*templates.Template, noCluster bool) ([]*templates.Template, int) {
+	if noCluster {
+		return templatesList, 0
+	}
+	finalTemplates, clusterCount, clusterMappings := templates.ClusterTemplates(templatesList, e.executerOpts)
+	// Store cluster mappings in executerOpts for SDK access (thread-safe)
+	if clusterMappings != nil {
+		e.executerOpts.ClusterMappings = types.NewClusterMappingsMap(clusterMappings)
+	}
+	return finalTemplates, clusterCount
 }
 
 // expectedWork returns the requests and the tasks the target-bound templates

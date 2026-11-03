@@ -815,6 +815,11 @@ func (r *Runner) RunEnumeration() error {
 		profiles.Prepare(slices.Concat(store.Templates(), store.Workflows()))
 		executorOpts.TargetScope = profiles
 	}
+	// before uncover, preflight, auth prefetch and probing below, all of which
+	// reach the network
+	if r.options.PlanFile != "" {
+		return r.writePlan(store, executorEngine)
+	}
 	// TODO: remove below functions after v3 or update warning messages
 	templates.PrintDeprecatedProtocolNameMsgIfApplicable(r.options.Silent, r.options.Verbose)
 

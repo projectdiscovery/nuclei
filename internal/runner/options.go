@@ -162,6 +162,9 @@ func ValidateOptions(options *types.Options) error {
 		}
 		return errors.Wrap(errors.New(strings.Join(errs, ", ")), "validation failed for these fields")
 	}
+	if options.PlanFile != "" && options.AutomaticScan {
+		return errors.New("-plan cannot be used with -automatic-scan, which picks templates while scanning")
+	}
 	if options.Verbose && options.Silent {
 		return errors.New("both verbose and silent mode specified")
 	}
