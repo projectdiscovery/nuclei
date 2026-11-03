@@ -33,6 +33,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/interactsh"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/utils/excludematchers"
 	browserEngine "github.com/projectdiscovery/nuclei/v3/pkg/protocols/headless/engine"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/catchall"
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting"
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
@@ -109,6 +110,9 @@ func newNucleiExecutor(opts *NucleiExecutorOptions) (*nucleiExecutor, error) {
 
 	if opts.Options.HostBackoff {
 		executorOpts.HostBackoff = hostbackoff.New(hostbackoff.Config{Max: opts.Options.HostBackoffMax})
+	}
+	if opts.Options.AutoCalibrate {
+		executorOpts.CatchAll = catchall.New(0)
 	}
 
 	executorEngine := core.New(opts.Options)

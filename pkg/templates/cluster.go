@@ -16,6 +16,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/helpers/writer"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/catchall"
 	protocolUtils "github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils"
 	"github.com/projectdiscovery/nuclei/v3/pkg/scan"
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates/types"
@@ -302,6 +303,16 @@ func (e *ClusterExecuter) operatorsFor(input *contextargs.MetaInput) []*clustere
 	})
 }
 
+// onCatchAllPage reports whether operator matched only because the host serves
+// this page for any missing path.
+func onCatchAllPage(event *output.InternalWrappedEvent, operator *clusteredOperator, input string) bool {
+	if event.CatchAll == nil || !catchall.Applies(operator.templateInfo, operator.operator) || !event.CatchAll() {
+		return false
+	}
+	gologger.Verbose().Msgf("[%s] Dropped match on %s: the host serves this page for any missing path", operator.templateID, input)
+	return true
+}
+
 // Execute executes the protocol group and returns true or false if results were found.
 func (e *ClusterExecuter) Execute(ctx *scan.ScanContext) (bool, error) {
 	var results bool
@@ -339,6 +350,9 @@ func (e *ClusterExecuter) Execute(ctx *scan.ScanContext) (bool, error) {
 			clonedEvent.InternalEvent["template-path"] = operator.templatePath
 			clonedEvent.InternalEvent["template-info"] = operator.templateInfo
 
+			if matched && result != nil && onCatchAllPage(event, operator, ctx.Input.MetaInput.Input) {
+				continue
+			}
 			if matched && result != nil {
 				clonedEvent.OperatorsResult = result
 				clonedEvent.Results = e.requests.MakeResultEvent(clonedEvent)
@@ -415,6 +429,9 @@ func (e *ClusterExecuter) ExecuteWithResults(ctx *scan.ScanContext) ([]*output.R
 			clonedEvent := event.CloneShallow()
 
 			result, matched := operator.operator.Execute(clonedEvent.InternalEvent, e.requests.Match, e.requests.Extract, e.options.Options.Debug || e.options.Options.DebugResponse)
+			if matched && result != nil && onCatchAllPage(event, operator, ctx.Input.MetaInput.Input) {
+				continue
+			}
 			if matched && result != nil {
 				clonedEvent.OperatorsResult = result
 				clonedEvent.InternalEvent["template-id"] = operator.templateID

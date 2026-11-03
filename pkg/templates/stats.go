@@ -68,6 +68,10 @@ var templateStatEntries = []templateStatEntry{
 		name:        SkippedRequestSignatureTemplateStats,
 		description: "Skipping %d templates, HTTP Request signatures can only be used in Signed & Verified templates.",
 	},
+	{
+		name:        SkippedWorkflowStepStats,
+		description: "Skipping %d workflow step[s] that loaded no templates, so their subtemplates will not run (use -v for details)",
+	},
 }
 
 func init() {
