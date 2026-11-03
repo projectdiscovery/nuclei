@@ -102,26 +102,10 @@ func isValidHost(options *types.Options, targetUrl string) bool {
 	if !stringsutil.HasPrefixAny(normalized, "http:", "https:", "ws:", "wss:") {
 		return true
 	}
-
-	dialers, ok := dialers.Get(options.ExecutionId)
-	if !ok {
+	if options == nil {
 		return true
 	}
-
-	np := dialers.NetworkPolicy
-	if np == nil {
-		// no policy present: deny rather than allow.
-		return false
-	}
-
-	urlx, err := urlutil.Parse(targetUrl)
-	if err != nil {
-		// not a valid url
-		return false
-	}
-	targetUrl = urlx.Hostname()
-	_, ok = np.ValidateHost(targetUrl)
-	return ok
+	return IsHostAllowed(options.ExecutionId, targetUrl)
 }
 
 // CanonicalizeHost normalizes a hostname or IP string:
@@ -129,6 +113,13 @@ func isValidHost(options *types.Options, targetUrl string) bool {
 // - maps IPv4-mapped IPv6 literals (e.g. "::ffff:127.0.0.1" or "0:0:0:0:0:ffff:127.0.0.1") to canonical IPv4 ("127.0.0.1")
 func CanonicalizeHost(host string) string {
 	h := strings.TrimSpace(host)
+	if strings.Contains(h, "://") {
+		if parsed, err := urlutil.Parse(h); err == nil && parsed.Hostname() != "" {
+			h = parsed.Hostname()
+		}
+	} else if sh, _, err := net.SplitHostPort(h); err == nil {
+		h = sh
+	}
 	h = strings.TrimPrefix(h, "[")
 	h = strings.TrimSuffix(h, "]")
 	if ip := net.ParseIP(h); ip != nil {
@@ -221,14 +212,35 @@ func SetupHeadlessNetworkPolicy(options *types.Options, page *rod.Page) error {
 			target = parsed.Hostname()
 		}
 		if !strings.Contains(target, "/") {
-			blockedPatterns = append(blockedPatterns,
-				"*://"+target+"/*",
-				"*://"+target+":*/*",
-				"ws://"+target+"/*",
-				"ws://"+target+":*/*",
-				"wss://"+target+"/*",
-				"wss://"+target+":*/*",
-			)
+			addPatterns := func(t string) {
+				t = strings.TrimPrefix(strings.TrimSuffix(t, "]"), "[")
+				blockedPatterns = append(blockedPatterns,
+					"*://"+t+"/*",
+					"*://"+t+":*/*",
+					"ws://"+t+"/*",
+					"ws://"+t+":*/*",
+					"wss://"+t+"/*",
+					"wss://"+t+":*/*",
+				)
+				if ip := net.ParseIP(t); ip != nil {
+					if ipv4 := ip.To4(); ipv4 != nil {
+						v6mapped := "[::ffff:" + ipv4.String() + "]"
+						blockedPatterns = append(blockedPatterns,
+							"*://"+v6mapped+"/*",
+							"*://"+v6mapped+":*/*",
+							"ws://"+v6mapped+"/*",
+							"ws://"+v6mapped+":*/*",
+							"wss://"+v6mapped+"/*",
+							"wss://"+v6mapped+":*/*",
+						)
+					}
+				}
+			}
+			addPatterns(target)
+			canon := CanonicalizeHost(target)
+			if canon != "" && canon != target {
+				addPatterns(canon)
+			}
 		}
 	}
 
@@ -255,13 +267,32 @@ func SetupHeadlessNetworkPolicy(options *types.Options, page *rod.Page) error {
 			"wss://10.*/*", "wss://10.*:*/*",
 			"wss://192.168.*/*", "wss://192.168.*:*/*",
 			"wss://169.254.*/*", "wss://169.254.*:*/*",
+			"*://[::ffff:127.*]/*", "*://[::ffff:127.*]:*/*",
+			"*://[::ffff:0.0.0.0]/*", "*://[::ffff:0.0.0.0]:*/*",
+			"*://[::ffff:10.*]/*", "*://[::ffff:10.*]:*/*",
+			"*://[::ffff:192.168.*]/*", "*://[::ffff:192.168.*]:*/*",
+			"*://[::ffff:169.254.*]/*", "*://[::ffff:169.254.*]:*/*",
+			"ws://[::ffff:127.*]/*", "ws://[::ffff:127.*]:*/*",
+			"ws://[::ffff:0.0.0.0]/*", "ws://[::ffff:0.0.0.0]:*/*",
+			"ws://[::ffff:10.*]/*", "ws://[::ffff:10.*]:*/*",
+			"ws://[::ffff:192.168.*]/*", "ws://[::ffff:192.168.*]:*/*",
+			"ws://[::ffff:169.254.*]/*", "ws://[::ffff:169.254.*]:*/*",
+			"wss://[::ffff:127.*]/*", "wss://[::ffff:127.*]:*/*",
+			"wss://[::ffff:0.0.0.0]/*", "wss://[::ffff:0.0.0.0]:*/*",
+			"wss://[::ffff:10.*]/*", "wss://[::ffff:10.*]:*/*",
+			"wss://[::ffff:192.168.*]/*", "wss://[::ffff:192.168.*]:*/*",
+			"wss://[::ffff:169.254.*]/*", "wss://[::ffff:169.254.*]:*/*",
 		}
 		for i := 16; i <= 31; i++ {
 			prefix := fmt.Sprintf("172.%d.*", i)
+			v6prefix := fmt.Sprintf("[::ffff:172.%d.*]", i)
 			localPatterns = append(localPatterns,
 				"*://"+prefix+"/*", "*://"+prefix+":*/*",
+				"*://"+v6prefix+"/*", "*://"+v6prefix+":*/*",
 				"ws://"+prefix+"/*", "ws://"+prefix+":*/*",
+				"ws://"+v6prefix+"/*", "ws://"+v6prefix+":*/*",
 				"wss://"+prefix+"/*", "wss://"+prefix+":*/*",
+				"wss://"+v6prefix+"/*", "wss://"+v6prefix+":*/*",
 			)
 		}
 		blockedPatterns = append(blockedPatterns, localPatterns...)
