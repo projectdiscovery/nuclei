@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httputil"
+	"net/url"
 	"strings"
 
 	"github.com/go-rod/rod"
@@ -45,23 +46,20 @@ func (p *Page) routingRuleHandler(httpClient *http.Client) func(ctx *rod.Hijack)
 
 		// each http request is performed via the native go http client
 		// we first inject the shared cookies
-		if !p.options.DisableCookie {
-			if cookies := p.ctx.CookieJar.Cookies(ctx.Request.URL()); len(cookies) > 0 {
-				httpClient.Jar.SetCookies(ctx.Request.URL(), cookies)
-			}
+		reqURL := ctx.Request.URL()
+		if !p.options.DisableCookie && p.ctx != nil && httpClient != nil {
+			syncRequestCookies(p.ctx.CookieJar, httpClient.Jar, reqURL)
 		}
 
 		// perform the request
 		if err := ctx.LoadResponse(httpClient, true); err != nil {
-			gologger.Verbose().Msgf("headless: failed to load response for %s: %s", ctx.Request.URL(), err)
+			gologger.Verbose().Msgf("headless: failed to load response for %s: %s", reqURL, err)
 		}
 
-		if !p.options.DisableCookie {
+		if !p.options.DisableCookie && p.ctx != nil && httpClient != nil {
 			// retrieve the updated cookies from the native http client and inject them into the shared cookie jar
 			// keeps existing one if not present
-			if cookies := httpClient.Jar.Cookies(ctx.Request.URL()); len(cookies) > 0 {
-				p.ctx.CookieJar.SetCookies(ctx.Request.URL(), cookies)
-			}
+			syncResponseCookies(p.ctx.CookieJar, httpClient.Jar, reqURL)
 		}
 
 		for _, rule := range rules {
@@ -157,4 +155,24 @@ func (p *Page) routingRuleHandlerNative(e *proto.FetchRequestPaused) error {
 	p.addToHistory(historyData)
 
 	return FetchContinueRequest(p.page, e)
+}
+
+// syncRequestCookies copies cookies from the shared context jar into the http client jar for the given URL
+func syncRequestCookies(sharedJar http.CookieJar, clientJar http.CookieJar, reqURL *url.URL) {
+	if sharedJar == nil || clientJar == nil || reqURL == nil {
+		return
+	}
+	if cookies := sharedJar.Cookies(reqURL); len(cookies) > 0 {
+		clientJar.SetCookies(reqURL, cookies)
+	}
+}
+
+// syncResponseCookies copies updated cookies from the http client jar back into the shared context jar for the given URL
+func syncResponseCookies(sharedJar http.CookieJar, clientJar http.CookieJar, reqURL *url.URL) {
+	if sharedJar == nil || clientJar == nil || reqURL == nil {
+		return
+	}
+	if cookies := clientJar.Cookies(reqURL); len(cookies) > 0 {
+		sharedJar.SetCookies(reqURL, cookies)
+	}
 }
