@@ -3,7 +3,6 @@ package redis
 
 import (
 	"context"
-
 	"errors"
 
 	"fmt"
