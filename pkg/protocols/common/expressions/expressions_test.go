@@ -38,6 +38,9 @@ func TestEvaluate(t *testing.T) {
 		{input: "{{base64(rawhash)}}", expected: "{{contact_id}}{{email}}", extra: map[string]any{
 			"rawhash": `{"contact_id":"{{contact_id}}","email":"{{email}}"}`,
 		}},
+		// regression: string concatenation of variables inside base64() must not
+		// stringify the parameter list (govaluate produced "[admin:]admin" here)
+		{input: "{{base64(username + ':' + password)}}", expected: "YWRtaW46YWRtaW4=", extra: map[string]interface{}{"username": "admin", "password": "admin"}},
 	}
 	for _, item := range items {
 		value, err := Evaluate(item.input, item.extra)
