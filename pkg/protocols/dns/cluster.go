@@ -18,6 +18,8 @@ func (request *Request) TmplClusterKey() uint64 {
 }
 
 // IsClusterable returns true if the request is eligible to be clustered.
+// Error matchers are excluded: the cluster executer only shares responses, so
+// a failed request would never reach them.
 func (request *Request) IsClusterable() bool {
-	return len(request.Resolvers) <= 0 && !request.Trace && request.ID == ""
+	return len(request.Resolvers) <= 0 && !request.Trace && request.ID == "" && !request.HasErrorMatchers()
 }
