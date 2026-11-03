@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"net/http"
 	"strconv"
 
 	"github.com/google/go-github/v92/github"
@@ -57,7 +58,7 @@ func New(options *Options) (*Integration, error) {
 	// Build the oauth2 client on top of the caller's client, so its transport
 	// (proxy, address policy) and redirect rules apply to every request.
 	if options.HttpClient != nil && options.HttpClient.HTTPClient != nil {
-		ctx = context.WithValue(ctx, oauth2.HTTPClient, options.HttpClient.HTTPClient)
+		ctx = context.WithValue(ctx, oauth2.HTTPClient, verifyingClient(options.HttpClient.HTTPClient))
 	}
 	ts := oauth2.StaticTokenSource(
 		&oauth2.Token{AccessToken: options.Token},
@@ -73,6 +74,22 @@ func New(options *Options) (*Integration, error) {
 		return nil, errors.Wrap(err, "could not create github client")
 	}
 	return &Integration{client: client, options: options}, nil
+}
+
+// verifyingClient returns c, or a copy of c whose transport verifies TLS
+// certificates when c skips verification (the scan client can). The copy keeps
+// the proxy and the dialer, so the address policy still applies, and the token
+// never goes over an unverified connection.
+func verifyingClient(c *http.Client) *http.Client {
+	t, ok := c.Transport.(*http.Transport)
+	if !ok || t.TLSClientConfig == nil || !t.TLSClientConfig.InsecureSkipVerify {
+		return c
+	}
+	verifying := t.Clone()
+	verifying.TLSClientConfig.InsecureSkipVerify = false
+	copied := *c
+	copied.Transport = verifying
+	return &copied
 }
 
 // CreateIssue creates an issue in the tracker

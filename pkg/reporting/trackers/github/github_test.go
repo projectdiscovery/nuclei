@@ -1,6 +1,7 @@
 package github
 
 import (
+	"crypto/tls"
 	"errors"
 	"net/http"
 	"net/http/httptest"
@@ -68,4 +69,34 @@ func TestNewUsesCallerHTTPClient(t *testing.T) {
 		require.ErrorContains(t, err, "denied by address policy")
 		require.Equal(t, before, serverHits.Load(), "the request reached the server")
 	})
+}
+
+// The scan client can skip TLS verification; the tracker must not send the
+// token over such a connection, and must not change the caller's client.
+func TestVerifyingClientTurnsOnTLSVerification(t *testing.T) {
+	insecure := &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}}
+	caller := &http.Client{Transport: insecure}
+
+	got := verifyingClient(caller)
+	gotTransport, ok := got.Transport.(*http.Transport)
+	require.True(t, ok)
+	require.False(t, gotTransport.TLSClientConfig.InsecureSkipVerify)
+	require.True(t, insecure.TLSClientConfig.InsecureSkipVerify, "the caller's transport changed")
+
+	secure := &http.Client{Transport: &http.Transport{}}
+	require.Same(t, secure, verifyingClient(secure))
+}
+
+func TestNewRefusesUntrustedCertificateFromInsecureCallerClient(t *testing.T) {
+	srv := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusCreated)
+		_, _ = w.Write([]byte(`{"number":1}`))
+	}))
+	defer srv.Close()
+
+	insecure := &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}}
+	tracker, err := New(&Options{BaseURL: srv.URL + "/", Username: "u", Owner: "o", ProjectName: "r", Token: "test-token", HttpClient: clientWithTransport(insecure)})
+	require.NoError(t, err)
+	_, err = tracker.CreateIssue(testEvent())
+	require.ErrorContains(t, err, "certificate")
 }
