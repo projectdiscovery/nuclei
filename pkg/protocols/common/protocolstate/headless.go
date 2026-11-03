@@ -110,15 +110,19 @@ func isValidHost(options *types.Options, targetUrl string) bool {
 
 // CanonicalizeHost normalizes a hostname or IP string:
 // - strips surrounding whitespace and brackets (e.g. "[::1]" -> "::1")
-// - maps IPv4-mapped IPv6 literals (e.g. "::ffff:127.0.0.1" or "0:0:0:0:0:ffff:127.0.0.1") to canonical IPv4 ("127.0.0.1")
+// - maps IPv4-mapped IPv6 literals (e.g. "::ffff:127.0.0.1" or "[::ffff:127.0.0.1]:80") to canonical IPv4 ("127.0.0.1" or "127.0.0.1:80")
 func CanonicalizeHost(host string) string {
 	h := strings.TrimSpace(host)
-	if strings.Contains(h, "://") {
-		if parsed, err := urlutil.Parse(h); err == nil && parsed.Hostname() != "" {
-			h = parsed.Hostname()
+	if sh, port, err := net.SplitHostPort(h); err == nil {
+		sh = strings.TrimPrefix(sh, "[")
+		sh = strings.TrimSuffix(sh, "]")
+		if ip := net.ParseIP(sh); ip != nil {
+			if ipv4 := ip.To4(); ipv4 != nil {
+				return net.JoinHostPort(ipv4.String(), port)
+			}
+			return net.JoinHostPort(ip.String(), port)
 		}
-	} else if sh, _, err := net.SplitHostPort(h); err == nil {
-		h = sh
+		return h
 	}
 	h = strings.TrimPrefix(h, "[")
 	h = strings.TrimSuffix(h, "]")
