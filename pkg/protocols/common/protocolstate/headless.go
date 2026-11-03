@@ -183,14 +183,10 @@ func IsHostAllowed(executionId string, targetUrl string) bool {
 		}
 	}
 
-	// Validate host against NetworkPolicy using both canonical and original host
+	// The policy stores IPv4 prefixes. A mapped form such as ::ffff:203.0.113.10
+	// has to be judged as 203.0.113.10, or an allow-listed address is rejected.
 	if _, ok := np.ValidateHost(canonHost); !ok {
 		return false
-	}
-	if canonHost != host {
-		if _, ok := np.ValidateHost(host); !ok {
-			return false
-		}
 	}
 	return true
 }

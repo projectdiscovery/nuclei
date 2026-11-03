@@ -57,6 +57,27 @@ func TestIsValidHost(t *testing.T) {
 	require.False(t, IsHostAllowed(opts.ExecutionId, "http://[::ffff:192.168.1.50]:8080"))
 }
 
+func TestIsHostAllowedMappedFormOfAllowListedIP(t *testing.T) {
+	const executionID = "test-allow-mapped"
+	opts := &types.Options{ExecutionId: executionID}
+
+	np, err := networkpolicy.New(networkpolicy.Options{
+		AllowList: []string{"203.0.113.10"},
+		DenyList:  []string{"127.0.0.1"},
+	})
+	require.NoError(t, err)
+
+	err = dialers.Set(executionID, &Dialers{NetworkPolicy: np})
+	require.NoError(t, err)
+	defer dialers.Delete(executionID)
+
+	require.True(t, isValidHost(opts, "http://203.0.113.10"))
+	require.True(t, isValidHost(opts, "http://[::ffff:203.0.113.10]"))
+	require.True(t, isValidHost(opts, "http://[::ffff:cb00:710a]:8080"))
+	require.False(t, isValidHost(opts, "http://[::ffff:127.0.0.1]"))
+	require.False(t, isValidHost(opts, "http://198.51.100.1"))
+}
+
 func TestCanonicalizeHost_IPv4MappedIPv6(t *testing.T) {
 	cases := map[string]string{
 		"127.0.0.1":                                "127.0.0.1",
