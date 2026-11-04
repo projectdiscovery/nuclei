@@ -20,6 +20,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/exporters/pdf"
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/exporters/sarif"
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/exporters/splunk"
+	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/tlsverify"
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/trackers/filters"
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/trackers/gitea"
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/trackers/github"
@@ -27,6 +28,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/trackers/jira"
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/trackers/linear"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils/yaml"
+	"github.com/projectdiscovery/retryablehttp-go"
 	"github.com/projectdiscovery/utils/errkit"
 	fileutil "github.com/projectdiscovery/utils/file"
 	"go.uber.org/multierr"
@@ -75,6 +77,15 @@ type IssueTrackerStats struct {
 // New creates a new nuclei issue tracker reporting client
 func New(options *Options, db string, doNotDedupe bool) (Client, error) {
 	client := &ReportingClient{options: options}
+
+	// The caller can pass the scan client, which skips TLS verification;
+	// trackers and exporters send tokens and passwords, so they get a copy
+	// that verifies certificates.
+	if options.HttpClient != nil && options.HttpClient.HTTPClient != nil {
+		if hc := tlsverify.Client(options.HttpClient.HTTPClient); hc != options.HttpClient.HTTPClient {
+			options.HttpClient = retryablehttp.NewWithHTTPClient(hc, retryablehttp.DefaultOptionsSingle)
+		}
+	}
 
 	if options.GitHub != nil {
 		options.GitHub.HttpClient = options.HttpClient

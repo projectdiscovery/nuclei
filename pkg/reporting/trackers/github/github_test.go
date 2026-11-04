@@ -73,22 +73,6 @@ func TestNewUsesCallerHTTPClient(t *testing.T) {
 	})
 }
 
-// The scan client can skip TLS verification; the tracker must not send the
-// token over such a connection, and must not change the caller's client.
-func TestVerifyingClientTurnsOnTLSVerification(t *testing.T) {
-	insecure := &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}}
-	caller := &http.Client{Transport: insecure}
-
-	got := verifyingClient(caller)
-	gotTransport, ok := got.Transport.(*http.Transport)
-	require.True(t, ok)
-	require.False(t, gotTransport.TLSClientConfig.InsecureSkipVerify)
-	require.True(t, insecure.TLSClientConfig.InsecureSkipVerify, "the caller's transport changed")
-
-	secure := &http.Client{Transport: &http.Transport{}}
-	require.Same(t, secure, verifyingClient(secure))
-}
-
 func TestNewRefusesUntrustedCertificateFromInsecureCallerClient(t *testing.T) {
 	srv := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusCreated)

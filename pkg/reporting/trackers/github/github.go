@@ -2,10 +2,8 @@ package github
 
 import (
 	"context"
-	"crypto/tls"
 	"fmt"
 	"io"
-	"net/http"
 	"strconv"
 
 	"github.com/google/go-github/v92/github"
@@ -13,6 +11,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/exporters/markdown/util"
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/format"
+	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/tlsverify"
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/trackers/filters"
 	"github.com/projectdiscovery/retryablehttp-go"
 	"golang.org/x/oauth2"
@@ -59,7 +58,7 @@ func New(options *Options) (*Integration, error) {
 	// Build the oauth2 client on top of the caller's client, so its transport
 	// (proxy, address policy) and redirect rules apply to every request.
 	if options.HttpClient != nil && options.HttpClient.HTTPClient != nil {
-		ctx = context.WithValue(ctx, oauth2.HTTPClient, verifyingClient(options.HttpClient.HTTPClient))
+		ctx = context.WithValue(ctx, oauth2.HTTPClient, tlsverify.Client(options.HttpClient.HTTPClient))
 	}
 	ts := oauth2.StaticTokenSource(
 		&oauth2.Token{AccessToken: options.Token},
@@ -75,39 +74,6 @@ func New(options *Options) (*Integration, error) {
 		return nil, errors.Wrap(err, "could not create github client")
 	}
 	return &Integration{client: client, options: options}, nil
-}
-
-// verifyingClient returns c, or a copy of c whose transport verifies TLS
-// certificates when c can skip verification (the scan client can). The copy
-// keeps the proxy and the dialer, so the address policy still applies, but it
-// drops a custom TLS dialer, because that dialer can use the scan TLS config.
-// So the token never goes over an unverified connection.
-func verifyingClient(c *http.Client) *http.Client {
-	rt := c.Transport
-	for {
-		u, ok := rt.(interface{ Unwrap() http.RoundTripper })
-		if !ok {
-			break
-		}
-		rt = u.Unwrap()
-	}
-	t, ok := rt.(*http.Transport)
-	if !ok {
-		return c
-	}
-	insecure := t.TLSClientConfig != nil && t.TLSClientConfig.InsecureSkipVerify
-	if !insecure && t.DialTLSContext == nil && t.DialTLS == nil { //nolint:staticcheck // DialTLS is deprecated but still used
-		return c
-	}
-	verifying := t.Clone()
-	verifying.DialTLSContext = nil
-	verifying.DialTLS = nil //nolint:staticcheck // DialTLS is deprecated but still used
-	if insecure {
-		verifying.TLSClientConfig = &tls.Config{MinVersion: tls.VersionTLS12}
-	}
-	copied := *c
-	copied.Transport = verifying
-	return &copied
 }
 
 // CreateIssue creates an issue in the tracker
