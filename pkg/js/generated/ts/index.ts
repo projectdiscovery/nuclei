@@ -8,6 +8,7 @@ export * as grpc from './grpc';
 export * as hash from './hash';
 export * as http from './http';
 export * as ikev2 from './ikev2';
+export * as ipmi from './ipmi';
 export * as kerberos from './kerberos';
 export * as krbforge from './krbforge';
 export * as krbroast from './krbroast';
