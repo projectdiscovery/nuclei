@@ -34,6 +34,17 @@ type Progress interface {
 	IncrementFailedRequestsBy(count int64)
 }
 
+// UnresolvedCounter is implemented by a Progress that also counts requests
+// skipped because template variables could not be resolved. It is separate
+// from Progress so that custom Progress implementations keep compiling.
+type UnresolvedCounter interface {
+	// IncrementSkippedUnresolved increments the count of requests skipped because
+	// template variables could not be resolved.
+	IncrementSkippedUnresolved(count int64)
+	// SkippedUnresolved returns how many requests were skipped for unresolved variables.
+	SkippedUnresolved() uint64
+}
+
 // TaskTracker is implemented by a Progress that also counts template
 // executions. The engine counts one task for each template it runs on a
 // target, and one for each self-contained template. Unlike the request total,
@@ -47,8 +58,9 @@ type TaskTracker interface {
 }
 
 var (
-	_ Progress    = &StatsTicker{}
-	_ TaskTracker = &StatsTicker{}
+	_ Progress          = &StatsTicker{}
+	_ TaskTracker       = &StatsTicker{}
+	_ UnresolvedCounter = &StatsTicker{}
 )
 
 // StatsTicker is a progress instance for showing program stats
@@ -99,6 +111,7 @@ func (p *StatsTicker) Init(hostCount int64, rulesCount int, requestCount int64) 
 	p.stats.AddCounter("requests", uint64(0))
 	p.stats.AddCounter("errors", uint64(0))
 	p.stats.AddCounter("matched", uint64(0))
+	p.stats.AddCounter("unresolved", uint64(0))
 	p.stats.AddCounter("total", uint64(requestCount))
 	p.stats.AddCounter("tasks", uint64(0))
 	p.stats.AddCounter("totalTasks", uint64(0))
@@ -172,6 +185,17 @@ func (p *StatsTicker) IncrementFailedRequestsBy(count int64) {
 	// mimic dropping by incrementing the completed requests
 	p.stats.IncrementCounter("requests", int(count))
 	p.stats.IncrementCounter("errors", int(count))
+}
+
+// IncrementSkippedUnresolved increments requests skipped due to unresolved variables.
+func (p *StatsTicker) IncrementSkippedUnresolved(count int64) {
+	p.stats.IncrementCounter("unresolved", int(count))
+}
+
+// SkippedUnresolved returns the number of requests skipped due to unresolved variables.
+func (p *StatsTicker) SkippedUnresolved() uint64 {
+	count, _ := p.stats.GetCounter("unresolved")
+	return count
 }
 
 func (p *StatsTicker) makePrintCallback() func(stats clistats.StatisticsClient) interface{} {

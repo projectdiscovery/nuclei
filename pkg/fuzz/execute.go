@@ -17,6 +17,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/marker"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/render"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/unresolvedvars"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils/json"
 	"github.com/projectdiscovery/retryablehttp-go"
 	"github.com/projectdiscovery/utils/errkit"
@@ -92,6 +93,16 @@ type GeneratedRequest struct {
 // Input is not thread safe and should not be shared between concurrent
 // goroutines.
 func (rule *Rule) Execute(input *ExecuteRuleInput) (err error) {
+	// a rule with unresolved variables can never build a request, so it is
+	// skipped and counted like any other request with unresolved variables
+	if rule.unresolvedErr != nil {
+		var target string
+		if input.Input != nil && input.Input.MetaInput != nil {
+			target = input.Input.MetaInput.Input
+		}
+		unresolvedvars.Skip(rule.options.Progress, rule.options.Options, rule.options.TemplateID, target, rule.unresolvedErr)
+		return nil
+	}
 	if !rule.isInputURLValid(input.Input) {
 		return errkit.Newf("rule not applicable: invalid input url: %v", input.Input.MetaInput.Input)
 	}
@@ -459,6 +470,8 @@ func (rule *Rule) executeRuleValues(input *ExecuteRuleInput, ruleComponent compo
 
 // Compile compiles a fuzzing rule and initializes it for operation
 func (rule *Rule) Compile(generator *generators.PayloadGenerator, options *protocols.ExecutorOptions) error {
+	// a recompiled rule must not keep the result of an earlier compile
+	rule.unresolvedErr = nil
 	// If a payload generator is specified from base request, use it
 	// for payload values.
 	if generator != nil {
@@ -506,7 +519,7 @@ func (rule *Rule) Compile(generator *generators.PayloadGenerator, options *proto
 	for _, key := range rule.Keys {
 		evaluatedKey, err := rule.evaluateVars(key)
 		if err != nil {
-			return errors.Wrap(err, "could not evaluate key")
+			return rule.compileVarsError(err, "could not evaluate key")
 		}
 
 		rule.keysMap[strings.ToLower(evaluatedKey)] = struct{}{}
@@ -516,7 +529,7 @@ func (rule *Rule) Compile(generator *generators.PayloadGenerator, options *proto
 	for _, value := range rule.ValuesRegex {
 		evaluatedValue, err := rule.evaluateVars(value)
 		if err != nil {
-			return errors.Wrap(err, "could not evaluate value regex")
+			return rule.compileVarsError(err, "could not evaluate value regex")
 		}
 
 		compiled, err := regexp.Compile(evaluatedValue)
@@ -531,7 +544,7 @@ func (rule *Rule) Compile(generator *generators.PayloadGenerator, options *proto
 	for _, value := range rule.KeysRegex {
 		evaluatedValue, err := rule.evaluateVars(value)
 		if err != nil {
-			return errors.Wrap(err, "could not evaluate key regex")
+			return rule.compileVarsError(err, "could not evaluate key regex")
 		}
 
 		compiled, err := regexp.Compile(evaluatedValue)
@@ -553,7 +566,7 @@ func (rule *Rule) Compile(generator *generators.PayloadGenerator, options *proto
 
 		evalReplaceRegex, err := rule.evaluateVars(rule.ReplaceRegex)
 		if err != nil {
-			return errors.Wrap(err, "could not evaluate replace regex")
+			return rule.compileVarsError(err, "could not evaluate replace regex")
 		}
 
 		compiled, err := regexp.Compile(evalReplaceRegex)
@@ -565,4 +578,15 @@ func (rule *Rule) Compile(generator *generators.PayloadGenerator, options *proto
 	}
 
 	return nil
+}
+
+// compileVarsError returns the error for a rule value that failed to evaluate
+// at compile time. Unresolved variables do not fail the template: the rule is
+// kept and every execution is skipped and counted at scan time instead.
+func (rule *Rule) compileVarsError(err error, message string) error {
+	if unresolvedvars.Is(err) {
+		rule.unresolvedErr = errors.Wrap(err, message)
+		return nil
+	}
+	return errors.Wrap(err, message)
 }

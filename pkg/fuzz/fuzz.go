@@ -100,6 +100,9 @@ type Rule struct {
 	replaceRegex *regexp.Regexp `yaml:"-" json:"-"`
 	options      *protocols.ExecutorOptions
 	generator    *generators.PayloadGenerator
+	// unresolvedErr is set when a rule value has unresolved variables at
+	// compile time; executions of the rule are then skipped and counted
+	unresolvedErr error
 }
 
 // ruleType is the type of rule enum declaration

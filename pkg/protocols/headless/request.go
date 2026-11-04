@@ -24,6 +24,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/hostratelimit"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/interactsh"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/render"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/unresolvedvars"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/headless/engine"
 	protocolutils "github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils"
 	templateTypes "github.com/projectdiscovery/nuclei/v3/pkg/templates/types"
@@ -185,6 +186,10 @@ func (request *Request) executeRequestWithPayloads(input *contextargs.Context, p
 	timeStart := time.Now()
 	out, createdPage, err := instance.Run(input, request.Steps, payloads, options)
 	runDuration := time.Since(timeStart)
+	if unresolvedvars.Is(err) {
+		unresolvedvars.Skip(request.options.Progress, request.options.Options, request.options.TemplateID, input.MetaInput.Input, err)
+		return nil
+	}
 	if err != nil {
 		request.options.Output.Request(request.options.TemplatePath, input.MetaInput.Input, request.Type().String(), err)
 		request.options.Progress.IncrementFailedRequestsBy(1)
