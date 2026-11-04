@@ -34,12 +34,18 @@ type PlanEntry struct {
 	// Dynamic marks entries whose requests depend on responses: workflows
 	// (only the root is counted), flows and fuzzing.
 	Dynamic bool `json:"dynamic,omitempty"`
+	// Fallbacks are later targets of the same origin, in scan order. The
+	// scan tries the next one only when this entry's target fails, so a plan
+	// keeps them instead of dropping the retry.
+	Fallbacks []string `json:"fallbacks,omitempty"`
 }
 
 // Plan reports the work ExecuteScanWithOpts would do with the same arguments,
 // without sending anything. It applies the same clustering, per-target
 // profiles and once-per-origin rule, so a pair is listed only if the scan
-// would run it.
+// would run it. Later targets of an origin-scoped template are kept on the
+// first entry as fallbacks: the scan runs the next one when the earlier
+// target fails.
 func (e *Engine) Plan(templatesList []*templates.Template, target provider.InputProvider, noCluster bool, emit func(PlanEntry)) {
 	finalTemplates, _ := e.clusterTemplates(templatesList, noCluster)
 	// clustering does not keep an order; a plan is diffed and edited, so it does
@@ -50,13 +56,16 @@ func (e *Engine) Plan(templatesList []*templates.Template, target provider.Input
 	var targetBound []*templates.Template
 	for _, template := range finalTemplates {
 		if template.SelfContained {
-			emit(planEntry(template, &contextargs.MetaInput{}, nil))
+			emit(withPlanID(planEntry(template, &contextargs.MetaInput{}, nil)))
 		} else {
 			targetBound = append(targetBound, template)
 		}
 	}
 
-	seenOrigins := make(map[string]struct{})
+	// Buffered so a later target of the same origin can be recorded on the
+	// entry before its id is derived.
+	var planned []PlanEntry
+	originIndex := make(map[string]int)
 	target.Iterate(func(value *contextargs.MetaInput) bool {
 		selection := e.selectionFor(value)
 		for _, template := range targetBound {
@@ -64,15 +73,24 @@ func (e *Engine) Plan(templatesList []*templates.Template, target provider.Input
 				continue
 			}
 			if key, scoped := originScopeKey(template, value); scoped {
-				if _, seen := seenOrigins[key]; seen {
+				if idx, seen := originIndex[key]; seen {
+					planned[idx].Fallbacks = append(planned[idx].Fallbacks, value.Input)
 					continue
 				}
-				seenOrigins[key] = struct{}{}
+				originIndex[key] = len(planned)
 			}
-			emit(planEntry(template, value, selection))
+			planned = append(planned, planEntry(template, value, selection))
 		}
 		return true
 	})
+	for _, entry := range planned {
+		emit(withPlanID(entry))
+	}
+}
+
+func withPlanID(entry PlanEntry) PlanEntry {
+	entry.ID = planEntryID(entry)
+	return entry
 }
 
 // protocolCost is how many http requests one request of a protocol is worth
@@ -125,7 +143,6 @@ func planEntry(template *templates.Template, value *contextargs.MetaInput, selec
 	default:
 		entry.Cost = entry.Requests * weight(template.Type())
 	}
-	entry.ID = planEntryID(entry)
 	return entry
 }
 
@@ -137,6 +154,6 @@ func isCluster(template *templates.Template) bool {
 // planEntryID derives the id from what the entry runs, so planning the same
 // scan again yields the same ids.
 func planEntryID(entry PlanEntry) string {
-	sum := sha256.Sum256([]byte(entry.Target + "\x00" + entry.IP + "\x00" + strings.Join(entry.Templates, "\x00")))
+	sum := sha256.Sum256([]byte(entry.Target + "\x00" + entry.IP + "\x00" + strings.Join(entry.Templates, "\x00") + "\x00" + strings.Join(entry.Fallbacks, "\x00")))
 	return hex.EncodeToString(sum[:8])
 }

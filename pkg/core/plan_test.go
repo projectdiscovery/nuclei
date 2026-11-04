@@ -103,3 +103,53 @@ func TestPlanListsThePairsTheScanRuns(t *testing.T) {
 	require.ElementsMatch(t, runs, planned, "the plan lists exactly the pairs the scan runs")
 	require.ElementsMatch(t, []string{"thinkphp.yaml@php", "thinkphp.yaml@plain", "generic.yaml@plain"}, planned)
 }
+
+func TestPlanKeepsOriginFallbacks(t *testing.T) {
+	options := &types.Options{BulkSize: 1, TemplateThreads: 1, HeadlessBulkSize: 1, HeadlessTemplateThreads: 1}
+	engine := New(options)
+	engine.SetExecuterOptions(&protocols.ExecutorOptions{
+		Logger:       engine.Logger,
+		Options:      options,
+		ResumeCfg:    types.NewResumeCfg(),
+		ProtocolType: tmpltypes.HTTPProtocol,
+		Progress:     &progressRecorder{},
+	})
+
+	root := &templates.Template{
+		ID:            "root.yaml",
+		RequestsHTTP:  []*http.Request{{Path: []string{"{{RootURL}}/health"}}},
+		TotalRequests: 1,
+	}
+	require.True(t, root.IsOriginScoped())
+	generic := &templates.Template{ID: "generic.yaml", TotalRequests: 1}
+	targets := &fakeTargetProvider{values: []*contextargs.MetaInput{
+		{Input: "https://example.com/a"},
+		{Input: "https://example.com/b"},
+		{Input: "https://other.example/a"},
+		{Input: "https://example.com/a", CustomIP: "203.0.113.5"},
+	}}
+
+	var plan []PlanEntry
+	engine.Plan([]*templates.Template{generic, root}, targets, true, func(entry PlanEntry) {
+		plan = append(plan, entry)
+	})
+
+	var roots []PlanEntry
+	for _, entry := range plan {
+		if entry.Templates[0] == "root.yaml" {
+			roots = append(roots, entry)
+		}
+	}
+	require.Equal(t, []PlanEntry{
+		{ID: roots[0].ID, Target: "https://example.com/a", Templates: []string{"root.yaml"}, Protocol: "http", Requests: 1, Cost: 1, Fallbacks: []string{"https://example.com/b"}},
+		{ID: roots[1].ID, Target: "https://other.example/a", Templates: []string{"root.yaml"}, Protocol: "http", Requests: 1, Cost: 1},
+		{ID: roots[2].ID, Target: "https://example.com/a", IP: "203.0.113.5", Templates: []string{"root.yaml"}, Protocol: "http", Requests: 1, Cost: 1},
+	}, roots)
+	require.NotEqual(t, roots[0].ID, roots[2].ID, "a pinned address is its own attempt")
+
+	var again []PlanEntry
+	engine.Plan([]*templates.Template{generic, root}, targets, true, func(entry PlanEntry) {
+		again = append(again, entry)
+	})
+	require.Equal(t, plan, again)
+}

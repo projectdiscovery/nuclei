@@ -190,7 +190,7 @@ func New(options *types.Options) (*Runner, error) {
 			}
 		}
 
-		if options.UpdateTemplates {
+		if checkUpdates && options.UpdateTemplates {
 			// we automatically check for updates unless explicitly disabled
 			// this print statement is only to inform the user that there are no updates
 			noUpdates := !config.DefaultConfig.NeedsTemplateUpdate()
@@ -601,8 +601,13 @@ func (r *Runner) RunEnumeration() error {
 	httpclientpool.ResetConnectionStats()
 
 	// If the user has asked for DAST server mode, run the live
-	// DAST fuzzing server.
+	// DAST fuzzing server. -plan never reaches this with those flags set:
+	// validation rejects the combination, and this check covers a caller
+	// that skipped it.
 	if r.options.DASTServer || r.options.DASTProxy {
+		if err := validatePlanOptions(r.options); err != nil {
+			return err
+		}
 		execurOpts := &server.NucleiExecutorOptions{
 			Options:            r.options,
 			Output:             r.output,

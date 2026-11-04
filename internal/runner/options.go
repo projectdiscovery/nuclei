@@ -119,6 +119,14 @@ func ParseOptions(options *types.Options) {
 		options.Logger.Debug().Msgf("Store response directory specified, enabling \"store-resp\" flag automatically\n")
 		options.StoreResponse = true
 	}
+	// Derived before validation: -uncover-query turns uncover on, and -plan
+	// has to reject that before any target lookup starts.
+	if options.UncoverQuery != nil {
+		options.Uncover = true
+		if len(options.UncoverEngine) == 0 {
+			options.UncoverEngine = append(options.UncoverEngine, "shodan")
+		}
+	}
 	// Validate the options passed by the user and if any
 	// invalid options have been used, exit.
 	if err := ValidateOptions(options); err != nil {
@@ -136,13 +144,6 @@ func ParseOptions(options *types.Options) {
 	// Set GitHub token in env variable. runner.getGHClientWithToken() reads token from env
 	if options.GitHubToken != "" && os.Getenv("GITHUB_TOKEN") != options.GitHubToken {
 		_ = os.Setenv("GITHUB_TOKEN", options.GitHubToken)
-	}
-
-	if options.UncoverQuery != nil {
-		options.Uncover = true
-		if len(options.UncoverEngine) == 0 {
-			options.UncoverEngine = append(options.UncoverEngine, "shodan")
-		}
 	}
 
 	if options.OfflineHTTP {
@@ -549,10 +550,12 @@ func validatePlanOptions(options *types.Options) error {
 	switch {
 	case options.AutomaticScan:
 		return errors.New("-plan cannot be used with -automatic-scan, which picks templates while scanning")
-	case options.Uncover:
+	case options.Uncover || len(options.UncoverQuery) > 0:
 		return errors.New("-plan cannot be used with -uncover, which finds targets over the network")
 	case options.PreflightPortScan:
 		return errors.New("-plan cannot be used with -preflight-portscan, which drops targets after scanning their ports")
+	case options.DASTServer || options.DASTProxy:
+		return errors.New("-plan cannot be used with -dast-server or -dast-proxy, which start a server instead of writing a plan")
 	}
 	return nil
 }
