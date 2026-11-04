@@ -3,6 +3,7 @@ package component
 import (
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"sync/atomic"
 	"testing"
 
@@ -97,6 +98,52 @@ func TestCookieComponent(t *testing.T) {
 	// Assuming the Rebuild function will reconstruct the entire request and also set the modified cookies
 	newCookie, _ := rebuilt.Cookie("session")
 	require.Equal(t, "new-session", newCookie.Value, "unexpected cookie value")
+}
+
+func TestCookieComponentSkipsIgnored(t *testing.T) {
+	req, err := retryablehttp.NewRequest(http.MethodGet, "https://example.com", nil)
+	require.NoError(t, err)
+	req.AddCookie(&http.Cookie{Name: "session", Value: "abc"})
+	req.AddCookie(&http.Cookie{Name: "_ga", Value: "GA1.2.1"})
+	req.AddCookie(&http.Cookie{Name: "JSESSIONID", Value: "abc"})
+	req.AddCookie(&http.Cookie{Name: "_gitlab_session", Value: "abc"})
+
+	cookieComponent := NewCookie()
+	ok, err := cookieComponent.Parse(req)
+	require.NoError(t, err)
+	require.True(t, ok)
+
+	var names []string
+	_ = cookieComponent.Iterate(func(key string, value interface{}) error {
+		names = append(names, key)
+		return nil
+	})
+	require.ElementsMatch(t, []string{"session", "JSESSIONID", "_gitlab_session"}, names)
+}
+
+func TestIsIgnoredCookieKeyPrefixes(t *testing.T) {
+	for _, name := range []string{"_ga", "_ga_ABC123", "_GA", "_Ga_abc123", "__UTMZ", "awselb"} {
+		require.True(t, isIgnoredCookieKey(name), name)
+	}
+	for _, name := range []string{"session", "_gax", "JSESSIONID", "_gitlab_session", "intercom-session"} {
+		require.False(t, isIgnoredCookieKey(name), name)
+	}
+}
+
+func TestIgnoredCookieListHasNoSessionCookies(t *testing.T) {
+	tokens := []string{"session", "sess", "sid", "auth", "token", "csrf", "xsrf", "jwt", "login", "remember"}
+	check := func(name string) {
+		require.Equal(t, strings.ToLower(name), name, "ignore list entries must be lowercase")
+		for _, token := range tokens {
+			require.NotContains(t, name, token, "session cookie %q must stay fuzzable", name)
+		}
+	}
+	for name := range defaultIgnoredCookieKeys {
+		check(name)
+	}
+	for _, prefix := range defaultIgnoredCookiePrefixes {
+		check(prefix)
+	}
 }
 
 func BenchmarkCookieComponentRebuild(b *testing.B) {

@@ -49,3 +49,23 @@ func TestHeaderComponent(t *testing.T) {
 
 	require.Equal(t, "new-agent", rebuilt.Header.Get("User-Agent"), "unexpected header value")
 }
+
+func TestHeaderComponentSkipsIgnored(t *testing.T) {
+	req, err := retryablehttp.NewRequest(http.MethodGet, "https://example.com", nil)
+	require.NoError(t, err)
+	req.Header.Set("User-Agent", "test-agent")
+	req.Header.Set("Authorization", "Bearer secret")
+	req.Header.Set("X-Custom", "keep")
+
+	header := NewHeader()
+	ok, err := header.Parse(req)
+	require.NoError(t, err)
+	require.True(t, ok)
+
+	var keys []string
+	_ = header.Iterate(func(key string, value interface{}) error {
+		keys = append(keys, key)
+		return nil
+	})
+	require.ElementsMatch(t, []string{"User-Agent", "X-Custom"}, keys)
+}
