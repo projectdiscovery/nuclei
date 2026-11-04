@@ -162,8 +162,8 @@ func ValidateOptions(options *types.Options) error {
 		}
 		return errors.Wrap(errors.New(strings.Join(errs, ", ")), "validation failed for these fields")
 	}
-	if options.PlanFile != "" && options.AutomaticScan {
-		return errors.New("-plan cannot be used with -automatic-scan, which picks templates while scanning")
+	if err := validatePlanOptions(options); err != nil {
+		return err
 	}
 	if options.Verbose && options.Silent {
 		return errors.New("both verbose and silent mode specified")
@@ -538,4 +538,21 @@ func readEnvInputVars(options *types.Options) {
 func getBoolEnvValue(key string) bool {
 	value := os.Getenv(key)
 	return strings.EqualFold(value, "true")
+}
+
+// validatePlanOptions rejects options that change the templates or targets
+// only once scanning starts, which a plan written beforehand cannot show.
+func validatePlanOptions(options *types.Options) error {
+	if options.PlanFile == "" {
+		return nil
+	}
+	switch {
+	case options.AutomaticScan:
+		return errors.New("-plan cannot be used with -automatic-scan, which picks templates while scanning")
+	case options.Uncover:
+		return errors.New("-plan cannot be used with -uncover, which finds targets over the network")
+	case options.PreflightPortScan:
+		return errors.New("-plan cannot be used with -preflight-portscan, which drops targets after scanning their ports")
+	}
+	return nil
 }

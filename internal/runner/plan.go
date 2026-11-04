@@ -33,6 +33,9 @@ type planSummary struct {
 // would probe to an http url first are not probed here, since probing sends
 // requests.
 func (r *Runner) writePlan(store *loader.Store, engine *core.Engine) error {
+	if !r.options.DisableHTTPProbe && loader.IsHTTPBasedProtocolUsed(store) && r.isInputNonHTTP() {
+		r.Logger.Info().Msgf("Targets without a scheme are planned as given; the scan probes them for http(s) first")
+	}
 	file, err := os.Create(r.options.PlanFile)
 	if err != nil {
 		return err

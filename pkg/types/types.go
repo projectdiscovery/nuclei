@@ -710,6 +710,7 @@ func (options *Options) Copy() *Options {
 		AutomaticScan:                  options.AutomaticScan,
 		Silent:                         options.Silent,
 		Validate:                       options.Validate,
+		PlanFile:                       options.PlanFile,
 		NoStrictSyntax:                 options.NoStrictSyntax,
 		Verbose:                        options.Verbose,
 		VerboseVerbose:                 options.VerboseVerbose,

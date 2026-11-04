@@ -146,10 +146,18 @@ func New(options *types.Options) (*Runner, error) {
 
 	//  Version check by default
 	if config.DefaultConfig.CanCheckForUpdates() {
-		latestIgnoreHash, versionCheckErr := installer.NucleiVersionCheck()
-		if versionCheckErr != nil {
-			if options.Verbose || options.Debug {
-				runner.Logger.Error().Msgf("nuclei version check failed got: %s\n", versionCheckErr)
+		// -plan sends no request it can avoid, so it skips the version and
+		// update checks; it still installs templates on a fresh setup, which
+		// would otherwise plan nothing
+		checkUpdates := options.PlanFile == ""
+		var latestIgnoreHash string
+		if checkUpdates {
+			var versionCheckErr error
+			latestIgnoreHash, versionCheckErr = installer.NucleiVersionCheck()
+			if versionCheckErr != nil {
+				if options.Verbose || options.Debug {
+					runner.Logger.Error().Msgf("nuclei version check failed got: %s\n", versionCheckErr)
+				}
 			}
 		}
 
@@ -170,11 +178,13 @@ func New(options *types.Options) (*Runner, error) {
 		if err := tm.FreshInstallIfNotExists(); err != nil {
 			runner.Logger.Warning().Msgf("Failed to install nuclei templates: %s\n", err)
 		}
-		if err := tm.UpdateIfOutdated(); err != nil {
-			runner.Logger.Warning().Msgf("Failed to update nuclei templates: %s\n", err)
+		if checkUpdates {
+			if err := tm.UpdateIfOutdated(); err != nil {
+				runner.Logger.Warning().Msgf("Failed to update nuclei templates: %s\n", err)
+			}
 		}
 
-		if config.DefaultConfig.IgnoreFileNeedsUpdate(latestIgnoreHash) {
+		if checkUpdates && config.DefaultConfig.IgnoreFileNeedsUpdate(latestIgnoreHash) {
 			if err := installer.UpdateIgnoreFile(); err != nil {
 				runner.Logger.Warning().Msgf("Failed to update .nuclei-ignore file: %s\n", err)
 			}

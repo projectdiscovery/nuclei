@@ -8,6 +8,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/headless"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http"
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates"
 	tmpltypes "github.com/projectdiscovery/nuclei/v3/pkg/templates/types"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
@@ -20,6 +21,33 @@ func TestPlanEntryCostWeightsByProtocol(t *testing.T) {
 
 	plain := &templates.Template{ID: "p", TotalRequests: 2}
 	require.Equal(t, 2, planEntry(plain, &contextargs.MetaInput{Input: "t"}, nil).Cost, "unlisted protocols cost one request each")
+}
+
+// countedRequest is a request block with a fixed protocol and count.
+type countedRequest struct {
+	protocols.Request
+	protocol tmpltypes.ProtocolType
+	requests int
+}
+
+func (r countedRequest) Type() tmpltypes.ProtocolType { return r.protocol }
+func (r countedRequest) Requests() int                { return r.requests }
+
+func TestPlanEntryWeightsEachProtocolBlock(t *testing.T) {
+	// one http request and ten javascript calls: Type() reports http for the
+	// whole template, which would price it as 11
+	mixed := &templates.Template{
+		ID:            "mixed",
+		RequestsHTTP:  []*http.Request{{}},
+		TotalRequests: 11,
+		RequestsQueue: []protocols.Request{
+			countedRequest{protocol: tmpltypes.HTTPProtocol, requests: 1},
+			countedRequest{protocol: tmpltypes.JavascriptProtocol, requests: 10},
+		},
+	}
+	entry := planEntry(mixed, &contextargs.MetaInput{Input: "t"}, nil)
+	require.Equal(t, 11, entry.Requests)
+	require.Equal(t, 101, entry.Cost)
 }
 
 func TestPlanListsThePairsTheScanRuns(t *testing.T) {

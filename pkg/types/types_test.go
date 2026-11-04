@@ -17,6 +17,13 @@ func TestCopyPreservesPayloadRandomOrder(t *testing.T) {
 	}
 }
 
+func TestCopyPreservesPlanFile(t *testing.T) {
+	options := &Options{PlanFile: "plan.jsonl"}
+	if options.Copy().PlanFile != "plan.jsonl" {
+		t.Fatal("Copy must preserve PlanFile, or an embedded caller loses plan mode")
+	}
+}
+
 func TestToJSONMapRejectsKeysSharingAStringForm(t *testing.T) {
 	metadata := map[string]interface{}{
 		"labels": []interface{}{map[interface{}]interface{}{1: "int", 1.0: "float64"}},

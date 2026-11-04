@@ -94,23 +94,44 @@ func planEntry(template *templates.Template, value *contextargs.MetaInput, selec
 		Requests:  template.TotalRequests,
 		Dynamic:   template.Flow != "" || template.IsFuzzableRequest(),
 	}
-	if cluster, ok := template.Executer.(*templates.ClusterExecuter); ok {
-		entry.Templates = slices.Sorted(slices.Values(cluster.TemplateIDs(selection)))
-	}
-	// only the root of a workflow is certain to run; subtemplates depend on
-	// what it matches
-	if template.CompiledWorkflow != nil {
+	weight := func(protocol types.ProtocolType) int { return max(protocolCost[protocol], 1) }
+
+	switch {
+	case template.CompiledWorkflow != nil:
+		// only the root of a workflow is certain to run; subtemplates depend
+		// on what it matches
 		entry.Requests = 0
 		for _, workflow := range template.CompiledWorkflow.Workflows {
 			for _, executer := range workflow.Executers {
-				entry.Requests += executer.Executer.Requests()
+				requests := executer.Executer.Requests()
+				entry.Requests += requests
+				entry.Cost += requests * weight(executer.TemplateType)
 			}
 		}
 		entry.Dynamic = true
+	case isCluster(template):
+		cluster := template.Executer.(*templates.ClusterExecuter)
+		entry.Templates = slices.Sorted(slices.Values(cluster.TemplateIDs(selection)))
+		// TotalRequests of a cluster counts only its http and dns requests,
+		// so an ssl cluster would show none
+		entry.Requests = cluster.Requests()
+		entry.Cost = entry.Requests * weight(template.Type())
+	case len(template.RequestsQueue) > 0:
+		// each block is weighted by its own protocol, so a template mixing
+		// http with javascript is not priced as all http
+		for _, request := range template.RequestsQueue {
+			entry.Cost += request.Requests() * weight(request.Type())
+		}
+	default:
+		entry.Cost = entry.Requests * weight(template.Type())
 	}
-	entry.Cost = entry.Requests * max(protocolCost[template.Type()], 1)
 	entry.ID = planEntryID(entry)
 	return entry
+}
+
+func isCluster(template *templates.Template) bool {
+	_, ok := template.Executer.(*templates.ClusterExecuter)
+	return ok
 }
 
 // planEntryID derives the id from what the entry runs, so planning the same
