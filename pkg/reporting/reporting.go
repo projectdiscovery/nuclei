@@ -83,7 +83,9 @@ func New(options *Options, db string, doNotDedupe bool) (Client, error) {
 	// that verifies certificates.
 	if options.HttpClient != nil && options.HttpClient.HTTPClient != nil {
 		if hc := tlsverify.Client(options.HttpClient.HTTPClient); hc != options.HttpClient.HTTPClient {
-			options.HttpClient = retryablehttp.NewWithHTTPClient(hc, retryablehttp.DefaultOptionsSingle)
+			opts := retryablehttp.DefaultOptionsSingle
+			opts.Timeout = hc.Timeout // keep the caller's timeout, also when it is 0
+			options.HttpClient = retryablehttp.NewWithHTTPClient(hc, opts)
 		}
 	}
 
