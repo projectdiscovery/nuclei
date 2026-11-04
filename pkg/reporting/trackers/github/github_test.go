@@ -1,8 +1,10 @@
 package github
 
 import (
+	"context"
 	"crypto/tls"
 	"errors"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"sync/atomic"
@@ -99,4 +101,42 @@ func TestNewRefusesUntrustedCertificateFromInsecureCallerClient(t *testing.T) {
 	require.NoError(t, err)
 	_, err = tracker.CreateIssue(testEvent())
 	require.ErrorContains(t, err, "certificate")
+}
+
+type wrappingTransport struct{ base http.RoundTripper }
+
+func (w *wrappingTransport) RoundTrip(r *http.Request) (*http.Response, error) {
+	return w.base.RoundTrip(r)
+}
+func (w *wrappingTransport) Unwrap() http.RoundTripper { return w.base }
+
+// The scan client wraps its transport and, with a SOCKS proxy, does TLS in its
+// own dialer with the scan TLS config, which skips verification.
+func TestNewRefusesUntrustedCertificateFromInsecureTLSDialer(t *testing.T) {
+	srv := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusCreated)
+		_, _ = w.Write([]byte(`{"number":1}`))
+	}))
+	defer srv.Close()
+
+	var dialed atomic.Int32
+	var dialer net.Dialer
+	base := &http.Transport{
+		DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
+			dialed.Add(1)
+			return dialer.DialContext(ctx, network, addr)
+		},
+		DialTLSContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
+			conn, err := dialer.DialContext(ctx, network, addr)
+			if err != nil {
+				return nil, err
+			}
+			return tls.Client(conn, &tls.Config{InsecureSkipVerify: true}), nil
+		},
+	}
+	tracker, err := New(&Options{BaseURL: srv.URL + "/", Username: "u", Owner: "o", ProjectName: "r", Token: "test-token", HttpClient: clientWithTransport(&wrappingTransport{base: base})})
+	require.NoError(t, err)
+	_, err = tracker.CreateIssue(testEvent())
+	require.ErrorContains(t, err, "certificate")
+	require.Positive(t, dialed.Load(), "the caller's dialer was not used")
 }
