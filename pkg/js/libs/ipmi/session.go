@@ -9,6 +9,7 @@ import (
 	"crypto/rand"
 	"crypto/sha1"
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"hash"
 )
@@ -182,12 +183,19 @@ type keys struct {
 }
 
 // finishSession runs RAKP messages 3 and 4, which is where a wrong password
-// is rejected, and derives the session keys.
+// is rejected, and derives the session keys. Both directions are proven:
+// the BMC's RAKP message 2 code and RAKP message 4 integrity value must
+// match the password, so a peer that only answers with success statuses
+// cannot pass for a login.
 func (s *session) finishSession(h *handshake, password string) (*keys, error) {
 	if len(password) > 20 {
 		return nil, fmt.Errorf("ipmi passwords are at most 20 bytes")
 	}
 	newHash := authHash(h.auth)
+	if newHash != nil && !hmac.Equal(h.bmcMAC, hmacOf(newHash, []byte(password), h.rakp2Salt())) {
+		return nil, errBMCProof
+	}
+
 	rakp3 := []byte{0x00, 0x00, 0x00, 0x00}
 	rakp3 = append(rakp3, h.bmcSessionID...)
 	if newHash != nil {
@@ -210,26 +218,50 @@ func (s *session) finishSession(h *handshake, password string) (*keys, error) {
 
 	sik := hmacOf(newHash, []byte(password),
 		h.consoleRandom, h.bmcRandom, []byte{h.role, byte(len(h.username))}, []byte(h.username))
+	if !rakp4Valid(newHash, sik, h, rakp4) {
+		return nil, errBMCProof
+	}
 	return &keys{
 		integrity: hmacOf(newHash, sik, bytes.Repeat([]byte{0x01}, 20)),
 		aes:       hmacOf(newHash, sik, bytes.Repeat([]byte{0x02}, 20))[:16],
 	}, nil
 }
 
+// errBMCProof means the peer's authentication code does not match the
+// password: a wrong password, or something other than the BMC answering.
+var errBMCProof = errors.New("bmc authentication code does not match the password")
+
+// rakp4Valid checks the RAKP message 4 integrity value, the session key's
+// HMAC over the console random, BMC session ID and BMC GUID, truncated to
+// 12 bytes for sha1 and 16 for md5.
+func rakp4Valid(newHash func() hash.Hash, sik []byte, h *handshake, rakp4 []byte) bool {
+	size := 12
+	if h.auth == authHMACMD5 {
+		size = 16
+	}
+	if len(rakp4) < 8+size {
+		return false
+	}
+	want := hmacOf(newHash, sik, h.consoleRandom, h.bmcSessionID, h.bmcGUID)[:size]
+	return hmac.Equal(rakp4[8:8+size], want)
+}
+
 // established is an authenticated RMCP+ session.
 type established struct {
 	*session
 	algorithms
-	keys         *keys
-	bmcSessionID []byte
-	sequence     uint32
-	requestSeq   byte
+	keys             *keys
+	bmcSessionID     []byte
+	consoleSessionID []byte
+	sequence         uint32
+	requestSeq       byte
 }
 
 // command sends an IPMI request inside the session and returns its
 // completion code and response data.
 func (e *established) command(netFn, cmd byte, data []byte) (byte, []byte, error) {
-	e.requestSeq++
+	// the request sequence is 6 bits on the wire
+	e.requestSeq = (e.requestSeq + 1) & 0x3f
 	header := []byte{bmcAddress, netFn << 2}
 	body := append([]byte{consoleAddress, e.requestSeq << 2, cmd}, data...)
 	message := append(append(header, checksum(header)), body...)
@@ -257,28 +289,64 @@ func (e *established) command(netFn, cmd byte, data []byte) (byte, []byte, error
 		packet = e.sign(packet)
 	}
 
-	reply, err := e.exchange(packet, func(reply []byte) bool {
-		return len(reply) >= 16 && reply[3] == rmcpClassIPMI && reply[4] == authTypeRMCPP && reply[5]&0x3f == payloadIPMI
+	// a reply must be for this session, pass the integrity check when the
+	// session is signed, and answer this request, not an earlier one that
+	// arrived late
+	var payload []byte
+	_, err := e.exchange(packet, func(reply []byte) bool {
+		payload = e.open(reply)
+		return len(payload) >= 8 && payload[4]>>2 == e.requestSeq && payload[5] == cmd
 	})
 	if err != nil {
 		return 0, nil, err
 	}
+	// rqAddr, netFn, checksum, rsAddr, seq, cmd, completion code, data,
+	// checksum
+	return payload[6], bytes.Clone(payload[7 : len(payload)-1]), nil
+}
+
+// open returns the IPMI message in a session reply, or nil when the reply
+// is not for this session or fails its integrity check.
+func (e *established) open(reply []byte) []byte {
+	if len(reply) < 16 || reply[3] != rmcpClassIPMI || reply[4] != authTypeRMCPP || reply[5]&0x3f != payloadIPMI {
+		return nil
+	}
+	if !bytes.Equal(reply[6:10], e.consoleSessionID) {
+		return nil
+	}
 	length := int(binary.LittleEndian.Uint16(reply[14:16]))
 	if len(reply) < 16+length {
-		return 0, nil, fmt.Errorf("truncated ipmi payload")
+		return nil
+	}
+	if e.integrity != integrityNone {
+		if reply[5]&payloadSigned == 0 || !e.verify(reply, 16+length) {
+			return nil
+		}
 	}
 	payload := reply[16 : 16+length]
 	if reply[5]&payloadEncrypted != 0 {
+		var err error
 		if payload, err = decryptPayload(e.keys.aes, payload); err != nil {
-			return 0, nil, err
+			return nil
 		}
 	}
-	// rqAddr, netFn, checksum, rsAddr, seq, cmd, completion code, data,
-	// checksum
-	if len(payload) < 8 || payload[5] != cmd {
-		return 0, nil, fmt.Errorf("unexpected ipmi response")
+	return payload
+}
+
+// verify checks a reply's HMAC-SHA1-96 trailer: the pad after the payload,
+// pad length and next header, then the code over everything from the auth
+// type on.
+func (e *established) verify(reply []byte, payloadEnd int) bool {
+	const codeSize = 12
+	if len(reply) < payloadEnd+2+codeSize {
+		return false
 	}
-	return payload[6], bytes.Clone(payload[7 : len(payload)-1]), nil
+	codeStart := len(reply) - codeSize
+	if reply[codeStart-1] != 0x07 || int(reply[codeStart-2]) != codeStart-2-payloadEnd {
+		return false
+	}
+	want := hmacOf(sha1.New, e.keys.integrity, reply[4:codeStart])[:codeSize]
+	return hmac.Equal(reply[codeStart:], want)
 }
 
 // sign appends the HMAC-SHA1-96 integrity trailer: pad to a multiple of 4 from the auth

@@ -1,9 +1,13 @@
 package ipmi
 
 import (
+	"bytes"
 	"context"
+	"crypto/sha1"
 	"encoding/hex"
+	"net"
 	"testing"
+	"time"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
@@ -107,4 +111,68 @@ func TestLoginRejectsUnsupportedCipherSuites(t *testing.T) {
 	require.ErrorContains(t, err, "unsupported cipher suite 17")
 	_, err = (&Client{}).Command(0x06, 0x01, nil)
 	require.ErrorContains(t, err, "not logged in")
+}
+
+// capturedHandshake is a cipher suite 3 session setup with ipmi_sim for
+// ADMIN/ADMIN, up to and including RAKP message 4.
+func capturedHandshake(t *testing.T) (*handshake, []byte) {
+	return &handshake{
+		algorithms:       cipherSuites[3],
+		consoleSessionID: mustHex(t, "244a5ac8"),
+		bmcSessionID:     mustHex(t, "04170000"),
+		consoleRandom:    mustHex(t, "de862025bb0c5ee6c30a58d383d44cb5"),
+		bmcRandom:        mustHex(t, "b56fef2ee0fcab6664a019a4c88df4f6"),
+		bmcGUID:          mustHex(t, "a123456789abcdefa123456789abcdef"),
+		role:             0x14,
+		username:         "ADMIN",
+		bmcMAC:           mustHex(t, "7fac6f776553c58df508b9ff656b5eacb6c2def9"),
+	}, mustHex(t, "00000000244a5ac8231219c5fc212cdd58c09424")
+}
+
+func TestBMCProofsMatchOnlyTheRealPassword(t *testing.T) {
+	h, rakp4 := capturedHandshake(t)
+	sik := func(password string) []byte {
+		return hmacOf(sha1.New, []byte(password), h.consoleRandom, h.bmcRandom, []byte{h.role, byte(len(h.username))}, []byte(h.username))
+	}
+
+	require.Equal(t, h.bmcMAC, hmacOf(sha1.New, []byte("ADMIN"), h.rakp2Salt()), "rakp 2 code")
+	require.NotEqual(t, h.bmcMAC, hmacOf(sha1.New, []byte("wrong"), h.rakp2Salt()))
+
+	require.True(t, rakp4Valid(sha1.New, sik("ADMIN"), h, rakp4))
+	require.False(t, rakp4Valid(sha1.New, sik("wrong"), h, rakp4))
+	tampered := bytes.Clone(rakp4)
+	tampered[len(tampered)-1] ^= 0xff
+	require.False(t, rakp4Valid(sha1.New, sik("ADMIN"), h, tampered), "a forged success must not pass")
+	require.False(t, rakp4Valid(sha1.New, sik("ADMIN"), h, rakp4[:10]))
+}
+
+func TestShortCommandReplyIsRejectedNotPanicked(t *testing.T) {
+	execID := "ipmi-short"
+	require.NoError(t, protocolstate.Init(&types.Options{ExecutionId: execID}))
+	t.Cleanup(func() { protocolstate.Close(execID) })
+	ctx := context.WithValue(context.Background(), "executionId", execID) //nolint:staticcheck
+
+	// a reply that ends at the completion code, without the checksum
+	bmc, err := net.ListenPacket("udp", "127.0.0.1:0")
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = bmc.Close() })
+	go func() {
+		buf := make([]byte, 512)
+		for {
+			n, addr, err := bmc.ReadFrom(buf)
+			if err != nil {
+				return
+			}
+			reply := bytes.Clone(buf[:21])
+			reply[19] = buf[n-2] // echo the command
+			reply[20] = 0x00
+			_, _ = bmc.WriteTo(reply, addr)
+		}
+	}()
+
+	port := bmc.LocalAddr().(*net.UDPAddr).Port
+	ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
+	defer cancel()
+	_, err = GetSystemGUID(ctx, "127.0.0.1", port)
+	require.ErrorIs(t, err, errNoResponse)
 }

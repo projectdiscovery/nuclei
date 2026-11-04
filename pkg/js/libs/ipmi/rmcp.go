@@ -139,7 +139,8 @@ func (s *session) command(cmd byte, data []byte) ([]byte, error) {
 	reply, err := s.exchange(packet, func(reply []byte) bool {
 		// rmcp (4), session header (10), then rqAddr, netFn, checksum,
 		// rsAddr, seq, cmd, completion code
-		return len(reply) >= 21 && reply[3] == rmcpClassIPMI && reply[4] == authTypeNone && reply[19] == cmd
+		// ... completion code, then at least the trailing checksum
+		return len(reply) >= 22 && reply[3] == rmcpClassIPMI && reply[4] == authTypeNone && reply[19] == cmd
 	})
 	if err != nil {
 		return nil, err

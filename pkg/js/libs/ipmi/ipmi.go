@@ -351,7 +351,7 @@ func (c *Client) Login(ctx context.Context, host string, port int, username stri
 		s.close()
 		return false, err
 	}
-	c.session = &established{session: s, algorithms: alg, keys: k, bmcSessionID: h.bmcSessionID}
+	c.session = &established{session: s, algorithms: alg, keys: k, bmcSessionID: h.bmcSessionID, consoleSessionID: h.consoleSessionID}
 	return true, nil
 }
 
