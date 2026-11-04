@@ -10,6 +10,7 @@ import (
 
 var normalClient *rdap.Client
 var m sync.Mutex
+var doMutex sync.Mutex
 
 // Init initializes the client pool implementation
 func Init(options *types.Options) error {
@@ -47,4 +48,11 @@ func (c *Configuration) Hash() string {
 // Get creates or gets a client for the protocol based on custom configuration
 func Get(options *types.Options, configuration *Configuration) (*rdap.Client, error) {
 	return getNormalClient(), nil
+}
+
+// Do executes an RDAP request safely under concurrency, preventing concurrent map writes in rdap
+func Do(client *rdap.Client, req *rdap.Request) (*rdap.Response, error) {
+	doMutex.Lock()
+	defer doMutex.Unlock()
+	return client.Do(req)
 }

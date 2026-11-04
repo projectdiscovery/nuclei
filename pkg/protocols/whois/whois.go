@@ -124,12 +124,15 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 	}
 	// build an rdap request
 	rdapReq := rdap.NewAutoRequest(query)
-	rdapReq.Server = request.parsedServerURL
+	if request.parsedServerURL != nil {
+		serverCopy := *request.parsedServerURL
+		rdapReq.Server = &serverCopy
+	}
 	if err := request.options.RateLimitTakeContext(input.Context(), query); err != nil {
 		return errors.Wrap(err, "could not take rate limit")
 	}
 	timeStart := time.Now()
-	res, err := request.client.Do(rdapReq)
+	res, err := rdapclientpool.Do(request.client, rdapReq)
 	duration := time.Since(timeStart)
 	if err != nil {
 		return errors.Wrap(err, "could not make whois request")
