@@ -31,6 +31,11 @@ type Browser struct {
 	// use getHTTPClient to get the http client
 	httpClient     *http.Client
 	httpClientOnce *sync.Once
+
+	// use getScreenshotDir to get the screenshot directory
+	screenshotDir     string
+	screenshotDirErr  error
+	screenshotDirOnce sync.Once
 }
 
 // New creates a new nuclei headless browser module
@@ -239,6 +244,16 @@ func (b *Browser) getHTTPClient() (*http.Client, error) {
 // Close closes the browser engine
 //
 // When connected over CDP, it does NOT close the browsers.
+// getScreenshotDir returns the directory that holds the screenshots of
+// templates when local file access is off. It is created once per browser
+// and kept after Close, so the screenshots stay available.
+func (b *Browser) getScreenshotDir() (string, error) {
+	b.screenshotDirOnce.Do(func() {
+		b.screenshotDir, b.screenshotDirErr = os.MkdirTemp("", "nuclei-screenshots-*")
+	})
+	return b.screenshotDir, b.screenshotDirErr
+}
+
 func (b *Browser) Close() {
 	if b.proxy != nil {
 		_ = b.proxy.Close()

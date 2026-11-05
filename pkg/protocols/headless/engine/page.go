@@ -43,6 +43,7 @@ type Page struct {
 	variables          map[string]interface{}
 	lastActionNavigate *Action
 	cancel             context.CancelFunc
+	screenshots        int
 }
 
 // HistoryData contains the page request/response pairs
