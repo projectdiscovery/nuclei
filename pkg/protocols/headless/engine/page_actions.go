@@ -540,7 +540,8 @@ func (p *Page) Screenshot(act *Action, out ActionData) error {
 		return err
 	}
 
-	if to == "" {
+	generatedName := to == ""
+	if generatedName {
 		to = ksuid.New().String()
 		if act.Name != "" {
 			out[act.Name] = to
@@ -625,6 +626,10 @@ func (p *Page) Screenshot(act *Action, out ActionData) error {
 	err = os.WriteFile(filePath, data, 0540)
 	if err != nil {
 		return errors.Wrap(err, "could not write screenshot")
+	}
+	// The generated name alone does not locate a file inside the screenshot directory.
+	if generatedName && act.Name != "" && !lfaAllowed {
+		out[act.Name] = filePath
 	}
 	gologger.Info().Msgf("Screenshot successfully saved at %v\n", filePath)
 	return nil

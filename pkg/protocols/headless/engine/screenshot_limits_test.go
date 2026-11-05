@@ -34,6 +34,13 @@ func chdirTemp(t *testing.T) string {
 // actions on it.
 func runWithoutLFA(t *testing.T, actions []*Action) error {
 	t.Helper()
+	_, err := runWithoutLFAData(t, actions)
+	return err
+}
+
+// runWithoutLFAData is runWithoutLFA that also returns the action data.
+func runWithoutLFAData(t *testing.T, actions []*Action) (ActionData, error) {
+	t.Helper()
 
 	// the proxy of the shared browser dials with the empty execution id
 	require.NoError(t, protocolstate.Init(&types.Options{}))
@@ -58,11 +65,11 @@ func runWithoutLFA(t *testing.T, actions []*Action) error {
 		{ActionType: ActionTypeHolder{ActionType: ActionNavigate}, Data: map[string]string{"url": "{{BaseURL}}"}},
 		{ActionType: ActionTypeHolder{ActionType: ActionWaitLoad}},
 	}, actions...)
-	_, page, err := instance.Run(input, actions, nil, &Options{Timeout: 20 * time.Second, Options: opts})
+	data, page, err := instance.Run(input, actions, nil, &Options{Timeout: 20 * time.Second, Options: opts})
 	if page != nil {
 		page.Close()
 	}
-	return err
+	return data, err
 }
 
 func screenshotAction(args map[string]string) *Action {
@@ -93,6 +100,19 @@ func TestScreenshotWithoutLFAWritesOnlyToScreenshotDir(t *testing.T) {
 	matches, err := filepath.Glob(filepath.Join(os.TempDir(), "nuclei-screenshots-*", name, "deep", "dir", "marker.png"))
 	require.NoError(t, err)
 	require.Len(t, matches, 1, "screenshot is not in the nuclei screenshot directory")
+}
+
+func TestScreenshotWithoutLFANamedResultIsFullPath(t *testing.T) {
+	chdirTemp(t)
+	action := screenshotAction(map[string]string{})
+	action.Name = "shot"
+	data, err := runWithoutLFAData(t, []*Action{action})
+	require.NoError(t, err)
+
+	path, ok := data["shot"].(string)
+	require.True(t, ok)
+	require.True(t, filepath.IsAbs(path), "named result %q does not locate the screenshot", path)
+	require.FileExists(t, path)
 }
 
 func TestScreenshotWithoutLFARejectsPaths(t *testing.T) {
