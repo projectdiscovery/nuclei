@@ -5,7 +5,6 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptest"
-	"strings"
 	"sync/atomic"
 	"testing"
 
@@ -24,11 +23,18 @@ func TestWhoisServerRedirectObeysNetworkPolicy(t *testing.T) {
 		_, _ = w.Write([]byte(`{"objectClassName":"domain","ldhName":"example.com"}`))
 	}))
 	t.Cleanup(internal.Close)
-	redirector := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	// the redirector listens on ::1 so that localhost reaches it while 127.0.0.1 is denied
+	var redirects atomic.Int32
+	redirector := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		redirects.Add(1)
 		http.Redirect(w, r, internal.URL+r.URL.Path, http.StatusFound)
 	}))
+	listener, err := net.Listen("tcp", "[::1]:0")
+	require.NoError(t, err)
+	redirector.Listener = listener
+	redirector.Start()
 	t.Cleanup(redirector.Close)
-	_, port, err := net.SplitHostPort(strings.TrimPrefix(redirector.URL, "http://"))
+	_, port, err := net.SplitHostPort(listener.Addr().String())
 	require.NoError(t, err)
 
 	options := testutils.DefaultOptions.Copy()
@@ -45,5 +51,6 @@ func TestWhoisServerRedirectObeysNetworkPolicy(t *testing.T) {
 
 	input := contextargs.NewWithInput(context.Background(), "example.com")
 	_ = request.ExecuteWithResults(input, nil, nil, func(*output.InternalWrappedEvent) {})
+	require.NotZero(t, redirects.Load(), "the redirector was never reached")
 	require.Zero(t, hits.Load(), "whois redirect reached a denied address")
 }
