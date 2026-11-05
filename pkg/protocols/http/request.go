@@ -1675,8 +1675,7 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 		}
 
 		responseContentType := respChain.Response().Header.Get("Content-Type")
-		isResponseTruncated := (request.MaxSize > 0 && respChain.Body().Len() >= request.MaxSize) ||
-			(request.options.Options.ResponseReadSize > 0 && respChain.Body().Len() >= request.options.Options.ResponseReadSize)
+		isResponseTruncated := respChain.Body().Len() >= maxBodylimit
 		dumpResponse(event, request, fullResponseStr, formedURL, responseContentType, isResponseTruncated, input.MetaInput.Input)
 
 		callback(event)
