@@ -402,7 +402,7 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 
 	// If we have request level timeout, ignore http client timeouts
 	for _, req := range request.Raw {
-		if reTimeoutAnnotation.MatchString(req) {
+		if hasTimeoutAnnotation(req) {
 			connectionConfiguration.NoTimeout = true
 		}
 	}
