@@ -449,7 +449,7 @@ func TestActionScreenshotDeniesSiblingPrefixPathWithoutLFA(t *testing.T) {
 	err = page.isScreenshotPathAllowed(filePath)
 	require.ErrorIs(t, err, ErrLFAccessDenied)
 
-	err = page.isScreenshotPathAllowed(filepath.Join(cwd, "test.png"))
+	err = page.isScreenshotPathAllowed("test.png")
 	require.NoError(t, err)
 }
 
@@ -541,8 +541,8 @@ func TestActionScreenshotDeniesPostExtensionEscape(t *testing.T) {
 		"a sibling .png in cwd's parent must be rejected")
 
 	// Sanity: a path inside cwd remains allowed.
-	require.NoError(t, page.isScreenshotPathAllowed(filepath.Join(cwd, "ok.png")),
-		"a path inside cwd must still be allowed")
+	require.NoError(t, page.isScreenshotPathAllowed("ok.png"),
+		"a relative path must still be allowed")
 }
 
 func TestActionScreenshotDeniesSymlinkedParentOutsideCWDWithoutLFA(t *testing.T) {
@@ -1051,6 +1051,10 @@ func TestMain(m *testing.M) {
 	code := m.Run()
 
 	browser.Close()
+	// screenshots of tests without local file access land here
+	if browser.screenshotDir != "" {
+		_ = os.RemoveAll(browser.screenshotDir)
+	}
 	os.Exit(code)
 }
 
