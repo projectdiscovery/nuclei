@@ -241,9 +241,6 @@ func (b *Browser) getHTTPClient() (*http.Client, error) {
 	return b.httpClient, err
 }
 
-// Close closes the browser engine
-//
-// When connected over CDP, it does NOT close the browsers.
 // getScreenshotDir returns the directory that holds the screenshots of
 // templates when local file access is off. It is created once per browser
 // and kept after Close, so the screenshots stay available.
@@ -254,6 +251,9 @@ func (b *Browser) getScreenshotDir() (string, error) {
 	return b.screenshotDir, b.screenshotDirErr
 }
 
+// Close closes the browser engine
+//
+// When connected over CDP, it does NOT close the browsers.
 func (b *Browser) Close() {
 	if b.proxy != nil {
 		_ = b.proxy.Close()
