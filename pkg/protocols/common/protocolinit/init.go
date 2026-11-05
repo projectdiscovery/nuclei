@@ -35,5 +35,6 @@ func Init(options *types.Options) error {
 }
 
 func Close(executionId string) {
+	dnsclientpool.Close(executionId)
 	protocolstate.Close(executionId)
 }

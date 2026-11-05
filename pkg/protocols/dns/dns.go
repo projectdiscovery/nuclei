@@ -15,7 +15,6 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/render"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/replacer"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/dns/dnsclientpool"
-	"github.com/projectdiscovery/retryabledns"
 	fileutil "github.com/projectdiscovery/utils/file"
 )
 
@@ -87,7 +86,7 @@ type Request struct {
 	generator *generators.PayloadGenerator
 
 	CompiledOperators *operators.Operators `yaml:"-" json:"-"`
-	dnsClient         *retryabledns.Client
+	dnsClient         *dnsclientpool.Client
 	options           *protocols.ExecutorOptions
 
 	// cache any variables that may be needed for operation.
@@ -205,7 +204,7 @@ func resolverHost(resolver string) string {
 	return r
 }
 
-func (request *Request) getDnsClient(options *protocols.ExecutorOptions, metadata map[string]interface{}) (*retryabledns.Client, error) {
+func (request *Request) getDnsClient(options *protocols.ExecutorOptions, metadata map[string]interface{}) (*dnsclientpool.Client, error) {
 	dnsClientOptions := &dnsclientpool.Configuration{
 		Retries: request.Retries,
 		Proxy:   options.Options.AliveSocksProxy,
