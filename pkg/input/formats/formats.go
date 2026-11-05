@@ -12,7 +12,8 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// ParseReqRespCallback is a callback function for discovered raw requests
+// ParseReqRespCallback is a callback function for discovered raw requests.
+// It returns false to ask the format to stop parsing.
 type ParseReqRespCallback func(rr *types.RequestResponse) bool
 
 // InputFormatOptions contains options for the input
