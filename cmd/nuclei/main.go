@@ -246,6 +246,16 @@ func main() {
 
 // readConfig defines the cli flags and loads them from the command line and
 // config files.
+// normalizeLiteralFileSliceValue preserves '#' inside values such as search
+// queries and error names, while ignoring whole-line comments in input files.
+func normalizeLiteralFileSliceValue(s string) string {
+	s = strings.TrimSpace(s)
+	if strings.HasPrefix(s, "#") {
+		return ""
+	}
+	return s
+}
+
 func readConfig() *goflags.FlagSet {
 	var selectedFiles configuration.Selection
 	// when true updates nuclei binary to latest version
@@ -254,6 +264,11 @@ func readConfig() *goflags.FlagSet {
 	var resetRequested bool
 	var pdcpAuth string
 	var fuzzFlag bool
+
+	// FileStringSliceOptions includes file support configured by the runner.
+	// The default normalizer strips everything after '#', including in CLI input.
+	literalSliceOptions := goflags.FileStringSliceOptions
+	literalSliceOptions.Normalize = normalizeLiteralFileSliceValue
 
 	flagSet := goflags.NewFlagSet()
 	flagSet.CaseSensitive = true
@@ -427,7 +442,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 
 	flagSet.CreateGroup("uncover", "Uncover",
 		flagSet.BoolVarP(&options.Uncover, "uncover", "uc", false, "enable uncover engine"),
-		flagSet.StringSliceVarP(&options.UncoverQuery, "uncover-query", "uq", nil, "uncover search query", goflags.FileStringSliceOptions),
+		flagSet.StringSliceVarP(&options.UncoverQuery, "uncover-query", "uq", nil, "uncover search query", literalSliceOptions),
 		flagSet.StringSliceVarP(&options.UncoverEngine, "uncover-engine", "ue", nil, fmt.Sprintf("uncover search engine (%s) (default shodan)", uncover.GetUncoverSupportedAgents()), goflags.FileStringSliceOptions),
 		flagSet.StringVarP(&options.UncoverField, "uncover-field", "uf", "ip:port", "uncover fields to return (ip,port,host)"),
 		flagSet.IntVarP(&options.UncoverLimit, "uncover-limit", "ul", 100, "uncover results to return"),
@@ -455,7 +470,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.IntVar(&options.Retries, "retries", 1, "number of times to retry a failed request"),
 		flagSet.BoolVarP(&options.LeaveDefaultPorts, "leave-default-ports", "ldp", false, "leave default HTTP/HTTPS ports (eg. host:80,host:443)"),
 		flagSet.IntVarP(&options.MaxHostError, "max-host-error", "mhe", 30, "max errors for a host before skipping from scan"),
-		flagSet.StringSliceVarP(&options.TrackError, "track-error", "te", nil, "adds given error to max-host-error watchlist (standard, file)", goflags.FileStringSliceOptions),
+		flagSet.StringSliceVarP(&options.TrackError, "track-error", "te", nil, "adds given error to max-host-error watchlist (standard, file)", literalSliceOptions),
 		flagSet.BoolVarP(&options.NoHostErrors, "no-mhe", "nmhe", false, "disable skipping host from scan based on errors"),
 		flagSet.BoolVar(&options.Project, "project", false, "use a project folder to avoid sending same request multiple times"),
 		flagSet.StringVar(&options.ProjectPath, "project-path", os.TempDir(), "set a specific project path"),
