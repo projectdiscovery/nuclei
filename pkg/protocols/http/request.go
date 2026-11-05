@@ -1989,7 +1989,8 @@ func (request *Request) needsFullResponse(generatedRequest *generatedRequest) bo
 	}
 	if request.options != nil && request.options.Options != nil {
 		cliOptions := request.options.Options
-		if cliOptions.Debug || cliOptions.DebugResponse || cliOptions.StoreResponse || cliOptions.HTTPStats {
+		// -ms writes the response of failed requests too, and a failure never reaches the lazy fill
+		if cliOptions.Debug || cliOptions.DebugResponse || cliOptions.StoreResponse || cliOptions.HTTPStats || cliOptions.MatcherStatus {
 			return true
 		}
 	}
