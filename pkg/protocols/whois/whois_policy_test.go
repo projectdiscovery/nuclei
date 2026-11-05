@@ -11,6 +11,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/internal/tests/testutils"
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolinit"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 	"github.com/stretchr/testify/require"
 )
@@ -23,7 +24,7 @@ func TestWhoisServerRedirectObeysNetworkPolicy(t *testing.T) {
 		_, _ = w.Write([]byte(`{"objectClassName":"domain","ldhName":"example.com"}`))
 	}))
 	t.Cleanup(internal.Close)
-	// the redirector listens on ::1 so that localhost reaches it while 127.0.0.1 is denied
+	// the redirector listens on ::1 so that it is reached while 127.0.0.1 is denied
 	var redirects atomic.Int32
 	redirector := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		redirects.Add(1)
@@ -41,12 +42,11 @@ func TestWhoisServerRedirectObeysNetworkPolicy(t *testing.T) {
 	options.SetExecutionID(t.Name())
 	options.ExcludeTargets = []string{"127.0.0.1"}
 	testutils.Init(options)
-	t.Cleanup(func() { testutils.Cleanup(options) })
-	// localhost passes the server check through ::1, while 127.0.0.1 is denied
-	require.True(t, protocolstate.IsHostAllowed(options.ExecutionId, "localhost"))
+	t.Cleanup(func() { protocolinit.Close(options.ExecutionId) })
+	require.True(t, protocolstate.IsHostAllowed(options.ExecutionId, "::1"))
 
 	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{ID: "whois-redirect"})
-	request := &Request{ID: "whois-redirect", Query: "example.com", Server: "http://localhost:" + port + "/rdap/"}
+	request := &Request{ID: "whois-redirect", Query: "example.com", Server: "http://[::1]:" + port + "/rdap/"}
 	require.NoError(t, request.Compile(executerOpts))
 
 	input := contextargs.NewWithInput(context.Background(), "example.com")
