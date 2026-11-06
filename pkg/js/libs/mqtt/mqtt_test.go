@@ -151,7 +151,7 @@ func startMockMQTTBroker(t *testing.T) (net.Listener, int) {
 }
 
 func handleMockClient(conn net.Conn) {
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	for {
 		header, payload, err := readPacket(conn)
@@ -218,7 +218,7 @@ func TestMockBrokerInteractions(t *testing.T) {
 	ctx := context.WithValue(context.Background(), "executionId", execID) //nolint:staticcheck
 
 	l, port := startMockMQTTBroker(t)
-	defer l.Close()
+	defer func() { _ = l.Close() }()
 
 	// 1. Test IsMQTT
 	isMQTT, err := IsMQTT(ctx, "127.0.0.1", port)
@@ -304,7 +304,7 @@ func TestSubscribePartialPacketClosesConnection(t *testing.T) {
 
 	l, err := net.Listen("tcp", "127.0.0.1:0")
 	require.NoError(t, err)
-	defer l.Close()
+	defer func() { _ = l.Close() }()
 	port := l.Addr().(*net.TCPAddr).Port
 
 	go func() {
@@ -312,7 +312,7 @@ func TestSubscribePartialPacketClosesConnection(t *testing.T) {
 		if err != nil {
 			return
 		}
-		defer conn.Close()
+		defer func() { _ = conn.Close() }()
 		for {
 			header, payload, err := readPacket(conn)
 			if err != nil {
@@ -349,7 +349,7 @@ func TestPingWithInFlightPublish(t *testing.T) {
 
 	l, err := net.Listen("tcp", "127.0.0.1:0")
 	require.NoError(t, err)
-	defer l.Close()
+	defer func() { _ = l.Close() }()
 
 	port := l.Addr().(*net.TCPAddr).Port
 
@@ -358,7 +358,7 @@ func TestPingWithInFlightPublish(t *testing.T) {
 		if err != nil {
 			return
 		}
-		defer conn.Close()
+		defer func() { _ = conn.Close() }()
 
 		for {
 			header, _, err := readPacket(conn)
