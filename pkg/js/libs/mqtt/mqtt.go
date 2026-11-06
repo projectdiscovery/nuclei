@@ -526,24 +526,31 @@ func (c *Client) Ping(ctx context.Context) (bool, error) {
 	}
 
 	_ = c.conn.SetDeadline(time.Now().Add(5 * time.Second))
+	_ = c.conn.SetWriteDeadline(time.Now().Add(5 * time.Second))
 	if _, err := c.conn.Write(buildPingreqPacket()); err != nil {
 		_ = c.conn.Close()
 		c.conn = nil
 		return false, fmt.Errorf("failed to send PINGREQ: %w", err)
 	}
 
-	header, _, err := readPacket(c.conn)
-	if err != nil {
-		_ = c.conn.Close()
-		c.conn = nil
-		return false, fmt.Errorf("failed to read PINGRESP: %w", err)
-	}
+	for {
+		header, _, err := readPacket(c.conn)
+		if err != nil {
+			_ = c.conn.Close()
+			c.conn = nil
+			return false, fmt.Errorf("failed to read PINGRESP: %w", err)
+		}
 
-	if (header >> 4) != PacketPingresp {
-		return false, fmt.Errorf("unexpected ping response packet: %d", header>>4)
+		packetType := header >> 4
+		if packetType == PacketPingresp {
+			return true, nil
+		}
+		if packetType == PacketPublish {
+			// Broker delivered an incoming publish message while ping was in flight; continue waiting for PINGRESP
+			continue
+		}
+		return false, fmt.Errorf("unexpected ping response packet: %d", packetType)
 	}
-
-	return true, nil
 }
 
 // Close cleanly disconnects and closes the connection.

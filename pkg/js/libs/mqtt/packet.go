@@ -131,7 +131,10 @@ func buildConnectPacket(clientID, username, password string, cleanSession bool, 
 	if cleanSession {
 		flags |= 0x02
 	}
-	if username != "" {
+	// Per MQTT 3.1.1 spec (MQTT-3.1.2-22): If the User Name Flag is 0, the Password Flag MUST be 0.
+	// If a password is provided, the User Name Flag MUST be set (encoding an empty username if omitted).
+	hasUsername := username != "" || password != ""
+	if hasUsername {
 		flags |= 0x80
 	}
 	if password != "" {
@@ -152,7 +155,7 @@ func buildConnectPacket(clientID, username, password string, cleanSession bool, 
 	}
 	payload = append(payload, cidBytes...)
 
-	if username != "" {
+	if hasUsername {
 		userBytes, err := encodeString(username)
 		if err != nil {
 			return nil, fmt.Errorf("invalid username: %w", err)

@@ -122,7 +122,7 @@ func TestRequestsHonourNetworkPolicy(t *testing.T) {
 	execID := "mqtt-deny"
 	require.NoError(t, protocolstate.Init(&types.Options{ExecutionId: execID, ExcludeTargets: []string{"203.0.113.50"}}))
 	t.Cleanup(func() { protocolstate.Close(execID) })
-	ctx := context.WithValue(context.Background(), "executionId", execID)
+	ctx := context.WithValue(context.Background(), "executionId", execID) //nolint:staticcheck
 
 	_, err := IsMQTT(ctx, "203.0.113.50", 1883)
 	require.Error(t, err)
@@ -215,7 +215,7 @@ func TestMockBrokerInteractions(t *testing.T) {
 	execID := "mqtt-mock-test"
 	require.NoError(t, protocolstate.Init(&types.Options{ExecutionId: execID}))
 	t.Cleanup(func() { protocolstate.Close(execID) })
-	ctx := context.WithValue(context.Background(), "executionId", execID)
+	ctx := context.WithValue(context.Background(), "executionId", execID) //nolint:staticcheck
 
 	l, port := startMockMQTTBroker(t)
 	defer l.Close()
@@ -263,4 +263,79 @@ func TestMockBrokerInteractions(t *testing.T) {
 	// 8. Test Close and Double Close
 	require.NoError(t, client.Close())
 	require.NoError(t, client.Close())
+}
+
+func TestPasswordWithoutUsername(t *testing.T) {
+	// MQTT 3.1.1 (MQTT-3.1.2-22): If Password flag is set, User Name flag MUST be set.
+	pkt, err := buildConnectPacket("token-client", "", "my-secret-token", true, 60)
+	require.NoError(t, err)
+
+	r := bytes.NewReader(pkt)
+	_, payload, err := readPacket(r)
+	require.NoError(t, err)
+
+	// CleanSession (0x02) | User (0x80) | Pass (0x40) = 0xC2
+	require.Equal(t, byte(0xC2), payload[7])
+
+	// Username length at payload[10:12] should be 0 (empty string)
+	userLen := binary.BigEndian.Uint16(payload[10:12])
+	require.Equal(t, uint16(0), userLen)
+
+	// Password follows username at payload[12:14]
+	passLen := binary.BigEndian.Uint16(payload[12:14])
+	require.Equal(t, uint16(len("my-secret-token")), passLen)
+	require.Equal(t, "my-secret-token", string(payload[14:14+passLen]))
+}
+
+func TestPingWithInFlightPublish(t *testing.T) {
+	execID := "mqtt-ping-inflight"
+	require.NoError(t, protocolstate.Init(&types.Options{ExecutionId: execID}))
+	t.Cleanup(func() { protocolstate.Close(execID) })
+	ctx := context.WithValue(context.Background(), "executionId", execID) //nolint:staticcheck
+
+	l, err := net.Listen("tcp", "127.0.0.1:0")
+	require.NoError(t, err)
+	defer l.Close()
+
+	port := l.Addr().(*net.TCPAddr).Port
+
+	go func() {
+		conn, err := l.Accept()
+		if err != nil {
+			return
+		}
+		defer conn.Close()
+
+		for {
+			header, _, err := readPacket(conn)
+			if err != nil {
+				return
+			}
+			packetType := header >> 4
+			switch packetType {
+			case PacketConnect:
+				_, _ = conn.Write([]byte{0x20, 0x02, 0x00, ConnAccepted})
+			case PacketPingreq:
+				// Send a PUBLISH packet first before PINGRESP
+				pubPkt, _ := buildPublishPacket("sensors/temp", []byte("25.0"), 0, false, 0)
+				_, _ = conn.Write(pubPkt)
+				// Then send PINGRESP
+				_, _ = conn.Write([]byte{PacketPingresp << 4, 0x00})
+			case PacketDisconnect:
+				return
+			}
+		}
+	}()
+
+	client := &Client{}
+	res, err := client.Connect(ctx, "127.0.0.1", port, nil)
+	require.NoError(t, err)
+	require.True(t, res.Success)
+
+	// Ping should skip the in-flight PUBLISH and successfully receive PINGRESP
+	alive, err := client.Ping(ctx)
+	require.NoError(t, err)
+	require.True(t, alive)
+
+	_ = client.Close()
 }
