@@ -55,6 +55,17 @@ var (
 	inlineSecretsTempMu  sync.Mutex
 )
 
+// normalizeHeaderValue trims a -H value and drops it when the whole line is a
+// "#" comment. The goflags default strips inline comments, which cut values
+// such as "Cookie: color=#fff" at the "#".
+func normalizeHeaderValue(s string) string {
+	s = strings.TrimSpace(s)
+	if strings.HasPrefix(s, "#") {
+		return ""
+	}
+	return s
+}
+
 func main() {
 	options.Logger = gologger.DefaultLogger
 
@@ -255,6 +266,11 @@ func readConfig() *goflags.FlagSet {
 	var pdcpAuth string
 	var fuzzFlag bool
 
+	// FileStringSliceOptions as set up by runner.ConfigureOptions, but keeping
+	// "#" inside -H values
+	headerSliceOptions := goflags.FileStringSliceOptions
+	headerSliceOptions.Normalize = normalizeHeaderValue
+
 	flagSet := goflags.NewFlagSet()
 	flagSet.CaseSensitive = true
 	flagSet.SetDescription(`Nuclei is a fast, template based vulnerability scanner focusing
@@ -367,7 +383,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.IntVarP(&options.MaxRedirects, "max-redirects", "mr", 10, "max number of redirects to follow for http templates"),
 		flagSet.BoolVarP(&options.DisableRedirects, "disable-redirects", "dr", false, "disable redirects for http templates"),
 		flagSet.StringVarP(&options.ReportingConfig, "report-config", "rc", "", "nuclei reporting module configuration file"), // TODO merge into the config file or rename to issue-tracking
-		flagSet.StringSliceVarP(&options.CustomHeaders, "header", "H", nil, "custom header/cookie to include in all http request in header:value format (cli, file)", goflags.FileStringSliceOptions),
+		flagSet.StringSliceVarP(&options.CustomHeaders, "header", "H", nil, "custom header/cookie to include in all http request in header:value format (cli, file)", headerSliceOptions),
 		flagSet.RuntimeMapVarP(&options.Vars, "var", "V", nil, "custom vars in key=value format"),
 		flagSet.StringVarP(&options.ResolversFile, "resolvers", "r", "", "file containing resolver list for nuclei"),
 		flagSet.BoolVarP(&options.SystemResolvers, "system-resolvers", "sr", false, "use system DNS resolving as error fallback"),
