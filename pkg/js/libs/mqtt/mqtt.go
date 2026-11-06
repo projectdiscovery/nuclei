@@ -110,7 +110,7 @@ func dial(ctx context.Context, host string, port int, useTLS bool, insecureSkipV
 	if useTLS {
 		tlsConn := tls.Client(conn, &tls.Config{
 			InsecureSkipVerify: insecureSkipVerify,
-			MinVersion:         tls.VersionTLS10,
+			MinVersion:         tls.VersionTLS12,
 			ServerName:         host,
 		})
 		if err := tlsConn.HandshakeContext(ctx); err != nil {
