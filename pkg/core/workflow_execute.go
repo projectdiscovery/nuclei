@@ -3,6 +3,7 @@ package core
 import (
 	"fmt"
 	"net/http/cookiejar"
+	"sync"
 	"sync/atomic"
 
 	"github.com/projectdiscovery/gologger"
@@ -32,18 +33,31 @@ func (e *Engine) executeWorkflow(ctx *scan.ScanContext, w *workflows.Workflow) b
 		templateThreads++
 	}
 	swg, _ := syncutil.New(syncutil.WithSize(templateThreads))
+	// pending tracks every started step until it returns. swg only limits
+	// concurrency and its slots can be released early, so completion is
+	// tracked here instead.
+	var pending sync.WaitGroup
 
 	for _, template := range w.Workflows {
 		newCtx := scan.NewScanContext(ctx.Context(), ctx.Input.Clone())
 		// Root steps do not own a waitgroup slot.
-		if err := e.runWorkflowStep(template, newCtx, results, swg, w, nil); err != nil {
+		if err := e.runWorkflowStep(template, newCtx, results, swg, &pending, w, nil); err != nil {
 			gologger.Warning().Msgf(workflowStepExecutionError, template.Template, err)
 		}
 	}
 
-	swg.Wait()
+	pending.Wait()
 
 	return results.Load()
+}
+
+// slotRelease returns a func that gives back one swg slot. It is safe to call
+// from several goroutines and several times; only the first call releases.
+func slotRelease(swg *syncutil.AdaptiveWaitGroup) func() {
+	var once sync.Once
+	return func() {
+		once.Do(swg.Done)
+	}
 }
 
 // runWorkflowStep runs a workflow step for the workflow. It executes the workflow
@@ -54,7 +68,10 @@ func (e *Engine) executeWorkflow(ctx *scan.ScanContext, w *workflows.Workflow) b
 // blocks on swg.AddWithContext for child steps; otherwise every in-flight
 // parent can hold a slot while waiting for another, which deadlocks when the
 // number of matching nested steps reaches TemplateThreads (see #8074).
-func (e *Engine) runWorkflowStep(template *workflows.WorkflowTemplate, ctx *scan.ScanContext, results *atomic.Bool, swg *syncutil.AdaptiveWaitGroup, w *workflows.Workflow, releaseSlot func()) error {
+//
+// pending is incremented for every child step before it starts, and each child
+// calls Done when it returns, so the root can wait for the whole tree.
+func (e *Engine) runWorkflowStep(template *workflows.WorkflowTemplate, ctx *scan.ScanContext, results *atomic.Bool, swg *syncutil.AdaptiveWaitGroup, pending *sync.WaitGroup, w *workflows.Workflow, releaseSlot func()) error {
 	var firstMatched bool
 	var err error
 	var mainErr error
@@ -146,21 +163,17 @@ func (e *Engine) runWorkflowStep(template *workflows.WorkflowTemplate, ctx *scan
 						if err := swg.AddWithContext(ctx.Context()); err != nil {
 							return
 						}
+						pending.Add(1)
 
 						go func(subtemplate *workflows.WorkflowTemplate) {
-							slotReleased := false
-							release := func() {
-								if !slotReleased {
-									swg.Done()
-									slotReleased = true
-								}
-							}
+							defer pending.Done()
+							release := slotRelease(swg)
 							defer release()
 
 							// create a new context with the same input but with unset callbacks
 							// clone the Input so that other parallel executions won't overwrite the shared variables when subsequent templates are running
 							subCtx := scan.NewScanContext(ctx.Context(), ctx.Input.Clone())
-							if err := e.runWorkflowStep(subtemplate, subCtx, results, swg, w, release); err != nil {
+							if err := e.runWorkflowStep(subtemplate, subCtx, results, swg, pending, w, release); err != nil {
 								gologger.Warning().Msgf(workflowStepExecutionError, subtemplate.Template, err)
 							}
 						}(subtemplate)
@@ -189,20 +202,16 @@ func (e *Engine) runWorkflowStep(template *workflows.WorkflowTemplate, ctx *scan
 			if err := swg.AddWithContext(ctx.Context()); err != nil {
 				return err
 			}
+			pending.Add(1)
 
 			go func(template *workflows.WorkflowTemplate) {
-				slotReleased := false
-				release := func() {
-					if !slotReleased {
-						swg.Done()
-						slotReleased = true
-					}
-				}
+				defer pending.Done()
+				release := slotRelease(swg)
 				defer release()
 
 				// create a new context with the same input but with unset callbacks
 				subCtx := scan.NewScanContext(ctx.Context(), ctx.Input.Clone())
-				if err := e.runWorkflowStep(template, subCtx, results, swg, w, release); err != nil {
+				if err := e.runWorkflowStep(template, subCtx, results, swg, pending, w, release); err != nil {
 					gologger.Warning().Msgf(workflowStepExecutionError, template.Template, err)
 				}
 			}(subtemplate)
