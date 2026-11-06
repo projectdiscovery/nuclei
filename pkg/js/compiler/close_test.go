@@ -19,6 +19,12 @@ func TestCloseWithoutConnection(t *testing.T) {
 			ExportAs('closed', new ssh.SSHClient().Close());
 			true;
 		`,
+		"net": `
+			const net = require('nuclei/net');
+			new net.NetConn().Close();
+			ExportAs('closed', true);
+			true;
+		`,
 	}
 	for name, script := range scripts {
 		t.Run(name, func(t *testing.T) {
