@@ -15,6 +15,7 @@ export * as krbroast from './krbroast';
 export * as ldap from './ldap';
 export * as mssql from './mssql';
 export * as mysql from './mysql';
+export * as mqtt from './mqtt';
 export * as net from './net';
 export * as oracle from './oracle';
 export * as pop3 from './pop3';
