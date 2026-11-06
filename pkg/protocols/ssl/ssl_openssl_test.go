@@ -98,3 +98,32 @@ func TestSSLOpenSSLObeysNetworkPolicy(t *testing.T) {
 	require.Equal(t, "allowed", event["subject_cn"])
 	require.Zero(t, deniedHandshakes.Load(), "openssl connected to a denied address")
 }
+
+func TestSSLOpenSSLCustomIPObeysNetworkPolicy(t *testing.T) {
+	if !openssl.IsAvailable() {
+		t.Skip("openssl binary is not installed")
+	}
+
+	// The input pins the denied address ::1 as its custom ip, so the request
+	// skips the name lookup. The openssl binary must still not connect to it.
+	var deniedHandshakes atomic.Int32
+	denied := serveTLS(t, "[::1]:0", "denied", &deniedHandshakes)
+	_, port, err := net.SplitHostPort(denied)
+	require.NoError(t, err)
+
+	options := testutils.DefaultOptions.Copy()
+	options.SetExecutionID(t.Name())
+	options.ExcludeTargets = []string{"::1"}
+	testutils.Init(options)
+	t.Cleanup(func() { testutils.Cleanup(options) })
+	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{ID: "ssl-openssl-custom-ip"})
+	executerOpts.IsMultiProtocol = true
+
+	request := &Request{ID: "ssl-openssl-custom-ip", Address: "{{Host}}:{{Port}}", ScanMode: "openssl"}
+	require.NoError(t, request.Compile(executerOpts))
+
+	input := contextargs.NewWithInput(context.Background(), net.JoinHostPort("localhost", port))
+	input.MetaInput.CustomIP = "::1"
+	_ = request.ExecuteWithResults(input, nil, nil, func(*output.InternalWrappedEvent) {})
+	require.Zero(t, deniedHandshakes.Load(), "openssl connected to a denied custom ip")
+}
