@@ -61,6 +61,7 @@ export interface ConnectOptions {
     CleanSession?: boolean;
     KeepAlive?: number;
     TLS?: boolean;
+    InsecureSkipVerify?: boolean;
     Timeout?: number;
 }
 

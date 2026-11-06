@@ -52,8 +52,9 @@ type (
 		ClientID     string `json:"client_id,omitempty"`
 		CleanSession *bool  `json:"clean_session,omitempty"`
 		KeepAlive    int    `json:"keep_alive,omitempty"`
-		TLS          bool   `json:"tls,omitempty"`
-		Timeout      int    `json:"timeout,omitempty"`
+		TLS                bool   `json:"tls,omitempty"`
+		InsecureSkipVerify *bool  `json:"insecure_skip_verify,omitempty"`
+		Timeout            int    `json:"timeout,omitempty"`
 	}
 
 	// ConnectResult is the response returned by an MQTT connection attempt.
@@ -92,7 +93,7 @@ type (
 )
 
 // dial opens a network connection to host:port respecting protocolstate policy and context.
-func dial(ctx context.Context, host string, port int, useTLS bool, timeout time.Duration) (net.Conn, error) {
+func dial(ctx context.Context, host string, port int, useTLS bool, insecureSkipVerify bool, timeout time.Duration) (net.Conn, error) {
 	if host == "" || port <= 0 {
 		return nil, fmt.Errorf("invalid host or port")
 	}
@@ -107,7 +108,8 @@ func dial(ctx context.Context, host string, port int, useTLS bool, timeout time.
 
 	if useTLS {
 		tlsConn := tls.Client(conn, &tls.Config{
-			InsecureSkipVerify: true,
+			InsecureSkipVerify: insecureSkipVerify,
+			MinVersion:         tls.VersionTLS10,
 			ServerName:         host,
 		})
 		if err := tlsConn.HandshakeContext(ctx); err != nil {
@@ -129,7 +131,7 @@ func dial(ctx context.Context, host string, port int, useTLS bool, timeout time.
 // log(isMqtt);
 // ```
 func IsMQTT(ctx context.Context, host string, port int) (bool, error) {
-	conn, err := dial(ctx, host, port, false, defaultTimeout)
+	conn, err := dial(ctx, host, port, false, true, defaultTimeout)
 	if err != nil {
 		return false, err
 	}
@@ -165,7 +167,7 @@ func IsMQTT(ctx context.Context, host string, port int) (bool, error) {
 // log(allowed);
 // ```
 func IsAnonymousAllowed(ctx context.Context, host string, port int) (bool, error) {
-	conn, err := dial(ctx, host, port, false, defaultTimeout)
+	conn, err := dial(ctx, host, port, false, true, defaultTimeout)
 	if err != nil {
 		return false, err
 	}
@@ -220,6 +222,7 @@ func (c *Client) Connect(ctx context.Context, host string, port int, options *Co
 	clientID := "nuclei"
 	var username, password string
 	useTLS := false
+	insecureSkipVerify := true
 
 	if options != nil {
 		if options.Timeout > 0 {
@@ -238,13 +241,16 @@ func (c *Client) Connect(ctx context.Context, host string, port int, options *Co
 		if options.CleanSession != nil {
 			cleanSession = *options.CleanSession
 		}
+		if options.InsecureSkipVerify != nil {
+			insecureSkipVerify = *options.InsecureSkipVerify
+		}
 		username = options.Username
 		password = options.Password
 		useTLS = options.TLS
 	}
 
 	c.timeout = timeout
-	conn, err := dial(ctx, host, port, useTLS, timeout)
+	conn, err := dial(ctx, host, port, useTLS, insecureSkipVerify, timeout)
 	if err != nil {
 		return &ConnectResult{
 			Success:    false,
