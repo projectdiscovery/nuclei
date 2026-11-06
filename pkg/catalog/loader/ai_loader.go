@@ -10,7 +10,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/alecthomas/chroma/quick"
+	"github.com/alecthomas/chroma/v2/quick"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	pdcpauth "github.com/projectdiscovery/utils/auth/pdcp"
