@@ -35,7 +35,8 @@ func (e *Engine) executeWorkflow(ctx *scan.ScanContext, w *workflows.Workflow) b
 
 	for _, template := range w.Workflows {
 		newCtx := scan.NewScanContext(ctx.Context(), ctx.Input.Clone())
-		if err := e.runWorkflowStep(template, newCtx, results, swg, w); err != nil {
+		// Root steps do not own a waitgroup slot.
+		if err := e.runWorkflowStep(template, newCtx, results, swg, w, nil); err != nil {
 			gologger.Warning().Msgf(workflowStepExecutionError, template.Template, err)
 		}
 	}
@@ -47,7 +48,13 @@ func (e *Engine) executeWorkflow(ctx *scan.ScanContext, w *workflows.Workflow) b
 
 // runWorkflowStep runs a workflow step for the workflow. It executes the workflow
 // in a recursive manner running all subtemplates and matchers.
-func (e *Engine) runWorkflowStep(template *workflows.WorkflowTemplate, ctx *scan.ScanContext, results *atomic.Bool, swg *syncutil.AdaptiveWaitGroup, w *workflows.Workflow) error {
+//
+// releaseSlot, when non-nil, releases the AdaptiveWaitGroup slot held by the
+// goroutine that is running this step. It must be called before this step
+// blocks on swg.AddWithContext for child steps; otherwise every in-flight
+// parent can hold a slot while waiting for another, which deadlocks when the
+// number of matching nested steps reaches TemplateThreads (see #8074).
+func (e *Engine) runWorkflowStep(template *workflows.WorkflowTemplate, ctx *scan.ScanContext, results *atomic.Bool, swg *syncutil.AdaptiveWaitGroup, w *workflows.Workflow, releaseSlot func()) error {
 	var firstMatched bool
 	var err error
 	var mainErr error
@@ -131,18 +138,29 @@ func (e *Engine) runWorkflowStep(template *workflows.WorkflowTemplate, ctx *scan
 						continue
 					}
 
+					// Free this step's slot before blocking on child acquires.
+					if releaseSlot != nil {
+						releaseSlot()
+					}
 					for _, subtemplate := range matcher.Subtemplates {
 						if err := swg.AddWithContext(ctx.Context()); err != nil {
 							return
 						}
 
 						go func(subtemplate *workflows.WorkflowTemplate) {
-							defer swg.Done()
+							slotReleased := false
+							release := func() {
+								if !slotReleased {
+									swg.Done()
+									slotReleased = true
+								}
+							}
+							defer release()
 
 							// create a new context with the same input but with unset callbacks
 							// clone the Input so that other parallel executions won't overwrite the shared variables when subsequent templates are running
 							subCtx := scan.NewScanContext(ctx.Context(), ctx.Input.Clone())
-							if err := e.runWorkflowStep(subtemplate, subCtx, results, swg, w); err != nil {
+							if err := e.runWorkflowStep(subtemplate, subCtx, results, swg, w, release); err != nil {
 								gologger.Warning().Msgf(workflowStepExecutionError, subtemplate.Template, err)
 							}
 						}(subtemplate)
@@ -162,18 +180,31 @@ func (e *Engine) runWorkflowStep(template *workflows.WorkflowTemplate, ctx *scan
 		return mainErr
 	}
 	if len(template.Subtemplates) > 0 && firstMatched {
+		// Free this step's slot before blocking on child acquires so nested
+		// matching steps cannot exhaust TemplateThreads and deadlock (#8074).
+		if releaseSlot != nil {
+			releaseSlot()
+		}
 		for _, subtemplate := range template.Subtemplates {
 			if err := swg.AddWithContext(ctx.Context()); err != nil {
 				return err
 			}
 
 			go func(template *workflows.WorkflowTemplate) {
+				slotReleased := false
+				release := func() {
+					if !slotReleased {
+						swg.Done()
+						slotReleased = true
+					}
+				}
+				defer release()
+
 				// create a new context with the same input but with unset callbacks
 				subCtx := scan.NewScanContext(ctx.Context(), ctx.Input.Clone())
-				if err := e.runWorkflowStep(template, subCtx, results, swg, w); err != nil {
+				if err := e.runWorkflowStep(template, subCtx, results, swg, w, release); err != nil {
 					gologger.Warning().Msgf(workflowStepExecutionError, template.Template, err)
 				}
-				swg.Done()
 			}(subtemplate)
 		}
 	}
