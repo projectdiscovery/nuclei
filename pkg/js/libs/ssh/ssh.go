@@ -23,6 +23,7 @@ type (
 	// const client = new ssh.SSHClient();
 	// ```
 	SSHClient struct {
+		// connection is nil when no connection is open.
 		connection *ssh.Client
 		timeout    time.Duration
 	}
@@ -158,7 +159,8 @@ func (c *SSHClient) Run(cmd string) (string, error) {
 
 // Close closes the SSH connection and destroys the client
 // Returns the success state and error. If error is not nil,
-// state will be false
+// state will be false. Close does nothing and returns true
+// if no connection is open.
 // @example
 // ```javascript
 // const ssh = require('nuclei/ssh');
@@ -167,9 +169,17 @@ func (c *SSHClient) Run(cmd string) (string, error) {
 // const closed = client.Close();
 // ```
 func (c *SSHClient) Close() (bool, error) {
-	if err := c.connection.Close(); err != nil {
+	if c.connection == nil {
+		return true, nil
+	}
+
+	err := c.connection.Close()
+	c.connection = nil
+
+	if err != nil {
 		return false, err
 	}
+
 	return true, nil
 }
 
