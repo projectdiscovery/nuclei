@@ -211,9 +211,8 @@ func resolverHost(resolver string) string {
 // is allowed, and the dns client resolves the name again when it dials, so it
 // could otherwise reach a denied address of the same name.
 func pinResolverHost(executionID, resolver, host string) (string, error) {
-	// DoH resolvers dial through the scan dialer, which checks every address.
-	// DoT resolvers keep the name, because the TLS handshake verifies the
-	// certificate against it, and a denied host cannot present one for it.
+	// DoH and DoT resolvers dial through the scan dialer, which checks every
+	// address, and DoT verifies the certificate against the name.
 	if iputil.IsIP(host) || strings.HasPrefix(resolver, "doh:") || strings.HasPrefix(resolver, "dot:") {
 		return resolver, nil
 	}
