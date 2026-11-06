@@ -258,7 +258,14 @@ func buildDisconnectPacket() []byte {
 	return []byte{PacketDisconnect << 4, 0x00}
 }
 
+// errBrokenStream means a read failed after part of a packet was consumed, or
+// a packet was refused, so the next read would start in the middle of a packet.
+// The connection must not be used again.
+var errBrokenStream = errors.New("MQTT stream is out of sync")
+
 // readPacket reads a full MQTT packet from reader, rejecting packets over MaxPacketSize.
+// Failures before the first byte is read are returned as they are. Failures after
+// it wrap errBrokenStream.
 func readPacket(r io.Reader) (headerByte byte, payload []byte, err error) {
 	var header [1]byte
 	if _, err := io.ReadFull(r, header[:]); err != nil {
@@ -266,15 +273,15 @@ func readPacket(r io.Reader) (headerByte byte, payload []byte, err error) {
 	}
 	length, err := decodeVarLength(r)
 	if err != nil {
-		return 0, nil, err
+		return 0, nil, fmt.Errorf("%w: %w", errBrokenStream, err)
 	}
 	if length > MaxPacketSize {
-		return 0, nil, fmt.Errorf("MQTT packet length %d exceeds maximum allowed %d", length, MaxPacketSize)
+		return 0, nil, fmt.Errorf("%w: MQTT packet length %d exceeds maximum allowed %d", errBrokenStream, length, MaxPacketSize)
 	}
 	buf := make([]byte, length)
 	if length > 0 {
 		if _, err := io.ReadFull(r, buf); err != nil {
-			return 0, nil, err
+			return 0, nil, fmt.Errorf("%w: %w", errBrokenStream, err)
 		}
 	}
 	return header[0], buf, nil

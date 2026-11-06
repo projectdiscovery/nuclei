@@ -3,6 +3,7 @@ package mqtt
 import (
 	"context"
 	"crypto/tls"
+	"errors"
 	"fmt"
 	"net"
 	"strconv"
@@ -47,11 +48,11 @@ type (
 	// opts.Password = 'admin';
 	// ```
 	ConnectOptions struct {
-		Username     string `json:"username,omitempty"`
-		Password     string `json:"password,omitempty"`
-		ClientID     string `json:"client_id,omitempty"`
-		CleanSession *bool  `json:"clean_session,omitempty"`
-		KeepAlive    int    `json:"keep_alive,omitempty"`
+		Username           string `json:"username,omitempty"`
+		Password           string `json:"password,omitempty"`
+		ClientID           string `json:"client_id,omitempty"`
+		CleanSession       *bool  `json:"clean_session,omitempty"`
+		KeepAlive          int    `json:"keep_alive,omitempty"`
 		TLS                bool   `json:"tls,omitempty"`
 		InsecureSkipVerify *bool  `json:"insecure_skip_verify,omitempty"`
 		Timeout            int    `json:"timeout,omitempty"`
@@ -348,9 +349,11 @@ func (c *Client) ConnectAuth(ctx context.Context, host string, port int, usernam
 // const client = new mqtt.Client();
 // client.Connect('acme.com', 1883);
 // const msgs = client.Subscribe('#', 3);
-// for (const m of msgs) {
-//     log(m.Topic, m.Payload);
-// }
+//
+//	for (const m of msgs) {
+//	    log(m.Topic, m.Payload);
+//	}
+//
 // ```
 func (c *Client) Subscribe(ctx context.Context, topic string, timeoutSec int) ([]*Message, error) {
 	c.mu.Lock()
@@ -414,7 +417,18 @@ func (c *Client) Subscribe(ctx context.Context, topic string, timeoutSec int) ([
 
 		header, payload, err := readPacket(c.conn)
 		if err != nil {
-			if netErr, ok := err.(net.Error); ok && netErr.Timeout() {
+			if errors.Is(err, errBrokenStream) {
+				// The window closed in the middle of a packet. The stream cannot be
+				// read in sync again, so the connection is dropped.
+				_ = c.conn.Close()
+				c.conn = nil
+				if !subackReceived {
+					return nil, fmt.Errorf("failed waiting for SUBACK: %w", err)
+				}
+				break
+			}
+			var netErr net.Error
+			if errors.As(err, &netErr) && netErr.Timeout() {
 				// Window finished
 				break
 			}

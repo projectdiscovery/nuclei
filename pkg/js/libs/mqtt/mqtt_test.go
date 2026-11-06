@@ -277,14 +277,68 @@ func TestPasswordWithoutUsername(t *testing.T) {
 	// CleanSession (0x02) | User (0x80) | Pass (0x40) = 0xC2
 	require.Equal(t, byte(0xC2), payload[7])
 
-	// Username length at payload[10:12] should be 0 (empty string)
-	userLen := binary.BigEndian.Uint16(payload[10:12])
-	require.Equal(t, uint16(0), userLen)
+	// The client ID comes right after the keep alive at payload[8:10], and the
+	// username length follows it.
+	clientIDLen := int(binary.BigEndian.Uint16(payload[10:12]))
+	off := 12 + clientIDLen
 
-	// Password follows username at payload[12:14]
-	passLen := binary.BigEndian.Uint16(payload[12:14])
+	// Username length should be 0 (empty string)
+	userLen := binary.BigEndian.Uint16(payload[off : off+2])
+	require.Equal(t, uint16(0), userLen)
+	off += 2
+
+	// Password follows the username
+	passLen := binary.BigEndian.Uint16(payload[off : off+2])
 	require.Equal(t, uint16(len("my-secret-token")), passLen)
-	require.Equal(t, "my-secret-token", string(payload[14:14+passLen]))
+	off += 2
+	require.Equal(t, "my-secret-token", string(payload[off:off+int(passLen)]))
+}
+
+// A window that closes in the middle of a PUBLISH must drop the connection.
+// Keeping it would let the next read start inside that packet.
+func TestSubscribePartialPacketClosesConnection(t *testing.T) {
+	execID := "mqtt-partial-subscribe"
+	require.NoError(t, protocolstate.Init(&types.Options{ExecutionId: execID}))
+	t.Cleanup(func() { protocolstate.Close(execID) })
+	ctx := context.WithValue(context.Background(), "executionId", execID) //nolint:staticcheck
+
+	l, err := net.Listen("tcp", "127.0.0.1:0")
+	require.NoError(t, err)
+	defer l.Close()
+	port := l.Addr().(*net.TCPAddr).Port
+
+	go func() {
+		conn, err := l.Accept()
+		if err != nil {
+			return
+		}
+		defer conn.Close()
+		for {
+			header, payload, err := readPacket(conn)
+			if err != nil {
+				return
+			}
+			switch header >> 4 {
+			case PacketConnect:
+				_, _ = conn.Write([]byte{PacketConnack << 4, 0x02, 0x00, ConnAccepted})
+			case PacketSubscribe:
+				// SUBACK for the packet id, then a PUBLISH that promises 10 bytes
+				// and sends 5. The client's window closes in the middle of it.
+				_, _ = conn.Write([]byte{PacketSuback << 4, 0x03, payload[0], payload[1], 0x00})
+				_, _ = conn.Write([]byte{PacketPublish << 4, 0x0a, 0x00, 0x03, 'a', '/', 'b'})
+			}
+		}
+	}()
+
+	client := &Client{}
+	res, err := client.Connect(ctx, "127.0.0.1", port, nil)
+	require.NoError(t, err)
+	require.True(t, res.Success)
+
+	msgs, err := client.Subscribe(ctx, "a/b", 1)
+	require.NoError(t, err)
+	require.Empty(t, msgs)
+	require.Nil(t, client.conn, "a stream cut in the middle of a packet must not be reused")
 }
 
 func TestPingWithInFlightPublish(t *testing.T) {
