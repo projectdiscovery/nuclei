@@ -4,18 +4,21 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
-	"io"
 	"net"
 	"strconv"
 	"sync"
 	"time"
 
 	libnet "github.com/projectdiscovery/nuclei/v3/pkg/js/libs/net"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 )
 
 var (
 	defaultTimeout = 10 * time.Second
+)
+
+const (
+	maxSubscribedMessages = 1000
+	maxSubscribedBytes    = 10 * 1024 * 1024 // 10MB
 )
 
 type (
@@ -42,13 +45,12 @@ type (
 	// const opts = new mqtt.ConnectOptions();
 	// opts.Username = 'admin';
 	// opts.Password = 'admin';
-	// opts.CleanSession = true;
 	// ```
 	ConnectOptions struct {
 		Username     string `json:"username,omitempty"`
 		Password     string `json:"password,omitempty"`
 		ClientID     string `json:"client_id,omitempty"`
-		CleanSession bool   `json:"clean_session,omitempty"`
+		CleanSession *bool  `json:"clean_session,omitempty"`
 		KeepAlive    int    `json:"keep_alive,omitempty"`
 		TLS          bool   `json:"tls,omitempty"`
 		Timeout      int    `json:"timeout,omitempty"`
@@ -95,25 +97,13 @@ func dial(ctx context.Context, host string, port int, useTLS bool, timeout time.
 		return nil, fmt.Errorf("invalid host or port")
 	}
 
-	executionId, _ := ctx.Value("executionId").(string)
-	if executionId != "" && !protocolstate.IsHostAllowed(executionId, host) {
-		return nil, protocolstate.ErrHostDenied.Msgf(host)
-	}
-
 	addr := net.JoinHostPort(host, strconv.Itoa(port))
-	var conn net.Conn
-	var err error
-
-	if executionId != "" {
-		conn, err = libnet.Dial(ctx, "tcp", addr)
-	} else {
-		var d net.Dialer
-		d.Timeout = timeout
-		conn, err = d.DialContext(ctx, "tcp", addr)
-	}
+	conn, err := libnet.Dial(ctx, "tcp", addr)
 	if err != nil {
 		return nil, err
 	}
+
+	_ = conn.SetDeadline(time.Now().Add(timeout))
 
 	if useTLS {
 		tlsConn := tls.Client(conn, &tls.Config{
@@ -145,7 +135,11 @@ func IsMQTT(ctx context.Context, host string, port int) (bool, error) {
 	}
 	defer func() { _ = conn.Close() }()
 
-	pkt := buildConnectPacket("nuclei-probe", "", "", true, 60)
+	pkt, err := buildConnectPacket("nuclei-probe", "", "", true, 60)
+	if err != nil {
+		return false, err
+	}
+	_ = conn.SetWriteDeadline(time.Now().Add(defaultTimeout))
 	if _, err := conn.Write(pkt); err != nil {
 		return false, err
 	}
@@ -177,7 +171,11 @@ func IsAnonymousAllowed(ctx context.Context, host string, port int) (bool, error
 	}
 	defer func() { _ = conn.Close() }()
 
-	pkt := buildConnectPacket("", "", "", true, 60)
+	pkt, err := buildConnectPacket("", "", "", true, 60)
+	if err != nil {
+		return false, err
+	}
+	_ = conn.SetWriteDeadline(time.Now().Add(defaultTimeout))
 	if _, err := conn.Write(pkt); err != nil {
 		return false, err
 	}
@@ -228,12 +226,18 @@ func (c *Client) Connect(ctx context.Context, host string, port int, options *Co
 			timeout = time.Duration(options.Timeout) * time.Second
 		}
 		if options.KeepAlive > 0 {
-			keepAlive = uint16(options.KeepAlive)
+			if options.KeepAlive > 65535 {
+				keepAlive = 65535
+			} else {
+				keepAlive = uint16(options.KeepAlive)
+			}
 		}
 		if options.ClientID != "" {
 			clientID = options.ClientID
 		}
-		cleanSession = options.CleanSession
+		if options.CleanSession != nil {
+			cleanSession = *options.CleanSession
+		}
 		username = options.Username
 		password = options.Password
 		useTLS = options.TLS
@@ -249,7 +253,17 @@ func (c *Client) Connect(ctx context.Context, host string, port int, options *Co
 		}, err
 	}
 
-	pkt := buildConnectPacket(clientID, username, password, cleanSession, keepAlive)
+	pkt, err := buildConnectPacket(clientID, username, password, cleanSession, keepAlive)
+	if err != nil {
+		_ = conn.Close()
+		return &ConnectResult{
+			Success:    false,
+			ReturnCode: -1,
+			Reason:     err.Error(),
+		}, err
+	}
+
+	_ = conn.SetWriteDeadline(time.Now().Add(timeout))
 	if _, err := conn.Write(pkt); err != nil {
 		_ = conn.Close()
 		return &ConnectResult{
@@ -313,10 +327,11 @@ func (c *Client) Connect(ctx context.Context, host string, port int, options *Co
 // log(res.Success);
 // ```
 func (c *Client) ConnectAuth(ctx context.Context, host string, port int, username, password string) (*ConnectResult, error) {
+	clean := true
 	return c.Connect(ctx, host, port, &ConnectOptions{
 		Username:     username,
 		Password:     password,
-		CleanSession: true,
+		CleanSession: &clean,
 	})
 }
 
@@ -345,18 +360,33 @@ func (c *Client) Subscribe(ctx context.Context, topic string, timeoutSec int) ([
 	}
 	pktID := c.packetID
 
-	subPkt := buildSubscribePacket(pktID, topic, 0)
+	subPkt, err := buildSubscribePacket(pktID, topic, 0)
+	if err != nil {
+		return nil, fmt.Errorf("failed to build SUBSCRIBE: %w", err)
+	}
+
+	_ = c.conn.SetWriteDeadline(time.Now().Add(c.timeout))
 	if _, err := c.conn.Write(subPkt); err != nil {
+		_ = c.conn.Close()
+		c.conn = nil
 		return nil, fmt.Errorf("failed to send SUBSCRIBE: %w", err)
 	}
 
 	waitDuration := 2 * time.Second
 	if timeoutSec > 0 {
+		if timeoutSec > 60 {
+			timeoutSec = 60
+		}
 		waitDuration = time.Duration(timeoutSec) * time.Second
 	}
+	if deadline, ok := ctx.Deadline(); ok {
+		if remaining := time.Until(deadline); remaining < waitDuration {
+			waitDuration = remaining
+		}
+	}
 
-	deadline := time.Now().Add(waitDuration)
-	_ = c.conn.SetDeadline(deadline)
+	readDeadline := time.Now().Add(waitDuration)
+	_ = c.conn.SetDeadline(readDeadline)
 	defer func() {
 		if c.conn != nil {
 			_ = c.conn.SetDeadline(time.Time{})
@@ -364,19 +394,27 @@ func (c *Client) Subscribe(ctx context.Context, topic string, timeoutSec int) ([
 	}()
 
 	var messages []*Message
+	var totalBytes int
 	subackReceived := false
 
 	for {
+		select {
+		case <-ctx.Done():
+			_ = c.conn.Close()
+			c.conn = nil
+			return messages, ctx.Err()
+		default:
+		}
+
 		header, payload, err := readPacket(c.conn)
 		if err != nil {
 			if netErr, ok := err.(net.Error); ok && netErr.Timeout() {
 				// Window finished
 				break
 			}
-			if err == io.EOF && subackReceived {
-				break
-			}
 			if !subackReceived {
+				_ = c.conn.Close()
+				c.conn = nil
 				return nil, fmt.Errorf("failed waiting for SUBACK: %w", err)
 			}
 			break
@@ -385,9 +423,14 @@ func (c *Client) Subscribe(ctx context.Context, topic string, timeoutSec int) ([
 		packetType := header >> 4
 		switch packetType {
 		case PacketSuback:
-			_, grantedQoS, err := parseSuback(payload)
+			subackPID, grantedQoS, err := parseSuback(payload)
 			if err != nil {
+				_ = c.conn.Close()
+				c.conn = nil
 				return nil, err
+			}
+			if subackPID != pktID {
+				continue // Ignore stale/mismatched SUBACK from an earlier subscription
 			}
 			for _, qos := range grantedQoS {
 				if qos == 0x80 {
@@ -400,12 +443,22 @@ func (c *Client) Subscribe(ctx context.Context, topic string, timeoutSec int) ([
 			msg, err := parsePublish(header, payload)
 			if err == nil {
 				messages = append(messages, msg)
+				totalBytes += len(msg.Topic) + len(msg.Payload)
+				if len(messages) >= maxSubscribedMessages || totalBytes >= maxSubscribedBytes {
+					return messages, nil
+				}
 			}
 		}
 
-		if time.Now().After(deadline) {
+		if time.Now().After(readDeadline) {
 			break
 		}
+	}
+
+	if !subackReceived {
+		_ = c.conn.Close()
+		c.conn = nil
+		return nil, fmt.Errorf("subscription timed out waiting for SUBACK")
 	}
 
 	return messages, nil
@@ -428,9 +481,21 @@ func (c *Client) Publish(ctx context.Context, topic string, payload string) (boo
 		return false, fmt.Errorf("not connected to MQTT broker")
 	}
 
-	_ = c.conn.SetDeadline(time.Now().Add(5 * time.Second))
-	pkt := buildPublishPacket(topic, []byte(payload), 0, false, 0)
+	select {
+	case <-ctx.Done():
+		return false, ctx.Err()
+	default:
+	}
+
+	pkt, err := buildPublishPacket(topic, []byte(payload), 0, false, 0)
+	if err != nil {
+		return false, fmt.Errorf("failed to build PUBLISH: %w", err)
+	}
+
+	_ = c.conn.SetWriteDeadline(time.Now().Add(5 * time.Second))
 	if _, err := c.conn.Write(pkt); err != nil {
+		_ = c.conn.Close()
+		c.conn = nil
 		return false, fmt.Errorf("failed to send PUBLISH: %w", err)
 	}
 
@@ -454,13 +519,23 @@ func (c *Client) Ping(ctx context.Context) (bool, error) {
 		return false, fmt.Errorf("not connected to MQTT broker")
 	}
 
+	select {
+	case <-ctx.Done():
+		return false, ctx.Err()
+	default:
+	}
+
 	_ = c.conn.SetDeadline(time.Now().Add(5 * time.Second))
 	if _, err := c.conn.Write(buildPingreqPacket()); err != nil {
+		_ = c.conn.Close()
+		c.conn = nil
 		return false, fmt.Errorf("failed to send PINGREQ: %w", err)
 	}
 
 	header, _, err := readPacket(c.conn)
 	if err != nil {
+		_ = c.conn.Close()
+		c.conn = nil
 		return false, fmt.Errorf("failed to read PINGRESP: %w", err)
 	}
 
@@ -484,6 +559,7 @@ func (c *Client) Close() error {
 	defer c.mu.Unlock()
 
 	if c.conn != nil {
+		_ = c.conn.SetWriteDeadline(time.Now().Add(3 * time.Second))
 		_, _ = c.conn.Write(buildDisconnectPacket())
 		err := c.conn.Close()
 		c.conn = nil

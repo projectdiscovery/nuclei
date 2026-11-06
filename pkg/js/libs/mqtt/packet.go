@@ -7,6 +7,13 @@ import (
 	"io"
 )
 
+// Limits to prevent DoS and buffer overflows
+const (
+	MaxStringLength    = 65535
+	MaxRemainingLength = 268435455
+	MaxPacketSize      = 10 * 1024 * 1024 // 10MB limit on incoming packets
+)
+
 // MQTT 3.1.1 Control Packet Types
 const (
 	PacketConnect    byte = 1
@@ -55,8 +62,11 @@ func ConnackReason(code byte) string {
 	}
 }
 
-// encodeVarLength encodes a length integer as MQTT variable byte integer.
-func encodeVarLength(length int) []byte {
+// encodeVarLength encodes a length integer as an MQTT variable byte integer.
+func encodeVarLength(length int) ([]byte, error) {
+	if length < 0 || length > MaxRemainingLength {
+		return nil, fmt.Errorf("remaining length %d exceeds MQTT max %d", length, MaxRemainingLength)
+	}
 	var out []byte
 	for {
 		encodedByte := byte(length % 128)
@@ -69,7 +79,7 @@ func encodeVarLength(length int) []byte {
 			break
 		}
 	}
-	return out
+	return out, nil
 }
 
 // decodeVarLength decodes an MQTT variable byte integer from reader.
@@ -95,21 +105,26 @@ func decodeVarLength(r io.Reader) (int, error) {
 }
 
 // encodeString encodes a UTF-8 string with a 2-byte big-endian length prefix.
-func encodeString(s string) []byte {
+func encodeString(s string) ([]byte, error) {
 	b := []byte(s)
+	if len(b) > MaxStringLength {
+		return nil, fmt.Errorf("string length %d exceeds MQTT max %d", len(b), MaxStringLength)
+	}
 	out := make([]byte, 2+len(b))
 	binary.BigEndian.PutUint16(out[0:2], uint16(len(b)))
 	copy(out[2:], b)
-	return out
+	return out, nil
 }
 
 // buildConnectPacket constructs an MQTT 3.1.1 CONNECT packet.
-func buildConnectPacket(clientID, username, password string, cleanSession bool, keepAlive uint16) []byte {
+func buildConnectPacket(clientID, username, password string, cleanSession bool, keepAlive uint16) ([]byte, error) {
 	var varHeader []byte
-	// Protocol Name: "MQTT"
-	varHeader = append(varHeader, encodeString("MQTT")...)
-	// Protocol Level: 4 (MQTT 3.1.1)
-	varHeader = append(varHeader, 0x04)
+	protoName, err := encodeString("MQTT")
+	if err != nil {
+		return nil, err
+	}
+	varHeader = append(varHeader, protoName...)
+	varHeader = append(varHeader, 0x04) // Protocol Level: 4 (MQTT 3.1.1)
 
 	// Connect Flags
 	var flags byte
@@ -131,52 +146,85 @@ func buildConnectPacket(clientID, username, password string, cleanSession bool, 
 
 	// Payload
 	var payload []byte
-	payload = append(payload, encodeString(clientID)...)
+	cidBytes, err := encodeString(clientID)
+	if err != nil {
+		return nil, fmt.Errorf("invalid clientID: %w", err)
+	}
+	payload = append(payload, cidBytes...)
+
 	if username != "" {
-		payload = append(payload, encodeString(username)...)
+		userBytes, err := encodeString(username)
+		if err != nil {
+			return nil, fmt.Errorf("invalid username: %w", err)
+		}
+		payload = append(payload, userBytes...)
 	}
 	if password != "" {
-		payload = append(payload, encodeString(password)...)
+		passBytes, err := encodeString(password)
+		if err != nil {
+			return nil, fmt.Errorf("invalid password: %w", err)
+		}
+		payload = append(payload, passBytes...)
 	}
 
 	remainingLength := len(varHeader) + len(payload)
+	lenBytes, err := encodeVarLength(remainingLength)
+	if err != nil {
+		return nil, err
+	}
+
 	var pkt []byte
-	pkt = append(pkt, (PacketConnect<<4)|0x00)
-	pkt = append(pkt, encodeVarLength(remainingLength)...)
+	pkt = append(pkt, PacketConnect<<4)
+	pkt = append(pkt, lenBytes...)
 	pkt = append(pkt, varHeader...)
 	pkt = append(pkt, payload...)
-	return pkt
+	return pkt, nil
 }
 
 // buildSubscribePacket constructs an MQTT 3.1.1 SUBSCRIBE packet for a single topic.
-func buildSubscribePacket(packetID uint16, topic string, qos byte) []byte {
+func buildSubscribePacket(packetID uint16, topic string, qos byte) ([]byte, error) {
 	var varHeader [2]byte
 	binary.BigEndian.PutUint16(varHeader[:], packetID)
 
+	topicBytes, err := encodeString(topic)
+	if err != nil {
+		return nil, fmt.Errorf("invalid topic: %w", err)
+	}
+
 	var payload []byte
-	payload = append(payload, encodeString(topic)...)
+	payload = append(payload, topicBytes...)
 	payload = append(payload, qos&0x03)
 
 	remainingLength := len(varHeader) + len(payload)
+	lenBytes, err := encodeVarLength(remainingLength)
+	if err != nil {
+		return nil, err
+	}
+
 	var pkt []byte
 	// SUBSCRIBE fixed header flags must be 0010 (0x02)
 	pkt = append(pkt, (PacketSubscribe<<4)|0x02)
-	pkt = append(pkt, encodeVarLength(remainingLength)...)
+	pkt = append(pkt, lenBytes...)
 	pkt = append(pkt, varHeader[:]...)
 	pkt = append(pkt, payload...)
-	return pkt
+	return pkt, nil
 }
 
 // buildPublishPacket constructs an MQTT 3.1.1 PUBLISH packet.
-func buildPublishPacket(topic string, payload []byte, qos byte, retain bool, packetID uint16) []byte {
+func buildPublishPacket(topic string, payload []byte, qos byte, retain bool, packetID uint16) ([]byte, error) {
 	headerByte := (PacketPublish << 4)
 	if retain {
 		headerByte |= 0x01
 	}
 	headerByte |= (qos & 0x03) << 1
 
+	topicBytes, err := encodeString(topic)
+	if err != nil {
+		return nil, fmt.Errorf("invalid topic: %w", err)
+	}
+
 	var varHeader []byte
-	varHeader = append(varHeader, encodeString(topic)...)
+	varHeader = append(varHeader, topicBytes...)
 	if qos > 0 {
 		pid := make([]byte, 2)
 		binary.BigEndian.PutUint16(pid, packetID)
@@ -184,25 +232,30 @@ func buildPublishPacket(topic string, payload []byte, qos byte, retain bool, pac
 	}
 
 	remainingLength := len(varHeader) + len(payload)
+	lenBytes, err := encodeVarLength(remainingLength)
+	if err != nil {
+		return nil, err
+	}
+
 	var pkt []byte
 	pkt = append(pkt, headerByte)
-	pkt = append(pkt, encodeVarLength(remainingLength)...)
+	pkt = append(pkt, lenBytes...)
 	pkt = append(pkt, varHeader...)
 	pkt = append(pkt, payload...)
-	return pkt
+	return pkt, nil
 }
 
 // buildPingreqPacket constructs an MQTT PINGREQ packet.
 func buildPingreqPacket() []byte {
-	return []byte{(PacketPingreq << 4) | 0x00, 0x00}
+	return []byte{PacketPingreq << 4, 0x00}
 }
 
 // buildDisconnectPacket constructs an MQTT DISCONNECT packet.
 func buildDisconnectPacket() []byte {
-	return []byte{(PacketDisconnect << 4) | 0x00, 0x00}
+	return []byte{PacketDisconnect << 4, 0x00}
 }
 
-// readPacket reads a full MQTT packet from reader.
+// readPacket reads a full MQTT packet from reader, rejecting packets over MaxPacketSize.
 func readPacket(r io.Reader) (headerByte byte, payload []byte, err error) {
 	var header [1]byte
 	if _, err := io.ReadFull(r, header[:]); err != nil {
@@ -211,6 +264,9 @@ func readPacket(r io.Reader) (headerByte byte, payload []byte, err error) {
 	length, err := decodeVarLength(r)
 	if err != nil {
 		return 0, nil, err
+	}
+	if length > MaxPacketSize {
+		return 0, nil, fmt.Errorf("MQTT packet length %d exceeds maximum allowed %d", length, MaxPacketSize)
 	}
 	buf := make([]byte, length)
 	if length > 0 {

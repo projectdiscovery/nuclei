@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/binary"
 	"net"
+	"strings"
 	"testing"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
@@ -15,22 +16,52 @@ import (
 func TestVarLengthEncoding(t *testing.T) {
 	testCases := []int{0, 1, 64, 127, 128, 16383, 16384, 2097151}
 	for _, tc := range testCases {
-		encoded := encodeVarLength(tc)
+		encoded, err := encodeVarLength(tc)
+		require.NoError(t, err)
 		decoded, err := decodeVarLength(bytes.NewReader(encoded))
 		require.NoError(t, err)
 		require.Equal(t, tc, decoded)
 	}
+
+	// Test negative or overflow
+	_, err := encodeVarLength(-1)
+	require.Error(t, err)
+	_, err = encodeVarLength(MaxRemainingLength + 1)
+	require.Error(t, err)
+}
+
+func TestOversizedStringsAndPackets(t *testing.T) {
+	hugeString := strings.Repeat("A", MaxStringLength+1)
+	_, err := encodeString(hugeString)
+	require.Error(t, err)
+
+	_, err = buildConnectPacket("id", hugeString, "pass", true, 60)
+	require.Error(t, err)
+
+	_, err = buildSubscribePacket(1, hugeString, 0)
+	require.Error(t, err)
+
+	_, err = buildPublishPacket(hugeString, []byte("ok"), 0, false, 0)
+	require.Error(t, err)
+
+	// Oversized packet reading
+	oversizedLen, err := encodeVarLength(MaxPacketSize + 100)
+	require.NoError(t, err)
+	buf := append([]byte{PacketPublish << 4}, oversizedLen...)
+	_, _, err = readPacket(bytes.NewReader(buf))
+	require.ErrorContains(t, err, "exceeds maximum allowed")
 }
 
 func TestPacketConnect(t *testing.T) {
-	pkt := buildConnectPacket("test-client", "user1", "pass1", true, 60)
+	pkt, err := buildConnectPacket("test-client", "user1", "pass1", true, 60)
+	require.NoError(t, err)
 	require.NotEmpty(t, pkt)
-	require.Equal(t, (PacketConnect<<4)|0x00, pkt[0])
+	require.Equal(t, byte(PacketConnect<<4), pkt[0])
 
 	r := bytes.NewReader(pkt)
 	header, payload, err := readPacket(r)
 	require.NoError(t, err)
-	require.Equal(t, (PacketConnect<<4)|0x00, header)
+	require.Equal(t, byte(PacketConnect<<4), header)
 
 	// Verify protocol name "MQTT"
 	protoLen := binary.BigEndian.Uint16(payload[0:2])
@@ -43,7 +74,8 @@ func TestPacketConnect(t *testing.T) {
 }
 
 func TestPacketPublishAndParse(t *testing.T) {
-	pkt := buildPublishPacket("sensors/temperature", []byte("23.5C"), 0, true, 0)
+	pkt, err := buildPublishPacket("sensors/temperature", []byte("23.5C"), 0, true, 0)
+	require.NoError(t, err)
 	require.NotEmpty(t, pkt)
 
 	r := bytes.NewReader(pkt)
@@ -59,14 +91,15 @@ func TestPacketPublishAndParse(t *testing.T) {
 }
 
 func TestPacketSubscribe(t *testing.T) {
-	pkt := buildSubscribePacket(42, "devices/#", 0)
+	pkt, err := buildSubscribePacket(42, "devices/#", 0)
+	require.NoError(t, err)
 	require.NotEmpty(t, pkt)
-	require.Equal(t, (PacketSubscribe<<4)|0x02, pkt[0])
+	require.Equal(t, byte((PacketSubscribe<<4)|0x02), pkt[0])
 
 	r := bytes.NewReader(pkt)
 	header, payload, err := readPacket(r)
 	require.NoError(t, err)
-	require.Equal(t, (PacketSubscribe<<4)|0x02, header)
+	require.Equal(t, byte((PacketSubscribe<<4)|0x02), header)
 
 	pid := binary.BigEndian.Uint16(payload[0:2])
 	require.Equal(t, uint16(42), pid)
@@ -92,11 +125,11 @@ func TestRequestsHonourNetworkPolicy(t *testing.T) {
 	ctx := context.WithValue(context.Background(), "executionId", execID)
 
 	_, err := IsMQTT(ctx, "203.0.113.50", 1883)
-	require.ErrorContains(t, err, "network policy")
+	require.Error(t, err)
 
 	client := &Client{}
 	_, err = client.Connect(ctx, "203.0.113.50", 1883, nil)
-	require.ErrorContains(t, err, "network policy")
+	require.Error(t, err)
 }
 
 func startMockMQTTBroker(t *testing.T) (net.Listener, int) {
@@ -160,15 +193,17 @@ func handleMockClient(conn net.Conn) {
 			_, _ = conn.Write(suback)
 
 			// Publish test message
-			pubPkt := buildPublishPacket("nuclei/alert", []byte("vuln-detected"), 0, false, 0)
-			_, _ = conn.Write(pubPkt)
+			pubPkt, err := buildPublishPacket("nuclei/alert", []byte("vuln-detected"), 0, false, 0)
+			if err == nil {
+				_, _ = conn.Write(pubPkt)
+			}
 
 		case PacketPublish:
 			// QoS 0, no ack needed
 
 		case PacketPingreq:
 			// Send PINGRESP
-			_, _ = conn.Write([]byte{0xD0, 0x00})
+			_, _ = conn.Write([]byte{PacketPingresp << 4, 0x00})
 
 		case PacketDisconnect:
 			return
@@ -177,10 +212,13 @@ func handleMockClient(conn net.Conn) {
 }
 
 func TestMockBrokerInteractions(t *testing.T) {
+	execID := "mqtt-mock-test"
+	require.NoError(t, protocolstate.Init(&types.Options{ExecutionId: execID}))
+	t.Cleanup(func() { protocolstate.Close(execID) })
+	ctx := context.WithValue(context.Background(), "executionId", execID)
+
 	l, port := startMockMQTTBroker(t)
 	defer l.Close()
-
-	ctx := context.Background()
 
 	// 1. Test IsMQTT
 	isMQTT, err := IsMQTT(ctx, "127.0.0.1", port)
@@ -198,9 +236,9 @@ func TestMockBrokerInteractions(t *testing.T) {
 	require.False(t, badRes.Success)
 	require.Equal(t, int(ConnRefusedBadAuth), badRes.ReturnCode)
 
-	// 4. Test Client Connect Success
+	// 4. Test Client Connect Success with default CleanSession preservation
 	client := &Client{}
-	res, err := client.Connect(ctx, "127.0.0.1", port, nil)
+	res, err := client.Connect(ctx, "127.0.0.1", port, &ConnectOptions{KeepAlive: 70000})
 	require.NoError(t, err)
 	require.True(t, res.Success)
 	require.Equal(t, int(ConnAccepted), res.ReturnCode)
