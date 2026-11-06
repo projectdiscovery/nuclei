@@ -31,6 +31,7 @@ import (
 	_ "github.com/projectdiscovery/nuclei/v3/pkg/js/generated/go/libldap"
 	_ "github.com/projectdiscovery/nuclei/v3/pkg/js/generated/go/libmssql"
 	_ "github.com/projectdiscovery/nuclei/v3/pkg/js/generated/go/libmysql"
+	_ "github.com/projectdiscovery/nuclei/v3/pkg/js/generated/go/libmqtt"
 	_ "github.com/projectdiscovery/nuclei/v3/pkg/js/generated/go/libnet"
 	_ "github.com/projectdiscovery/nuclei/v3/pkg/js/generated/go/liboracle"
 	_ "github.com/projectdiscovery/nuclei/v3/pkg/js/generated/go/libpop3"
