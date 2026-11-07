@@ -1,6 +1,9 @@
 package techgraph
 
-import "testing"
+import (
+	"reflect"
+	"testing"
+)
 
 func testGraph() *Graph {
 	return &Graph{
@@ -34,23 +37,55 @@ func TestFireSetTiers(t *testing.T) {
 	techs := []string{"wordpress"}
 
 	lean := s.FireSet(TierLean, techs)
-	if len(lean) != 2 { // dependents only, no baseline
-		t.Fatalf("lean: want 2, got %v", lean)
+	if want := []string{"wp-cve-1", "wp-plugin-1"}; !reflect.DeepEqual(lean, want) {
+		t.Fatalf("lean: want %v, got %v", want, lean)
 	}
 	bal := s.FireSet(TierBalanced, techs)
-	if len(bal) != 3 { // + balanced baseline (git-config)
-		t.Fatalf("balanced: want 3, got %v", bal)
+	if want := []string{"git-config", "wp-cve-1", "wp-plugin-1"}; !reflect.DeepEqual(bal, want) {
+		t.Fatalf("balanced: want %v, got %v", want, bal)
 	}
 	tho := s.FireSet(TierThorough, techs)
-	if len(tho) != 4 { // + thorough baseline
-		t.Fatalf("thorough: want 4, got %v", tho)
+	if want := []string{"git-config", "noisy-osinty", "wp-cve-1", "wp-plugin-1"}; !reflect.DeepEqual(tho, want) {
+		t.Fatalf("thorough: want %v, got %v", want, tho)
 	}
 }
 
 func TestNormalizeTier(t *testing.T) {
-	for in, want := range map[string]Tier{"lean": TierLean, "thorough": TierThorough, "": TierBalanced, "x": TierBalanced} {
+	for in, want := range map[string]Tier{"lean": TierLean, " THOROUGH ": TierThorough, "": TierBalanced, "x": TierBalanced} {
 		if got := NormalizeTier(in); got != want {
 			t.Fatalf("NormalizeTier(%q)=%q want %q", in, got, want)
 		}
+	}
+}
+
+func TestParseTier(t *testing.T) {
+	if _, err := ParseTier("not-a-tier"); err == nil {
+		t.Fatal("expected error for unknown tier")
+	}
+	got, err := ParseTier(" Lean ")
+	if err != nil || got != TierLean {
+		t.Fatalf("ParseTier(Lean)=%q %v", got, err)
+	}
+}
+
+func TestAbsentDependents(t *testing.T) {
+	s := NewSelector(testGraph())
+	candidates := []Candidate{
+		{ID: "new-wp", Tags: []string{"wordpress"}, Category: "cves"},
+		{ID: "ambiguous", Tags: []string{"wordpress", "confluence"}, Category: "cves"},
+		{ID: "fuzzed", Tags: []string{"wordpress"}, Category: "fuzzing"},
+		{ID: "wp-cve-1", Tags: []string{"wordpress"}, Category: "cves"},
+		{ID: "short", Tags: []string{"wp"}, Category: "cves"},
+		{ID: "other-tech", Tags: []string{"wordpress"}, Category: "cves"},
+	}
+	got := s.AbsentDependents([]string{"wordpress"}, candidates[:5])
+	if want := []string{"new-wp"}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("want %v, got %v", want, got)
+	}
+	if got := s.AbsentDependents([]string{"atlassian:confluence"}, candidates[5:]); len(got) != 0 {
+		t.Fatalf("wordpress tag must not attach to confluence, got %v", got)
+	}
+	if got := s.AbsentDependents([]string{"wordpress"}, []Candidate{{ID: "no-path", Tags: []string{"wordpress"}}}); len(got) != 0 {
+		t.Fatalf("unknown category must not be added, got %v", got)
 	}
 }

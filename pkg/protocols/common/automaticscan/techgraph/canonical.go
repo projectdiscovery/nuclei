@@ -25,7 +25,7 @@ var seedSynonyms = map[string]string{
 }
 
 // genericTokens are tags/aliases that are not products and must never be used as
-// a tag/id/dir-reconciliation key (they would mis-attach templates to random
+// a tag/id/dir-reconciliation key (they would incorrectly attach templates to random
 // techs). This list intentionally includes common English words that also happen
 // to be CPE product names (dashboard, gateway, console, ...), platform/OS tokens
 // (linux, windows, android, ...), and category labels (generic, audit, ...),

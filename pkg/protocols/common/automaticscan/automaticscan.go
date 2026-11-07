@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -69,6 +70,7 @@ type Service struct {
 	selector     *techgraph.Selector
 	tier         techgraph.Tier
 	universe     map[string]*templates.Template
+	universeErr  error
 	universeOnce sync.Once
 }
 
@@ -123,8 +125,12 @@ func New(opts Options) (*Service, error) {
 		techTemplates:      techDetectTemplates,
 		ServiceOpts:        opts,
 		hasResults:         &atomic.Bool{},
-		tier:               techgraph.NormalizeTier(opts.ExecuterOpts.Options.AutomaticScanCoverage),
 	}
+	tier, err := techgraph.ParseTier(opts.ExecuterOpts.Options.AutomaticScanCoverage)
+	if err != nil {
+		return nil, err
+	}
+	service.tier = tier
 
 	// load the embedded tech-graph for v2 selection; on failure we silently fall
 	// back to legacy tag-overlap so behaviour never regresses.
@@ -198,7 +204,9 @@ func (s *Service) executeAutomaticScanOnTarget(ctx context.Context, input *conte
 	finalTags = append(finalTags, s.opts.Options.Tags...)
 	finalTags = sliceutil.Dedupe(finalTags)
 
-	if len(finalTags) == 0 {
+	// Lean has no baseline, so an empty signal set has nothing to run. Balanced
+	// and thorough still run the tech-agnostic baseline.
+	if len(finalTags) == 0 && (s.selector == nil || s.tier == techgraph.TierLean) {
 		gologger.Warning().Msgf("Skipping automatic scan since no tags were found on %v\n", input.Input)
 		return
 	}
@@ -237,11 +245,11 @@ func (s *Service) executeAutomaticScanOnTarget(ctx context.Context, input *conte
 // ensureUniverse lazily loads every selectable template once and indexes it by
 // id. This is the pool from which graph-based selection draws (precise + fuzzy),
 // avoiding a per-target loader pass.
-func (s *Service) ensureUniverse() map[string]*templates.Template {
+func (s *Service) ensureUniverse() (map[string]*templates.Template, error) {
 	s.universeOnce.Do(func() {
 		all, err := s.store.LoadTemplates(s.templateDirs)
 		if err != nil {
-			gologger.Warning().Msgf("automatic scan: could not load template universe: %s", err)
+			s.universeErr = err
 			return
 		}
 		s.universe = make(map[string]*templates.Template, len(all))
@@ -251,24 +259,58 @@ func (s *Service) ensureUniverse() map[string]*templates.Template {
 			}
 		}
 	})
-	return s.universe
+	return s.universe, s.universeErr
 }
 
 // selectWithGraph resolves detected signals to a precise fire-set via the
 // tech-graph, augmented (except at the lean tier) by legacy tag-overlap for any
 // signals not present in the graph, so recall never falls below legacy behaviour.
 func (s *Service) selectWithGraph(input *contextargs.MetaInput, finalTags []string) []*templates.Template {
-	universe := s.ensureUniverse()
-	if len(universe) == 0 {
-		return nil
+	universe, err := s.ensureUniverse()
+	if err != nil || len(universe) == 0 {
+		if len(finalTags) == 0 {
+			return nil
+		}
+		if err != nil {
+			gologger.Warning().Msgf("automatic scan: template load failed, using tag selection: %s", err)
+		}
+		tpls, loadErr := LoadTemplatesWithTags(s.ServiceOpts, s.templateDirs, finalTags, false)
+		if loadErr != nil {
+			gologger.Error().Msgf("%v Error loading templates: %s\n", input.Input, loadErr)
+			return nil
+		}
+		return tpls
 	}
 
 	techIDs, unresolved := s.selector.Resolve(finalTags)
 	selected := map[string]*templates.Template{}
 
+	graph := 0
 	for _, id := range s.selector.FireSet(s.tier, techIDs) {
 		if t, ok := universe[id]; ok {
 			selected[id] = t
+			graph++
+		}
+	}
+
+	added := 0
+	if s.tier != techgraph.TierLean && len(techIDs) > 0 {
+		candidates := make([]techgraph.Candidate, 0, len(universe))
+		for id, t := range universe {
+			if _, ok := selected[id]; ok {
+				continue
+			}
+			candidates = append(candidates, techgraph.Candidate{
+				ID:       id,
+				Tags:     t.Info.Tags.ToSlice(),
+				Category: categoryFromPath(t.Path),
+			})
+		}
+		for _, id := range s.selector.AbsentDependents(techIDs, candidates) {
+			if t, ok := universe[id]; ok {
+				selected[id] = t
+				added++
+			}
 		}
 	}
 
@@ -296,10 +338,11 @@ func (s *Service) selectWithGraph(input *contextargs.MetaInput, finalTags []stri
 	for _, t := range selected {
 		out = append(out, t)
 	}
+	sort.Slice(out, func(i, j int) bool { return out[i].ID < out[j].ID })
 
 	if s.opts.Options.VerboseVerbose {
-		gologger.Print().Msgf("%v selection [tier=%s]: %d techs, %d precise + %d fuzzy = %d templates\n",
-			input.Input, s.tier, len(techIDs), len(selected)-fuzzy, fuzzy, len(out))
+		gologger.Print().Msgf("%v selection [tier=%s]: %d techs, %d graph + %d new + %d fuzzy = %d templates\n",
+			input.Input, s.tier, len(techIDs), graph, added, fuzzy, len(out))
 	}
 
 	if !s.opts.Options.DisableClustering {
@@ -307,11 +350,28 @@ func (s *Service) selectWithGraph(input *contextargs.MetaInput, finalTags []stri
 	}
 	return out
 }
+
 type sharedProgress struct {
 	progress.Progress
 }
 
 func (p *sharedProgress) Init(hostCount int64, rulesCount int, requestCount int64) {}
+
+// categoryFromPath returns the nuclei category directory for a template path
+// (http/cves/2024/x.yaml -> cves). An empty result means the category is unknown
+// and the template is not eligible for the post-graph supplement.
+func categoryFromPath(path string) string {
+	parts := strings.Split(filepath.ToSlash(path), "/")
+	for i, part := range parts {
+		switch part {
+		case "http", "network", "dns", "ssl", "file", "headless", "javascript", "code", "cloud", "dast":
+			if i+1 < len(parts) {
+				return parts[i+1]
+			}
+		}
+	}
+	return ""
+}
 
 // getTagsUsingWappalyzer returns tags using wappalyzer by fingerprinting target
 // and utilizing the mapping data

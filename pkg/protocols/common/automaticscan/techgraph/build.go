@@ -37,6 +37,13 @@ func Build(root string) (*Graph, error) {
 	for _, info := range infos {
 		g.Stats.Total++
 
+		// Excluded categories never enter detection or the fire-set. Gating
+		// this before detection classification keeps opt-in categories such as
+		// cloud out of the automatic-scan detector list.
+		if _, ok := excludedCategories[info.Category]; ok {
+			g.Stats.Excluded++
+			continue
+		}
 		if isDetection(info) && isDetectionSeverity(info) {
 			id := techID(info.Vendor, info.Product)
 			if id != "" {
@@ -44,10 +51,6 @@ func Build(root string) (*Graph, error) {
 			}
 			g.Detection = append(g.Detection, DetectionEntry{ID: info.ID, Tech: id})
 			g.Stats.Detection++
-			continue
-		}
-		if _, ok := excludedCategories[info.Category]; ok {
-			g.Stats.Excluded++
 			continue
 		}
 		if p, ok := detectPlatform(info); ok {
@@ -134,7 +137,9 @@ func collect(root string) ([]templateInfo, []byte, int, error) {
 			parseErr++
 			return nil
 		}
-		fmt.Fprintf(hasher, "%s|%s|%s|%s\n", info.ID, info.Vendor, info.Product, info.CPE)
+		if _, err := fmt.Fprintf(hasher, "%s|%s|%s|%s\n", info.ID, info.Vendor, info.Product, info.CPE); err != nil {
+			return err
+		}
 		infos = append(infos, info)
 		return nil
 	})

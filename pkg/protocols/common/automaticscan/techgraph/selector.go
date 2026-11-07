@@ -1,6 +1,10 @@
 package techgraph
 
-import "sort"
+import (
+	"fmt"
+	"sort"
+	"strings"
+)
 
 // Selector resolves detected technology signals into a concrete fire-set of
 // template ids using a tech-graph artifact. It is pure and deterministic.
@@ -114,13 +118,104 @@ func tierIncludesBaseline(scan, entry Tier) bool {
 }
 
 // NormalizeTier coerces arbitrary input to a valid tier, defaulting to balanced.
+// Case and surrounding whitespace are ignored.
 func NormalizeTier(s string) Tier {
-	switch Tier(s) {
-	case TierLean:
-		return TierLean
-	case TierThorough:
-		return TierThorough
-	default:
+	tier, err := ParseTier(s)
+	if err != nil {
 		return TierBalanced
 	}
+	return tier
+}
+
+// ParseTier validates a coverage tier. Empty input defaults to balanced.
+// Unknown values return an error instead of silently changing behavior.
+func ParseTier(s string) (Tier, error) {
+	switch Tier(strings.ToLower(strings.TrimSpace(s))) {
+	case "", TierBalanced:
+		return TierBalanced, nil
+	case TierLean:
+		return TierLean, nil
+	case TierThorough:
+		return TierThorough, nil
+	default:
+		return "", fmt.Errorf("invalid automatic scan coverage %q (allowed: lean, balanced, thorough)", s)
+	}
+}
+
+// Candidate is a loaded template that the artifact may not know about yet.
+type Candidate struct {
+	ID       string
+	Tags     []string
+	Category string
+}
+
+// AbsentDependents returns ids of templates the graph does not contain whose
+// tags resolve to exactly one of the detected techs. Ambiguous tags and
+// excluded categories are left out, so this only recovers templates added
+// after the artifact was generated.
+func (s *Selector) AbsentDependents(detected []string, candidates []Candidate) []string {
+	if s == nil || s.g == nil || len(detected) == 0 || len(candidates) == 0 {
+		return nil
+	}
+	want := make(map[string]struct{}, len(detected))
+	for _, id := range detected {
+		want[id] = struct{}{}
+	}
+	known := s.knownIDs()
+	var out []string
+	for _, c := range candidates {
+		if c.ID == "" {
+			continue
+		}
+		if _, ok := known[c.ID]; ok {
+			continue
+		}
+		// An unknown category is skipped: excluded categories such as fuzzing
+		// and cloud must not be pulled in just because the path did not parse.
+		if _, excluded := excludedCategories[c.Category]; excluded || c.Category == "" {
+			continue
+		}
+		matches := map[string]struct{}{}
+		for _, tag := range c.Tags {
+			tok := normToken(tag)
+			if len(tok) < 5 || genericTokens[tok] {
+				continue
+			}
+			id, ok := s.byAlias[tok]
+			if !ok {
+				continue
+			}
+			matches[id] = struct{}{}
+		}
+		if len(matches) != 1 {
+			continue
+		}
+		var only string
+		for id := range matches {
+			only = id
+		}
+		if _, ok := want[only]; !ok {
+			continue
+		}
+		out = append(out, c.ID)
+	}
+	sort.Strings(out)
+	return out
+}
+
+// knownIDs is every template id the artifact already classifies.
+func (s *Selector) knownIDs() map[string]struct{} {
+	ids := make(map[string]struct{})
+	for _, tech := range s.g.Techs {
+		for _, ref := range tech.Templates {
+			ids[ref.ID] = struct{}{}
+		}
+	}
+	for _, b := range s.g.Baseline {
+		ids[b.ID] = struct{}{}
+	}
+	for _, d := range s.g.Detection {
+		ids[d.ID] = struct{}{}
+	}
+	return ids
 }
