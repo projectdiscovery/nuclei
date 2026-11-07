@@ -287,3 +287,39 @@ func TestPreConditionRequestsAreCounted(t *testing.T) {
 		})
 	}
 }
+
+func TestExecuteFailureAddsClassifiedFieldsToTemplateContext(t *testing.T) {
+	options := testutils.DefaultOptions.Copy()
+	testutils.Init(options)
+	t.Cleanup(func() {
+		testutils.Cleanup(options)
+	})
+
+	executorOptions := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{ID: "javascript-classified-failure"})
+	executorOptions.JsCompiler = templates.GetJsCompiler()
+	executorOptions.Verified = true
+	executorOptions.Flow = "flow()"
+
+	request := &javascript.Request{
+		ID:   "js",
+		Code: `throw new Error("classified failure")`,
+	}
+	require.NoError(t, request.Compile(executorOptions))
+
+	target := contextargs.NewWithInput(context.Background(), "127.0.0.1:1")
+	var event *output.InternalWrappedEvent
+	err := request.ExecuteWithResults(target, nil, nil, func(got *output.InternalWrappedEvent) {
+		event = got
+	})
+
+	require.ErrorContains(t, err, "classified failure")
+	require.NotNil(t, event)
+	require.Contains(t, event.InternalEvent["error"], "classified failure")
+	require.Equal(t, "unknown", event.InternalEvent["error_type"])
+	require.Equal(t, false, event.InternalEvent["timeout"])
+
+	templateCtx := executorOptions.GetTemplateCtx(target.MetaInput).GetAll()
+	require.Contains(t, templateCtx["js_error"], "classified failure")
+	require.Equal(t, "unknown", templateCtx["js_error_type"])
+	require.Equal(t, false, templateCtx["js_timeout"])
+}

@@ -13,7 +13,7 @@ const (
 )
 
 var (
-	fuzzMatcherTypes = []MatcherType{WordsMatcher, RegexMatcher, BinaryMatcher, StatusMatcher, SizeMatcher, DSLMatcher, XPathMatcher}
+	fuzzMatcherTypes = []MatcherType{WordsMatcher, RegexMatcher, BinaryMatcher, StatusMatcher, SizeMatcher, DSLMatcher, XPathMatcher, ErrorMatcher}
 	fuzzConditions   = []string{"", "and", "or"}
 	fuzzEncodings    = []string{"", "hex"}
 	fuzzParts        = []string{"", "body", "raw", "all_headers", "header", "response"}
@@ -193,10 +193,18 @@ func (candidate *fuzzMatcherCandidate) build() (*Matcher, bool) {
 		matcher.Status = append([]int(nil), candidate.status...)
 	case SizeMatcher:
 		matcher.Size = append([]int(nil), candidate.size...)
+	case ErrorMatcher:
+		matcher.Part = ""
+		matcher.Encoding = ""
+		matcher.CaseInsensitive = false
+		matcher.Errors = append([]string(nil), candidate.values...)
 	default:
 		matcher.Words = append([]string(nil), candidate.values...)
 	}
 
+	if matcher.GetType() == ErrorMatcher {
+		return matcher, true
+	}
 	if matcher.GetType() == StatusMatcher || matcher.GetType() == SizeMatcher {
 		return matcher, len(matcher.Status) > 0 || len(matcher.Size) > 0
 	}

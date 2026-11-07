@@ -81,6 +81,93 @@ func (operators *Operators) HasDSL() bool {
 	return false
 }
 
+// HasErrorMatchers reports whether operators include an error matcher or a DSL
+// expression that references request-error fields (timeout / error / error_type).
+// When true, protocols should still run matchers on failed requests and should
+// not skip the template solely because the host is marked unresponsive.
+func (operators *Operators) HasErrorMatchers() bool {
+	if operators == nil {
+		return false
+	}
+	for _, matcher := range operators.Matchers {
+		if matcher.GetType() == matchers.ErrorMatcher {
+			return true
+		}
+		if matcher.GetType() == matchers.DSLMatcher {
+			for _, expr := range matcher.DSL {
+				if dslReferencesRequestError(expr) {
+					return true
+				}
+			}
+		}
+	}
+	return false
+}
+
+func dslReferencesRequestError(expr string) bool {
+	for i := 0; i < len(expr); {
+		if expr[i] == '\'' || expr[i] == '"' || expr[i] == '`' {
+			quote := expr[i]
+			i++
+			for i < len(expr) {
+				if expr[i] == '\\' && quote != '`' {
+					i += 2
+					continue
+				}
+				if expr[i] == quote {
+					i++
+					break
+				}
+				i++
+			}
+			continue
+		}
+		if !isIdentByte(expr[i]) || (expr[i] >= '0' && expr[i] <= '9') {
+			i++
+			continue
+		}
+		start := i
+		for i < len(expr) && isIdentByte(expr[i]) {
+			i++
+		}
+		if isRequestErrorIdentifier(strings.ToLower(expr[start:i])) {
+			return true
+		}
+	}
+	return false
+}
+
+func isRequestErrorIdentifier(identifier string) bool {
+	for _, field := range []string{"timeout", "error_type", "error"} {
+		if identifier == field {
+			return true
+		}
+		prefix := field + "_"
+		if !strings.HasPrefix(identifier, prefix) {
+			continue
+		}
+		suffix := identifier[len(prefix):]
+		if suffix == "" {
+			continue
+		}
+		indexed := true
+		for i := 0; i < len(suffix); i++ {
+			if suffix[i] < '0' || suffix[i] > '9' {
+				indexed = false
+				break
+			}
+		}
+		if indexed {
+			return true
+		}
+	}
+	return false
+}
+
+func isIdentByte(b byte) bool {
+	return (b >= 'a' && b <= 'z') || (b >= 'A' && b <= 'Z') || (b >= '0' && b <= '9') || b == '_'
+}
+
 // GetMatchersCondition returns the condition for the matchers
 func (operators *Operators) GetMatchersCondition() matchers.ConditionType {
 	return operators.matchersCondition
