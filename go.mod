@@ -78,37 +78,37 @@ require (
 	github.com/ory/dockertest/v3 v3.12.0
 	github.com/pkg/errors v0.9.1
 	github.com/praetorian-inc/fingerprintx v1.1.15
-	github.com/projectdiscovery/clistats v0.1.7
-	github.com/projectdiscovery/dsl v0.9.0
-	github.com/projectdiscovery/fastdialer v0.6.0
+	github.com/projectdiscovery/clistats v0.1.9
+	github.com/projectdiscovery/dsl v0.9.1
+	github.com/projectdiscovery/fastdialer v0.6.1
 	github.com/projectdiscovery/fasttemplate v0.0.2
 	github.com/projectdiscovery/gcache v0.0.0-20241015120333-12546c6e3f4c
 	github.com/projectdiscovery/goflags v0.2.1
 	github.com/projectdiscovery/goimpacket v0.1.1-0.20261007205806-6042a8213eeb
 	github.com/projectdiscovery/goja v0.0.0-20261012075649-9b78f2e05b9c
 	github.com/projectdiscovery/goja_nodejs v0.0.0-20260618132410-8519f75f703d
-	github.com/projectdiscovery/gologger v1.1.73
+	github.com/projectdiscovery/gologger v1.1.75
 	github.com/projectdiscovery/gostruct v0.0.2
 	github.com/projectdiscovery/govaluate v0.0.0-20261102102118-9294133b15a2
 	github.com/projectdiscovery/gozero v0.1.1-0.20260530071156-fa1dad563d76
-	github.com/projectdiscovery/hmap v0.0.102
+	github.com/projectdiscovery/hmap v0.0.104
 	github.com/projectdiscovery/httpx v1.12.0
 	github.com/projectdiscovery/interactsh v1.4.1
 	github.com/projectdiscovery/mapcidr v1.1.97
 	github.com/projectdiscovery/n3iwf v0.0.0-20230523120440-b8cd232ff1f5
-	github.com/projectdiscovery/networkpolicy v0.1.56
+	github.com/projectdiscovery/networkpolicy v0.1.57
 	github.com/projectdiscovery/ratelimit v0.0.94
-	github.com/projectdiscovery/rawhttp v0.2.0
+	github.com/projectdiscovery/rawhttp v0.2.2
 	github.com/projectdiscovery/rdap v0.9.0
-	github.com/projectdiscovery/retryabledns v1.0.116
-	github.com/projectdiscovery/retryablehttp-go v1.3.31
+	github.com/projectdiscovery/retryabledns v1.0.118
+	github.com/projectdiscovery/retryablehttp-go v1.3.33
 	github.com/projectdiscovery/sarif v0.1.0
-	github.com/projectdiscovery/tlsx v1.4.3-0.20261020052910-acb80c2c7c75
+	github.com/projectdiscovery/tlsx v1.4.4
 	github.com/projectdiscovery/uncover v1.2.1
-	github.com/projectdiscovery/useragent v0.0.109
+	github.com/projectdiscovery/useragent v0.0.110
 	github.com/projectdiscovery/utils v0.11.13-0.20261103094816-5c0b20e35350
-	github.com/projectdiscovery/wappalyzergo v0.3.6
-	github.com/projectdiscovery/yamldoc-go v1.0.7
+	github.com/projectdiscovery/wappalyzergo v0.3.7
+	github.com/projectdiscovery/yamldoc-go v1.0.9
 	github.com/redis/go-redis/v9 v9.19.0
 	github.com/remeh/sizedwaitgroup v1.0.0
 	github.com/rs/xid v1.6.0
@@ -129,14 +129,14 @@ require (
 	go.mongodb.org/mongo-driver v1.17.9
 	go.uber.org/multierr v1.11.0
 	golang.org/x/exp v0.0.0-20260527015227-08cc5374adb3
-	golang.org/x/net v0.59.0
+	golang.org/x/net v0.61.0
 	golang.org/x/oauth2 v0.36.0
-	golang.org/x/sync v0.23.0
-	golang.org/x/sys v0.48.0
-	golang.org/x/term v0.46.0
-	golang.org/x/text v0.42.0
+	golang.org/x/sync v0.24.0
+	golang.org/x/sys v0.49.0
+	golang.org/x/term v0.47.0
+	golang.org/x/text v0.43.0
 	golang.org/x/time v0.15.0
-	golang.org/x/tools v0.49.0
+	golang.org/x/tools v0.52.0
 	google.golang.org/grpc v1.83.2
 	google.golang.org/protobuf v1.36.11
 	gopkg.in/yaml.v3 v3.0.1
@@ -168,7 +168,6 @@ require (
 	github.com/GoogleCloudPlatform/opentelemetry-operations-go/internal/resourcemapping v0.53.0 // indirect
 	github.com/Microsoft/go-winio v0.6.2 // indirect
 	github.com/Mzack9999/gcache v0.0.0-20230410081825-519e28eab057 // indirect
-	github.com/Mzack9999/go-http-digest-auth-client v0.6.1-0.20220414142836-eb8883508809 // indirect
 	github.com/Mzack9999/goimpacket v0.0.0-20260420131935-a9fe473cda7d // indirect
 	github.com/Nvveen/Gotty v0.0.0-20120604004816-cd527374f1e5 // indirect
 	github.com/ProtonMail/go-crypto v1.1.6 // indirect
@@ -372,10 +371,10 @@ require (
 	github.com/pkg/browser v0.0.0-20240102092130-5ac0b6a4141c // indirect
 	github.com/planetscale/vtprotobuf v0.6.1-0.20240319094008-0393e58bdf10 // indirect
 	github.com/power-devops/perfstat v0.0.0-20240221224432-82ca36839d55 // indirect
-	github.com/projectdiscovery/asnmap v1.1.1 // indirect
+	github.com/projectdiscovery/asnmap v1.2.0 // indirect
 	github.com/projectdiscovery/blackrock v0.0.2 // indirect
-	github.com/projectdiscovery/cdncheck v1.3.2 // indirect
-	github.com/projectdiscovery/freeport v0.0.7 // indirect
+	github.com/projectdiscovery/cdncheck v1.3.3 // indirect
+	github.com/projectdiscovery/freeport v0.0.8 // indirect
 	github.com/projectdiscovery/jarm-go v0.0.0-20260910160638-430e2bae86f6 // indirect
 	github.com/projectdiscovery/ldapserver v1.0.2-0.20240219154113-dcc758ebc0cb // indirect
 	github.com/projectdiscovery/machineid v0.0.0-20250715113114-c77eb3567582 // indirect
@@ -432,7 +431,7 @@ require (
 	github.com/ysmood/got v0.40.0 // indirect
 	github.com/ysmood/gson v0.7.3 // indirect
 	github.com/ysmood/leakless v0.9.0 // indirect
-	github.com/yuin/goldmark v1.7.17 // indirect
+	github.com/yuin/goldmark v1.8.6 // indirect
 	github.com/yuin/goldmark-emoji v1.0.6 // indirect
 	github.com/yusufpapurcu/wmi v1.2.4 // indirect
 	github.com/zcalusic/sysinfo v1.1.3 // indirect
@@ -455,8 +454,8 @@ require (
 	go4.org v0.0.0-20230225012048-214862532bf5 // indirect
 	goftp.io/server/v2 v2.0.1 // indirect
 	golang.org/x/arch v0.3.0 // indirect
-	golang.org/x/crypto v0.57.0 // indirect
-	golang.org/x/mod v0.41.0 // indirect
+	golang.org/x/crypto v0.58.0 // indirect
+	golang.org/x/mod v0.42.0 // indirect
 	google.golang.org/api v0.264.0 // indirect
 	google.golang.org/genproto v0.0.0-20260128011058-8636f8732409 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20260526163538-3dc84a4a5aaa // indirect
