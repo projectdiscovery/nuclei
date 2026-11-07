@@ -302,6 +302,26 @@ func TestHTTPMakeResult(t *testing.T) {
 	require.Equal(t, 1, len(finalEvent.Results), "could not get correct number of results")
 	require.Equal(t, "test", finalEvent.Results[0].MatcherName, "could not get correct matcher name of results")
 	require.Equal(t, "1.1.1.1", finalEvent.Results[0].ExtractedResults[0], "could not get correct extracted results")
+	require.Equal(t, operators.ConfidenceMedium, finalEvent.Results[0].Confidence, "could not get correct confidence tier")
+	require.Equal(t, 63, finalEvent.Results[0].ConfidenceScore, "could not get correct confidence score")
+
+	// interactsh_protocol alone does not pin confidence: the template has no
+	// interactsh matcher, so the field may come from a header the target sets.
+	event["interactsh_protocol"] = "dns"
+	oobEvent := &output.InternalWrappedEvent{InternalEvent: event, OperatorsResult: finalEvent.OperatorsResult}
+	oobResults := request.MakeResultEvent(oobEvent)
+	require.NotEmpty(t, oobResults, "expected a result event")
+	require.Equal(t, operators.ConfidenceMedium, oobResults[0].Confidence, "a spoofable interactsh field must not raise confidence")
+	require.Equal(t, 63, oobResults[0].ConfidenceScore, "a spoofable interactsh field must not change the score")
+
+	// a catch-all baseline match clamps confidence down for in-band matches.
+	delete(event, "interactsh_protocol")
+	event[BaselineMatchedKey] = true
+	baselineEvent := &output.InternalWrappedEvent{InternalEvent: event, OperatorsResult: finalEvent.OperatorsResult}
+	baselineResults := request.MakeResultEvent(baselineEvent)
+	require.NotEmpty(t, baselineResults, "expected a baseline result event")
+	require.Equal(t, operators.ConfidenceLow, baselineResults[0].Confidence, "catch-all baseline match should be low confidence")
+	require.Equal(t, operators.ConfidenceCatchAll, baselineResults[0].ConfidenceScore, "catch-all baseline match should use the clamped score")
 }
 
 func TestHTTPMakeResultRendersInfo(t *testing.T) {
