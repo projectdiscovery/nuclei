@@ -15,6 +15,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/helpers/responsehighlighter"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
+	convUtil "github.com/projectdiscovery/utils/conversion"
 )
 
 // Match matches a generic data response again a given matcher
@@ -225,7 +226,7 @@ func (request *Request) savedRequest(dump string) string {
 	if request.options == nil || request.options.Options == nil {
 		return dump
 	}
-	return string(capDumpBody([]byte(dump), request.options.Options.RequestSaveSize))
+	return string(capDumpBody(convUtil.Bytes(dump), request.options.Options.RequestSaveSize))
 }
 
 // eventResponse returns the full response of event. Events matched after the
