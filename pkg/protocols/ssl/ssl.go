@@ -282,6 +282,12 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 			return errkit.Wrap(err, "could not resolve host")
 		}
 		hostIp = address
+	} else if !protocolstate.IsHostAllowed(request.options.Options.ExecutionId, hostIp) {
+		// A custom dialer can allow an address that the execution policy denies.
+		err := protocolstate.ErrHostDenied.Msgf(hostIp)
+		requestOptions.Output.Request(requestOptions.TemplateID, input.MetaInput.Input, request.Type().String(), err)
+		requestOptions.Progress.IncrementFailedRequestsBy(1)
+		return err
 	}
 
 	if err := request.options.HostBackoffWait(input.Context(), addressToDial); err != nil {

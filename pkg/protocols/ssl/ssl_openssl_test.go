@@ -10,10 +10,12 @@ import (
 	"crypto/x509/pkix"
 	"math/big"
 	"net"
+	"slices"
 	"sync/atomic"
 	"testing"
 	"time"
 
+	"github.com/projectdiscovery/fastdialer/fastdialer"
 	"github.com/stretchr/testify/require"
 
 	"github.com/projectdiscovery/nuclei/v3/internal/tests/testutils"
@@ -88,6 +90,11 @@ func TestSSLOpenSSLObeysNetworkPolicy(t *testing.T) {
 
 	request := &Request{ID: "ssl-openssl-policy", Address: "{{Host}}:{{Port}}", ScanMode: "openssl"}
 	require.NoError(t, request.Compile(executerOpts))
+	// The scan resolves names with the fastdialer, not the system resolver. On
+	// Windows the hosts file has no localhost entry, so the name does not resolve.
+	if !resolvesToBothLoopbacks(request) {
+		t.Skip("the scan dialer does not resolve localhost to both loopback addresses")
+	}
 
 	var event output.InternalEvent
 	input := contextargs.NewWithInput(context.Background(), net.JoinHostPort("localhost", port))
@@ -97,6 +104,49 @@ func TestSSLOpenSSLObeysNetworkPolicy(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, "allowed", event["subject_cn"])
 	require.Zero(t, deniedHandshakes.Load(), "openssl connected to a denied address")
+}
+
+func resolvesToBothLoopbacks(request *Request) bool {
+	data, err := request.dialer.GetDNSData("localhost")
+	if err != nil {
+		return false
+	}
+	return slices.Contains(data.A, "127.0.0.1") && slices.Contains(data.AAAA, "::1")
+}
+
+func TestSSLOpenSSLLiteralIPObeysExecutionPolicy(t *testing.T) {
+	if !openssl.IsAvailable() {
+		t.Skip("openssl binary is not installed")
+	}
+
+	// The input pins ::1 as its custom ip, and a custom dialer with no deny
+	// list would connect to it. The execution policy denies it, so the openssl
+	// binary must not connect to it.
+	var deniedHandshakes atomic.Int32
+	denied := serveTLS(t, "[::1]:0", "denied", &deniedHandshakes)
+	_, port, err := net.SplitHostPort(denied)
+	require.NoError(t, err)
+
+	options := testutils.DefaultOptions.Copy()
+	options.SetExecutionID(t.Name())
+	options.ExcludeTargets = []string{"::1"}
+	testutils.Init(options)
+	t.Cleanup(func() { testutils.Cleanup(options) })
+	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{ID: "ssl-openssl-literal-ip"})
+	executerOpts.IsMultiProtocol = true
+	customDialer, err := fastdialer.NewDialer(fastdialer.DefaultOptions)
+	require.NoError(t, err)
+	t.Cleanup(customDialer.Close)
+	executerOpts.CustomFastdialer = customDialer
+
+	request := &Request{ID: "ssl-openssl-literal-ip", Address: "{{Host}}:{{Port}}", ScanMode: "openssl"}
+	require.NoError(t, request.Compile(executerOpts))
+
+	input := contextargs.NewWithInput(context.Background(), net.JoinHostPort("localhost", port))
+	input.MetaInput.CustomIP = "::1"
+	err = request.ExecuteWithResults(input, nil, nil, func(*output.InternalWrappedEvent) {})
+	require.Error(t, err)
+	require.Zero(t, deniedHandshakes.Load(), "openssl connected to an address the execution policy denies")
 }
 
 func TestSSLOpenSSLCustomIPObeysNetworkPolicy(t *testing.T) {
