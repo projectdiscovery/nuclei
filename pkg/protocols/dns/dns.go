@@ -4,6 +4,7 @@ import (
 	"context"
 	"net"
 	"strings"
+	"time"
 
 	"github.com/miekg/dns"
 	"github.com/pkg/errors"
@@ -210,13 +211,17 @@ func resolverHost(resolver string) string {
 // network policy allows. The policy check passes when one address of the name
 // is allowed, and the dns client resolves the name again when it dials, so it
 // could otherwise reach a denied address of the same name.
-func pinResolverHost(executionID, resolver, host string) (string, error) {
+// The lookup stops after timeout, so a slow system resolver cannot hold the
+// request.
+func pinResolverHost(executionID, resolver, host string, timeout time.Duration) (string, error) {
 	// DoH and DoT resolvers dial through the scan dialer, which checks every
 	// address, and DoT verifies the certificate against the name.
 	if iputil.IsIP(host) || strings.HasPrefix(resolver, "doh:") || strings.HasPrefix(resolver, "dot:") {
 		return resolver, nil
 	}
-	addrs, err := net.DefaultResolver.LookupHost(context.Background(), host)
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+	addrs, err := net.DefaultResolver.LookupHost(ctx, host)
 	if err != nil {
 		return "", errors.Wrapf(err, "could not resolve dns resolver %s", resolver)
 	}
@@ -234,6 +239,14 @@ func pinResolverHost(executionID, resolver, host string) (string, error) {
 		}
 	}
 	return "", errors.Errorf("dns resolver %s is blocked by network policy", resolver)
+}
+
+// resolverLookupTimeout is the scan timeout, or ten seconds when it is not set.
+func resolverLookupTimeout(options *protocols.ExecutorOptions) time.Duration {
+	if options.Options.Timeout > 0 {
+		return time.Duration(options.Options.Timeout) * time.Second
+	}
+	return 10 * time.Second
 }
 
 func (request *Request) getDnsClient(options *protocols.ExecutorOptions, metadata map[string]interface{}) (*dnsclientpool.Client, error) {
@@ -269,7 +282,7 @@ func (request *Request) getDnsClient(options *protocols.ExecutorOptions, metadat
 				if !protocolstate.IsHostAllowed(options.Options.ExecutionId, host) {
 					return nil, errors.Errorf("dns resolver %s is blocked by network policy", resolver)
 				}
-				pinned, err := pinResolverHost(options.Options.ExecutionId, resolver, host)
+				pinned, err := pinResolverHost(options.Options.ExecutionId, resolver, host, resolverLookupTimeout(options))
 				if err != nil {
 					return nil, err
 				}

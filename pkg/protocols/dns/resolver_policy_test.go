@@ -5,6 +5,7 @@ import (
 	"net"
 	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/miekg/dns"
 	"github.com/stretchr/testify/require"
@@ -101,4 +102,18 @@ func TestDNSResolverNameObeysNetworkPolicy(t *testing.T) {
 			require.Zero(t, deniedHits.Load(), "dns query reached a denied address")
 		})
 	}
+}
+
+func TestDNSResolverNameLookupStopsAtTimeout(t *testing.T) {
+	// The system resolver never answers, so the lookup that pins the resolver
+	// name must stop at the timeout.
+	silent, err := net.ListenPacket("udp", "127.0.0.1:0")
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = silent.Close() })
+	useSystemResolver(t, silent.LocalAddr().String())
+
+	start := time.Now()
+	_, err = pinResolverHost(t.Name(), "silent.nuclei-test:53", "silent.nuclei-test", time.Second)
+	require.Error(t, err)
+	require.Less(t, time.Since(start), 4*time.Second, "the resolver lookup did not stop at the timeout")
 }
