@@ -147,6 +147,7 @@ type Request struct {
 	rawhttpClient     *rawhttp.Client
 	replayClient      *http.Client // set when -replay-proxy is given
 	dialer            *fastdialer.Dialer
+	bodySize          *bodySizeEstimate
 
 	// description: |
 	//   SelfContained specifies if the request is self-contained.
@@ -416,6 +417,7 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 		return errors.Wrap(err, "could not get dialer")
 	}
 	request.dialer = dialer
+	request.bodySize = &bodySizeEstimate{}
 
 	request.options = options
 	for _, option := range request.options.Options.CustomHeaders {
