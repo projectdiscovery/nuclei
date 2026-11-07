@@ -27,17 +27,17 @@ func trace(executionID string, client *dnsclientpool.Client, host string, reques
 	seenNS := make(map[string]struct{})
 	seenCName := make(map[string]int)
 	for i := 1; i < maxRecursion; i++ {
-		dnsDatas, err := client.QueryParallel(host, requestType, servers)
+		responses, err := client.QueryParallel(host, requestType, servers)
 		if err != nil {
 			return nil, err
 		}
 		for _, server := range servers {
 			seenNS[server] = struct{}{}
 		}
-		if len(dnsDatas) == 0 {
+		if len(responses) == 0 {
 			return &traceData, nil
 		}
-		for _, dnsData := range dnsDatas {
+		for _, dnsData := range responses {
 			if dnsData != nil && len(dnsData.Resolver) > 0 {
 				traceData.DNSData = append(traceData.DNSData, dnsData)
 			}
@@ -45,7 +45,7 @@ func trace(executionID string, client *dnsclientpool.Client, host string, reques
 
 		var nameServers []string
 		var nextCname string
-		for _, dnsData := range dnsDatas {
+		for _, dnsData := range responses {
 			if dnsData == nil {
 				continue
 			}
