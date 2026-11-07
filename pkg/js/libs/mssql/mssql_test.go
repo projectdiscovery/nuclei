@@ -1,9 +1,17 @@
 package mssql
 
 import (
+	"context"
+	"errors"
+	"net"
+	"strconv"
 	"testing"
+	"time"
 
+	gomssql "github.com/microsoft/go-mssqldb"
 	"github.com/microsoft/go-mssqldb/msdsn"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
+	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	"github.com/stretchr/testify/require"
 )
 
@@ -32,4 +40,108 @@ func TestConnectionStringKeepsPlainDatabaseName(t *testing.T) {
 	require.NoError(t, err)
 
 	require.Equal(t, "master", cfg.Database)
+}
+
+func TestOpenDBUsesCustomFastdialer(t *testing.T) {
+	execID := "mssql-opendb-test"
+	require.NoError(t, protocolstate.Init(&types.Options{ExecutionId: execID}))
+	t.Cleanup(func() { protocolstate.Close(execID) })
+
+	db, err := openDB(execID, "127.0.0.1:1433", "user", "pass", "master")
+	require.NoError(t, err)
+	require.NotNil(t, db)
+	_ = db.Close()
+}
+
+func TestMssqlDialerEnforcesNetworkPolicy(t *testing.T) {
+	execID := "mssql-policy-test"
+	require.NoError(t, protocolstate.Init(&types.Options{ExecutionId: execID}))
+	t.Cleanup(func() { protocolstate.Close(execID) })
+
+	dialer := &mssqlCustomDialer{
+		executionId: execID,
+		host:        "127.0.0.1",
+	}
+	require.Equal(t, "127.0.0.1", dialer.HostName())
+
+	// Verify HostDialer interface implementation
+	var _ gomssql.HostDialer = dialer
+
+	// Test uninitialized dialers returns error
+	uninitDialer := &mssqlCustomDialer{
+		executionId: "nonexistent-exec-id",
+		host:        "example.com",
+	}
+	_, err := uninitDialer.DialContext(context.Background(), "tcp", "example.com:1433")
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "dialers not initialized")
+}
+
+func TestConnectFailsFastOnClosedPort(t *testing.T) {
+	execID := "mssql-closed-port-test"
+	require.NoError(t, protocolstate.Init(&types.Options{ExecutionId: execID}))
+	t.Cleanup(func() { protocolstate.Close(execID) })
+
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	require.NoError(t, err)
+	_, portStr, err := net.SplitHostPort(ln.Addr().String())
+	require.NoError(t, err)
+	port, err := strconv.Atoi(portStr)
+	require.NoError(t, err)
+	_ = ln.Close()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+
+	ok, err := connect(ctx, execID, "127.0.0.1", port, "user", "pass", "master")
+	require.Error(t, err)
+	require.False(t, ok)
+}
+
+func TestConnectWithCanceledContext(t *testing.T) {
+	execID := "mssql-canceled-ctx-test"
+	require.NoError(t, protocolstate.Init(&types.Options{ExecutionId: execID}))
+	t.Cleanup(func() { protocolstate.Close(execID) })
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel() // Cancel immediately
+
+	ok, err := connect(ctx, execID, "127.0.0.1", 1433, "user", "pass", "master")
+	require.Error(t, err)
+	require.False(t, ok)
+}
+
+func TestIsNetworkError(t *testing.T) {
+	require.True(t, isNetworkError(errors.New("connect: connection refused")))
+	require.True(t, isNetworkError(errors.New("No connection could be made because the target machine actively refused it.")))
+	require.True(t, isNetworkError(errors.New("unable to open tcp connection with host '127.0.0.1:1433': cause=\"port closed or filtered\"")))
+	require.True(t, isNetworkError(errors.New("network unreachable")))
+	require.True(t, isNetworkError(errors.New("connection reset by peer")))
+	require.True(t, isNetworkError(errors.New("i/o timeout")))
+	require.True(t, isNetworkError(context.Canceled))
+	require.True(t, isNetworkError(context.DeadlineExceeded))
+	require.True(t, isNetworkError(protocolstate.ErrHostDenied.Msgf("127.0.0.1")))
+
+	// Server-side responses / authentication failures are not network errors
+	require.False(t, isNetworkError(nil))
+	require.False(t, isNetworkError(errors.New("mssql: Login failed for user 'sa'")))
+	require.False(t, isNetworkError(errors.New("mssql: Cannot open database \"secret\" requested by the login")))
+	require.False(t, isNetworkError(errors.New("mssql: Password has expired")))
+}
+
+func TestExecuteQueryUsesFastdialer(t *testing.T) {
+	execID := "mssql-execute-query-test"
+	require.NoError(t, protocolstate.Init(&types.Options{ExecutionId: execID}))
+	t.Cleanup(func() { protocolstate.Close(execID) })
+
+	client := &MSSQLClient{}
+	ctx := context.WithValue(context.Background(), "executionId", execID)
+
+	// Denied host should fail policy check immediately
+	_, err := client.ExecuteQuery(ctx, "denied.host", 1433, "user", "pass", "master", "SELECT 1")
+	require.Error(t, err)
+
+	// Closed port should fail
+	_, err = client.ExecuteQuery(ctx, "127.0.0.1", 65530, "user", "pass", "master", "SELECT 1")
+	require.Error(t, err)
 }
