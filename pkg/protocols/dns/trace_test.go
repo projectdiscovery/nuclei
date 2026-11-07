@@ -28,8 +28,20 @@ func serveTraceDNS(t *testing.T, address string, handler dns.HandlerFunc) string
 }
 
 func TestDNSTraceObeysNetworkPolicy(t *testing.T) {
-	// The zone of the traced name delegates to a name server whose address
-	// the network policy denies.
+	// The zone of the traced name delegates to a name server on 127.0.0.1.
+	// The trace must query it when the policy allows the address, so that the
+	// test can see a trace that ignores the policy, and must skip it when the
+	// policy denies the address.
+	t.Run("allowed", func(t *testing.T) {
+		require.NotZero(t, runTraceAgainstLoopbackNameServer(t, nil), "trace did not query the allowed name server")
+	})
+	t.Run("denied", func(t *testing.T) {
+		require.Zero(t, runTraceAgainstLoopbackNameServer(t, []string{"127.0.0.1"}), "trace queried a denied name server")
+	})
+}
+
+func runTraceAgainstLoopbackNameServer(t *testing.T, excludeTargets []string) int32 {
+	t.Helper()
 	var internalHits atomic.Int32
 	internal := serveTraceDNS(t, "127.0.0.1:0", func(w dns.ResponseWriter, q *dns.Msg) {
 		internalHits.Add(1)
@@ -80,7 +92,7 @@ func TestDNSTraceObeysNetworkPolicy(t *testing.T) {
 
 	options := testutils.DefaultOptions.Copy()
 	options.SetExecutionID(t.Name())
-	options.ExcludeTargets = []string{"127.0.0.1"}
+	options.ExcludeTargets = excludeTargets
 	options.InternalResolversList = []string{public}
 	testutils.Init(options)
 	t.Cleanup(func() { testutils.Cleanup(options) })
@@ -90,9 +102,12 @@ func TestDNSTraceObeysNetworkPolicy(t *testing.T) {
 	})
 
 	request := &Request{
-		RequestType:       DNSRequestTypeHolder{DNSRequestType: TXT},
-		Class:             "INET",
-		Name:              "{{FQDN}}",
+		RequestType: DNSRequestTypeHolder{DNSRequestType: TXT},
+		Class:       "INET",
+		Name:        "{{FQDN}}",
+		// One retry keeps the client keyed by this test's resolvers, so a
+		// client cached by an earlier run cannot point at a closed server.
+		Retries:           1,
 		Trace:             true,
 		TraceMaxRecursion: 5,
 	}
@@ -105,5 +120,5 @@ func TestDNSTraceObeysNetworkPolicy(t *testing.T) {
 	})
 	require.NoError(t, err)
 	require.Contains(t, event["trace"], "ns.nuclei-test", "trace did not query the root servers")
-	require.Zero(t, internalHits.Load(), "trace queried a denied name server")
+	return internalHits.Load()
 }
