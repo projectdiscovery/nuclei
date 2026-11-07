@@ -1095,7 +1095,7 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 	if generatedRequest.sendTimeout > 0 && generatedRequest.request != nil {
 		ctx, cancel := context.WithTimeoutCause(generatedRequest.request.Context(), generatedRequest.sendTimeout, ErrHttpEngineRequestDeadline)
 		defer cancel()
-		generatedRequest.request.WithContext(ctx)
+		generatedRequest.request = generatedRequest.request.WithContext(ctx)
 	}
 
 	// wrap one more callback for validation and fixing event
