@@ -148,15 +148,15 @@ func isNetworkError(err error) bool {
 		"port closed",
 		"unable to open tcp connection",
 		"network unreachable",
+		"connection reset",
 		"i/o timeout",
-		"timeout",
-		"reset",
+		"connection timed out",
+		"timed out",
 		"context canceled",
 		"deadline exceeded",
 		"dialers not initialized",
 		"network policy",
 		"host denied",
-		"denied",
 	} {
 		if strings.Contains(errStr, marker) {
 			return true

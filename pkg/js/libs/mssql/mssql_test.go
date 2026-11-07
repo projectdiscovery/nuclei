@@ -127,6 +127,8 @@ func TestIsNetworkError(t *testing.T) {
 	require.False(t, isNetworkError(errors.New("mssql: Login failed for user 'sa'")))
 	require.False(t, isNetworkError(errors.New("mssql: Cannot open database \"secret\" requested by the login")))
 	require.False(t, isNetworkError(errors.New("mssql: Password has expired")))
+	require.False(t, isNetworkError(errors.New("mssql: Permission denied to database")))
+	require.False(t, isNetworkError(errors.New("mssql: Password must be reset")))
 }
 
 func TestExecuteQueryUsesFastdialer(t *testing.T) {
@@ -135,7 +137,7 @@ func TestExecuteQueryUsesFastdialer(t *testing.T) {
 	t.Cleanup(func() { protocolstate.Close(execID) })
 
 	client := &MSSQLClient{}
-	ctx := context.WithValue(context.Background(), "executionId", execID)
+	ctx := context.WithValue(context.Background(), "executionId", execID) //nolint:staticcheck // SA1029: executionId string key matches goja runtime injection
 
 	// Denied host should fail policy check immediately
 	_, err := client.ExecuteQuery(ctx, "denied.host", 1433, "user", "pass", "master", "SELECT 1")
