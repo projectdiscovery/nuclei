@@ -8,10 +8,7 @@ import (
 	"golang.org/x/net/html"
 )
 
-const (
-	analyzerName         = "xss_context"
-	maxResponseBodyBytes = 10 * 1024 * 1024 // 10 MiB
-)
+const analyzerName = "xss_context"
 
 // XSSAnalyzer implements the analyzers.Analyzer interface for XSS context detection.
 type XSSAnalyzer struct{}
@@ -41,32 +38,16 @@ func (a *XSSAnalyzer) Analyze(options *analyzers.Options) (bool, string, error) 
 		return false, "", nil
 	}
 
-	if err := gr.Component.SetValue(gr.Key, payload); err != nil {
-		return false, "", err
-	}
 	defer func() {
 		_ = gr.Component.SetValue(gr.Key, gr.OriginalValue)
 	}()
 
-	rebuilt, err := gr.Component.Rebuild()
+	body, err := analyzers.SendValueAndReadBody(options, payload)
 	if err != nil {
 		return false, "", err
 	}
 
-	resp, err := options.HttpClient.Do(rebuilt)
-	if err != nil {
-		return false, "", err
-	}
-	defer func() {
-		_ = resp.Body.Close()
-	}()
-
-	body, err := io.ReadAll(io.LimitReader(resp.Body, maxResponseBodyBytes))
-	if err != nil {
-		return false, "", err
-	}
-
-	ctx, err := AnalyzeReflectionContext(string(body), payload)
+	ctx, err := AnalyzeReflectionContext(body, payload)
 	if err != nil {
 		return false, "", err
 	}
@@ -191,28 +172,28 @@ var eventHandlers = map[string]struct{}{
 	"ontouchmove":          {},
 	"ontouchcancel":        {},
 	// added after review, these are newer DOM events that were missing
-	"onauxclick":           {},
-	"onbeforeinput":        {},
-	"onformdata":           {},
-	"onslotchange":         {},
+	"onauxclick":                {},
+	"onbeforeinput":             {},
+	"onformdata":                {},
+	"onslotchange":              {},
 	"onsecuritypolicyviolation": {},
 }
 
 // executableScriptTypes lists MIME types that browsers actually execute.
 // Empty string covers <script> with no type attribute.
 var executableScriptTypes = map[string]struct{}{
-	"":                          {},
-	"text/javascript":           {},
-	"application/javascript":    {},
-	"text/ecmascript":           {},
-	"application/ecmascript":    {},
-	"module":                    {},
-	"text/jscript":              {},
-	"text/livescript":           {},
+	"":                         {},
+	"text/javascript":          {},
+	"application/javascript":   {},
+	"text/ecmascript":          {},
+	"application/ecmascript":   {},
+	"module":                   {},
+	"text/jscript":             {},
+	"text/livescript":          {},
 	"text/x-ecmascript":        {},
 	"text/x-javascript":        {},
-	"application/x-javascript":  {},
-	"application/x-ecmascript":  {},
+	"application/x-javascript": {},
+	"application/x-ecmascript": {},
 }
 
 // executableURLSinks maps URL attribute names to the set of tags where
