@@ -146,10 +146,18 @@ func New(options *types.Options) (*Runner, error) {
 
 	//  Version check by default
 	if config.DefaultConfig.CanCheckForUpdates() {
-		latestIgnoreHash, versionCheckErr := installer.NucleiVersionCheck()
-		if versionCheckErr != nil {
-			if options.Verbose || options.Debug {
-				runner.Logger.Error().Msgf("nuclei version check failed got: %s\n", versionCheckErr)
+		// -plan sends no request it can avoid, so it skips the version and
+		// update checks; it still installs templates on a fresh setup, which
+		// would otherwise plan nothing
+		checkUpdates := options.PlanFile == ""
+		var latestIgnoreHash string
+		if checkUpdates {
+			var versionCheckErr error
+			latestIgnoreHash, versionCheckErr = installer.NucleiVersionCheck()
+			if versionCheckErr != nil {
+				if options.Verbose || options.Debug {
+					runner.Logger.Error().Msgf("nuclei version check failed got: %s\n", versionCheckErr)
+				}
 			}
 		}
 
@@ -170,17 +178,19 @@ func New(options *types.Options) (*Runner, error) {
 		if err := tm.FreshInstallIfNotExists(); err != nil {
 			runner.Logger.Warning().Msgf("Failed to install nuclei templates: %s\n", err)
 		}
-		if err := tm.UpdateIfOutdated(); err != nil {
-			runner.Logger.Warning().Msgf("Failed to update nuclei templates: %s\n", err)
+		if checkUpdates {
+			if err := tm.UpdateIfOutdated(); err != nil {
+				runner.Logger.Warning().Msgf("Failed to update nuclei templates: %s\n", err)
+			}
 		}
 
-		if config.DefaultConfig.IgnoreFileNeedsUpdate(latestIgnoreHash) {
+		if checkUpdates && config.DefaultConfig.IgnoreFileNeedsUpdate(latestIgnoreHash) {
 			if err := installer.UpdateIgnoreFile(); err != nil {
 				runner.Logger.Warning().Msgf("Failed to update .nuclei-ignore file: %s\n", err)
 			}
 		}
 
-		if options.UpdateTemplates {
+		if checkUpdates && options.UpdateTemplates {
 			// we automatically check for updates unless explicitly disabled
 			// this print statement is only to inform the user that there are no updates
 			noUpdates := !config.DefaultConfig.NeedsTemplateUpdate()
@@ -591,8 +601,13 @@ func (r *Runner) RunEnumeration() error {
 	httpclientpool.ResetConnectionStats()
 
 	// If the user has asked for DAST server mode, run the live
-	// DAST fuzzing server.
+	// DAST fuzzing server. -plan never reaches this with those flags set:
+	// validation rejects the combination, and this check covers a caller
+	// that skipped it.
 	if r.options.DASTServer || r.options.DASTProxy {
+		if err := validatePlanOptions(r.options); err != nil {
+			return err
+		}
 		execurOpts := &server.NucleiExecutorOptions{
 			Options:            r.options,
 			Output:             r.output,
@@ -814,6 +829,11 @@ func (r *Runner) RunEnumeration() error {
 	if profiles != nil {
 		profiles.Prepare(slices.Concat(store.Templates(), store.Workflows()))
 		executorOpts.TargetScope = profiles
+	}
+	// before uncover, preflight, auth prefetch and probing below, all of which
+	// reach the network
+	if r.options.PlanFile != "" {
+		return r.writePlan(store, executorEngine)
 	}
 	// TODO: remove below functions after v3 or update warning messages
 	templates.PrintDeprecatedProtocolNameMsgIfApplicable(r.options.Silent, r.options.Verbose)

@@ -251,6 +251,9 @@ type Options struct {
 	Silent bool
 	// Validate validates the templates passed to nuclei.
 	Validate bool
+	// PlanFile is where the work a scan would do is written as JSON lines;
+	// nuclei exits after writing it, without sending requests.
+	PlanFile string
 	// NoStrictSyntax disables strict syntax check on nuclei templates (allows custom key-value pairs).
 	NoStrictSyntax bool
 	// Verbose flag indicates whether to show verbose output or not
@@ -707,6 +710,7 @@ func (options *Options) Copy() *Options {
 		AutomaticScan:                  options.AutomaticScan,
 		Silent:                         options.Silent,
 		Validate:                       options.Validate,
+		PlanFile:                       options.PlanFile,
 		NoStrictSyntax:                 options.NoStrictSyntax,
 		Verbose:                        options.Verbose,
 		VerboseVerbose:                 options.VerboseVerbose,
