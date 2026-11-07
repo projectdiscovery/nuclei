@@ -6,6 +6,7 @@ import (
 
 	"github.com/antchfx/htmlquery"
 	"github.com/antchfx/xmlquery"
+	"github.com/projectdiscovery/nuclei/v3/pkg/operators/common/dsl"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils/json"
@@ -14,6 +15,13 @@ import (
 // ExtractRegex extracts text from a corpus and returns it
 func (e *Extractor) ExtractRegex(corpus string) map[string]struct{} {
 	results := make(map[string]struct{})
+
+	// A negative group index is meaningless and would index match[-1] below,
+	// which panics with "index out of range [-1]". Bail out early so a stray
+	// "group: -1" in a template can't crash the whole scan.
+	if e.RegexGroup < 0 {
+		return results
+	}
 
 	groupPlusOne := e.RegexGroup + 1
 	for _, regex := range e.regexCompiled {
@@ -175,10 +183,15 @@ func (e *Extractor) ExtractJSON(corpus string) map[string]struct{} {
 
 // ExtractDSL execute the expression and returns the results
 func (e *Extractor) ExtractDSL(data map[string]interface{}) map[string]struct{} {
+	return e.ExtractDSLWithOptions(data, nil)
+}
+
+// ExtractDSLWithOptions evaluates cached expressions with the current scan's policy.
+func (e *Extractor) ExtractDSLWithOptions(data map[string]interface{}, options *types.Options) map[string]struct{} {
 	results := make(map[string]struct{})
 
 	for _, compiledExpression := range e.dslCompiled {
-		result, err := compiledExpression.Evaluate(data)
+		result, err := dsl.EvalWithOptions(compiledExpression, data, options)
 		// ignore errors that are related to missing parameters
 		// eg: dns dsl can have all the parameters that are not present
 		if err != nil && !strings.HasPrefix(err.Error(), "No parameter") {

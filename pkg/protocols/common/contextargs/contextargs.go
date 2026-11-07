@@ -6,6 +6,7 @@ import (
 	"strings"
 	"sync/atomic"
 
+	"github.com/projectdiscovery/fastdialer/fastdialer"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/portutil"
 	mapsutil "github.com/projectdiscovery/utils/maps"
@@ -30,7 +31,8 @@ type Context struct {
 	CookieJar *cookiejar.Jar
 
 	// Args is a workflow shared key-value store
-	args *mapsutil.SyncLockMap[string, interface{}]
+	args              *mapsutil.SyncLockMap[string, interface{}]
+	templateVariables *mapsutil.SyncLockMap[string, struct{}]
 }
 
 // Create a new contextargs instance
@@ -61,6 +63,10 @@ func NewWithInput(ctx context.Context, input string) *Context {
 			Map:      make(map[string]interface{}),
 			ReadOnly: atomic.Bool{},
 		},
+		templateVariables: &mapsutil.SyncLockMap[string, struct{}]{
+			Map:      make(map[string]struct{}),
+			ReadOnly: atomic.Bool{},
+		},
 	}
 }
 
@@ -69,9 +75,24 @@ func (ctx *Context) Context() context.Context {
 	return ctx.ctx
 }
 
+// WithCustomIP returns ctx with dials to the hostname of input pinned to its
+// CustomIP. Dials made with ctx to other hosts, such as redirect targets or a
+// proxy, are resolved as usual.
+func WithCustomIP(ctx context.Context, input *MetaInput) context.Context {
+	if input == nil || input.CustomIP == "" {
+		return ctx
+	}
+	hostname := input.Hostname()
+	if hostname == "" {
+		return ctx
+	}
+	return fastdialer.WithResolveOverride(ctx, hostname, input.CustomIP)
+}
+
 // Set the specific key-value pair
 func (ctx *Context) Set(key string, value interface{}) {
 	_ = ctx.args.Set(key, value)
+	ctx.clearTemplateVariable(key)
 }
 
 func (ctx *Context) hasArgs() bool {
@@ -81,6 +102,17 @@ func (ctx *Context) hasArgs() bool {
 // Merge the key-value pairs
 func (ctx *Context) Merge(args map[string]interface{}) {
 	_ = ctx.args.Merge(args)
+	for key := range args {
+		ctx.clearTemplateVariable(key)
+	}
+}
+
+// MergeTemplateVariables merges values produced from template variables.
+func (ctx *Context) MergeTemplateVariables(args map[string]interface{}) {
+	_ = ctx.args.Merge(args)
+	for key := range args {
+		ctx.setTemplateVariable(key)
+	}
 }
 
 // Add the specific key-value pair
@@ -108,8 +140,15 @@ func (ctx *Context) Add(key string, v interface{}) {
 	}
 }
 
-// UseNetworkPort updates input with required/default network port for that template
-// but is ignored if input/target contains non-http ports like 80,8080,8081 etc
+// UseNetworkPort updates input with required/default network port for that template.
+// The template port is used when:
+//   - the input has no port at all, OR
+//   - the input port is a reserved HTTP/DNS port AND the port was not explicitly
+//     specified by the user (i.e. the input contains a URL scheme, meaning the
+//     port was implied by the scheme, not typed by the operator).
+//
+// When the operator explicitly writes "target:80" (no scheme), that port is
+// intentional (e.g. an SSH service running on port 80) and must not be replaced.
 func (ctx *Context) UseNetworkPort(port string, excludePorts string) error {
 	ignorePorts := reservedPorts
 	if excludePorts != "" {
@@ -125,8 +164,19 @@ func (ctx *Context) UseNetworkPort(port string, excludePorts string) error {
 		return err
 	}
 	inputPort := target.Port()
-	if inputPort == "" || stringsutil.EqualFoldAny(inputPort, ignorePorts...) {
-		// replace port with networkPort
+	if inputPort == "" {
+		// No port in input at all — use the template port.
+		target.UpdatePort(port)
+		ctx.MetaInput.Input = target.Host
+		return nil
+	}
+	// The input has an explicit port. Only override a reserved port when the
+	// input included a URL scheme (http:// / https://), which means the port was
+	// implied by the scheme rather than deliberately typed by the operator.
+	// A bare "host:port" form (no scheme) means the operator chose that port
+	// on purpose and we must not overwrite it.
+	hasScheme := strings.Contains(ctx.MetaInput.Input, "://")
+	if hasScheme && stringsutil.EqualFoldAny(inputPort, ignorePorts...) {
 		target.UpdatePort(port)
 		ctx.MetaInput.Input = target.Host
 	}
@@ -159,6 +209,41 @@ func (ctx *Context) GetAll() map[string]interface{} {
 	return ctx.args.Clone().Map
 }
 
+// GetTemplateVariables returns values currently owned by template variable
+// evaluation.
+func (ctx *Context) GetTemplateVariables() map[string]interface{} {
+	if ctx.templateVariables == nil || ctx.templateVariables.IsEmpty() {
+		return nil
+	}
+
+	values := make(map[string]interface{})
+	for key := range ctx.templateVariables.Clone().Map {
+		value, ok := ctx.Get(key)
+		if ok {
+			values[key] = value
+		}
+	}
+
+	return values
+}
+
+func (ctx *Context) setTemplateVariable(key string) {
+	if ctx.templateVariables == nil {
+		ctx.templateVariables = &mapsutil.SyncLockMap[string, struct{}]{
+			Map:      make(map[string]struct{}),
+			ReadOnly: atomic.Bool{},
+		}
+	}
+	_ = ctx.templateVariables.Set(key, struct{}{})
+}
+
+func (ctx *Context) clearTemplateVariable(key string) {
+	if ctx.templateVariables == nil {
+		return
+	}
+	ctx.templateVariables.Delete(key)
+}
+
 func (ctx *Context) ForEach(f func(string, interface{})) {
 	_ = ctx.args.Iterate(func(k string, v interface{}) error {
 		f(k, v)
@@ -177,10 +262,11 @@ func (ctx *Context) HasArgs() bool {
 
 func (ctx *Context) Clone() *Context {
 	newCtx := &Context{
-		ctx:       ctx.ctx,
-		MetaInput: ctx.MetaInput.Clone(),
-		args:      ctx.args.Clone(),
-		CookieJar: ctx.CookieJar,
+		ctx:               ctx.ctx,
+		MetaInput:         ctx.MetaInput.Clone(),
+		args:              ctx.args.Clone(),
+		templateVariables: ctx.templateVariables.Clone(),
+		CookieJar:         ctx.CookieJar,
 	}
 	return newCtx
 }
@@ -209,9 +295,13 @@ func GetCopyIfHostOutdated(ctx *Context, url string) *Context {
 	}
 	orig, _ := urlutil.Parse(ctx.MetaInput.Input)
 	newURL, _ := urlutil.Parse(url)
-	if orig != nil && newURL != nil && orig.Host != newURL.Host {
+	if orig != nil && newURL != nil && (orig.Host != newURL.Host || (orig.Scheme != "" && newURL.Scheme != "" && !strings.EqualFold(orig.Scheme, newURL.Scheme))) {
 		newCtx := ctx.Clone()
-		newCtx.MetaInput.Input = newURL.Host
+		if newURL.Scheme != "" {
+			newCtx.MetaInput.Input = newURL.Scheme + "://" + newURL.Host
+		} else {
+			newCtx.MetaInput.Input = newURL.Host
+		}
 		return newCtx
 	}
 	return ctx

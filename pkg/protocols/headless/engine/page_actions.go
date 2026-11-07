@@ -21,6 +21,9 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/expressions"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/render"
+	"github.com/projectdiscovery/nuclei/v3/pkg/types"
+	filepathutil "github.com/projectdiscovery/nuclei/v3/pkg/utils/filepath"
 	contextutil "github.com/projectdiscovery/utils/context"
 	"github.com/projectdiscovery/utils/errkit"
 	fileutil "github.com/projectdiscovery/utils/file"
@@ -47,9 +50,14 @@ const (
 func (p *Page) ExecuteActions(input *contextargs.Context, actions []*Action) (outData ActionData, err error) {
 	outData = make(ActionData)
 
+	type deferredWaitFunc struct {
+		actionIndex int
+		run         func() error
+	}
+
 	// waitFuncs are function that needs to be executed after navigation
 	// typically used for waitEvent
-	waitFuncs := make([]func() error, 0)
+	waitFuncs := make([]deferredWaitFunc, 0)
 
 	// avoid any future panics caused due to go-rod library
 	// TODO(dwisiswant0): remove this once we get the RCA.
@@ -64,16 +72,26 @@ func (p *Page) ExecuteActions(input *contextargs.Context, actions []*Action) (ou
 	}()
 
 	for _, act := range actions {
+		executed := true
+		actionIndex := len(p.ActionDurations)
+		timeStart := time.Now()
+		var deferredWaitDuration time.Duration
 		switch act.ActionType.ActionType {
 		case ActionNavigate:
 			err = p.NavigateURL(act, outData)
 			if err == nil {
 				// if navigation successful trigger all waitFuncs (if any)
 				for _, waitFunc := range waitFuncs {
-					if waitFunc != nil {
-						if err := waitFunc(); err != nil {
+					if waitFunc.run != nil {
+						waitStart := time.Now()
+						if err := waitFunc.run(); err != nil {
+							waitDuration := time.Since(waitStart)
+							addActionDuration(p.ActionDurations, waitFunc.actionIndex, waitDuration)
 							return nil, errkit.Wrap(err, "error occurred while executing waitFunc")
 						}
+						waitDuration := time.Since(waitStart)
+						addActionDuration(p.ActionDurations, waitFunc.actionIndex, waitDuration)
+						deferredWaitDuration += waitDuration
 					}
 				}
 
@@ -123,12 +141,17 @@ func (p *Page) ExecuteActions(input *contextargs.Context, actions []*Action) (ou
 			var waitFunc func() error
 			waitFunc, err = p.WaitEvent(act, outData)
 			if waitFunc != nil {
-				waitFuncs = append(waitFuncs, waitFunc)
+				waitFuncs = append(waitFuncs, deferredWaitFunc{actionIndex: actionIndex, run: waitFunc})
 			}
 		case ActionWaitDialog:
 			err = p.HandleDialog(act, outData)
 		case ActionFilesInput:
-			if p.options.Options.AllowLocalFileAccess {
+			// Use the same canonical predicate used by the screenshot action
+			// rather than reading Options.AllowLocalFileAccess directly so the
+			// two file-touching actions cannot disagree about whether LFA is
+			// enabled (e.g. when callers use protocolstate.SetLfaAllowed
+			// without also flipping the field on Options).
+			if protocolstate.IsLfaAllowed(p.options.Options) {
 				err = p.FilesInput(act, outData)
 			} else {
 				err = ErrLFAccessDenied
@@ -152,13 +175,22 @@ func (p *Page) ExecuteActions(input *contextargs.Context, actions []*Action) (ou
 		case ActionWaitVisible:
 			err = p.WaitVisible(act, outData)
 		default:
-			continue
+			executed = false
 		}
 		if err != nil {
 			return nil, errors.Wrap(err, "error occurred executing action")
 		}
+		if executed {
+			p.ActionDurations = append(p.ActionDurations, max(time.Since(timeStart)-deferredWaitDuration, 0))
+		}
 	}
 	return outData, nil
+}
+
+func addActionDuration(durations []time.Duration, index int, duration time.Duration) {
+	if index >= 0 && index < len(durations) {
+		durations[index] += duration
+	}
 }
 
 type rule struct {
@@ -180,9 +212,11 @@ func (p *Page) WaitVisible(act *Action, out ActionData) error {
 		return errors.Wrap(err, "Wrong polling time given")
 	}
 
-	element, _ := p.Sleeper(pollTime, timeout).
-		Timeout(timeout).
-		pageElementBy(act.Data)
+	lookupPage := p.Sleeper(pollTime, timeout).Timeout(timeout)
+	element, _, err := p.pageElementBy(lookupPage.Page(), act)
+	if err != nil {
+		return errors.Wrap(err, errElementDidNotAppear)
+	}
 
 	if element != nil {
 		if err := element.WaitVisible(); err != nil {
@@ -280,7 +314,7 @@ func (p *Page) ActionAddHeader(act *Action, out ActionData) error {
 		return err
 	}
 
-	p.rules = append(p.rules, rule{
+	p.appendRule(rule{
 		Action: ActionAddHeader,
 		Part:   part,
 		Args:   args,
@@ -308,7 +342,7 @@ func (p *Page) ActionSetHeader(act *Action, out ActionData) error {
 		return err
 	}
 
-	p.rules = append(p.rules, rule{
+	p.appendRule(rule{
 		Action: ActionSetHeader,
 		Part:   part,
 		Args:   args,
@@ -331,7 +365,7 @@ func (p *Page) ActionDeleteHeader(act *Action, out ActionData) error {
 		return err
 	}
 
-	p.rules = append(p.rules, rule{
+	p.appendRule(rule{
 		Action: ActionDeleteHeader,
 		Part:   part,
 		Args:   args,
@@ -354,7 +388,7 @@ func (p *Page) ActionSetBody(act *Action, out ActionData) error {
 		return err
 	}
 
-	p.rules = append(p.rules, rule{
+	p.appendRule(rule{
 		Action: ActionSetBody,
 		Part:   part,
 		Args:   args,
@@ -377,7 +411,7 @@ func (p *Page) ActionSetMethod(act *Action, out ActionData) error {
 		return err
 	}
 
-	p.rules = append(p.rules, rule{
+	p.appendRule(rule{
 		Action: ActionSetMethod,
 		Part:   part,
 		Args:   args,
@@ -454,7 +488,7 @@ func (p *Page) RunScript(act *Action, out ActionData) error {
 
 // ClickElement executes click actions for an element.
 func (p *Page) ClickElement(act *Action, out ActionData) error {
-	element, err := p.pageElementBy(act.Data)
+	element, _, err := p.pageElementBy(p.page, act)
 	if err != nil {
 		return errors.Wrap(err, errCouldNotGetElement)
 	}
@@ -479,7 +513,7 @@ func (p *Page) KeyboardAction(act *Action, out ActionData) error {
 
 // RightClickElement executes right click actions for an element.
 func (p *Page) RightClickElement(act *Action, out ActionData) error {
-	element, err := p.pageElementBy(act.Data)
+	element, _, err := p.pageElementBy(p.page, act)
 	if err != nil {
 		return errors.Wrap(err, errCouldNotGetElement)
 	}
@@ -492,6 +526,13 @@ func (p *Page) RightClickElement(act *Action, out ActionData) error {
 	return nil
 }
 
+// maxScreenshotsPerPage and maxScreenshotSize bound the disk space that the
+// screenshots of one page can use when local file access is off.
+const (
+	maxScreenshotsPerPage = 10
+	maxScreenshotSize     = 10 * 1024 * 1024
+)
+
 // Screenshot executes screenshot action on a page
 func (p *Page) Screenshot(act *Action, out ActionData) error {
 	to, err := p.getActionArg(act, "to")
@@ -499,10 +540,49 @@ func (p *Page) Screenshot(act *Action, out ActionData) error {
 		return err
 	}
 
-	if to == "" {
+	generatedName := to == ""
+	if generatedName {
 		to = ksuid.New().String()
 		if act.Name != "" {
 			out[act.Name] = to
+		}
+	}
+
+	lfaAllowed := protocolstate.IsLfaAllowed(p.options.Options)
+	if !lfaAllowed {
+		if p.screenshots >= maxScreenshotsPerPage {
+			return errkit.Newf("screenshot limit of %d per page reached, use -allow-local-file-access flag to remove it", maxScreenshotsPerPage)
+		}
+		p.screenshots++
+	}
+
+	var filePath string
+	if lfaAllowed {
+		filePath, err = fileutil.CleanPath(to)
+		if err != nil {
+			return errkit.Newf("could not clean output screenshot path %s", to)
+		}
+		if !strings.HasSuffix(filePath, ".png") {
+			filePath += ".png"
+		}
+	} else {
+		if err := p.isScreenshotPathAllowed(to); err != nil {
+			return err
+		}
+		// Without local file access the template only names a file inside a
+		// directory that nuclei creates, so it cannot choose where files land.
+		baseDir, err := p.instance.browser.getScreenshotDir()
+		if err != nil {
+			return errkit.Wrap(err, "could not create screenshot directory")
+		}
+		filePath = filepath.Join(baseDir, filepath.Clean(to))
+		// Add .png before the containment check, so that a name such as "."
+		// cannot turn into a sibling of the directory.
+		if !strings.HasSuffix(filePath, ".png") {
+			filePath += ".png"
+		}
+		if !isScreenshotPathWithinDirectory(filePath, baseDir) {
+			return ErrLFAccessDenied
 		}
 	}
 
@@ -521,23 +601,8 @@ func (p *Page) Screenshot(act *Action, out ActionData) error {
 	if err != nil {
 		return errors.Wrap(err, "could not take screenshot")
 	}
-
-	to, err = fileutil.CleanPath(to)
-	if err != nil {
-		return errkit.Newf("could not clean output screenshot path %s", to)
-	}
-
-	// allow if targetPath is child of current working directory
-	if !protocolstate.IsLfaAllowed(p.options.Options) {
-		cwd, err := os.Getwd()
-		if err != nil {
-			return errkit.Wrap(err, "could not get current working directory")
-		}
-
-		if !strings.HasPrefix(to, cwd) {
-			// writing outside of cwd requires -lfa flag
-			return ErrLFAccessDenied
-		}
+	if !lfaAllowed && len(data) > maxScreenshotSize {
+		return errkit.Newf("screenshot of %d bytes is over the limit of %d bytes, use -allow-local-file-access flag to remove it", len(data), maxScreenshotSize)
 	}
 
 	mkdir, err := p.getActionArg(act, "mkdir")
@@ -546,18 +611,12 @@ func (p *Page) Screenshot(act *Action, out ActionData) error {
 	}
 
 	// edgecase create directory if mkdir=true and path contains directory
-	if mkdir == "true" && stringsutil.ContainsAny(to, folderutil.UnixPathSeparator, folderutil.WindowsPathSeparator) {
-		// creates new directory if needed based on path `to`
+	if mkdir == "true" && stringsutil.ContainsAny(filePath, folderutil.UnixPathSeparator, folderutil.WindowsPathSeparator) {
+		// creates new directory if needed based on the final filePath
 		// TODO: replace all permission bits with fileutil constants (https://github.com/projectdiscovery/utils/issues/113)
-		if err := os.MkdirAll(filepath.Dir(to), 0700); err != nil {
+		if err := os.MkdirAll(filepath.Dir(filePath), 0700); err != nil {
 			return errkit.Wrap(err, "failed to create directory while writing screenshot")
 		}
-	}
-
-	// actual file path to write
-	filePath := to
-	if !strings.HasSuffix(filePath, ".png") {
-		filePath += ".png"
 	}
 
 	if fileutil.FileExists(filePath) {
@@ -568,8 +627,51 @@ func (p *Page) Screenshot(act *Action, out ActionData) error {
 	if err != nil {
 		return errors.Wrap(err, "could not write screenshot")
 	}
+	// The generated name alone does not locate a file inside the screenshot directory.
+	if generatedName && act.Name != "" && !lfaAllowed {
+		out[act.Name] = filePath
+	}
 	gologger.Info().Msgf("Screenshot successfully saved at %v\n", filePath)
 	return nil
+}
+
+// isScreenshotPathAllowed checks the path a template gives for a screenshot.
+// Without local file access it must be relative and must not contain "..".
+func (p *Page) isScreenshotPathAllowed(to string) error {
+	if protocolstate.IsLfaAllowed(p.options.Options) {
+		return nil
+	}
+
+	if filepath.IsAbs(to) || filepath.VolumeName(to) != "" || strings.HasPrefix(to, "/") || strings.HasPrefix(to, `\`) {
+		return ErrLFAccessDenied
+	}
+	for _, part := range strings.FieldsFunc(to, func(r rune) bool { return r == '/' || r == '\\' }) {
+		if part == ".." {
+			return ErrLFAccessDenied
+		}
+	}
+	return nil
+}
+
+func isScreenshotPathWithinDirectory(to, cwd string) bool {
+	if !filepathutil.IsPathWithinDirectory(to, cwd) {
+		return false
+	}
+
+	existingParent := filepath.Dir(to)
+	for {
+		if _, err := os.Stat(existingParent); err == nil {
+			return filepathutil.IsPathWithinDirectory(existingParent, cwd)
+		} else if !os.IsNotExist(err) {
+			return false
+		}
+
+		parent := filepath.Dir(existingParent)
+		if parent == existingParent {
+			return false
+		}
+		existingParent = parent
+	}
 }
 
 // InputElement executes input element actions for an element.
@@ -581,7 +683,7 @@ func (p *Page) InputElement(act *Action, out ActionData) error {
 	if value == "" {
 		return errinvalidArguments
 	}
-	element, err := p.pageElementBy(act.Data)
+	element, _, err := p.pageElementBy(p.page, act)
 	if err != nil {
 		return errors.Wrap(err, errCouldNotGetElement)
 	}
@@ -603,7 +705,7 @@ func (p *Page) TimeInputElement(act *Action, out ActionData) error {
 	if value == "" {
 		return errinvalidArguments
 	}
-	element, err := p.pageElementBy(act.Data)
+	element, _, err := p.pageElementBy(p.page, act)
 	if err != nil {
 		return errors.Wrap(err, errCouldNotGetElement)
 	}
@@ -629,7 +731,7 @@ func (p *Page) SelectInputElement(act *Action, out ActionData) error {
 	if value == "" {
 		return errinvalidArguments
 	}
-	element, err := p.pageElementBy(act.Data)
+	element, selector, err := p.pageElementBy(p.page, act)
 	if err != nil {
 		return errors.Wrap(err, errCouldNotGetElement)
 	}
@@ -648,12 +750,15 @@ func (p *Page) SelectInputElement(act *Action, out ActionData) error {
 		selectedBool = true
 	}
 
-	selector, err := p.getActionArg(act, "selector")
-	if err != nil {
-		return err
+	if selector == nil {
+		resolved, err := p.getActionArg(act, "selector")
+		if err != nil {
+			return err
+		}
+		selector = &resolved
 	}
 
-	if err := element.Select([]string{value}, selectedBool, selectorBy(selector)); err != nil {
+	if err := element.Select([]string{value}, selectedBool, selectorBy(*selector)); err != nil {
 		return errors.Wrap(err, "could not select input")
 	}
 
@@ -704,7 +809,7 @@ func (p *Page) WaitStable(act *Action, out ActionData) error {
 
 // GetResource gets a resource from an element from page.
 func (p *Page) GetResource(act *Action, out ActionData) error {
-	element, err := p.pageElementBy(act.Data)
+	element, _, err := p.pageElementBy(p.page, act)
 	if err != nil {
 		return errors.Wrap(err, errCouldNotGetElement)
 	}
@@ -720,7 +825,7 @@ func (p *Page) GetResource(act *Action, out ActionData) error {
 
 // FilesInput acts with a file input element on page
 func (p *Page) FilesInput(act *Action, out ActionData) error {
-	element, err := p.pageElementBy(act.Data)
+	element, _, err := p.pageElementBy(p.page, act)
 	if err != nil {
 		return errors.Wrap(err, errCouldNotGetElement)
 	}
@@ -744,7 +849,7 @@ func (p *Page) FilesInput(act *Action, out ActionData) error {
 
 // ExtractElement extracts from an element on the page.
 func (p *Page) ExtractElement(act *Action, out ActionData) error {
-	element, err := p.pageElementBy(act.Data)
+	element, _, err := p.pageElementBy(p.page, act)
 	if err != nil {
 		return errors.Wrap(err, errCouldNotGetElement)
 	}
@@ -821,15 +926,14 @@ func (p *Page) WaitEvent(act *Action, out ActionData) (func() error, error) {
 		return nil, err
 	}
 
-	// Just wait the event to happen
-	waitFunc := func() (err error) {
-		// execute actual wait event
+	// subscribe now: the wait runs after the next navigation, and a fast page
+	// can fire the event during that navigation, before a later subscription
+	wait := p.page.WaitEvent(waitEvent)
+	waitFunc := func() error {
 		ctx, cancel := context.WithTimeoutCause(context.Background(), maxDuration, ErrActionExecDeadline)
 		defer cancel()
 
-		err = contextutil.ExecFunc(ctx, p.page.WaitEvent(waitEvent))
-
-		return
+		return contextutil.ExecFunc(ctx, wait)
 	}
 
 	return waitFunc, nil
@@ -870,32 +974,58 @@ func (p *Page) HandleDialog(act *Action, out ActionData) error {
 //
 // Supported values for by: r -> selector & regex, x -> xpath, js -> eval js,
 // search => query, default ("") => selector.
-func (p *Page) pageElementBy(data map[string]string) (*rod.Element, error) {
-	by, ok := data["by"]
-	if !ok {
-		by = ""
+func (p *Page) pageElementBy(page *rod.Page, action *Action) (*rod.Element, *string, error) {
+	by, err := p.getActionArg(action, "by")
+	if err != nil {
+		return nil, nil, err
 	}
-	page := p.page
 
 	switch by {
 	case "r", "regex":
-		return page.ElementR(data["selector"], data["regex"])
-	case "x", "xpath":
-		return page.ElementX(data["xpath"])
-	case "js":
-		return page.ElementByJS(&rod.EvalOptions{JS: data["js"]})
-	case "search":
-		elms, err := page.Search(data["query"])
+		selector, err := p.getActionArg(action, "selector")
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
-
+		regex, err := p.getActionArg(action, "regex")
+		if err != nil {
+			return nil, nil, err
+		}
+		element, err := page.ElementR(selector, regex)
+		return element, &selector, err
+	case "x", "xpath":
+		xpath, err := p.getActionArg(action, "xpath")
+		if err != nil {
+			return nil, nil, err
+		}
+		element, err := page.ElementX(xpath)
+		return element, nil, err
+	case "js":
+		js, err := p.getActionArg(action, "js")
+		if err != nil {
+			return nil, nil, err
+		}
+		element, err := page.ElementByJS(&rod.EvalOptions{JS: js})
+		return element, nil, err
+	case "search":
+		query, err := p.getActionArg(action, "query")
+		if err != nil {
+			return nil, nil, err
+		}
+		elms, err := page.Search(query)
+		if err != nil {
+			return nil, nil, err
+		}
 		if elms.First != nil {
-			return elms.First, nil
+			return elms.First, nil, nil
 		}
-		return nil, errors.New("no such element")
+		return nil, nil, errors.New("no such element")
 	default:
-		return page.Element(data["selector"])
+		selector, err := p.getActionArg(action, "selector")
+		if err != nil {
+			return nil, nil, err
+		}
+		element, err := page.Element(selector)
+		return element, &selector, err
 	}
 }
 
@@ -937,11 +1067,11 @@ func (p *Page) getActionArg(action *Action, arg string) (string, error) {
 
 	argValue := action.GetArg(arg)
 
-	if p.instance.interactsh != nil {
-		var interactshURLs []string
-		argValue, interactshURLs = p.instance.interactsh.Replace(argValue, p.InteractshURLs)
-		p.addInteractshURL(interactshURLs...)
+	prepared, err := render.ReplaceInteractshMarkers(argValue, p.instance.interactsh, nil)
+	if err != nil {
+		return "", fmt.Errorf("could not replace interactsh marker for argument %q: %w", arg, err)
 	}
+	argValue = prepared.Text
 
 	exprs := getExpressions(argValue, p.variables)
 
@@ -950,10 +1080,20 @@ func (p *Page) getActionArg(action *Action, arg string) (string, error) {
 		return "", errkit.Wrapf(err, "argument %q, value: %q", arg, argValue)
 	}
 
-	argValue, err = expressions.Evaluate(argValue, p.variables)
+	var scanOptions *types.Options
+	if p.options != nil {
+		scanOptions = p.options.Options
+	}
+	result, err := render.Render(render.Input{
+		Options:      scanOptions,
+		Text:         argValue,
+		Values:       p.variables,
+		InteractURLs: prepared.InteractURLs,
+	})
 	if err != nil {
 		return "", fmt.Errorf("could not get value for argument %q: %s", arg, err)
 	}
+	p.addInteractshURL(result.InteractURLs...)
 
-	return argValue, nil
+	return result.Text, nil
 }

@@ -89,8 +89,16 @@ func (bk *customTemplateAzureBlob) Download(ctx context.Context) {
 		for _, blob := range resp.Segment.BlobItems {
 			// If the blob is a .yaml download the file to the local filesystem
 			if strings.HasSuffix(*blob.Name, ".yaml") {
+				// Resolve the destination path safely so a blob name carrying
+				// path-traversal segments cannot escape the configured download
+				// directory.
+				outputPath, err := safeJoinWithinDirectory(downloadPath, *blob.Name)
+				if err != nil {
+					gologger.Error().Msgf("Skipping unsafe Azure blob name %q: %v", *blob.Name, err)
+					continue
+				}
 				// Download the template to the local filesystem at the downloadPath
-				err := downloadTemplate(bk.azureBlobClient, bk.containerName, *blob.Name, filepath.Join(downloadPath, *blob.Name), ctx)
+				err = downloadTemplate(bk.azureBlobClient, bk.containerName, *blob.Name, outputPath, ctx)
 				if err != nil {
 					gologger.Error().Msgf("Error downloading template: %v", err)
 				} else {

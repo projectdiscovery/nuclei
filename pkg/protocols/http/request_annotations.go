@@ -9,7 +9,9 @@ import (
 	"time"
 
 	"github.com/projectdiscovery/fastdialer/fastdialer"
+	commoninteractsh "github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/interactsh"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/httpclientpool"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/raw"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types/nucleierr"
 	"github.com/projectdiscovery/retryablehttp-go"
 	"github.com/projectdiscovery/utils/errkit"
@@ -53,8 +55,9 @@ func parseFlowAnnotations(rawRequest string) (flowMark, bool) {
 	var fm flowMark
 	// parse request for known override annotations
 	var hasFlowOverride bool
+	annotations, _ := raw.SplitAnnotations(rawRequest)
 	// @once
-	if reOnceAnnotation.MatchString(rawRequest) {
+	if reOnceAnnotation.MatchString(annotations) {
 		fm = Once
 		hasFlowOverride = true
 	}
@@ -62,18 +65,27 @@ func parseFlowAnnotations(rawRequest string) (flowMark, bool) {
 	return fm, hasFlowOverride
 }
 
+// hasTimeoutAnnotation reports whether rawRequest has a @timeout annotation.
+func hasTimeoutAnnotation(rawRequest string) bool {
+	annotations, _ := raw.SplitAnnotations(rawRequest)
+	return reTimeoutAnnotation.MatchString(annotations)
+}
+
 type annotationOverrides struct {
 	request        *retryablehttp.Request
 	cancelFunc     context.CancelFunc
 	interactshURLs []string
+	err            error
 }
 
 // parseAnnotations and override requests settings
 func (r *Request) parseAnnotations(rawRequest string, request *retryablehttp.Request) (overrides annotationOverrides, modified bool) {
-	// parse request for known override annotations
+	// rawRequest is rendered, so its headers and body can hold values taken
+	// from responses. Only the annotation lines may override the request.
+	annotations, _ := raw.SplitAnnotations(rawRequest)
 
 	// @Host:target
-	if hosts := reHostAnnotation.FindStringSubmatch(rawRequest); len(hosts) > 0 {
+	if hosts := reHostAnnotation.FindStringSubmatch(annotations); len(hosts) > 0 {
 		value := strings.TrimSpace(hosts[1])
 		// handle scheme
 		switch {
@@ -99,7 +111,7 @@ func (r *Request) parseAnnotations(rawRequest string, request *retryablehttp.Req
 	}
 
 	// @tls-sni:target
-	if hosts := reSniAnnotation.FindStringSubmatch(rawRequest); len(hosts) > 0 {
+	if hosts := reSniAnnotation.FindStringSubmatch(annotations); len(hosts) > 0 {
 		value := strings.TrimSpace(hosts[1])
 		value = stringsutil.TrimPrefixAny(value, "http://", "https://")
 
@@ -108,10 +120,19 @@ func (r *Request) parseAnnotations(rawRequest string, request *retryablehttp.Req
 		case "request.host":
 			value = request.Host
 		case "interactsh-url":
-			if interactshURL, err := r.options.Interactsh.NewURLWithData("interactsh-url"); err == nil {
-				value = interactshURL
+			if r.options == nil || r.options.Interactsh == nil {
+				overrides.err = commoninteractsh.ErrInteractshClientNotInitialized
+				overrides.request = request
+				return overrides, true
 			}
-			overrides.interactshURLs = append(overrides.interactshURLs, value)
+			interactshURL, err := r.options.Interactsh.NewURLWithData("interactsh-url")
+			if err != nil {
+				overrides.err = err
+				overrides.request = request
+				return overrides, true
+			}
+			value = interactshURL
+			overrides.interactshURLs = append(overrides.interactshURLs, interactshURL)
 		default:
 			literal = true
 		}
@@ -129,7 +150,7 @@ func (r *Request) parseAnnotations(rawRequest string, request *retryablehttp.Req
 		modified = true
 		var ctx context.Context
 
-		if duration := reTimeoutAnnotation.FindStringSubmatch(rawRequest); len(duration) > 0 {
+		if duration := reTimeoutAnnotation.FindStringSubmatch(annotations); len(duration) > 0 {
 			value := strings.TrimSpace(duration[1])
 			if parsedTimeout, err := time.ParseDuration(value); err == nil {
 				// Cap at maximum allowed timeout to prevent DoS via extremely large timeout values

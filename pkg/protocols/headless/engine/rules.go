@@ -15,9 +15,25 @@ import (
 // routingRuleHandler handles proxy rule for actions related to request/response modification
 func (p *Page) routingRuleHandler(httpClient *http.Client) func(ctx *rod.Hijack) {
 	return func(ctx *rod.Hijack) {
+		req := ctx.Request.Req()
+		// go-rod discards url.Parse errors, so a URL that Chrome accepts but
+		// net/url rejects, such as "/100%.png", arrives as nil. Fail the request:
+		// the Go client cannot send it, and continuing it in the browser would
+		// drop the modification rules and, with -cdp-endpoint (no headless
+		// proxy), the network policy's dial-time address checks.
+		if req.URL == nil {
+			gologger.Verbose().Msgf("headless: failed %s request with a URL that net/url cannot parse", req.Method)
+			ctx.Response.Fail(proto.NetworkErrorReasonFailed)
+
+			return
+		}
+
 		// usually browsers don't use chunked transfer encoding, so we set the content-length nevertheless
-		ctx.Request.Req().ContentLength = int64(len(ctx.Request.Body()))
-		for _, rule := range p.rules {
+		req.ContentLength = int64(len(ctx.Request.Body()))
+		// snapshot the rules once: ExecuteActions may still be appending rules
+		// from another goroutine while this hijack handler runs.
+		rules := p.rulesSnapshot()
+		for _, rule := range rules {
 			if rule.Part != "request" {
 				continue
 			}
@@ -25,17 +41,17 @@ func (p *Page) routingRuleHandler(httpClient *http.Client) func(ctx *rod.Hijack)
 			switch rule.Action {
 			case ActionSetMethod:
 				rule.Do(func() {
-					ctx.Request.Req().Method = rule.Args["method"]
+					req.Method = rule.Args["method"]
 				})
 			case ActionAddHeader:
-				ctx.Request.Req().Header.Add(rule.Args["key"], rule.Args["value"])
+				req.Header.Add(rule.Args["key"], rule.Args["value"])
 			case ActionSetHeader:
-				ctx.Request.Req().Header.Set(rule.Args["key"], rule.Args["value"])
+				req.Header.Set(rule.Args["key"], rule.Args["value"])
 			case ActionDeleteHeader:
-				ctx.Request.Req().Header.Del(rule.Args["key"])
+				req.Header.Del(rule.Args["key"])
 			case ActionSetBody:
 				body := rule.Args["body"]
-				ctx.Request.Req().ContentLength = int64(len(body))
+				req.ContentLength = int64(len(body))
 				ctx.Request.SetBody(body)
 			}
 		}
@@ -43,25 +59,25 @@ func (p *Page) routingRuleHandler(httpClient *http.Client) func(ctx *rod.Hijack)
 		// each http request is performed via the native go http client
 		// we first inject the shared cookies
 		if !p.options.DisableCookie {
-			if cookies := p.ctx.CookieJar.Cookies(ctx.Request.URL()); len(cookies) > 0 {
-				httpClient.Jar.SetCookies(ctx.Request.URL(), cookies)
+			if cookies := p.ctx.CookieJar.Cookies(req.URL); len(cookies) > 0 {
+				httpClient.Jar.SetCookies(req.URL, cookies)
 			}
 		}
 
 		// perform the request
 		if err := ctx.LoadResponse(httpClient, true); err != nil {
-			gologger.Verbose().Msgf("headless: failed to load response for %s: %s", ctx.Request.URL(), err)
+			gologger.Verbose().Msgf("headless: failed to load response for %s: %s", req.URL, err)
 		}
 
 		if !p.options.DisableCookie {
 			// retrieve the updated cookies from the native http client and inject them into the shared cookie jar
 			// keeps existing one if not present
-			if cookies := httpClient.Jar.Cookies(ctx.Request.URL()); len(cookies) > 0 {
-				p.ctx.CookieJar.SetCookies(ctx.Request.URL(), cookies)
+			if cookies := httpClient.Jar.Cookies(req.URL); len(cookies) > 0 {
+				p.ctx.CookieJar.SetCookies(req.URL, cookies)
 			}
 		}
 
-		for _, rule := range p.rules {
+		for _, rule := range rules {
 			if rule.Part != "response" {
 				continue
 			}
@@ -81,7 +97,6 @@ func (p *Page) routingRuleHandler(httpClient *http.Client) func(ctx *rod.Hijack)
 		}
 
 		// store history
-		req := ctx.Request.Req()
 		var rawReq string
 		if raw, err := httputil.DumpRequestOut(req, true); err == nil {
 			rawReq = string(raw)

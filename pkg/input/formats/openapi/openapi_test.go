@@ -68,3 +68,42 @@ func TestOpenAPIParser(t *testing.T) {
 		require.ElementsMatch(t, urls, methodToURLs[method], "invalid urls for method %s", method)
 	}
 }
+
+func TestOpenAPIRequestBodies(t *testing.T) {
+	tests := []struct {
+		name    string
+		content string
+		bodies  []string
+	}{
+		{name: "xml without schema", content: "application/xml: {}", bodies: []string{`<?xml version="1.0"?><root/>`}},
+		{name: "xml string schema", content: "application/xml: {schema: {type: string}}", bodies: []string{"string"}},
+		{name: "xml array schema", content: "application/xml: {schema: {type: array, items: {type: string}}}", bodies: nil},
+		{name: "json without schema", content: "application/json: {}", bodies: []string{"{}"}},
+		{name: "text without schema", content: "text/plain: {}", bodies: []string{"string"}},
+		{name: "octet-stream without schema", content: "application/octet-stream: {}", bodies: []string{"string1\nstring2"}},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			spec := `openapi: 3.0.0
+info: {title: t, version: "1"}
+servers: [{url: "http://example.com"}]
+paths:
+  /items:
+    post:
+      requestBody:
+        content:
+          ` + tt.content + `
+      responses:
+        "200": {description: ok}
+`
+			var bodies []string
+			err := New().Parse(strings.NewReader(spec), func(rr *types.RequestResponse) bool {
+				bodies = append(bodies, rr.Request.Body)
+				return false
+			}, "spec.yaml")
+			require.NoError(t, err)
+			require.Equal(t, tt.bodies, bodies)
+		})
+	}
+}

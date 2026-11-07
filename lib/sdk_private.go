@@ -44,6 +44,9 @@ import (
 func (e *NucleiEngine) applyRequiredDefaults(ctx context.Context) {
 	mockoutput := testutils.NewMockOutputWriter(e.opts.OmitTemplate)
 	mockoutput.WriteCallback = func(event *output.ResultEvent) {
+		if (event.Error != "" || !event.MatcherStatus) && !e.opts.MatcherStatus {
+			return
+		}
 		if len(e.resultCallbacks) > 0 {
 			for _, callback := range e.resultCallbacks {
 				if callback != nil {
@@ -135,15 +138,37 @@ func (e *NucleiEngine) applyRequiredDefaults(ctx context.Context) {
 		e.opts.ExcludeTags = []string{}
 	}
 
-	// these templates are known to have weak matchers
-	// and idea is to disable them to avoid false positives
-	e.opts.ExcludeTags = append(e.opts.ExcludeTags, config.ReadIgnoreFile().Tags...)
-
 	e.inputProvider = provider.NewSimpleInputProvider()
+}
+
+func (e *NucleiEngine) loadIgnoreFile() error {
+	ignoreFile, err := config.ReadIgnoreFile()
+	if errors.Is(err, os.ErrNotExist) {
+		e.Logger.Warning().Msgf("Could not read active .nuclei-ignore file: %s; continuing without ignore exclusions", err)
+
+		return nil
+	}
+
+	if err != nil {
+		return err
+	}
+
+	// .nuclei-ignore blocks templates that should not run by default, by tag
+	// (dos, fuzz, ...) and by path (templates known to have weak matchers, which
+	// would otherwise generate false positives). Both sections are applied, as
+	// the CLI runner does — applying only the tags leaves the `files` section
+	// inert for every SDK consumer.
+	e.opts.ExcludeTags = append(e.opts.ExcludeTags, ignoreFile.Tags...)
+	e.opts.ExcludedTemplates = append(e.opts.ExcludedTemplates, ignoreFile.Files...)
+
+	return nil
 }
 
 // init
 func (e *NucleiEngine) init(ctx context.Context) error {
+	if err := config.DefaultConfig.InitializationError(); err != nil {
+		return errors.Wrap(err, "initialize nuclei configuration")
+	}
 	// Update logger ref (if it was changed by [WithLogger])
 	// (Logger is already initialized)
 	if e.opts.Logger != e.Logger {
@@ -170,14 +195,23 @@ func (e *NucleiEngine) init(ctx context.Context) error {
 
 	if e.parser == nil {
 		e.parser = templates.NewParser()
+		e.ownsParser = true
+	}
+	e.compiledParser = e.parser
+	if !e.ownsParser {
+		// Compiled templates retain engine-local ExecutorOptions. Keep their
+		// cache private while the caller-owned parser provides the parsed cache.
+		e.compiledParser = templates.NewParserWithParsedCache(e.parser.Cache())
+		e.compiledParser.ShouldValidate = e.parser.ShouldValidate
+		e.compiledParser.NoStrictSyntax = e.parser.NoStrictSyntax
 	}
 
 	if protocolstate.ShouldInit(e.opts.ExecutionId) {
 		_ = protocolinit.Init(e.opts)
 	}
 
-	if e.opts.ProxyInternal && e.opts.AliveHttpProxy != "" || e.opts.AliveSocksProxy != "" {
-		httpclient, err := httpclientpool.Get(e.opts, &httpclientpool.Configuration{})
+	if e.opts.ProxyInternal && (e.opts.AliveHttpProxy != "" || e.opts.AliveSocksProxy != "") {
+		httpclient, err := httpclientpool.Get(e.opts, &httpclientpool.Configuration{}, "")
 		if err != nil {
 			return err
 		}
@@ -249,7 +283,8 @@ func (e *NucleiEngine) init(ctx context.Context) error {
 		Colorizer:          aurora.New(aurora.WithColors(true)),
 		ResumeCfg:          types.NewResumeCfg(),
 		Browser:            e.browserInstance,
-		Parser:             e.parser,
+		Parser:             e.compiledParser,
+		DoNotCache:         e.opts.DoNotCacheTemplates,
 		InputHelper:        input.NewHelper(),
 		TemporaryDirectory: e.tmpDir,
 		Logger:             e.opts.Logger,
@@ -305,8 +340,6 @@ func (e *NucleiEngine) init(ctx context.Context) error {
 		if cachedParser, ok := e.opts.Parser.(*templates.Parser); ok {
 			e.parser = cachedParser
 			e.opts.Parser = cachedParser
-			e.executerOpts.Parser = cachedParser
-			e.executerOpts.Options.Parser = cachedParser
 		}
 	}
 
@@ -314,6 +347,7 @@ func (e *NucleiEngine) init(ctx context.Context) error {
 	if e.parser == nil {
 		op := templates.NewParser()
 		e.parser = op
+		e.ownsParser = true
 		e.opts.Parser = op
 		e.executerOpts.Parser = op
 		e.executerOpts.Options.Parser = op
@@ -324,20 +358,52 @@ func (e *NucleiEngine) init(ctx context.Context) error {
 
 	httpxOptions := httpx.DefaultOptions
 	httpxOptions.Timeout = 5 * time.Second
+	if len(e.opts.InternalResolversList) > 0 {
+		httpxOptions.Resolvers = e.opts.InternalResolversList
+	}
 	if client, err := httpx.New(&httpxOptions); err != nil {
 		return err
 	} else {
 		e.httpxClient = nucleiUtils.GetInputLivenessChecker(client)
 	}
 
-	// Only Happens once regardless how many times this function is called
-	// This will update ignore file to filter out templates with weak matchers to avoid false positives
-	// and also upgrade templates to latest version if available
-	installer.NucleiSDKVersionCheck()
-
 	if DefaultConfig.CanCheckForUpdates() {
-		return e.processUpdateCheckResults()
+		// Only Happens once regardless how many times this function is called
+		// This will update ignore file to filter out templates with weak matchers to avoid false positives
+		// and also upgrade templates to latest version if available
+		latestIgnoreHash, _ := installer.NucleiSDKVersionCheck()
+
+		if err := e.processUpdateCheckResults(); err != nil {
+			return err
+		}
+
+		if DefaultConfig.IgnoreFileNeedsUpdate(latestIgnoreHash) {
+			if err := installer.UpdateIgnoreFile(); err != nil {
+				e.opts.Logger.Warning().Msgf("failed to update nuclei ignore file: %s\n", err)
+			}
+		}
 	}
+
+	// Read .nuclei-ignore LAST, once init has finished managing that file and
+	// the options it writes into.
+	//
+	// It must come after the update block above: init creates or replaces the
+	// ignore file there (UpdateIgnoreFile), so reading earlier reads a file this
+	// same call is about to write. On a host without a pre-existing ignore file
+	// — a fresh install, or any container whose filesystem was reset — the read
+	// found nothing, warned, and left the engine with an empty deny-list for its
+	// whole lifetime, because ExcludeTags is never re-read after init. Reading
+	// afterwards also makes the corrupt-file check recoverable rather than fatal:
+	// a malformed local file that IgnoreFileNeedsUpdate replaces no longer fails
+	// the scan.
+	//
+	// GetAuthTmplStore scopes a copy of the options, so it no longer clears
+	// the engine filters. This read is still what installs the deny-list, and
+	// it has to follow the update block above.
+	if err := e.loadIgnoreFile(); err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -345,7 +411,10 @@ type syncOnce struct {
 	sync.Once
 }
 
-var updateCheckInstance = &syncOnce{}
+var (
+	updateCheckInstance    = &syncOnce{}
+	templateUpdateInstance = &syncOnce{}
+)
 
 // processUpdateCheckResults processes update check results
 func (e *NucleiEngine) processUpdateCheckResults() error {
@@ -354,8 +423,12 @@ func (e *NucleiEngine) processUpdateCheckResults() error {
 		if e.onUpdateAvailableCallback != nil {
 			e.onUpdateAvailableCallback(config.DefaultConfig.LatestNucleiTemplatesVersion)
 		}
-		tm := installer.TemplateManager{}
-		err = tm.UpdateIfOutdated()
 	})
+	if !e.disableTemplatesAutoUpgrade {
+		templateUpdateInstance.Do(func() {
+			tm := installer.TemplateManager{}
+			err = tm.UpdateIfOutdated()
+		})
+	}
 	return err
 }

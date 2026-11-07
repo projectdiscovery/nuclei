@@ -23,6 +23,8 @@ const (
 	JSONExtractor
 	// name:dsl
 	DSLExtractor
+	// name:llm
+	LLMExtractor
 	limit
 )
 
@@ -33,6 +35,7 @@ var extractorMappings = map[ExtractorType]string{
 	XPathExtractor: "xpath",
 	JSONExtractor:  "json",
 	DSLExtractor:   "dsl",
+	LLMExtractor:   "llm",
 }
 
 // GetType returns the type of the matcher
@@ -70,6 +73,10 @@ func (t ExtractorType) String() string {
 // ExtractorTypeHolder is used to hold internal type of the extractor
 type ExtractorTypeHolder struct {
 	ExtractorType ExtractorType `mapping:"true"`
+}
+
+func (holder ExtractorTypeHolder) String() string {
+	return holder.ExtractorType.String()
 }
 
 func (holder ExtractorTypeHolder) JSONSchema() *jsonschema.Schema {

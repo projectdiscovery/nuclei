@@ -18,15 +18,15 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/core"
 	"github.com/projectdiscovery/nuclei/v3/pkg/input/provider"
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
+	"github.com/projectdiscovery/nuclei/v3/pkg/progress"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/automaticscan/techgraph"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/helpers/writer"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/httpclientpool"
-	httputil "github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils/http"
 	"github.com/projectdiscovery/nuclei/v3/pkg/scan"
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates"
-	"github.com/projectdiscovery/nuclei/v3/internal/tests/testutils"
+	"github.com/projectdiscovery/nuclei/v3/pkg/utils/yaml"
 	"github.com/projectdiscovery/retryablehttp-go"
 	"github.com/projectdiscovery/useragent"
 	mapsutil "github.com/projectdiscovery/utils/maps"
@@ -35,7 +35,6 @@ import (
 	syncutil "github.com/projectdiscovery/utils/sync"
 	unitutils "github.com/projectdiscovery/utils/unit"
 	wappalyzer "github.com/projectdiscovery/wappalyzergo"
-	"gopkg.in/yaml.v2"
 )
 
 const (
@@ -103,11 +102,12 @@ func New(opts Options) (*Service, error) {
 		return nil, err
 	}
 
+	// Wappalyzer fingerprinting is a stateless GET reused across every target.
+	// Disable the cookie jar to avoid retaining cross-target state and the
+	// associated memory growth from a long-lived shared client.
 	httpclient, err := httpclientpool.Get(opts.ExecuterOpts.Options, &httpclientpool.Configuration{
-		Connection: &httpclientpool.ConnectionConfiguration{
-			DisableKeepAlive: httputil.ShouldDisableKeepAlive(opts.ExecuterOpts.Options),
-		},
-	})
+		DisableCookie: true,
+	}, "")
 	if err != nil {
 		return nil, errors.Wrap(err, "could not get http client")
 	}
@@ -143,31 +143,41 @@ func (s *Service) Close() bool {
 }
 
 // Execute automatic scan on each target with -bs host concurrency
-func (s *Service) Execute() error {
+func (s *Service) Execute(ctx context.Context) error {
 	gologger.Info().Msgf("Executing Automatic scan on %d target[s]", s.target.Count())
+	if s.opts.Progress != nil {
+		s.opts.Progress.AddToTotal(int64(getRequestCount(s.techTemplates)) * s.target.Count())
+	}
 	// setup host concurrency
 	sg, err := syncutil.New(syncutil.WithSize(s.opts.Options.BulkSize))
 	if err != nil {
 		return err
 	}
 	s.target.Iterate(func(value *contextargs.MetaInput) bool {
-		sg.Add()
+		select {
+		case <-ctx.Done():
+			return false
+		default:
+		}
+		if err := sg.AddWithContext(ctx); err != nil {
+			return false
+		}
 		go func(input *contextargs.MetaInput) {
 			defer sg.Done()
-			s.executeAutomaticScanOnTarget(input)
+			s.executeAutomaticScanOnTarget(ctx, input)
 		}(value)
 		return true
 	})
 	sg.Wait()
-	return nil
+	return ctx.Err()
 }
 
 // executeAutomaticScanOnTarget executes automatic scan on given target
-func (s *Service) executeAutomaticScanOnTarget(input *contextargs.MetaInput) {
+func (s *Service) executeAutomaticScanOnTarget(ctx context.Context, input *contextargs.MetaInput) {
 	// get tags using wappalyzer
 	tagsFromWappalyzer := s.getTagsUsingWappalyzer(input)
 	// get tags using detection templates
-	tagsFromDetectTemplates, matched := s.getTagsUsingDetectionTemplates(input)
+	tagsFromDetectTemplates, matched := s.getTagsUsingDetectionTemplates(ctx, input)
 	if matched > 0 {
 		s.hasResults.Store(true)
 	}
@@ -214,10 +224,13 @@ func (s *Service) executeAutomaticScanOnTarget(input *contextargs.MetaInput) {
 	gologger.Info().Msgf("Executing %d templates on %v", len(finalTemplates), input.Input)
 	eng := core.New(s.opts.Options)
 	execOptions := s.opts.Copy()
-	execOptions.Progress = &testutils.MockProgressClient{} // stats are not supported yet due to centralized logic and cannot be reinitialized
+	if s.opts.Progress != nil {
+		s.opts.Progress.AddToTotal(int64(getRequestCount(finalTemplates)))
+		execOptions.Progress = &sharedProgress{Progress: s.opts.Progress}
+	}
 	eng.SetExecuterOptions(execOptions)
 
-	tmp := eng.ExecuteScanWithOpts(context.Background(), finalTemplates, provider.NewSimpleInputProviderWithUrls(s.opts.Options.ExecutionId, input.Input), true)
+	tmp := eng.ExecuteScanWithOpts(ctx, finalTemplates, provider.NewSimpleInputProviderWithUrls(s.opts.Options.ExecutionId, input.Input), true)
 	s.hasResults.Store(tmp.Load())
 }
 
@@ -294,6 +307,11 @@ func (s *Service) selectWithGraph(input *contextargs.MetaInput, finalTags []stri
 	}
 	return out
 }
+type sharedProgress struct {
+	progress.Progress
+}
+
+func (p *sharedProgress) Init(hostCount int64, rulesCount int, requestCount int64) {}
 
 // getTagsUsingWappalyzer returns tags using wappalyzer by fingerprinting target
 // and utilizing the mapping data
@@ -347,9 +365,7 @@ func (s *Service) getTagsUsingWappalyzer(input *contextargs.MetaInput) []string 
 }
 
 // getTagsUsingDetectionTemplates returns tags using detection templates
-func (s *Service) getTagsUsingDetectionTemplates(input *contextargs.MetaInput) ([]string, int) {
-	ctx := context.Background()
-
+func (s *Service) getTagsUsingDetectionTemplates(ctx context.Context, input *contextargs.MetaInput) ([]string, int) {
 	ctxArgs := contextargs.NewWithInput(ctx, input.Input)
 
 	// execute tech detection templates on target
@@ -359,7 +375,9 @@ func (s *Service) getTagsUsingDetectionTemplates(input *contextargs.MetaInput) (
 	counter := atomic.Uint32{}
 
 	for _, t := range s.techTemplates {
-		sg.Add()
+		if err := sg.AddWithContext(ctx); err != nil {
+			break
+		}
 		go func(template *templates.Template) {
 			defer sg.Done()
 			ctx := scan.NewScanContext(ctx, ctxArgs)

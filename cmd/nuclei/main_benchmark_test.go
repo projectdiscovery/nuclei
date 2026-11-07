@@ -34,10 +34,15 @@ func TestMain(m *testing.M) {
 		panic(err)
 	}
 
-	dummyServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusNoContent)
-	}))
-	targetURL = dummyServer.URL
+	// Only start the shared httptest for benchmarks so unit tests (e.g. goleak)
+	// are not polluted by a long-lived accept loop.
+	var dummyServer *httptest.Server
+	if isBenchmarkRun() {
+		dummyServer = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusNoContent)
+		}))
+		targetURL = dummyServer.URL
+	}
 
 	// Execute tests
 
@@ -45,11 +50,22 @@ func TestMain(m *testing.M) {
 
 	// Tear down
 
-	dummyServer.Close()
+	if dummyServer != nil {
+		dummyServer.Close()
+	}
 	_ = os.RemoveAll(projectPath)
 	_ = os.Unsetenv("DISABLE_STDOUT")
 
 	os.Exit(exitCode)
+}
+
+func isBenchmarkRun() bool {
+	for _, arg := range os.Args[1:] {
+		if strings.HasPrefix(arg, "-test.bench") {
+			return true
+		}
+	}
+	return false
 }
 
 // getUniqFilename generates a unique filename by appending .N if file exists

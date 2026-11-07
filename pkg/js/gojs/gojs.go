@@ -6,8 +6,8 @@ import (
 	"reflect"
 	"sync"
 
-	"github.com/Mzack9999/goja"
-	"github.com/Mzack9999/goja_nodejs/require"
+	"github.com/projectdiscovery/goja"
+	"github.com/projectdiscovery/goja_nodejs/require"
 	"github.com/projectdiscovery/nuclei/v3/pkg/js/utils"
 )
 
@@ -128,9 +128,13 @@ func (p *GojaModule) Register() Module {
 	return p
 }
 
-// GetClassConstructor returns a constructor for any given go struct type for goja runtime
+// GetClassConstructor returns a constructor for any given go struct type for goja runtime.
+// Each object it constructs starts as a shallow copy of instance, so objects
+// do not share state.
 func GetClassConstructor[T any](instance *T) func(call goja.ConstructorCall, runtime *goja.Runtime) *goja.Object {
 	return func(call goja.ConstructorCall, runtime *goja.Runtime) *goja.Object {
-		return utils.LinkConstructor[*T](call, runtime, instance)
+		obj := *instance
+
+		return utils.LinkConstructor(call, runtime, &obj)
 	}
 }

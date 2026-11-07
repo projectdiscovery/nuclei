@@ -14,7 +14,6 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/authprovider/authx"
 	"github.com/projectdiscovery/rawhttp/client"
 	"github.com/projectdiscovery/utils/errkit"
-	stringsutil "github.com/projectdiscovery/utils/strings"
 	urlutil "github.com/projectdiscovery/utils/url"
 )
 
@@ -39,22 +38,39 @@ func Parse(request string, inputURL *urlutil.URL, unsafe, disablePathAutomerge b
 	}
 
 	// handle full URLs first (before checking unsafe flag) to extract relative path
-	if strings.HasPrefix(rawrequest.Path, "http://") || strings.HasPrefix(rawrequest.Path, "https://") {
-		urlx, err := urlutil.ParseURL(rawrequest.Path, true)
+	lowerPath := strings.ToLower(rawrequest.Path)
+	hasAbsoluteRequestTarget := strings.HasPrefix(lowerPath, "http://") || strings.HasPrefix(lowerPath, "https://")
+	if hasAbsoluteRequestTarget {
+		var requestTarget string
+		if strings.HasPrefix(lowerPath, "http://") {
+			requestTarget = "http://" + rawrequest.Path[len("http://"):]
+		} else {
+			requestTarget = "https://" + rawrequest.Path[len("https://"):]
+		}
+
+		urlx, err := urlutil.ParseAbsoluteURL(requestTarget, true)
 		if err != nil {
 			return nil, errkit.Wrapf(err, "failed to parse url %v from template", rawrequest.Path)
 		}
-		prevPath := rawrequest.Path
 		relPath := urlx.GetRelativePath()
-
-		// NOTE(dwisiswant0): Use rel path instead if unsafe.
-		// See https://github.com/projectdiscovery/nuclei/issues/6558.
-		if unsafe {
-			rawrequest.UnsafeRawBytes = bytes.Replace(rawrequest.UnsafeRawBytes, []byte(prevPath), []byte(relPath), 1)
-		}
 
 		// rotate full URL with rel path
 		rawrequest.Path = relPath
+		if unsafe {
+			cloned := inputURL.Clone()
+			cloned.Path = ""
+			cloned.Fragment = ""
+			cloned.Params = urlutil.NewOrderedParams()
+			cloned.Params.IncludeEquals = true
+
+			if err := cloned.MergePath(relPath, true); err != nil {
+				return nil, errkit.Wrapf(err, "failed to build request url for absolute target %v", requestTarget)
+			}
+
+			rawrequest.FullURL = cloned.String()
+
+			return rawrequest, nil
+		}
 	}
 
 	switch {
@@ -176,27 +192,28 @@ func readRawRequest(request string, unsafe bool) (*Request, error) {
 		Headers: make(map[string]string),
 	}
 
+	_, request = SplitAnnotations(request)
+
 	// store body if it is unsafe request
 	if unsafe {
-		rawRequest.UnsafeRawBytes = stripLeadingAnnotations(request)
+		rawRequest.UnsafeRawBytes = []byte(request)
 	}
 
 	// parse raw request
-	reader := bufio.NewReader(strings.NewReader(request))
-read_line:
+	source := strings.NewReader(request)
+	reader := bufio.NewReader(source)
 	s, err := reader.ReadString('\n')
 	if err != nil {
 		return nil, fmt.Errorf("could not read request: %w", err)
-	}
-	// ignore all annotations
-	if stringsutil.HasPrefixAny(s, "@") {
-		goto read_line
 	}
 
 	parts := strings.Fields(s)
 	if len(parts) > 0 {
 		rawRequest.Method = parts[0]
-		if len(parts) == 2 && strings.Contains(parts[1], "HTTP") {
+		// Only a version token may stand in for the missing path. A substring
+		// test also matched any path containing "HTTP", e.g. "GET /HTTPProxy",
+		// and dropped the path.
+		if len(parts) == 2 && strings.HasPrefix(parts[1], "HTTP/") {
 			// When relative path is missing/ not specified it is considered that
 			// request is meant to be untampered at path
 			// Ex: GET HTTP/1.1
@@ -215,19 +232,28 @@ read_line:
 
 	var multiPartRequest bool
 	// Accepts all malformed headers
-	var key, value string
 	for {
 		line, readErr := reader.ReadString('\n')
 		line = strings.TrimSpace(line)
 
-		if readErr != nil || line == "" {
-			if readErr != io.EOF {
-				break
-			}
+		// An empty line ends the header block, whether it arrived with a read
+		// error or not. Falling through on io.EOF stored a header named "",
+		// which rawhttp serializes as a bare CRLF and so truncates the header
+		// block it is supposed to be part of.
+		if line == "" {
+			break
+		}
+		if readErr != nil && readErr != io.EOF {
+			break
 		}
 
+		// Declared per line on purpose. While these were reused across
+		// iterations, a line carrying no colon left value holding whatever the
+		// line before it had, so the previous header's value was stored under
+		// this line's name and sent on the wire.
 		p := strings.SplitN(line, ":", 2)
-		key = p[0]
+		key := p[0]
+		var value string
 		if len(p) > 1 {
 			value = p[1]
 		}
@@ -252,12 +278,9 @@ read_line:
 		}
 	}
 
-	// Set the request body
-	b, err := io.ReadAll(reader)
-	if err != nil {
-		return nil, fmt.Errorf("could not read request body: %w", err)
-	}
-	rawRequest.Data = string(b)
+	// Set the request body. It is sliced from the request rather than read
+	// from the reader, which would copy a large body twice.
+	rawRequest.Data = request[len(request)-source.Len()-reader.Buffered():]
 	if !multiPartRequest {
 		rawRequest.Data = strings.TrimSuffix(rawRequest.Data, "\r\n")
 	}
@@ -265,34 +288,18 @@ read_line:
 
 }
 
-func stripLeadingAnnotations(request string) []byte {
-	reader := bufio.NewReader(strings.NewReader(request))
-	buffer := bufferPool.Get().(*bytes.Buffer)
-	buffer.Reset()
-	defer func() {
-		buffer.Reset()
-		bufferPool.Put(buffer)
-	}()
-
-	requestLineFound := false
-	for {
-		line, err := reader.ReadString('\n')
-		if len(line) > 0 {
-			if requestLineFound || !stringsutil.HasPrefixAny(line, "@") {
-				requestLineFound = true
-				_, _ = buffer.WriteString(line)
-			}
-		}
-
-		if err != nil {
-			if err == io.EOF {
-				break
-			}
-			return []byte(request)
-		}
+// SplitAnnotations splits a raw request into its annotations and the request
+// that follows them. Annotations are the lines starting with "@" before the
+// request line. A line starting with "@" after the request line is part of the
+// request, so text rendered into the headers or the body never becomes an
+// annotation.
+func SplitAnnotations(request string) (annotations, rest string) {
+	rest = request
+	for strings.HasPrefix(rest, "@") {
+		_, rest, _ = strings.Cut(rest, "\n")
 	}
 
-	return append([]byte(nil), buffer.Bytes()...)
+	return request[:len(request)-len(rest)], rest
 }
 
 // TryFillCustomHeaders after the Host header

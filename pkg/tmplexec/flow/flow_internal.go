@@ -4,9 +4,10 @@ import (
 	"fmt"
 	"sync/atomic"
 
-	"github.com/Mzack9999/goja"
+	"github.com/projectdiscovery/goja"
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
+	"github.com/projectdiscovery/nuclei/v3/pkg/tmplexec/utils"
 	"github.com/projectdiscovery/utils/errkit"
 	mapsutil "github.com/projectdiscovery/utils/maps"
 )
@@ -17,8 +18,11 @@ import (
 func (f *FlowExecutor) requestExecutor(runtime *goja.Runtime, reqMap mapsutil.Map[string, protocols.Request], opts *ProtoOptions) bool {
 	defer func() {
 		// evaluate all variables after execution of each protocol
-		variableMap := f.options.Variables.Evaluate(f.options.GetTemplateCtx(f.ctx.Input.MetaInput).GetAll())
-		f.options.GetTemplateCtx(f.ctx.Input.MetaInput).Merge(variableMap) // merge all variables into template context
+		scope := f.options.NewVariablesScope()
+		f.options.AddTemplateCtxToVariablesScope(f.ctx.Input.MetaInput, scope)
+		evaluation := f.options.Variables.EvaluateScope(scope)
+		f.options.GetTemplateCtx(f.ctx.Input.MetaInput).Merge(evaluation.Values) // merge all variables into template context
+		f.options.GetTemplateCtx(f.ctx.Input.MetaInput).MergeTemplateVariables(evaluation.TemplateValues)
 
 		// to avoid polling update template variables everytime we execute a protocol
 		m := f.options.GetTemplateCtx(f.ctx.Input.MetaInput).GetAll()
@@ -32,13 +36,14 @@ func (f *FlowExecutor) requestExecutor(runtime *goja.Runtime, reqMap mapsutil.Ma
 			req := f.allProtocols[opts.protoName][index]
 			// transform input if required
 			inputItem := f.ctx.Input.Clone()
-			if f.options.InputHelper != nil && f.ctx.Input.MetaInput.Input != "" {
-				if inputItem.MetaInput.Input = f.options.InputHelper.Transform(inputItem.MetaInput.Input, req.Type()); inputItem.MetaInput.Input == "" {
+			if f.options.InputHelper != nil && f.ctx.Input.MetaInput.Input != "" && !utils.HasOfflineHTTPResponse(f.ctx.Input.MetaInput, req.Type()) {
+				if inputItem.MetaInput.Input = f.options.InputHelper.TransformPinned(inputItem.MetaInput.Input, inputItem.MetaInput.CustomIP, req.Type()); inputItem.MetaInput.Input == "" {
 					f.ctx.LogError(fmt.Errorf("failed to transform input for protocol %s", req.Type()))
 					return false
 				}
 			}
 			err := req.ExecuteWithResults(inputItem, output.InternalEvent(f.options.GetTemplateCtx(f.ctx.Input.MetaInput).GetAll()), output.InternalEvent{}, f.protocolResultCallback(req, matcherStatus, opts))
+			f.executions[req].Add(1)
 			if err != nil {
 				// save all errors in a map with id as key
 				// its less likely that there will be race condition but just in case
@@ -69,15 +74,14 @@ func (f *FlowExecutor) requestExecutor(runtime *goja.Runtime, reqMap mapsutil.Ma
 		}
 		// transform input if required
 		inputItem := f.ctx.Input.Clone()
-		if f.options.InputHelper != nil && f.ctx.Input.MetaInput.Input != "" {
-			if inputItem.MetaInput.Input = f.options.InputHelper.Transform(inputItem.MetaInput.Input, req.Type()); inputItem.MetaInput.Input == "" {
+		if f.options.InputHelper != nil && f.ctx.Input.MetaInput.Input != "" && !utils.HasOfflineHTTPResponse(f.ctx.Input.MetaInput, req.Type()) {
+			if inputItem.MetaInput.Input = f.options.InputHelper.TransformPinned(inputItem.MetaInput.Input, inputItem.MetaInput.CustomIP, req.Type()); inputItem.MetaInput.Input == "" {
 				f.ctx.LogError(fmt.Errorf("failed to transform input for protocol %s", req.Type()))
 				return false
 			}
 		}
 		err := req.ExecuteWithResults(inputItem, output.InternalEvent(f.options.GetTemplateCtx(f.ctx.Input.MetaInput).GetAll()), output.InternalEvent{}, f.protocolResultCallback(req, matcherStatus, opts))
-		// Mark the request as seen
-		_ = f.executed.Set(requestKey(opts.protoName, req, id), struct{}{})
+		f.executions[req].Add(1)
 		if err != nil {
 			index := id
 			err = f.allErrs.Set(opts.protoName+":"+index, err)
@@ -87,13 +91,6 @@ func (f *FlowExecutor) requestExecutor(runtime *goja.Runtime, reqMap mapsutil.Ma
 		}
 	}
 	return matcherStatus.Load()
-}
-
-func requestKey(proto string, req protocols.Request, id string) string {
-	if id == "" {
-		id = req.GetID()
-	}
-	return proto + ":" + id
 }
 
 // protocolResultCallback returns a callback that is executed

@@ -6,14 +6,16 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/alecthomas/chroma/quick"
-	jsoniter "github.com/json-iterator/go"
+	"github.com/alecthomas/chroma/v2/quick"
 	"github.com/logrusorgru/aurora/v4"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/loader"
+	"github.com/projectdiscovery/nuclei/v3/pkg/model"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
+	"github.com/projectdiscovery/nuclei/v3/pkg/utils"
+	"github.com/projectdiscovery/nuclei/v3/pkg/utils/json"
 )
 
 // log available templates for verbose (-vv)
@@ -38,12 +40,17 @@ func (r *Runner) verboseTemplate(tpl *templates.Template) {
 		tpl.Info.SeverityHolder.Severity))
 }
 
+// listedTemplate names its fields like a result event, so a -jsonl listing
+// joins with scan results on the same keys.
+type listedTemplate struct {
+	Template     string     `json:"template,omitempty"`
+	TemplateID   string     `json:"template-id"`
+	TemplatePath string     `json:"template-path"`
+	Info         model.Info `json:"info"`
+}
+
 func (r *Runner) listAvailableStoreTemplates(store *loader.Store) {
-	r.Logger.Print().Msgf(
-		"\nListing available %v nuclei templates for %v",
-		config.DefaultConfig.TemplateVersion,
-		config.DefaultConfig.TemplatesDirectory,
-	)
+	r.listingHeader("templates")
 	// order templates alphabetically by path
 	templates := store.Templates()
 	sort.Slice(templates, func(i, j int) bool {
@@ -51,6 +58,10 @@ func (r *Runner) listAvailableStoreTemplates(store *loader.Store) {
 	})
 
 	for _, tpl := range templates {
+		if r.options.JSONL && !r.options.TemplateDisplay {
+			r.listTemplateJSON(tpl)
+			continue
+		}
 		if hasExtraFlags(r.options) {
 			if r.options.TemplateDisplay {
 				colorize := !r.options.NoColor
@@ -78,12 +89,36 @@ func (r *Runner) listAvailableStoreTemplates(store *loader.Store) {
 	}
 }
 
-func (r *Runner) listAvailableTags(tagsMap map[string]int) {
+func (r *Runner) listTemplateJSON(tpl *templates.Template) {
+	path, _ := utils.TemplatePathURL(tpl.Path, tpl.ID, "")
+	marshalled, err := json.Marshal(listedTemplate{
+		Template:     path,
+		TemplateID:   tpl.ID,
+		TemplatePath: tpl.Path,
+		Info:         tpl.Info,
+	})
+	if err != nil {
+		r.Logger.Error().Msgf("Could not marshal the template %s: %s", tpl.Path, err)
+		return
+	}
+	r.Logger.Print().Msgf("%s", marshalled)
+}
+
+// listingHeader is skipped for -jsonl, where every line must parse as JSON.
+func (r *Runner) listingHeader(what string) {
+	if r.options.JSONL {
+		return
+	}
 	r.Logger.Print().Msgf(
-		"\nListing available %v nuclei tags for %v",
+		"\nListing available %v nuclei %s for %v",
 		config.DefaultConfig.TemplateVersion,
+		what,
 		config.DefaultConfig.TemplatesDirectory,
 	)
+}
+
+func (r *Runner) listAvailableTags(tagsMap map[string]int) {
+	r.listingHeader("tags")
 
 	type kv struct {
 		Key   string `json:"tag"`
@@ -99,7 +134,7 @@ func (r *Runner) listAvailableTags(tagsMap map[string]int) {
 
 	for _, tag := range tagsList {
 		if r.options.JSONL {
-			marshalled, _ := jsoniter.Marshal(tag)
+			marshalled, _ := json.Marshal(tag)
 			r.Logger.Print().Msgf("%s", string(marshalled))
 		} else {
 			r.Logger.Print().Msgf("%s (%d)", tag.Key, tag.Value)

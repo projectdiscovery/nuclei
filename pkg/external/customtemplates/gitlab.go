@@ -13,6 +13,21 @@ import (
 	gitlab "gitlab.com/gitlab-org/api/client-go"
 )
 
+// safeProjectOutputPath joins the GitLab project's path component to the
+// custom-templates directory, ensuring the resulting path stays inside
+// downloadDir even if the GitLab server returns a malicious project path.
+func safeProjectOutputPath(downloadDir, projectPath string) (string, error) {
+	return safeJoinWithinDirectory(downloadDir, projectPath)
+}
+
+// safeProjectFileOutputPath joins a per-file path to the per-project output
+// directory, again ensuring containment. fileRelPath is preferred over the
+// API-returned basename so that nested directory structure is preserved and a
+// malicious server cannot collapse multiple files onto one another.
+func safeProjectFileOutputPath(projectDir, fileRelPath string) (string, error) {
+	return safeJoinWithinDirectory(projectDir, fileRelPath)
+}
+
 var _ Provider = &customTemplateGitLabRepo{}
 
 type customTemplateGitLabRepo struct {
@@ -73,8 +88,28 @@ func (bk *customTemplateGitLabRepo) Download(_ context.Context) {
 			return
 		}
 
-		// Add a subdirectory with the project ID as the subdirectory within the location
-		projectOutputPath := filepath.Join(location, project.Path)
+		// Add a subdirectory with the project path as the subdirectory within
+		// the location. The project path is attacker-controllable on a
+		// malicious or self-hosted GitLab server, so it must be validated for
+		// containment before we MkdirAll into it.
+		//
+		// Use PathWithNamespace (e.g. "group/sub/repo") rather than the bare
+		// repo slug Path so that two configured projects sharing a slug in
+		// different namespaces land in distinct directories and cannot
+		// silently overwrite each other's templates. PathWithNamespace is
+		// still server-controlled, so it goes through the same containment
+		// check as before.
+		projectKey := project.PathWithNamespace
+		if projectKey == "" {
+			// Defensive fallback for older API responses where
+			// PathWithNamespace might not be populated.
+			projectKey = project.Path
+		}
+		projectOutputPath, err := safeProjectOutputPath(location, projectKey)
+		if err != nil {
+			gologger.Error().Msgf("Skipping unsafe GitLab project path %q: %v", projectKey, err)
+			continue
+		}
 
 		// Ensure the subdirectory exists or create it if it doesn't yet exist
 		err = os.MkdirAll(projectOutputPath, 0755)
@@ -96,6 +131,16 @@ func (bk *customTemplateGitLabRepo) Download(_ context.Context) {
 		for _, file := range tree {
 			// If the object is not a file or file extension is not .yaml, skip it
 			if file.Type == "blob" && filepath.Ext(file.Path) == ".yaml" {
+				// Resolve the destination path before reaching out to the
+				// server so a malicious tree path cannot escape projectOutputPath
+				// even if the server later returns a basename that points
+				// elsewhere.
+				outputPath, err := safeProjectFileOutputPath(projectOutputPath, file.Path)
+				if err != nil {
+					gologger.Error().Msgf("Skipping unsafe GitLab tree path %q: %v", file.Path, err)
+					continue
+				}
+
 				gf := &gitlab.GetFileOptions{
 					Ref: gitlab.Ptr(project.DefaultBranch),
 				}
@@ -112,10 +157,22 @@ func (bk *customTemplateGitLabRepo) Download(_ context.Context) {
 					return
 				}
 
-				// Write the downloaded template to the local filesystem at the location with the filename of the blob name
-				err = os.WriteFile(filepath.Join(projectOutputPath, f.FileName), contents, 0644)
+				// Make sure the parent directory of the output file exists.
+				// This preserves nested directory structure inside the project
+				// (the previous implementation flattened everything by writing
+				// only the basename, silently clobbering files with identical
+				// names in different directories).
+				if err := os.MkdirAll(filepath.Dir(outputPath), 0755); err != nil {
+					gologger.Error().Msgf("error creating parent directory for GitLab project (%s) file: %s %s", project.Name, file.Path, err)
+					return
+				}
+
+				// Write the downloaded template to the local filesystem at
+				// the precomputed safe output path (preserves directory
+				// structure and prevents traversal).
+				err = os.WriteFile(outputPath, contents, 0644)
 				if err != nil {
-					gologger.Error().Msgf("error writing GitLab project (%s) file: %s %s", project.Name, f.FileName, err)
+					gologger.Error().Msgf("error writing GitLab project (%s) file: %s %s", project.Name, file.Path, err)
 					return
 				}
 

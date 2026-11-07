@@ -8,9 +8,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Mzack9999/goja"
-	"github.com/alecthomas/chroma/quick"
+	"github.com/alecthomas/chroma/v2/quick"
 	"github.com/ditashi/jsbeautifier-go/jsbeautifier"
+	"github.com/projectdiscovery/goja"
 
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/gozero"
@@ -152,6 +152,9 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 				extractor.Part = "response"
 			}
 		}
+		// llm operators only evaluate once they hold the scan's client; without
+		// it every llm path returns a negative result instead of an error.
+		protocols.BindLLMOperators(compiled, options)
 		request.CompiledOperators = compiled
 	}
 
@@ -178,6 +181,18 @@ func (request *Request) GetID() string {
 
 // ExecuteWithResults executes the protocol requests and returns results instead of writing them.
 func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicValues, previous output.InternalEvent, callback protocols.OutputEventCallback) (err error) {
+	// code execution requires the -code flag, enforced here as well as in the
+	// loader so it also applies to the SDK/direct Parse and multiprotocol paths.
+	if request.options == nil || request.options.Options == nil || !request.options.Options.EnableCodeTemplates {
+		return errkit.New("code templates are disabled; enable them with -code to run this template")
+	}
+
+	// code templates must be signature-verified to run, enforced here so it
+	// also applies to paths that do not go through the loader/workflow checks.
+	if !request.options.Verified {
+		return errkit.New("refusing to execute unverified code template; sign it (-sign) or run a verified template")
+	}
+
 	metaSrc, err := gozero.NewSourceWithString(input.MetaInput.Input, "", request.options.TemporaryDirectory)
 	if err != nil {
 		return err
@@ -187,8 +202,6 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 			gologger.Warning().Msgf("%s\n", err)
 		}
 	}()
-
-	var interactshURLs []string
 
 	// inject all template context values as gozero env allvars
 	allvars := protocolutils.GenerateVariables(input.MetaInput.Input, false, nil)
@@ -200,15 +213,17 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 	allvars = generators.MergeMaps(allvars, dynamicValues, previous)
 	// optionvars are vars passed from CLI or env variables
 	optionVars := generators.BuildPayloadFromOptions(request.options.Options)
-	variablesMap := request.options.Variables.Evaluate(allvars)
+	scope := request.options.NewVariablesScope(allvars, optionVars, request.options.Constants)
+	evaluation := request.options.Variables.EvaluateWithInteractshScope(scope, request.options.Interactsh)
+	variablesMap, interactshURLs := evaluation.Values, evaluation.InteractURLs
 	// since we evaluate variables using allvars, give precedence to variablesMap
 	allvars = generators.MergeMaps(allvars, variablesMap, optionVars, request.options.Constants)
 	for name, value := range allvars {
 		v := fmt.Sprint(value)
-		v, interactshURLs = request.options.Interactsh.Replace(v, interactshURLs)
-		// if value is updated by interactsh, update allvars to reflect the change downstream
 		allvars[name] = v
-		metaSrc.AddVariable(gozerotypes.Variable{Name: name, Value: v})
+		// strip NUL bytes from values passed into the subprocess environment;
+		// the raw value is preserved in allvars for downstream templating.
+		metaSrc.AddVariable(gozerotypes.Variable{Name: name, Value: sanitizeEnvValue(v)})
 	}
 
 	if request.PreCondition != "" {
@@ -340,7 +355,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 	event := eventcreator.CreateEvent(request, data, request.options.Options.Debug || request.options.Options.DebugResponse)
 	if request.options.Interactsh != nil {
 		event.UsesInteractsh = true
-		request.options.Interactsh.RequestEvent(interactshURLs, &interactsh.RequestData{
+		request.options.RegisterInteractshRequest(interactshURLs, &interactsh.RequestData{
 			MakeResultFunc: request.MakeResultEvent,
 			Event:          event,
 			Operators:      request.CompiledOperators,
@@ -381,12 +396,12 @@ var RequestPartDefinitions = map[string]string{
 // true and a list of matched snippets if the matcher type is supports it
 // otherwise false and an empty string slice
 func (request *Request) Match(data map[string]interface{}, matcher *matchers.Matcher) (bool, []string) {
-	return protocols.MakeDefaultMatchFunc(data, matcher)
+	return protocols.MakeDefaultMatchFuncWithExecutorOptions(data, matcher, request.options)
 }
 
 // Extract performs extracting operation for an extractor on model and returns true or false.
 func (request *Request) Extract(data map[string]interface{}, matcher *extractors.Extractor) map[string]struct{} {
-	return protocols.MakeDefaultExtractFunc(data, matcher)
+	return protocols.MakeDefaultExtractFuncWithExecutorOptions(data, matcher, request.options)
 }
 
 // MakeResultEvent creates a result event from internal wrapped event
@@ -478,9 +493,27 @@ func prettyPrint(templateId string, buff string) {
 
 // UpdateOptions replaces this request's options with a new copy
 func (r *Request) UpdateOptions(opts *protocols.ExecutorOptions) {
+	r.Operators = protocols.CloneOperators(r.Operators)
+	r.CompiledOperators = nil
+	if r.options == nil {
+		if opts != nil {
+			r.options = opts.Copy()
+		}
+		return
+	}
+	r.options = r.options.Copy()
 	r.options.ApplyNewEngineOptions(opts)
 }
 
 func (r *Request) useSandbox() bool {
 	return r.Sandbox != nil && r.Sandbox.Image != ""
+}
+
+// sanitizeEnvValue removes NUL bytes, which are invalid in a subprocess
+// environment entry, from a value.
+func sanitizeEnvValue(value string) string {
+	if !strings.ContainsRune(value, 0) {
+		return value
+	}
+	return strings.ReplaceAll(value, "\x00", "")
 }

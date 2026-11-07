@@ -1,14 +1,14 @@
 package flow
 
 import (
+	"bufio"
 	"fmt"
 	"io"
 	"strconv"
 	"strings"
 	"sync/atomic"
 
-	"github.com/Mzack9999/goja"
-	"github.com/projectdiscovery/nuclei/v3/pkg/js/compiler"
+	"github.com/projectdiscovery/goja"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/nuclei/v3/pkg/scan"
@@ -53,7 +53,8 @@ type FlowExecutor struct {
 	// a request ex: if dynamic extractor returns ["value"] it will be converted to "value"
 	flattenKeys []string
 
-	executed *mapsutil.SyncLockMap[string, struct{}]
+	// executions counts how many times the flow ran each request
+	executions map[protocols.Request]*atomic.Int64
 }
 
 // NewFlowExecutor creates a new flow executor from a list of requests
@@ -61,7 +62,9 @@ type FlowExecutor struct {
 // unlike other engines where we compile once and execute multiple times
 func NewFlowExecutor(requests []protocols.Request, ctx *scan.ScanContext, options *protocols.ExecutorOptions, results *atomic.Bool, program *goja.Program) (*FlowExecutor, error) {
 	allprotos := make(map[string][]protocols.Request)
+	executions := make(map[protocols.Request]*atomic.Int64, len(requests))
 	for _, req := range requests {
+		executions[req] = &atomic.Int64{}
 		switch req.Type() {
 		case templateTypes.DNSProtocol:
 			allprotos[templateTypes.DNSProtocol.String()] = append(allprotos[templateTypes.DNSProtocol.String()], req)
@@ -101,7 +104,7 @@ func NewFlowExecutor(requests []protocols.Request, ctx *scan.ScanContext, option
 		results:        results,
 		ctx:            ctx,
 		program:        program,
-		executed:       mapsutil.NewSyncLockMap[string, struct{}](),
+		executions:     executions,
 	}
 	return f, nil
 }
@@ -111,13 +114,21 @@ func (f *FlowExecutor) Compile() error {
 	if f.results == nil {
 		f.results = new(atomic.Bool)
 	}
+
 	// load all variables and evaluate with existing data
-	variableMap := f.options.Variables.Evaluate(f.options.GetTemplateCtx(f.ctx.Input.MetaInput).GetAll())
 	// cli options
 	optionVars := generators.BuildPayloadFromOptions(f.options.Options)
 	// constants
 	constants := f.options.Constants
+	scope := f.options.NewVariablesScope()
+
+	f.options.AddTemplateCtxToVariablesScope(f.ctx.Input.MetaInput, scope)
+	scope.AddData(constants, optionVars)
+
+	evaluation := f.options.Variables.EvaluateScope(scope)
+	variableMap := evaluation.Values
 	allVars := generators.MergeMaps(variableMap, constants, optionVars)
+
 	// we support loading variables from files in variables , cli options and constants
 	// try to load if files exist
 	for k, v := range allVars {
@@ -129,7 +140,24 @@ func (f *FlowExecutor) Compile() error {
 			}
 		}
 	}
+
+	templateVariables := make(map[string]interface{}, len(evaluation.TemplateValues))
+	for key := range evaluation.TemplateValues {
+		if _, ok := constants[key]; ok {
+			continue
+		}
+
+		if _, ok := optionVars[key]; ok {
+			continue
+		}
+
+		if value, ok := allVars[key]; ok {
+			templateVariables[key] = value
+		}
+	}
+
 	f.options.GetTemplateCtx(f.ctx.Input.MetaInput).Merge(allVars) // merge all variables into template context
+	f.options.GetTemplateCtx(f.ctx.Input.MetaInput).MergeTemplateVariables(templateVariables)
 
 	// ---- define callback functions/objects----
 	f.protoFunctions = map[string]func(call goja.FunctionCall, runtime *goja.Runtime) goja.Value{}
@@ -139,6 +167,7 @@ func (f *FlowExecutor) Compile() error {
 		reqMap := mapsutil.Map[string, protocols.Request]{}
 		counter := 0
 		proto := strings.ToLower(p) // donot use loop variables in callback functions directly
+
 		for index := range requests {
 			counter++ // start index from 1
 			request := f.allProtocols[proto][index]
@@ -146,22 +175,26 @@ func (f *FlowExecutor) Compile() error {
 				// if id is present use it
 				reqMap[request.GetID()] = request
 			}
+
 			// fallback to using index as id
 			// always allow index as id as a fallback
 			reqMap[strconv.Itoa(counter)] = request
 		}
+
 		// ---define hook that allows protocol/request execution from js-----
 		// --- this is the actual callback that is executed when function is invoked in js----
 		f.protoFunctions[proto] = func(call goja.FunctionCall, runtime *goja.Runtime) goja.Value {
 			opts := &ProtoOptions{
 				protoName: proto,
 			}
+
 			for _, v := range call.Arguments {
 				switch value := v.Export().(type) {
 				default:
 					opts.reqIDS = append(opts.reqIDS, types.ToString(value))
 				}
 			}
+
 			// before executing any protocol function flatten tracked values
 			if len(f.flattenKeys) > 0 {
 				ctx := f.options.GetTemplateCtx(f.ctx.Input.MetaInput)
@@ -171,9 +204,11 @@ func (f *FlowExecutor) Compile() error {
 					}
 				}
 			}
+
 			return runtime.ToValue(f.requestExecutor(runtime, reqMap, opts))
 		}
 	}
+
 	return nil
 }
 
@@ -195,11 +230,15 @@ func (f *FlowExecutor) ExecuteWithResults(ctx *scan.ScanContext) error {
 	}
 
 	// get a new runtime from pool
-	runtime := GetJSRuntime(f.options.Options)
+	runtime, err := GetJSRuntimeContext(ctx.Context(), f.options.Options)
+	if err != nil {
+		return err
+	}
 	defer func() {
-		// whether to reuse or not depends on the whether script modifies
-		// global scope or not,
-		PutJSRuntime(runtime, compiler.CanRunAsIIFE(f.options.Flow))
+		// Flow templates execute arbitrary user-authored scripts that can modify
+		// globals, built-ins, and prototypes. Never return a contaminated runtime
+		// to the shared pool; replenish with a fresh runtime (#7986).
+		PutJSRuntime(runtime, false)
 	}()
 	defer func() {
 		// remove set builtin
@@ -252,7 +291,7 @@ func (f *FlowExecutor) ExecuteWithResults(ctx *scan.ScanContext) error {
 	runtime.SetContextValue("executionId", f.options.Options.ExecutionId)
 
 	// pass flow and execute the js vm and handle errors
-	_, err := runtime.RunProgram(f.program)
+	_, err = runtime.RunProgram(f.program)
 	f.reconcileProgress()
 	if err != nil {
 		ctx.LogError(err)
@@ -267,14 +306,16 @@ func (f *FlowExecutor) ExecuteWithResults(ctx *scan.ScanContext) error {
 	return nil
 }
 
+// reconcileProgress settles progress, whose total assumed each request runs
+// once: requests the flow never ran count as processed, as protocols do for
+// skipped requests, and extra runs of a request are added to the total
 func (f *FlowExecutor) reconcileProgress() {
-	for proto, list := range f.allProtocols {
-		for idx, req := range list {
-			key := requestKey(proto, req, strconv.Itoa(idx+1))
-			if _, seen := f.executed.Get(key); !seen {
-				// never executed → pretend it finished so that stats match
-				f.options.Progress.SetRequests(uint64(req.Requests()))
-			}
+	for req, executions := range f.executions {
+		switch runs := executions.Load(); {
+		case runs == 0:
+			f.options.Progress.SetRequests(uint64(req.Requests()))
+		case runs > 1:
+			f.options.Progress.AddToTotal((runs - 1) * int64(req.Requests()))
 		}
 	}
 }
@@ -299,14 +340,19 @@ func (f *FlowExecutor) ReadDataFromFile(payload string) ([]string, error) {
 	defer func() {
 		_ = reader.Close()
 	}()
-	bin, err := io.ReadAll(reader)
-	if err != nil {
-		return values, err
-	}
-	for _, line := range strings.Split(string(bin), "\n") {
-		line = strings.TrimSpace(line)
-		if line != "" {
-			values = append(values, line)
+	// Stream the helper file line-by-line instead of loading it whole into memory:
+	// helper files for flow templates can be large (wordlists, payload corpora).
+	br := bufio.NewReader(reader)
+	for {
+		line, readErr := br.ReadString('\n')
+		if trimmed := strings.TrimSpace(line); trimmed != "" {
+			values = append(values, trimmed)
+		}
+		if readErr == io.EOF {
+			break
+		}
+		if readErr != nil {
+			return values, readErr
 		}
 	}
 	return values, nil

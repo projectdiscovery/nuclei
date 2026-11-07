@@ -1,0 +1,23 @@
+id: disable-http-cache
+
+info:
+  name: Disable HTTP Cache Test
+  author: dwisiswant0
+  severity: info
+  description: Tests if disable-http-cache works as expected
+  tags: test
+
+requests:
+  - raw:
+      - |
+        GET / HTTP/1.1
+        Host: {{Hostname}}
+      - |
+        GET / HTTP/1.1
+        Host: {{Hostname}}
+    disable-http-cache: true
+    matchers:
+      - type: dsl
+        dsl:
+          - body_1 == "1"
+          - body_2 == "2"

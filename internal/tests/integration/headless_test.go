@@ -16,6 +16,7 @@ import (
 
 var headlessTestcases = []integrationCase{
 	{Path: "protocols/headless/headless-basic.yaml", TestCase: &headlessBasic{}},
+	{Path: "protocols/headless/headless-duration.yaml", TestCase: &headlessBasic{}},
 	{Path: "protocols/headless/headless-waitevent.yaml", TestCase: &headlessBasic{}},
 	{Path: "protocols/headless/headless-dsl.yaml", TestCase: &headlessBasic{}},
 	{Path: "protocols/headless/headless-self-contained.yaml", TestCase: &headlessSelfContained{}},

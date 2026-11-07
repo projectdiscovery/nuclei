@@ -16,11 +16,9 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/logrusorgru/aurora/v4"
 	"github.com/pkg/errors"
 	"go.uber.org/multierr"
-
-	jsoniter "github.com/json-iterator/go"
-	"github.com/logrusorgru/aurora/v4"
 
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/interactsh/pkg/server"
@@ -29,11 +27,13 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/model"
 	"github.com/projectdiscovery/nuclei/v3/pkg/model/types/severity"
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators"
+	"github.com/projectdiscovery/nuclei/v3/pkg/operators/matchers"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/honeypotdetector"
 	protocolUtils "github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types/nucleierr"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils"
+	"github.com/projectdiscovery/nuclei/v3/pkg/utils/json"
 	"github.com/projectdiscovery/utils/errkit"
 	fileutil "github.com/projectdiscovery/utils/file"
 	osutils "github.com/projectdiscovery/utils/os"
@@ -87,6 +87,13 @@ type StandardWriter struct {
 	DisableStdout         bool
 	AddNewLinesOutputFile bool // by default this is only done for stdout
 	KeysToRedact          []string
+	// NoRedact skips the default credential keys; KeysToRedact still apply.
+	NoRedact bool
+
+	// redactSet caches the compiled credential-redaction regexes so they
+	// are not recompiled on every Write call.
+	redactPatternsOnce sync.Once
+	redactSet          compiledRedaction
 
 	// JSONLogRequestHook is a hook that can be used to log request/response
 	// when using custom server code with output
@@ -120,6 +127,10 @@ type InternalWrappedEvent struct {
 	// Only applicable if interactsh is used
 	// This is used to avoid duplicate successful interactsh events
 	InteractshMatched atomic.Bool
+	// CatchAll reports whether the response is the page the host serves for
+	// any missing path. It probes the host on first call, so it is only asked
+	// once a template matched. Nil when calibration is off or does not apply.
+	CatchAll func() bool
 }
 
 func (iwe *InternalWrappedEvent) CloneShallow() *InternalWrappedEvent {
@@ -128,6 +139,7 @@ func (iwe *InternalWrappedEvent) CloneShallow() *InternalWrappedEvent {
 		Results:         nil,
 		OperatorsResult: nil,
 		UsesInteractsh:  iwe.UsesInteractsh,
+		CatchAll:        iwe.CatchAll,
 	}
 }
 
@@ -171,6 +183,10 @@ type ResultEvent struct {
 	MatcherName string `json:"matcher-name,omitempty"`
 	// ExtractorName is the name of the extractor matched if any.
 	ExtractorName string `json:"extractor-name,omitempty"`
+	// LLM records the model verdict behind this finding, present only when an
+	// llm matcher produced it. An llm verdict is not reproducible the way a
+	// pattern match is, so the finding carries what it takes to audit it.
+	LLM *matchers.LLMAudit `json:"llm,omitempty"`
 	// Type is the type of the result event.
 	Type string `json:"type"`
 	// Host is the host input on which match was found.
@@ -228,6 +244,25 @@ type ResultEvent struct {
 	FileToIndexPosition map[string]int `json:"-"`
 	TemplateVerifier    string         `json:"-"`
 	Error               string         `json:"error,omitempty"`
+	// TemplateInfo is the info as the template wrote it, kept only when
+	// placeholders changed the text. The changed fields can carry response data,
+	// so they are redacted like the raw request and response. It is bookkeeping,
+	// so no exporter writes it; mongo serializes with bson tags, not json ones.
+	TemplateInfo *model.Info `json:"-" bson:"-"`
+}
+
+// MarshalJSON encodes the event with every map nested in Metadata keyed by
+// strings. Metadata can hold javascript args decoded from template YAML.
+func (r ResultEvent) MarshalJSON() ([]byte, error) {
+	// resultEvent has the fields of ResultEvent but not this method, so marshaling it does not recurse.
+	type resultEvent ResultEvent
+	encoded := resultEvent(r)
+	metadata, err := types.ToJSONMap(r.Metadata)
+	if err != nil {
+		return nil, err
+	}
+	encoded.Metadata = metadata
+	return json.Marshal(encoded)
 }
 
 type IssueTrackerMetadata struct {
@@ -292,6 +327,7 @@ func NewStandardWriter(options *types.Options) (*StandardWriter, error) {
 		storeResponseDir:  options.StoreResponseDir,
 		omitTemplate:      options.OmitTemplate,
 		KeysToRedact:      options.Redact,
+		NoRedact:          options.NoRedact,
 	}
 
 	if v := os.Getenv("DISABLE_STDOUT"); v == "true" || v == "1" {
@@ -347,11 +383,16 @@ func (w *StandardWriter) Write(event *ResultEvent) error {
 		event.Template, event.TemplateURL = utils.TemplatePathURL(types.ToString(event.TemplatePath), types.ToString(event.TemplateID), event.TemplateVerifier)
 	}
 
-	if len(w.KeysToRedact) > 0 {
-		event.Request = redactKeys(event.Request, w.KeysToRedact)
-		event.Response = redactKeys(event.Response, w.KeysToRedact)
-		event.CURLCommand = redactKeys(event.CURLCommand, w.KeysToRedact)
-		event.Matched = redactKeys(event.Matched, w.KeysToRedact)
+	// redact the default credential-bearing keys in addition to any
+	// user-supplied -redact keys. patterns are compiled once and cached to
+	// avoid recompiling regexes on every event in the write hot path.
+	patterns := w.redactionPatterns()
+	event.Request = redactWithSet(event.Request, patterns)
+	event.Response = redactWithSet(event.Response, patterns)
+	event.CURLCommand = redactWithSet(event.CURLCommand, patterns)
+	event.Matched = redactWithSet(event.Matched, patterns)
+	for _, field := range event.Info.FilledFields(event.TemplateInfo) {
+		*field.Value = redactWithSet(*field.Value, patterns)
 	}
 
 	event.Timestamp = time.Now()
@@ -393,10 +434,104 @@ func (w *StandardWriter) Write(event *ResultEvent) error {
 	return nil
 }
 
-func redactKeys(data string, keysToRedact []string) string {
-	for _, key := range keysToRedact {
-		keyPattern := regexp.MustCompile(fmt.Sprintf(`(?i)(%s\s*[:=]\s*["']?)[^"'\r\n&]+(["'\r\n]?)`, regexp.QuoteMeta(key)))
-		data = keyPattern.ReplaceAllString(data, `$1***$2`)
+// defaultRedactKeys are header and parameter names that are redacted from
+// output regardless of the -redact flag, unless -no-redact is set.
+var defaultRedactKeys = []string{
+	"Authorization",
+	"Proxy-Authorization",
+	"Cookie",
+	"Set-Cookie",
+	"X-Api-Key",
+}
+
+// cookieHeaderValue is the value of one Cookie or Set-Cookie header, stopping
+// at a quote so a curl -H 'Cookie: ...' does not swallow the rest of the line.
+var cookieHeaderValue = regexp.MustCompile(`(?i)((?:Cookie|Set-Cookie)\s*:\s*)([^"'\r\n]*)`)
+
+// compiledRedaction holds the three shapes a key can take. A header value is
+// masked to the end of the line. Inside a cookie header, key=value stops at
+// the next cookie delimiter so neighbouring cookies stay. A query value keeps
+// an embedded ';' and runs to '&', a quote, or whitespace.
+type compiledRedaction struct {
+	headers []*regexp.Regexp
+	cookies []*regexp.Regexp
+	queries []*regexp.Regexp
+}
+
+func (c compiledRedaction) empty() bool {
+	return len(c.headers) == 0 && len(c.cookies) == 0 && len(c.queries) == 0
+}
+
+// compileRedactPatterns builds the credential-redaction regexes for the given keys.
+func compileRedactPatterns(keys []string) compiledRedaction {
+	var set compiledRedaction
+	for _, key := range keys {
+		quoted := regexp.QuoteMeta(key)
+		set.headers = append(set.headers, regexp.MustCompile(fmt.Sprintf(`(?i)(%s\s*:\s*["']?)([^"'&\r\n]+)(["'\r\n]|$)`, quoted)))
+		set.cookies = append(set.cookies, regexp.MustCompile(fmt.Sprintf(`(?i)(%s\s*=\s*["']?)([^"'&\r\n\s]*?)(;\s*[\w.-]+(?:=|;|\r|\n|$)|["'&\r\n\s]|$)`, quoted)))
+		set.queries = append(set.queries, regexp.MustCompile(fmt.Sprintf(`(?i)(%s\s*=\s*["']?)([^"'&\r\n\s]*)(["'&\r\n\s]|$)`, quoted)))
+	}
+	return set
+}
+
+// redactionPatterns returns the cached redaction set for this writer (default
+// keys unless -no-redact is set, plus any user-supplied -redact keys).
+func (w *StandardWriter) redactionPatterns() compiledRedaction {
+	w.redactPatternsOnce.Do(func() {
+		keys := make([]string, 0, len(defaultRedactKeys)+len(w.KeysToRedact))
+		if !w.NoRedact {
+			keys = append(keys, defaultRedactKeys...)
+		}
+		keys = append(keys, w.KeysToRedact...)
+		w.redactSet = compileRedactPatterns(keys)
+	})
+	return w.redactSet
+}
+
+func redactKeys(data string, keys []string) string {
+	return redactWithSet(data, compileRedactPatterns(keys))
+}
+
+func redactWithSet(data string, set compiledRedaction) string {
+	if data == "" || set.empty() {
+		return data
+	}
+	data = applyRedact(data, set.headers)
+	if len(set.cookies) > 0 {
+		data = cookieHeaderValue.ReplaceAllStringFunc(data, func(match string) string {
+			parts := cookieHeaderValue.FindStringSubmatch(match)
+			if len(parts) != 3 {
+				return match
+			}
+			return parts[1] + applyRedact(parts[2], set.cookies)
+		})
+	}
+	return redactOutsideCookieValues(data, set.queries)
+}
+
+func redactOutsideCookieValues(data string, patterns []*regexp.Regexp) string {
+	if len(patterns) == 0 {
+		return data
+	}
+	locs := cookieHeaderValue.FindAllStringSubmatchIndex(data, -1)
+	if len(locs) == 0 {
+		return applyRedact(data, patterns)
+	}
+	var b strings.Builder
+	prev := 0
+	for _, loc := range locs {
+		valueStart, valueEnd := loc[4], loc[5]
+		b.WriteString(applyRedact(data[prev:valueStart], patterns))
+		b.WriteString(data[valueStart:valueEnd])
+		prev = valueEnd
+	}
+	b.WriteString(applyRedact(data[prev:], patterns))
+	return b.String()
+}
+
+func applyRedact(data string, patterns []*regexp.Regexp) string {
+	for _, pattern := range patterns {
+		data = pattern.ReplaceAllString(data, `$1***$3`)
 	}
 	return data
 }
@@ -424,7 +559,7 @@ func (w *StandardWriter) Request(templatePath, input, requestType string, reques
 		ts := time.Now()
 		request.Timestamp = &ts
 	}
-	data, err := jsoniter.Marshal(request)
+	data, err := json.Marshal(request)
 	if err != nil {
 		return
 	}

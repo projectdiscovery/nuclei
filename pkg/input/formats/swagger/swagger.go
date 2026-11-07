@@ -1,18 +1,20 @@
 package swagger
 
 import (
+	"fmt"
 	"io"
+	"maps"
 	"path"
+	"slices"
 
 	"github.com/getkin/kin-openapi/openapi2"
 	"github.com/getkin/kin-openapi/openapi2conv"
 	"github.com/getkin/kin-openapi/openapi3"
-	"github.com/invopop/yaml"
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/nuclei/v3/pkg/input/formats"
 	"github.com/projectdiscovery/nuclei/v3/pkg/input/formats/openapi"
-
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils/json"
+	"gopkg.in/yaml.v3"
 )
 
 // SwaggerFormat is a Swagger Schema File parser
@@ -48,13 +50,14 @@ func (j *SwaggerFormat) Parse(input io.Reader, resultsCb formats.ParseReqRespCal
 		if err != nil {
 			return errors.Wrap(err, "could not read data file")
 		}
-		err = yaml.Unmarshal(data, schemav2)
+		err = decodeYAML(data, schemav2)
 	} else {
 		err = json.NewDecoder(input).Decode(schemav2)
 	}
 	if err != nil {
 		return errors.Wrap(err, "could not decode openapi 2.0 schema")
 	}
+	dropNullEntries(schemav2)
 	schema, err := openapi2conv.ToV3(schemav2)
 	if err != nil {
 		return errors.Wrap(err, "could not convert openapi 2.0 schema to 3.0")
@@ -65,4 +68,65 @@ func (j *SwaggerFormat) Parse(input io.Reader, resultsCb formats.ParseReqRespCal
 		return errors.Wrap(err, "could not resolve openapi schema references")
 	}
 	return openapi.GenerateRequestsFromSchema(schema, j.opts, resultsCb)
+}
+
+// dropNullEntries removes null entries from the maps and lists of a decoded
+// OpenAPI 2.0 document. A null value such as `paths: {/x: }` or an empty list
+// item under `parameters:` decodes to a nil pointer, which openapi2conv.ToV3
+// dereferences without checking.
+func dropNullEntries(doc *openapi2.T) {
+	maps.DeleteFunc(doc.Paths, func(_ string, v *openapi2.PathItem) bool { return v == nil })
+	maps.DeleteFunc(doc.Parameters, func(_ string, v *openapi2.Parameter) bool { return v == nil })
+	dropNullResponses(doc.Responses)
+	for _, pathItem := range doc.Paths {
+		pathItem.Parameters = slices.DeleteFunc(pathItem.Parameters, func(v *openapi2.Parameter) bool { return v == nil })
+		for _, op := range pathItem.Operations() {
+			op.Parameters = slices.DeleteFunc(op.Parameters, func(v *openapi2.Parameter) bool { return v == nil })
+			dropNullResponses(op.Responses)
+		}
+	}
+}
+
+// dropNullResponses removes null responses, and null headers of the remaining
+// responses, which openapi2conv.ToV3Response also dereferences.
+func dropNullResponses(responses map[string]*openapi2.Response) {
+	maps.DeleteFunc(responses, func(_ string, v *openapi2.Response) bool { return v == nil })
+	for _, response := range responses {
+		maps.DeleteFunc(response.Headers, func(_ string, v *openapi2.Header) bool { return v == nil })
+	}
+}
+
+func decodeYAML(data []byte, target interface{}) error {
+	var value interface{}
+	if err := yaml.Unmarshal(data, &value); err != nil {
+		return err
+	}
+
+	jsonData, err := json.Marshal(normalizeYAMLValue(value))
+	if err != nil {
+		return err
+	}
+	return json.Unmarshal(jsonData, target)
+}
+
+func normalizeYAMLValue(value interface{}) interface{} {
+	switch value := value.(type) {
+	case map[interface{}]interface{}:
+		normalized := make(map[string]interface{}, len(value))
+		for key, item := range value {
+			normalized[fmt.Sprint(key)] = normalizeYAMLValue(item)
+		}
+		return normalized
+	case map[string]interface{}:
+		normalized := make(map[string]interface{}, len(value))
+		for key, item := range value {
+			normalized[key] = normalizeYAMLValue(item)
+		}
+		return normalized
+	case []interface{}:
+		for i, item := range value {
+			value[i] = normalizeYAMLValue(item)
+		}
+	}
+	return value
 }

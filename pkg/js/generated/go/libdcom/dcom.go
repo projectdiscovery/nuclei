@@ -3,7 +3,7 @@ package dcom
 import (
 	lib_dcom "github.com/projectdiscovery/nuclei/v3/pkg/js/libs/dcom"
 
-	"github.com/Mzack9999/goja"
+	"github.com/projectdiscovery/goja"
 	"github.com/projectdiscovery/nuclei/v3/pkg/js/gojs"
 )
 

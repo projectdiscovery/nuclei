@@ -7,6 +7,10 @@ import (
 	"net"
 	"net/url"
 	"strings"
+
+	"github.com/go-sql-driver/mysql"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
+	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 )
 
 type (
@@ -72,9 +76,66 @@ func BuildDSN(opts MySQLOptions) (string, error) {
 	return dsn.String(), nil
 }
 
+// sandboxDSN enforces local file and network policy on a MySQL DSN.
+// allowAllFiles is only honored when -lfa is enabled. tcp, tcp4 and tcp6
+// DSNs are rewritten to nucleitcp so the driver uses the fastdialer
+// registered in protocolstate. Unix sockets are treated as loopback for -lna.
+// Other networks are rejected.
+func sandboxDSN(executionId, dsn string) (string, error) {
+	cfg, err := mysql.ParseDSN(dsn)
+	if err != nil {
+		return "", err
+	}
+	opts := &types.Options{ExecutionId: executionId}
+	if cfg.AllowAllFiles && !protocolstate.IsLfaAllowed(opts) {
+		cfg.AllowAllFiles = false
+	}
+
+	netName := cfg.Net
+	if netName == "" {
+		netName = "tcp"
+	}
+	switch netName {
+	case "unix":
+		// IP-based policy never sees a socket path; gate on loopback like ldapi.
+		const unixPolicyHost = "127.0.0.1"
+		if !protocolstate.IsHostAllowed(executionId, unixPolicyHost) {
+			return "", protocolstate.ErrHostDenied.Msgf(unixPolicyHost)
+		}
+	case "tcp", "tcp4", "tcp6", "nucleitcp":
+		// Only nucleitcp has a registered dialer; the others would use the
+		// driver's plain net.Dialer and skip the dial-time policy check.
+		cfg.Net = "nucleitcp"
+		host := dsnPolicyHost(cfg.Addr)
+		if !protocolstate.IsHostAllowed(executionId, host) {
+			return "", protocolstate.ErrHostDenied.Msgf(host)
+		}
+	default:
+		return "", fmt.Errorf("unsupported mysql network %q", netName)
+	}
+	return cfg.FormatDSN(), nil
+}
+
+func dsnPolicyHost(addr string) string {
+	host, _, err := net.SplitHostPort(addr)
+	if err == nil && host != "" {
+		return host
+	}
+	return addr
+}
+
+// openDB opens a sandboxed MySQL connection from dsn.
+func openDB(executionId, dsn string) (*sql.DB, error) {
+	dsn, err := sandboxDSN(executionId, dsn)
+	if err != nil {
+		return nil, err
+	}
+	return sql.Open("mysql", dsn)
+}
+
 // @memo
 func connectWithDSN(ctx context.Context, executionId string, dsn string) (bool, error) {
-	db, err := sql.Open("mysql", dsn)
+	db, err := openDB(executionId, dsn)
 	if err != nil {
 		return false, err
 	}

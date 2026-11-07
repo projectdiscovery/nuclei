@@ -8,7 +8,7 @@ import (
 	"sync"
 	"sync/atomic"
 
-	"github.com/bluele/gcache"
+	"github.com/projectdiscovery/gcache"
 	"github.com/projectdiscovery/gologger"
 )
 
@@ -20,7 +20,7 @@ import (
 // This is used to reduce the number of requests made during fuzzing
 // for parameters that are less likely to give results for a rule.
 type Tracker struct {
-	frequencies              gcache.Cache
+	frequencies              gcache.Cache[string, *cacheItem]
 	paramOccurrenceThreshold int
 
 	isDebug bool
@@ -39,7 +39,7 @@ type cacheItem struct {
 // New creates a new frequency tracker with a given maximum
 // number of params to track in LRU fashion with a max error threshold
 func New(maxTrackCount, paramOccurrenceThreshold int) *Tracker {
-	gc := gcache.New(maxTrackCount).ARC().Build()
+	gc := gcache.New[string, *cacheItem](maxTrackCount).ARC().Build()
 
 	var isDebug bool
 	if os.Getenv("FREQ_DEBUG") != "" {
@@ -75,10 +75,9 @@ func (t *Tracker) MarkParameter(parameter, target, template string) {
 		_ = t.frequencies.Set(key, newItem)
 		return
 	}
-	existingCacheItemValue := existingCacheItem.(*cacheItem)
-	existingCacheItemValue.errors.Add(1)
+	existingCacheItem.errors.Add(1)
 
-	_ = t.frequencies.Set(key, existingCacheItemValue)
+	_ = t.frequencies.Set(key, existingCacheItem)
 }
 
 // IsParameterFrequent checks if a parameter is frequently occurring
@@ -92,14 +91,13 @@ func (t *Tracker) IsParameterFrequent(parameter, target, template string) bool {
 	}
 
 	existingCacheItem, err := t.frequencies.GetIFPresent(key)
-	if err != nil {
+	if err != nil || existingCacheItem == nil {
 		return false
 	}
-	existingCacheItemValue := existingCacheItem.(*cacheItem)
 
-	if existingCacheItemValue.errors.Load() >= int32(t.paramOccurrenceThreshold) {
-		existingCacheItemValue.Do(func() {
-			gologger.Verbose().Msgf("[%s] Skipped %s from parameter for %s as found uninteresting %d times", template, parameter, target, existingCacheItemValue.errors.Load())
+	if existingCacheItem.errors.Load() >= int32(t.paramOccurrenceThreshold) {
+		existingCacheItem.Do(func() {
+			gologger.Verbose().Msgf("[%s] Skipped %s from parameter for %s as found uninteresting %d times", template, parameter, target, existingCacheItem.errors.Load())
 		})
 		return true
 	}

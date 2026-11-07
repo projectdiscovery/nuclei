@@ -2,6 +2,7 @@ package templates
 
 import (
 	"fmt"
+	"slices"
 	"sort"
 	"strings"
 	"sync/atomic"
@@ -12,7 +13,10 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators"
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/helpers/writer"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/catchall"
 	protocolUtils "github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils"
 	"github.com/projectdiscovery/nuclei/v3/pkg/scan"
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates/types"
@@ -52,8 +56,11 @@ func Cluster(list []*Template) [][]*Template {
 
 	// Split up templates that might be clusterable
 	for _, template := range list {
-		// it is not possible to cluster flow and multiprotocol due to dependent execution
-		if template.Flow != "" || template.Options.IsMultiProtocol {
+		// it is not possible to cluster flow and multiprotocol due to dependent execution.
+		// Info placeholders are filled from the event a finding came from, and a
+		// cluster shares one event that already holds the first template's variables
+		// and extracted values, so a template with them runs on its own.
+		if template.Flow != "" || template.Options.IsMultiProtocol || template.Info.HasPlaceholders() {
 			final = append(final, []*Template{template})
 			continue
 		}
@@ -231,12 +238,37 @@ func NewClusterExecuter(requests []*Template, options *protocols.ExecutorOptions
 			}
 		}
 	}
+	// Clustering runs after each template has already been compiled, and the
+	// engine executes this cluster without compiling it again. The shared
+	// request has to know about sibling operators before the first scan.
+	executer.markClusteredResponse()
 	return executer
+}
+
+// markClusteredResponse builds the full response when any clustered template
+// matches on it. Only the first template's operators live on the request.
+func (e *ClusterExecuter) markClusteredResponse() {
+	httpRequest, ok := e.requests.(*http.Request)
+	if !ok {
+		return
+	}
+	for _, operator := range e.operators {
+		if operator != nil && operator.operator != nil && operator.operator.NeedsResponse() {
+			httpRequest.RequireFullResponse()
+			return
+		}
+	}
 }
 
 // Compile compiles the execution generators preparing any requests possible.
 func (e *ClusterExecuter) Compile() error {
-	return e.requests.Compile(e.options)
+	if err := e.requests.Compile(e.options); err != nil {
+		return err
+	}
+	// The compiled request is shared by every host worker. Mark it here, before
+	// any of those workers run, so the flag is not written during execution.
+	e.markClusteredResponse()
+	return nil
 }
 
 // Requests returns the total number of requests the rule will perform
@@ -246,13 +278,53 @@ func (e *ClusterExecuter) Requests() int {
 	return count
 }
 
+// SelectedBy reports whether selection selects the template. A cluster is
+// selected when any of its members is.
+func (template *Template) SelectedBy(selection protocols.TemplateSelection) bool {
+	if cluster, ok := template.Executer.(*ClusterExecuter); ok {
+		return slices.ContainsFunc(cluster.operators, func(operator *clusteredOperator) bool {
+			return selection.Allows(operator.templatePath)
+		})
+	}
+	return selection.Allows(template.Path)
+}
+
+// operatorsFor returns the members selected for input by per-target profiles.
+func (e *ClusterExecuter) operatorsFor(input *contextargs.MetaInput) []*clusteredOperator {
+	if e.options.TargetScope == nil {
+		return e.operators
+	}
+	selection := e.options.TargetScope.For(input)
+	if selection == nil {
+		return e.operators
+	}
+	return slices.DeleteFunc(slices.Clone(e.operators), func(operator *clusteredOperator) bool {
+		return !selection.Allows(operator.templatePath)
+	})
+}
+
+// onCatchAllPage reports whether operator matched only because the host serves
+// this page for any missing path.
+func onCatchAllPage(event *output.InternalWrappedEvent, operator *clusteredOperator, input string) bool {
+	if event.CatchAll == nil || !catchall.Applies(operator.templateInfo, operator.operator) || !event.CatchAll() {
+		return false
+	}
+	gologger.Verbose().Msgf("[%s] Dropped match on %s: the host serves this page for any missing path", operator.templateID, input)
+	return true
+}
+
 // Execute executes the protocol group and returns true or false if results were found.
 func (e *ClusterExecuter) Execute(ctx *scan.ScanContext) (bool, error) {
 	var results bool
 
+	clusterOperators := e.operatorsFor(ctx.Input.MetaInput)
+	if len(clusterOperators) == 0 {
+		return false, nil
+	}
+
 	inputItem := ctx.Input.Clone()
 	if e.options.InputHelper != nil && ctx.Input.MetaInput.Input != "" {
-		if inputItem.MetaInput.Input = e.options.InputHelper.Transform(ctx.Input.MetaInput.Input, e.templateType); ctx.Input.MetaInput.Input == "" {
+		if inputItem.MetaInput.Input = e.options.InputHelper.TransformPinned(ctx.Input.MetaInput.Input, ctx.Input.MetaInput.CustomIP, e.templateType); ctx.Input.MetaInput.Input == "" {
 			return false, nil
 		}
 	}
@@ -270,7 +342,7 @@ func (e *ClusterExecuter) Execute(ctx *scan.ScanContext) (bool, error) {
 		if event.InternalEvent == nil {
 			event.InternalEvent = make(map[string]interface{})
 		}
-		for _, operator := range e.operators {
+		for _, operator := range clusterOperators {
 			clonedEvent := event.CloneShallow()
 
 			result, matched := operator.operator.Execute(clonedEvent.InternalEvent, e.requests.Match, e.requests.Extract, e.options.Options.Debug || e.options.Options.DebugResponse)
@@ -278,6 +350,9 @@ func (e *ClusterExecuter) Execute(ctx *scan.ScanContext) (bool, error) {
 			clonedEvent.InternalEvent["template-path"] = operator.templatePath
 			clonedEvent.InternalEvent["template-info"] = operator.templateInfo
 
+			if matched && result != nil && onCatchAllPage(event, operator, ctx.Input.MetaInput.Input) {
+				continue
+			}
 			if matched && result != nil {
 				clonedEvent.OperatorsResult = result
 				clonedEvent.Results = e.requests.MakeResultEvent(clonedEvent)
@@ -297,7 +372,7 @@ func (e *ClusterExecuter) Execute(ctx *scan.ScanContext) (bool, error) {
 	if !callbackCalled.Load() && e.options.Options.MatcherStatus {
 		// Parse URL fields from the input
 		fields := protocolUtils.GetJsonFieldsFromURL(ctx.Input.MetaInput.Input)
-		for _, operator := range e.operators {
+		for _, operator := range clusterOperators {
 			errMsg := ""
 			if err != nil {
 				errMsg = err.Error()
@@ -328,28 +403,35 @@ func (e *ClusterExecuter) Execute(ctx *scan.ScanContext) (bool, error) {
 		}
 	}
 
-	if e.options.HostErrorsCache != nil {
-		e.options.HostErrorsCache.MarkFailedOrRemove(e.options.ProtocolType.String(), ctx.Input, err)
+	if e.options.HostErrorsCache != nil && e.templateType != types.HTTPProtocol {
+		e.options.HostErrorsCache.MarkFailedOrRemove(e.templateType.String(), ctx.Input, err)
 	}
 	return results, err
 }
 
 // ExecuteWithResults executes the protocol requests and returns results instead of writing them.
 func (e *ClusterExecuter) ExecuteWithResults(ctx *scan.ScanContext) ([]*output.ResultEvent, error) {
+	clusterOperators := e.operatorsFor(ctx.Input.MetaInput)
+	if len(clusterOperators) == 0 {
+		return nil, nil
+	}
 	scanCtx := scan.NewScanContext(ctx.Context(), ctx.Input)
 	dynamicValues := make(map[string]interface{})
 
 	inputItem := ctx.Input.Clone()
 	if e.options.InputHelper != nil && ctx.Input.MetaInput.Input != "" {
-		if inputItem.MetaInput.Input = e.options.InputHelper.Transform(ctx.Input.MetaInput.Input, e.templateType); ctx.Input.MetaInput.Input == "" {
+		if inputItem.MetaInput.Input = e.options.InputHelper.TransformPinned(ctx.Input.MetaInput.Input, ctx.Input.MetaInput.CustomIP, e.templateType); ctx.Input.MetaInput.Input == "" {
 			return nil, nil
 		}
 	}
 	err := e.requests.ExecuteWithResults(inputItem, dynamicValues, nil, func(event *output.InternalWrappedEvent) {
-		for _, operator := range e.operators {
+		for _, operator := range clusterOperators {
 			clonedEvent := event.CloneShallow()
 
 			result, matched := operator.operator.Execute(clonedEvent.InternalEvent, e.requests.Match, e.requests.Extract, e.options.Options.Debug || e.options.Options.DebugResponse)
+			if matched && result != nil && onCatchAllPage(event, operator, ctx.Input.MetaInput.Input) {
+				continue
+			}
 			if matched && result != nil {
 				clonedEvent.OperatorsResult = result
 				clonedEvent.InternalEvent["template-id"] = operator.templateID
@@ -364,8 +446,8 @@ func (e *ClusterExecuter) ExecuteWithResults(ctx *scan.ScanContext) ([]*output.R
 		ctx.LogError(err)
 	}
 
-	if e.options.HostErrorsCache != nil {
-		e.options.HostErrorsCache.MarkFailedOrRemove(e.options.ProtocolType.String(), ctx.Input, err)
+	if e.options.HostErrorsCache != nil && e.templateType != types.HTTPProtocol {
+		e.options.HostErrorsCache.MarkFailedOrRemove(e.templateType.String(), ctx.Input, err)
 	}
 	return scanCtx.GenerateResult(), err
 }

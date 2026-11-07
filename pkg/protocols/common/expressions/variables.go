@@ -115,6 +115,26 @@ func ContainsVariablesWithIgnoreList(skipNames map[string]interface{}, items ...
 	return nil
 }
 
+// ReferencesVariables reports whether data contains a {{...}} marker that
+// refers to a variable in names, either alone or inside an expression. It
+// parses the marker but does not evaluate it.
+func ReferencesVariables(data string, names map[string]interface{}) bool {
+	for _, match := range unresolvedVariablesRegex.FindAllStringSubmatch(data, -1) {
+		expr, err := govaluate.NewEvaluableExpressionWithFunctions(match[1], dsl.HelperFunctions)
+		if err != nil {
+			continue
+		}
+
+		for _, name := range expr.Vars() {
+			if _, ok := names[name]; ok {
+				return true
+			}
+		}
+	}
+
+	return false
+}
+
 func hasLiteralsOnly(data string) bool {
 	expr, err := govaluate.NewEvaluableExpressionWithFunctions(data, dsl.HelperFunctions)
 	if err != nil {

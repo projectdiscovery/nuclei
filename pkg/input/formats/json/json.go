@@ -2,6 +2,7 @@ package json
 
 import (
 	"io"
+	"strings"
 
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/gologger"
@@ -32,6 +33,13 @@ type proxifyRequest struct {
 		Raw      string            `json:"raw"`
 		Endpoint string            `json:"endpoint"`
 	} `json:"request"`
+	Response *proxifyResponse `json:"response,omitempty"`
+}
+
+type proxifyResponse struct {
+	Header map[string]string `json:"header"`
+	Body   string            `json:"body"`
+	Raw    string            `json:"raw"`
 }
 
 // Name returns the name of the format
@@ -65,7 +73,28 @@ func (j *JSONFormat) Parse(input io.Reader, resultsCb formats.ParseReqRespCallba
 			gologger.Warning().Msgf("jsonl: Could not parse raw request %s: %s\n", request.URL, err)
 			continue
 		}
+		if resp := buildProxifyResponse(request.Response); resp != nil {
+			rawRequest.Response = resp
+		}
 		resultsCb(rawRequest)
 	}
 	return nil
+}
+
+func buildProxifyResponse(resp *proxifyResponse) *types.HttpResponse {
+	if resp == nil {
+		return nil
+	}
+	raw := resp.Raw
+	if raw == "" {
+		return nil
+	}
+	// Proxify often stores headers in raw and the body separately (e.g. gzip).
+	if resp.Body != "" && (strings.HasSuffix(raw, "\r\n\r\n") || strings.HasSuffix(raw, "\n\n")) {
+		raw += resp.Body
+	}
+	return &types.HttpResponse{
+		Raw:  raw,
+		Body: resp.Body,
+	}
 }

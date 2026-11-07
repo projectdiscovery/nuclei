@@ -10,6 +10,7 @@ import (
 	"github.com/logrusorgru/aurora/v4"
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
+	filepathutil "github.com/projectdiscovery/nuclei/v3/pkg/utils/filepath"
 	stringsutil "github.com/projectdiscovery/utils/strings"
 	updateutils "github.com/projectdiscovery/utils/update"
 	urlutil "github.com/projectdiscovery/utils/url"
@@ -25,9 +26,7 @@ func (c *DiskCatalog) GetTemplatesPath(definitions []string) ([]string, map[stri
 	erred := make(map[string]error)
 
 	for _, t := range definitions {
-		if stringsutil.ContainsAny(t, knownConfigFiles...) {
-			// TODO: this is a temporary fix to avoid treating these files as templates
-			// this should be replaced with more appropriate and robust logic
+		if config.IsKnownConfigFile(t) {
 			continue
 		}
 		if strings.Contains(t, urlutil.SchemeSeparator) && stringsutil.ContainsAny(t, config.GetSupportTemplateFileExtensions()...) {
@@ -51,9 +50,7 @@ func (c *DiskCatalog) GetTemplatesPath(definitions []string) ([]string, map[stri
 	// purge all false positives
 	filteredTemplates := []string{}
 	for _, v := range allTemplates {
-		// TODO: this is a temporary fix to avoid treating these files as templates
-		// this should be replaced with more appropriate and robust logic
-		if !stringsutil.ContainsAny(v, knownConfigFiles...) {
+		if !config.IsKnownConfigFile(v) {
 			filteredTemplates = append(filteredTemplates, v)
 		}
 	}
@@ -131,20 +128,27 @@ func (c *DiskCatalog) convertPathToAbsolute(t string) (string, error) {
 
 // findGlobPathMatches returns the matched files from a glob path
 func (c *DiskCatalog) findGlobPathMatches(absPath string, processed map[string]struct{}) ([]string, error) {
-	// trim templateDir if any
-	relPath := strings.TrimPrefix(absPath, c.templatesDirectory)
-	// trim leading slash if any
-	if c.templatesFS != nil {
-		// fs.FS always uses forward slashes
-		relPath = strings.TrimPrefix(relPath, "/")
-	} else {
-		relPath = strings.TrimPrefix(relPath, string(os.PathSeparator))
-	}
-
 	var err error
 	var matches []string
 
 	if c.templatesFS != nil {
+		// Compute the path relative to the templates directory using
+		// canonical containment instead of a lexical TrimPrefix. The previous
+		// strings.TrimPrefix(absPath, c.templatesDirectory) would, for a
+		// templatesDirectory like "/foo" and an absPath like
+		// "/foo-evil/x*.yaml", silently truncate to "-evil/x*.yaml" — a
+		// sibling-prefix bug equivalent to the one fixed across the rest of
+		// the codebase. With canonical containment the sibling-prefix case
+		// no longer aliases into the embedded FS root.
+		relPath := absPath
+		if c.templatesDirectory != "" && filepathutil.IsPathWithinDirectory(absPath, c.templatesDirectory) {
+			if rel, relErr := filepath.Rel(c.templatesDirectory, absPath); relErr == nil && rel != "." {
+				relPath = rel
+			}
+		}
+		// fs.FS always uses forward slashes.
+		relPath = filepath.ToSlash(relPath)
+		relPath = strings.TrimPrefix(relPath, "/")
 		matches, err = fs.Glob(c.templatesFS, relPath)
 	} else {
 		matches, err = filepath.Glob(absPath)
@@ -185,6 +189,9 @@ func (c *DiskCatalog) findFileMatches(absPath string, processed map[string]struc
 	if err != nil {
 		return "", false, err
 	}
+	defer func() {
+		_ = info.Close()
+	}()
 	stat, err := info.Stat()
 	if err != nil {
 		return "", false, err

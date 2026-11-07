@@ -24,6 +24,6 @@ http:
     matchers:
       - type: dsl
         dsl:
-          - contains(body,'home') # check for http string
+          - location == '/home' # the docs host redirects here
           - blogid == 'cname' # check for cname (extracted information from dns response)
         condition: and

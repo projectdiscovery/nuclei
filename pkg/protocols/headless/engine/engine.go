@@ -12,6 +12,7 @@ import (
 	"github.com/go-rod/rod/lib/launcher/flags"
 	"github.com/pkg/errors"
 
+	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	fileutil "github.com/projectdiscovery/utils/file"
 	osutils "github.com/projectdiscovery/utils/os"
@@ -25,18 +26,25 @@ type Browser struct {
 	engine         *rod.Browser
 	options        *types.Options
 	launcher       *launcher.Launcher
+	proxy          *headlessProxy
 
 	// use getHTTPClient to get the http client
 	httpClient     *http.Client
 	httpClientOnce *sync.Once
+
+	// use getScreenshotDir to get the screenshot directory
+	screenshotDir     string
+	screenshotDirErr  error
+	screenshotDirOnce sync.Once
 }
 
 // New creates a new nuclei headless browser module
 func New(options *types.Options) (*Browser, error) {
 	var launcherURL, dataStore string
+	var proxyServer *headlessProxy
 	var err error
 
-	chromeLauncher := launcher.New()
+	var chromeLauncher *launcher.Launcher
 
 	if options.CDPEndpoint == "" {
 		dataStore, err = os.MkdirTemp("", "nuclei-*")
@@ -44,54 +52,33 @@ func New(options *types.Options) (*Browser, error) {
 			return nil, errors.Wrap(err, "could not create temporary directory")
 		}
 
-		chromeLauncher = chromeLauncher.
-			Leakless(false).
-			Set("disable-crash-reporter").
-			Set("disable-gpu").
-			Set("disable-notifications").
-			Set("hide-scrollbars").
-			Set("ignore-certificate-errors").
-			Set("ignore-ssl-errors").
-			Set("incognito").
-			Set("mute-audio").
-			Set("window-size", fmt.Sprintf("%d,%d", 1080, 1920)).
-			Delete("use-mock-keychain").
-			UserDataDir(dataStore)
-
-		if MustDisableSandbox() {
-			chromeLauncher = chromeLauncher.NoSandbox(true)
-		}
-
-		executablePath, err := os.Executable()
+		proxyServer, err = newHeadlessProxy(options)
 		if err != nil {
 			return nil, err
 		}
 
-		// if musl is used, most likely we are on alpine linux which is not supported by go-rod, so we fallback to default chrome
-		useMusl, _ := fileutil.UseMusl(executablePath)
-		if options.UseInstalledChrome || useMusl {
-			if chromePath, hasChrome := launcher.LookPath(); hasChrome {
-				chromeLauncher.Bin(chromePath)
-			} else {
-				return nil, errors.New("the chrome browser is not installed")
-			}
-		}
-
-		if options.ShowBrowser {
-			chromeLauncher = chromeLauncher.Headless(false)
-		} else {
-			chromeLauncher = chromeLauncher.Headless(true)
-		}
-		if options.AliveHttpProxy != "" {
-			chromeLauncher = chromeLauncher.Proxy(options.AliveHttpProxy)
-		}
-
-		for k, v := range options.ParseHeadlessOptionalArguments() {
-			chromeLauncher.Set(flags.Flag(k), v)
+		noSandbox := MustDisableSandbox()
+		chromeLauncher, err = newChromeLauncher(options, dataStore, proxyServer.Addr(), noSandbox)
+		if err != nil {
+			_ = proxyServer.Close()
+			return nil, err
 		}
 
 		launcherURL, err = chromeLauncher.Launch()
+		if err != nil && !noSandbox && !chromeLauncher.Has(flags.NoSandbox) && isSandboxLaunchError(err) {
+			logger := options.Logger
+			if logger == nil {
+				logger = gologger.DefaultLogger
+			}
+			logger.Warning().Msgf("Could not start the browser with its sandbox, starting it without sandbox. To keep the sandbox, allow unprivileged user namespaces (for example sysctl kernel.unprivileged_userns_clone=1 or kernel.apparmor_restrict_unprivileged_userns=0) or in docker use a seccomp profile that allows user namespaces (for example --security-opt seccomp=unconfined): %s", sandboxLine(err.Error()))
+			chromeLauncher.Kill()
+			chromeLauncher, err = newChromeLauncher(options, dataStore, proxyServer.Addr(), true)
+			if err == nil {
+				launcherURL, err = chromeLauncher.Launch()
+			}
+		}
 		if err != nil {
+			_ = proxyServer.Close()
 			return nil, err
 		}
 	} else {
@@ -100,6 +87,9 @@ func New(options *types.Options) (*Browser, error) {
 
 	browser := rod.New().ControlURL(launcherURL)
 	if browserErr := browser.Connect(); browserErr != nil {
+		if proxyServer != nil {
+			_ = proxyServer.Close()
+		}
 		return nil, browserErr
 	}
 	defaultHeaders := make(map[string]string)
@@ -129,15 +119,84 @@ func New(options *types.Options) (*Browser, error) {
 		options:        options,
 		httpClientOnce: &sync.Once{},
 		launcher:       chromeLauncher,
+		proxy:          proxyServer,
 	}
 	return engine, nil
 }
 
-// MustDisableSandbox determines if the current os and user needs sandbox mode disabled
+// MustDisableSandbox reports whether the browser must run without its sandbox.
+// Chrome refuses to start sandboxed as root on Linux, so only that case needs
+// "--no-sandbox". Other users keep the sandbox; New falls back to no sandbox
+// with a warning when the system can not provide one.
+// https://github.com/chromium/chromium/blob/c4d3c31083a2e1481253ff2d24298a1dfe19c754/chrome/test/chromedriver/client/chromedriver.py#L209
 func MustDisableSandbox() bool {
-	// linux with root user needs "--no-sandbox" option
-	// https://github.com/chromium/chromium/blob/c4d3c31083a2e1481253ff2d24298a1dfe19c754/chrome/test/chromedriver/client/chromedriver.py#L209
-	return osutils.IsLinux()
+	return mustDisableSandbox(osutils.IsLinux(), os.Geteuid())
+}
+
+func mustDisableSandbox(linux bool, euid int) bool {
+	return linux && euid == 0
+}
+
+// newChromeLauncher returns the launcher for a local browser. User headless
+// options are applied last, so "-headless-options no-sandbox" still works.
+func newChromeLauncher(options *types.Options, dataStore, proxyAddr string, noSandbox bool) (*launcher.Launcher, error) {
+	chromeLauncher := launcher.New().
+		Leakless(false).
+		Set("disable-crash-reporter").
+		Set("disable-gpu").
+		Set("disable-notifications").
+		Set("hide-scrollbars").
+		Set("ignore-certificate-errors").
+		Set("ignore-ssl-errors").
+		Set("incognito").
+		Set("mute-audio").
+		Set("window-size", fmt.Sprintf("%d,%d", 1080, 1920)).
+		Delete("use-mock-keychain").
+		UserDataDir(dataStore).
+		// rod adds "--no-sandbox" by default inside containers, so the
+		// sandbox is always set explicitly.
+		NoSandbox(noSandbox)
+
+	executablePath, err := os.Executable()
+	if err != nil {
+		return nil, err
+	}
+
+	// if musl is used, most likely we are on alpine linux which is not supported by go-rod, so we fallback to default chrome
+	useMusl, _ := fileutil.UseMusl(executablePath)
+	if options.UseInstalledChrome || useMusl {
+		if chromePath, hasChrome := launcher.LookPath(); hasChrome {
+			chromeLauncher.Bin(chromePath)
+		} else {
+			return nil, errors.New("the chrome browser is not installed")
+		}
+	}
+
+	chromeLauncher = chromeLauncher.
+		Headless(!options.ShowBrowser).
+		Proxy(proxyAddr).
+		Set("proxy-bypass-list", "<-loopback>")
+
+	for k, v := range options.ParseHeadlessOptionalArguments() {
+		chromeLauncher.Set(flags.Flag(k), v)
+	}
+	return chromeLauncher, nil
+}
+
+// isSandboxLaunchError reports whether the browser exited because its
+// sandbox could not be set up, for example "No usable sandbox!".
+func isSandboxLaunchError(err error) bool {
+	return err != nil && strings.Contains(strings.ToLower(err.Error()), "sandbox")
+}
+
+// sandboxLine returns the browser output line about the sandbox.
+func sandboxLine(value string) string {
+	for _, line := range strings.Split(value, "\n") {
+		if strings.Contains(strings.ToLower(line), "sandbox") {
+			return strings.TrimSpace(line)
+		}
+	}
+	return strings.TrimSpace(value)
 }
 
 // SetUserAgent sets custom user agent to the browser
@@ -182,10 +241,23 @@ func (b *Browser) getHTTPClient() (*http.Client, error) {
 	return b.httpClient, err
 }
 
+// getScreenshotDir returns the directory that holds the screenshots of
+// templates when local file access is off. It is created once per browser
+// and kept after Close, so the screenshots stay available.
+func (b *Browser) getScreenshotDir() (string, error) {
+	b.screenshotDirOnce.Do(func() {
+		b.screenshotDir, b.screenshotDirErr = os.MkdirTemp("", "nuclei-screenshots-*")
+	})
+	return b.screenshotDir, b.screenshotDirErr
+}
+
 // Close closes the browser engine
 //
 // When connected over CDP, it does NOT close the browsers.
 func (b *Browser) Close() {
+	if b.proxy != nil {
+		_ = b.proxy.Close()
+	}
 	if b.options.CDPEndpoint != "" {
 		return
 	}

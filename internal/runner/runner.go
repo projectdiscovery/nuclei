@@ -3,9 +3,13 @@ package runner
 import (
 	"context"
 	"fmt"
+	"net"
+	"net/http"
 	"os"
 	"path/filepath"
 	"reflect"
+	"slices"
+	"sort"
 	"strings"
 	"sync/atomic"
 	"time"
@@ -13,6 +17,7 @@ import (
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/internal/pdcp"
 	"github.com/projectdiscovery/nuclei/v3/internal/server"
+	"github.com/projectdiscovery/nuclei/v3/internal/server/proxy"
 	"github.com/projectdiscovery/nuclei/v3/pkg/authprovider"
 	"github.com/projectdiscovery/nuclei/v3/pkg/fuzz/frequency"
 	"github.com/projectdiscovery/nuclei/v3/pkg/input/provider"
@@ -44,6 +49,7 @@ import (
 	fuzzStats "github.com/projectdiscovery/nuclei/v3/pkg/fuzz/stats"
 	"github.com/projectdiscovery/nuclei/v3/pkg/input"
 	parsers "github.com/projectdiscovery/nuclei/v3/pkg/loader/workflow"
+	llmclient "github.com/projectdiscovery/nuclei/v3/pkg/operators/common/llm"
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	"github.com/projectdiscovery/nuclei/v3/pkg/progress"
 	"github.com/projectdiscovery/nuclei/v3/pkg/projectfile"
@@ -52,13 +58,16 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/globalmatchers"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/honeypotdetector"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/hostbackoff"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/hosterrorscache"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/interactsh"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolinit"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/uncover"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/utils/excludematchers"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/headless/engine"
 	httpProtocol "github.com/projectdiscovery/nuclei/v3/pkg/protocols/http"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/catchall"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/httpclientpool"
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting"
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates"
@@ -80,7 +89,7 @@ var (
 // Runner is a client for running the enumeration process.
 type Runner struct {
 	output             output.Writer
-	interactsh         *interactsh.Client
+	interactsh         interactsh.IClient
 	options            *types.Options
 	projectFile        *projectfile.ProjectFile
 	catalog            catalog.Catalog
@@ -106,6 +115,7 @@ type Runner struct {
 	httpApiEndpoint *httpapi.Server
 	fuzzStats       *fuzzStats.Tracker
 	dastServer      *server.DASTServer
+	llmClient       llmclient.Client
 }
 
 // New creates a new client for running the enumeration process.
@@ -115,16 +125,31 @@ func New(options *types.Options) (*Runner, error) {
 		Logger:  options.Logger,
 	}
 
+	if err := config.DefaultConfig.InitializationError(); err != nil && !options.HealthCheck {
+		return nil, fmt.Errorf("initialize nuclei configuration: %w", err)
+	}
+
+	llmClient, err := configureLLM(options)
+	if err != nil {
+		return nil, fmt.Errorf("configure llm: %w", err)
+	}
+	runner.llmClient = llmClient
+
 	if options.HealthCheck {
 		runner.Logger.Print().Msgf("%s\n", DoHealthCheck(options))
 		os.Exit(0)
 	}
 
+	if options.Verbose || options.VerboseVerbose {
+		LogDirectoryInfo(runner.Logger)
+	}
+
 	//  Version check by default
 	if config.DefaultConfig.CanCheckForUpdates() {
-		if err := installer.NucleiVersionCheck(); err != nil {
+		latestIgnoreHash, versionCheckErr := installer.NucleiVersionCheck()
+		if versionCheckErr != nil {
 			if options.Verbose || options.Debug {
-				runner.Logger.Error().Msgf("nuclei version check failed got: %s\n", err)
+				runner.Logger.Error().Msgf("nuclei version check failed got: %s\n", versionCheckErr)
 			}
 		}
 
@@ -139,26 +164,34 @@ func New(options *types.Options) (*Runner, error) {
 		tm := &installer.TemplateManager{
 			CustomTemplates:        ctm,
 			DisablePublicTemplates: options.PublicTemplateDisableDownload,
+			Channel:                options.UpdateTemplatesChannel,
 		}
+		templatesVersion := config.DefaultConfig.TemplateVersion
 		if err := tm.FreshInstallIfNotExists(); err != nil {
-			runner.Logger.Warning().Msgf("failed to install nuclei templates: %s\n", err)
+			runner.Logger.Warning().Msgf("Failed to install nuclei templates: %s\n", err)
 		}
 		if err := tm.UpdateIfOutdated(); err != nil {
-			runner.Logger.Warning().Msgf("failed to update nuclei templates: %s\n", err)
+			runner.Logger.Warning().Msgf("Failed to update nuclei templates: %s\n", err)
 		}
 
-		if config.DefaultConfig.NeedsIgnoreFileUpdate() {
+		if config.DefaultConfig.IgnoreFileNeedsUpdate(latestIgnoreHash) {
 			if err := installer.UpdateIgnoreFile(); err != nil {
-				runner.Logger.Warning().Msgf("failed to update nuclei ignore file: %s\n", err)
+				runner.Logger.Warning().Msgf("Failed to update .nuclei-ignore file: %s\n", err)
 			}
 		}
 
 		if options.UpdateTemplates {
 			// we automatically check for updates unless explicitly disabled
 			// this print statement is only to inform the user that there are no updates
-			if !config.DefaultConfig.NeedsTemplateUpdate() {
+			noUpdates := !config.DefaultConfig.NeedsTemplateUpdate()
+			if tm.Channel == installer.TemplatesChannelLatest {
+				// the latest channel updates without a new release
+				noUpdates = config.DefaultConfig.TemplateVersion == templatesVersion
+			}
+			if noUpdates {
 				runner.Logger.Info().Msgf("No new updates found for nuclei templates")
 			}
+
 			// manually trigger update of custom templates
 			if ctm != nil {
 				ctm.Update(context.TODO())
@@ -175,30 +208,35 @@ func New(options *types.Options) (*Runner, error) {
 		if options.Validate {
 			parser.ShouldValidate = true
 		}
+
 		// TODO: refactor to pass options reference globally without cycles
 		parser.NoStrictSyntax = options.NoStrictSyntax
 		runner.parser = parser
 	}
 
 	yaml.StrictSyntax = !options.NoStrictSyntax
+	yaml.AllowLocalFileAccess = options.AllowLocalFileAccess
 
 	if options.Headless {
 		if engine.MustDisableSandbox() {
 			runner.Logger.Warning().Msgf("The current platform and privileged user will run the browser without sandbox\n")
 		}
+
 		browser, err := engine.New(options)
 		if err != nil {
 			return nil, err
 		}
+
 		runner.browser = browser
 	}
 
 	runner.catalog = disk.NewCatalog(config.DefaultConfig.TemplatesDirectory)
 
 	var httpclient *retryablehttp.Client
-	if options.ProxyInternal && options.AliveHttpProxy != "" || options.AliveSocksProxy != "" {
+	if options.ProxyInternal && (options.AliveHttpProxy != "" || options.AliveSocksProxy != "") {
 		var err error
-		httpclient, err = httpclientpool.Get(options, &httpclientpool.Configuration{})
+
+		httpclient, err = httpclientpool.Get(options, &httpclientpool.Configuration{}, "")
 		if err != nil {
 			return nil, err
 		}
@@ -207,10 +245,12 @@ func New(options *types.Options) (*Runner, error) {
 	if err := reporting.CreateConfigIfNotExists(); err != nil {
 		return nil, err
 	}
+
 	reportingOptions, err := createReportingOptions(options)
 	if err != nil {
 		return nil, err
 	}
+
 	if reportingOptions != nil && httpclient != nil {
 		reportingOptions.HttpClient = httpclient
 	}
@@ -220,6 +260,7 @@ func New(options *types.Options) (*Runner, error) {
 		if err != nil {
 			return nil, errors.Wrap(err, "could not create issue reporting client")
 		}
+
 		runner.issuesClient = client
 	}
 
@@ -282,10 +323,12 @@ func New(options *types.Options) (*Runner, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "could not create output file")
 	}
+
 	if hpDetector != nil {
 		outputWriter.SetHoneypotDetector(hpDetector)
 		runner.honeypotDetector = hpDetector
 	}
+
 	// setup a proxy writer to automatically upload results to PDCP
 	runner.output = runner.setupPDCPUpload(outputWriter)
 	if options.HTTPStats {
@@ -296,9 +339,11 @@ func New(options *types.Options) (*Runner, error) {
 	if options.JSONL && options.EnableProgressBar {
 		options.StatsJSON = true
 	}
+
 	if options.StatsJSON {
 		options.EnableProgressBar = true
 	}
+
 	// Creates the progress tracking object
 	var progressErr error
 	statsInterval := options.StatsInterval
@@ -324,25 +369,30 @@ func New(options *types.Options) (*Runner, error) {
 		if err != nil {
 			return nil, err
 		}
+
 		err = json.Unmarshal(file, &resumeCfg)
 		if err != nil {
 			return nil, err
 		}
+
 		resumeCfg.Compile()
 	}
+
 	runner.resumeCfg = resumeCfg
 
-	if options.DASTReport || options.DASTServer {
+	if options.DASTReport || options.DASTServer || options.DASTProxy {
 		var err error
 		runner.fuzzStats, err = fuzzStats.NewTracker()
 		if err != nil {
 			return nil, errors.Wrap(err, "could not create fuzz stats db")
 		}
-		if !options.DASTServer {
+
+		if !options.DASTServer && !options.DASTProxy {
 			dastServer, err := server.NewStatsServer(runner.fuzzStats)
 			if err != nil {
 				return nil, errors.Wrap(err, "could not create dast server")
 			}
+
 			runner.dastServer = dastServer
 		}
 	}
@@ -352,6 +402,7 @@ func New(options *types.Options) (*Runner, error) {
 			if request.Error == "none" || request.Error == "" {
 				return
 			}
+
 			runner.fuzzStats.RecordErrorEvent(fuzzStats.ErrorEvent{
 				TemplateID: request.Template,
 				URL:        request.Input,
@@ -381,14 +432,9 @@ func New(options *types.Options) (*Runner, error) {
 		opts.HTTPClient = httpclient
 	}
 	if opts.HTTPClient == nil {
-		httpOpts := retryablehttp.DefaultOptionsSingle
-		httpOpts.Timeout = 20 * time.Second // for stability reasons
-		if options.Timeout > 20 {
-			httpOpts.Timeout = time.Duration(options.Timeout) * time.Second
-		}
-		// in testing it was found most of times when interactsh failed, it was due to failure in registering /polling requests
-		opts.HTTPClient = retryablehttp.NewClient(retryablehttp.DefaultOptionsSingle)
+		opts.HTTPClient = newInteractshHTTPClient(options)
 	}
+
 	interactshClient, err := interactsh.New(opts)
 	if err != nil {
 		runner.Logger.Error().Msgf("Could not create interactsh client: %s", err)
@@ -401,13 +447,21 @@ func New(options *types.Options) (*Runner, error) {
 		options.RateLimit = options.RateLimitMinute
 		options.RateLimitDuration = time.Minute
 	}
+
 	if options.RateLimit > 0 && options.RateLimitDuration == 0 {
 		options.RateLimitDuration = time.Second
 	}
-	runner.rateLimiter = utils.GetRateLimiter(context.Background(), options.RateLimit, options.RateLimitDuration)
+
+	// If per-host rate limiting is enabled, make global rate limiter unlimited
+	if options.PerHostRateLimit {
+		runner.rateLimiter = utils.GetRateLimiter(context.Background(), 0, 0)
+	} else {
+		runner.rateLimiter = utils.GetRateLimiter(context.Background(), options.RateLimit, options.RateLimitDuration)
+	}
 
 	// Initialization successful, disable cleanup on error
 	cleanupOnError = false
+
 	return runner, nil
 }
 
@@ -416,6 +470,7 @@ func (r *Runner) runStandardEnumeration(executerOpts *protocols.ExecutorOptions,
 	if r.options.AutomaticScan {
 		return r.executeSmartWorkflowInput(executerOpts, store, engine)
 	}
+
 	return r.executeTemplatesInput(store, engine)
 }
 
@@ -426,6 +481,29 @@ func (r *Runner) Close() {
 	}
 	if r.httpStats != nil {
 		r.httpStats.DisplayTopStats(r.options.NoColor)
+	}
+	if newConns, reusedConns := httpclientpool.GetConnectionStats(); newConns+reusedConns > 0 {
+		total := newConns + reusedConns
+		ratio := float64(reusedConns) / float64(total) * 100
+		gologger.Info().Msgf("HTTP connections: %d total, %d new, %d reused (%.1f%%)", total, newConns, reusedConns, ratio)
+
+		// Per-host breakdown is opt-in (verbose) since large scans touch many hosts.
+		if r.options.Verbose {
+			perHost := httpclientpool.GetPerHostConnectionStats()
+			sort.Slice(perHost, func(i, j int) bool {
+				return (perHost[i].New + perHost[i].Reused) > (perHost[j].New + perHost[j].Reused)
+			})
+			const maxPerHostLines = 20
+			for i, s := range perHost {
+				if i >= maxPerHostLines {
+					gologger.Info().Msgf("HTTP connections: ... and %d more host(s)", len(perHost)-maxPerHostLines)
+					break
+				}
+				hostTotal := s.New + s.Reused
+				hostRatio := float64(s.Reused) / float64(hostTotal) * 100
+				gologger.Info().Msgf("HTTP connections [%s]: %d total, %d new, %d reused (%.1f%%)", s.Host, hostTotal, s.New, s.Reused, hostRatio)
+			}
+		}
 	}
 	// dump hosterrors cache
 	if r.hostErrors != nil {
@@ -507,9 +585,14 @@ func (r *Runner) setupPDCPUpload(writer output.Writer) output.Writer {
 // RunEnumeration sets up the input layer for giving input nuclei.
 // binary and runs the actual enumeration
 func (r *Runner) RunEnumeration() error {
+	// Reset connection-reuse counters so the summary logged on Close()
+	// reflects only this run, not totals accumulated across multiple
+	// in-process executions (e.g. SDK / embedded usage).
+	httpclientpool.ResetConnectionStats()
+
 	// If the user has asked for DAST server mode, run the live
 	// DAST fuzzing server.
-	if r.options.DASTServer {
+	if r.options.DASTServer || r.options.DASTProxy {
 		execurOpts := &server.NucleiExecutorOptions{
 			Options:            r.options,
 			Output:             r.output,
@@ -526,7 +609,7 @@ func (r *Runner) RunEnumeration() error {
 			FuzzStatsDB:        r.fuzzStats,
 			Logger:             r.Logger,
 		}
-		dastServer, err := server.New(&server.Options{
+		serverOptions := &server.Options{
 			Address:               r.options.DASTServerAddress,
 			Templates:             r.options.Templates,
 			OutputWriter:          r.output,
@@ -535,11 +618,28 @@ func (r *Runner) RunEnumeration() error {
 			InScope:               r.options.Scope,
 			OutScope:              r.options.OutOfScope,
 			NucleiExecutorOptions: execurOpts,
-		})
+			EnableFuzzAPI:         r.options.DASTServer,
+			ForwardProxy:          r.options.AliveHttpProxy,
+		}
+		if r.options.DASTProxy {
+			username, password, err := proxy.ParseAuth(r.options.DASTProxyAuth)
+			if err != nil {
+				return err
+			}
+			serverOptions.ProxyAddress = r.options.DASTProxyAddress
+			serverOptions.ProxyCADir = config.DefaultConfig.GetConfigDir()
+			serverOptions.ProxyUsername = username
+			serverOptions.ProxyPassword = password
+		}
+
+		dastServer, err := server.New(serverOptions)
+
 		if err != nil {
 			return err
 		}
+
 		r.dastServer = dastServer
+
 		return dastServer.Start()
 	}
 
@@ -549,16 +649,18 @@ func (r *Runner) RunEnumeration() error {
 			r.options.Templates = append(r.options.Templates, arr...)
 		}
 	}
+
 	if len(r.options.NewTemplatesWithVersion) > 0 {
 		if arr := installer.GetNewTemplatesInVersions(r.options.NewTemplatesWithVersion...); len(arr) > 0 {
 			r.options.Templates = append(r.options.Templates, arr...)
 		}
 	}
-	// Exclude ignored file for validation
+
+	// Apply the active ignore policy only when templates can execute.
 	if !r.options.Validate {
-		ignoreFile := config.ReadIgnoreFile()
-		r.options.ExcludeTags = append(r.options.ExcludeTags, ignoreFile.Tags...)
-		r.options.ExcludedTemplates = append(r.options.ExcludedTemplates, ignoreFile.Files...)
+		if err := r.loadIgnoreFile(); err != nil {
+			return err
+		}
 	}
 
 	fuzzFreqCache := frequency.New(frequency.DefaultMaxTrackCount, r.options.FuzzParamFrequency)
@@ -569,6 +671,7 @@ func (r *Runner) RunEnumeration() error {
 	executorOpts := &protocols.ExecutorOptions{
 		Output:              r.output,
 		Options:             r.options,
+		LLMClient:           r.llmClient,
 		Progress:            r.progress,
 		Catalog:             r.catalog,
 		IssuesClient:        r.issuesClient,
@@ -629,6 +732,13 @@ func (r *Runner) RunEnumeration() error {
 		executorOpts.HostErrorsCache = cache
 	}
 
+	if r.options.HostBackoff {
+		executorOpts.HostBackoff = hostbackoff.New(hostbackoff.Config{Max: r.options.HostBackoffMax})
+	}
+	if r.options.AutoCalibrate {
+		executorOpts.CatchAll = catchall.New(0)
+	}
+
 	executorEngine := core.New(r.options)
 	executorEngine.SetExecuterOptions(executorOpts)
 
@@ -640,8 +750,20 @@ func (r *Runner) RunEnumeration() error {
 
 	// If using input-file flags, only load http fuzzing based templates.
 	loaderConfig := loader.NewConfig(r.options, r.catalog, executorOpts)
-	if !strings.EqualFold(r.options.InputFileMode, "list") || r.options.DAST {
-		// if input type is not list (implicitly enable fuzzing)
+	profiles := r.targetProfiles()
+	if profiles != nil {
+		if r.options.AutomaticScan {
+			return errors.New("per-target profiles cannot be combined with automatic scan")
+		}
+		loaderConfig.TargetFilter = profiles.LoadFilter()
+	}
+	if r.hasPinnedTargets() {
+		if err := pinnedTargetConflict(r.options); err != nil {
+			return err
+		}
+	}
+	if (!strings.EqualFold(r.options.InputFileMode, "list") || r.options.DAST) && !r.options.OfflineHTTP {
+		// if input type is not list (implicitly enable fuzzing), unless passive/offlinehttp
 		r.options.DAST = true
 	}
 	store, err := loader.New(loaderConfig)
@@ -674,7 +796,7 @@ func (r *Runner) RunEnumeration() error {
 		if err := store.ValidateTemplates(); err != nil {
 			return err
 		}
-		if stats.GetValue(templates.SyntaxErrorStats) == 0 && stats.GetValue(templates.SyntaxWarningStats) == 0 && stats.GetValue(templates.RuntimeWarningsStats) == 0 {
+		if stats.GetValue(templates.TemplateSyntaxErrorStats) == 0 && stats.GetValue(templates.TemplateSyntaxWarningStats) == 0 && stats.GetValue(templates.TemplateRuntimeWarningStats) == 0 {
 			r.Logger.Info().Msgf("All templates validated successfully")
 		} else {
 			return errors.New("encountered errors while performing template validation")
@@ -683,6 +805,15 @@ func (r *Runner) RunEnumeration() error {
 	}
 	if err := store.Load(); err != nil {
 		return err
+	}
+	// Each template is parsed once per scan, so the compiled cache only holds
+	// pre-compilation snapshots that nothing reads after loading.
+	if parser, ok := r.parser.(*templates.Parser); ok {
+		parser.PurgeCompiled()
+	}
+	if profiles != nil {
+		profiles.Prepare(slices.Concat(store.Templates(), store.Workflows()))
+		executorOpts.TargetScope = profiles
 	}
 	// TODO: remove below functions after v3 or update warning messages
 	templates.PrintDeprecatedProtocolNameMsgIfApplicable(r.options.Silent, r.options.Verbose)
@@ -699,6 +830,15 @@ func (r *Runner) RunEnumeration() error {
 		ret := uncover.GetUncoverTargetsFromMetadata(context.TODO(), store.Templates(), r.options.UncoverField, uncoverOpts)
 		for host := range ret {
 			_ = r.inputProvider.SetWithExclusions(r.options.ExecutionId, host)
+		}
+	}
+
+	// Preflight: resolve hosts + portscan for ports required by loaded templates, then filter inputs.
+	// This reduces time spent on non-resolvable targets or targets with no relevant open ports.
+	// Preflight is a best-effort optimization: on failure we log and continue with the full input set.
+	if r.options.PreflightPortScan {
+		if err := r.preflightResolveAndPortScan(store); err != nil {
+			gologger.Warning().Msgf("preflight resolve/portscan failed, continuing without input filtering: %s", err)
 		}
 	}
 	// display execution info like version , templates used etc
@@ -723,13 +863,15 @@ func (r *Runner) RunEnumeration() error {
 		executorOpts.InputHelper.InputsHTTP = inputHelpers
 	}
 
+	inputCount := int(r.inputProvider.Count())
+
 	// initialize stats worker ( this is no-op unless nuclei is built with stats build tag)
 	// during execution a directory with 2 files will be created in the current directory
 	// config.json - containing below info
 	// events.jsonl - containing all start and end times of all templates
 	events.InitWithConfig(&events.ScanConfig{
 		Name:                "nuclei-stats", // make this configurable
-		TargetCount:         int(r.inputProvider.Count()),
+		TargetCount:         inputCount,
 		TemplatesCount:      len(store.Templates()) + len(store.Workflows()),
 		TemplateConcurrency: r.options.TemplateThreads,
 		PayloadConcurrency:  r.options.PayloadConcurrency,
@@ -771,6 +913,25 @@ func (r *Runner) RunEnumeration() error {
 
 	r.progress.Stop()
 	timeTaken := time.Since(now)
+
+	// Print pool/tracker stats if available (single dialers lookup, reads under lock)
+	if dialers := protocolstate.GetDialersWithId(r.options.ExecutionId); dialers != nil {
+		dialers.Lock()
+		perHostRateLimitPool := dialers.PerHostRateLimitPool
+		httpToHTTPSPortTracker := dialers.HTTPToHTTPSPortTracker
+		dialers.Unlock()
+
+		if pool, ok := perHostRateLimitPool.(interface{ PrintStats() }); ok {
+			pool.PrintStats()
+		}
+		if pool, ok := perHostRateLimitPool.(interface{ PrintPerHostPPSStats() }); ok {
+			pool.PrintPerHostPPSStats()
+		}
+		if tracker, ok := httpToHTTPSPortTracker.(interface{ PrintStats() }); ok {
+			tracker.PrintStats()
+		}
+	}
+
 	// todo: error propagation without canonical straight error check is required by cloud?
 	// use safe dereferencing to avoid potential panics in case of previous unchecked errors
 	if v := ptrutil.Safe(results); !v.Load() {
@@ -786,6 +947,24 @@ func (r *Runner) RunEnumeration() error {
 	}
 
 	return err
+}
+
+func (r *Runner) loadIgnoreFile() error {
+	ignoreFile, err := config.ReadIgnoreFile()
+	if errors.Is(err, os.ErrNotExist) {
+		r.Logger.Warning().Msgf("Could not read active .nuclei-ignore file: %s; continuing without ignore exclusions", err)
+
+		return nil
+	}
+
+	if err != nil {
+		return err
+	}
+
+	r.options.ExcludeTags = append(r.options.ExcludeTags, ignoreFile.Tags...)
+	r.options.ExcludedTemplates = append(r.options.ExcludedTemplates, ignoreFile.Files...)
+
+	return nil
 }
 
 func shortDur(d time.Duration) string {
@@ -830,7 +1009,7 @@ func (r *Runner) executeSmartWorkflowInput(executorOpts *protocols.ExecutorOptio
 	if err != nil {
 		return nil, errors.Wrap(err, "could not create automatic scan service")
 	}
-	if err := service.Execute(); err != nil {
+	if err := service.Execute(context.Background()); err != nil {
 		return nil, errors.Wrap(err, "could not execute automatic scan")
 	}
 	result := &atomic.Bool{}
@@ -865,49 +1044,45 @@ func (r *Runner) executeTemplatesInput(store *loader.Store, engine *core.Engine)
 	return results, nil
 }
 
-// displayExecutionInfo displays misc info about the nuclei engine execution
+// displayExecutionInfo prints parser stats, version info, and scan counts.
 func (r *Runner) displayExecutionInfo(store *loader.Store) {
-	// Display stats for any loaded templates' syntax warnings or errors
-	stats.Display(templates.SyntaxWarningStats)
-	stats.Display(templates.SyntaxErrorStats)
-	stats.Display(templates.RuntimeWarningsStats)
+	// Display parser stats for templates loaded into the store.
+	stats.Display(templates.TemplateSyntaxWarningStats)
+	stats.Display(templates.TemplateSyntaxErrorStats)
+	stats.Display(templates.TemplateRuntimeWarningStats)
+
 	tmplCount := len(store.Templates())
 	workflowCount := len(store.Workflows())
 	if r.options.Verbose || (tmplCount == 0 && workflowCount == 0) {
-		// only print these stats in verbose mode
-		stats.ForceDisplayWarning(templates.ExcludedHeadlessTmplStats)
-		stats.ForceDisplayWarning(templates.ExcludedCodeTmplStats)
-		stats.ForceDisplayWarning(templates.ExcludedDastTmplStats)
-		stats.ForceDisplayWarning(templates.TemplatesExcludedStats)
-		stats.ForceDisplayWarning(templates.ExcludedFileStats)
-		stats.ForceDisplayWarning(templates.ExcludedSelfContainedStats)
+		// Excluded-template stats are noisy during normal scans, but useful in verbose mode
+		// and when no runnable templates remain.
+		for _, capability := range templates.AllCapabilities() {
+			stats.ForceDisplayWarning(capability.Stat())
+		}
+		stats.ForceDisplayWarning(templates.ExcludedWeakMatcherTemplateStats)
 	}
 
 	if tmplCount == 0 && workflowCount == 0 {
-		// if dast flag is used print explicit warning
 		if r.options.DAST {
 			r.Logger.Warning().Msg("No DAST templates found")
 		}
-		stats.ForceDisplayWarning(templates.SkippedCodeTmplTamperedStats)
+		stats.ForceDisplayWarning(templates.SkippedUnverifiedCodeTemplateStats)
+		stats.ForceDisplayWarning(templates.SkippedUnverifiedJavascriptTemplateStats)
 	} else {
-		stats.DisplayAsWarning(templates.SkippedCodeTmplTamperedStats)
+		stats.DisplayAsWarning(templates.SkippedUnverifiedCodeTemplateStats)
+		stats.DisplayAsWarning(templates.SkippedUnverifiedJavascriptTemplateStats)
 	}
+
 	stats.DisplayAsWarning(httpProtocol.SetThreadToCountZero)
-	stats.ForceDisplayWarning(templates.SkippedUnsignedStats)
-	stats.ForceDisplayWarning(templates.SkippedRequestSignatureStats)
+	stats.ForceDisplayWarning(templates.SkippedUnverifiedTemplateStats)
+	stats.ForceDisplayWarning(templates.SkippedRequestSignatureTemplateStats)
+	stats.ForceDisplayWarning(templates.SkippedWorkflowStepStats)
 
 	cfg := config.DefaultConfig
 
 	updateutils.Aurora = r.colorizer
-	versionInfo := func(version, latestVersion, versionType string) string {
-		if !cfg.CanCheckForUpdates() {
-			return fmt.Sprintf("Current %s version: %v (%s) - remove '-duc' flag to enable update checks", versionType, version, r.colorizer.BrightYellow("unknown"))
-		}
-		return fmt.Sprintf("Current %s version: %v %v", versionType, version, updateutils.GetVersionDescription(version, latestVersion))
-	}
-
-	gologger.Info().Msg(versionInfo(config.Version, cfg.LatestNucleiVersion, "nuclei"))
-	gologger.Info().Msg(versionInfo(cfg.TemplateVersion, cfg.LatestNucleiTemplatesVersion, "nuclei-templates"))
+	gologger.Info().Msg(versionInfo(cfg, r.colorizer, config.Version, cfg.LatestNucleiVersion, "nuclei"))
+	gologger.Info().Msg(templateVersionInfo(cfg, r.colorizer))
 	if !HideAutoSaveMsg {
 		if r.pdcpUploadErrMsg != "" {
 			r.Logger.Warning().Msgf("%s", r.pdcpUploadErrMsg)
@@ -941,19 +1116,40 @@ func (r *Runner) displayExecutionInfo(store *loader.Store) {
 	}
 }
 
+func versionInfo(cfg *config.Config, colorizer *aurora.Aurora, version, latestVersion, versionType string) string {
+	if !cfg.CanCheckForUpdates() {
+		return fmt.Sprintf("Current %s version: %v (%s) - remove '-duc' flag to enable update checks", versionType, version, colorizer.BrightYellow("unknown"))
+	}
+
+	return fmt.Sprintf("Current %s version: %v %v", versionType, version, updateutils.GetVersionDescription(version, latestVersion))
+}
+
+func templateVersionInfo(cfg *config.Config, colorizer *aurora.Aurora) string {
+	return versionInfo(cfg, colorizer, cfg.TemplateVersion, cfg.LatestNucleiTemplatesVersion, "nuclei-templates")
+}
+
 // SaveResumeConfig to file
 func (r *Runner) SaveResumeConfig(path string) error {
 	dir := filepath.Dir(path)
 	if !fileutil.FolderExists(dir) {
-		if err := os.MkdirAll(dir, os.ModePerm); err != nil {
-			return err
+		if err := os.MkdirAll(dir, 0o700); err != nil {
+			return fmt.Errorf("create resume directory %q: %w", dir, err)
 		}
 	}
+
 	resumeCfgClone := r.resumeCfg.Clone()
 	resumeCfgClone.ResumeFrom = resumeCfgClone.Current
-	data, _ := json.MarshalIndent(resumeCfgClone, "", "\t")
 
-	return os.WriteFile(path, data, permissionutil.ConfigFilePermission)
+	data, err := json.MarshalIndent(resumeCfgClone, "", "\t")
+	if err != nil {
+		return fmt.Errorf("encode resume configuration: %w", err)
+	}
+
+	if err := os.WriteFile(path, data, permissionutil.ConfigFilePermission); err != nil {
+		return fmt.Errorf("write resume configuration %q: %w", path, err)
+	}
+
+	return nil
 }
 
 // upload existing scan results to cloud with progress
@@ -1056,4 +1252,29 @@ func expandEndVars(f reflect.Value, fieldType reflect.StructField) {
 func init() {
 	HideAutoSaveMsg = env.GetEnvOrDefault("DISABLE_CLOUD_UPLOAD_WRN", false)
 	EnableCloudUpload = env.GetEnvOrDefault("ENABLE_CLOUD_UPLOAD", false)
+}
+
+func newInteractshHTTPClient(options *types.Options) *retryablehttp.Client {
+	httpOpts := retryablehttp.DefaultOptionsSingle
+	httpOpts.Timeout = 20 * time.Second // for stability reasons
+	if options.Timeout > 20 {
+		httpOpts.Timeout = time.Duration(options.Timeout) * time.Second
+	}
+	if dialers := protocolstate.GetDialersWithId(options.ExecutionId); dialers != nil && dialers.Fastdialer != nil {
+		// The pooled default keeps ProxyFromEnvironment and the TLS config that
+		// INTERACTSH_TLS_VERIFY edits. Nuclei only exports HTTP_PROXY when -pi
+		// is set, and that path uses the pooled client, so -proxy without -pi
+		// still dials the interactsh server directly.
+		transport := retryablehttp.DefaultReusePooledTransport()
+		transport.DialContext = dialers.Fastdialer.Dial
+		transport.DialTLSContext = func(ctx context.Context, network, addr string) (net.Conn, error) {
+			return dialers.Fastdialer.DialTLS(ctx, network, addr)
+		}
+		httpOpts.HttpClient = &http.Client{
+			Transport: transport,
+			Timeout:   httpOpts.Timeout,
+		}
+	}
+	// in testing it was found most of times when interactsh failed, it was due to failure in registering /polling requests
+	return retryablehttp.NewClient(httpOpts)
 }

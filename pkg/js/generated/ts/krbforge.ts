@@ -3,8 +3,10 @@
 /**
  * CreateGoldenTicket forges a TGT for the supplied user against the given
  * realm using the krbtgt NT hash (or AES key). It returns the ASN.1-encoded
- * ticket and the session key. If req.OutputFile is empty no file is written;
- * pass an absolute path to also persist a ccache.
+ * ticket and the session key. goimpacket writes <username>.ccache in the current
+ * directory, replacing slashes in the username with dots. The destination must
+ * be inside the template directory unless -allow-local-file-access is enabled.
+ * req.OutputFile must be empty; custom paths and in-memory generation are unsupported.
  * @example
  * ```javascript
  * const krb = require('nuclei/krbforge');
@@ -27,6 +29,8 @@ export function CreateGoldenTicket(req: TicketRequest): Ticket | null {
  * CreateSilverTicket forges a service ticket (TGS) for the supplied SPN. The
  * hash supplied must belong to the service account that owns the SPN (e.g.
  * the machine account NT hash for cifs/host SPNs).
+ * File output follows CreateGoldenTicket. req.OutputFile and outputFile must
+ * be empty; custom paths and in-memory generation are unsupported.
  * @example
  * ```javascript
  * const krb = require('nuclei/krbforge');
@@ -36,11 +40,11 @@ export function CreateGoldenTicket(req: TicketRequest): Ticket | null {
  *   domain_sid: 'S-1-5-21-1004336348-1177238915-682003330',
  *   nthash:   '31d6cfe0d16ae931b73c59d7e0c089c0',
  *   spn:      'cifs/server01.acme.local',
- * }, '/tmp/silver.ccache');
+ * });
  * log(t.output_file);
  * ```
  */
-export function CreateSilverTicket(req: TicketRequest, outputFile: string): Ticket | null {
+export function CreateSilverTicket(req: TicketRequest, outputFile?: string): Ticket | null {
     return null;
 }
 
@@ -89,6 +93,7 @@ export interface TicketRequest {
     
     KVNO?: number,
     
+    /** Retained for compatibility; must be empty. */
     OutputFile?: string,
 }
 

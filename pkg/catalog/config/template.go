@@ -5,9 +5,11 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates/extensions"
+	filepathutil "github.com/projectdiscovery/nuclei/v3/pkg/utils/filepath"
 	fileutil "github.com/projectdiscovery/utils/file"
 	stringsutil "github.com/projectdiscovery/utils/strings"
 )
@@ -29,6 +31,13 @@ const (
 // GetKnownConfigFiles returns known config files.
 func GetKnownConfigFiles() []string {
 	return knownConfigFiles
+}
+
+// IsKnownConfigFile returns true if the base name of fpath is exactly one of
+// the known config files. Names that only contain one of them, such as
+// "cves.json.yaml", are not considered config files.
+func IsKnownConfigFile(fpath string) bool {
+	return slices.Contains(knownConfigFiles, filepath.Base(filepath.FromSlash(fpath)))
 }
 
 // GetKnownMiscDirectories returns known misc directories with trailing slashes.
@@ -77,7 +86,7 @@ func IsTemplateWithRoot(fpath, rootDir string) bool {
 	fname := filepath.Base(fpath)
 	fext := strings.ToLower(filepath.Ext(fpath))
 
-	if stringsutil.ContainsAny(fname, GetKnownConfigFiles()...) {
+	if IsKnownConfigFile(fname) {
 		return false
 	}
 
@@ -85,7 +94,7 @@ func IsTemplateWithRoot(fpath, rootDir string) bool {
 	if rootDir != "" {
 		if filepath.IsAbs(fpath) {
 			rel, err := filepath.Rel(rootDir, fpath)
-			if err == nil && !strings.HasPrefix(rel, "..") {
+			if err == nil && rel != ".." && !strings.HasPrefix(rel, ".."+string(os.PathSeparator)) {
 				pathToCheck = rel
 			} else {
 				pathToCheck = fpath
@@ -100,8 +109,7 @@ func IsTemplateWithRoot(fpath, rootDir string) bool {
 	// Only check components if pathToCheck is NOT absolute
 	// This avoids false positives on parent directories for absolute paths
 	if !filepath.IsAbs(pathToCheck) {
-		parts := strings.Split(pathToCheck, string(os.PathSeparator))
-		for _, p := range parts {
+		for p := range strings.SplitSeq(pathToCheck, string(os.PathSeparator)) {
 			for _, excluded := range knownMiscDirectories {
 				if strings.EqualFold(p, excluded) {
 					return false
@@ -184,7 +192,7 @@ func GetNucleiTemplatesIndex() (map[string]string, error) {
 			DefaultConfig.Logger.Verbose().Msgf("failed to walk path=%v err=%v", path, err)
 			return nil
 		}
-		if d.IsDir() || !IsTemplateWithRoot(path, DefaultConfig.TemplatesDirectory) || stringsutil.ContainsAny(path, ignoreDirs...) {
+		if d.IsDir() || !IsTemplateWithRoot(path, DefaultConfig.TemplatesDirectory) || filepathutil.IsPathWithinAnyDirectory(path, ignoreDirs...) {
 			return nil
 		}
 		// Normalize path for consistent comparison (handles Windows path issues)

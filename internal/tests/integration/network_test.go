@@ -6,7 +6,8 @@ package integration_test
 import (
 	"fmt"
 	"net"
-	"strings"
+	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -39,6 +40,38 @@ func TestNetwork(t *testing.T) {
 		}
 		if err := errState.Err(); err != nil {
 			t.Fatal(err)
+		}
+		if err := expectResultsCount(results, 1); err != nil {
+			t.Fatal(err)
+		}
+	})
+
+	t.Run("PinnedTargetLine", func(t *testing.T) {
+		server := testutils.NewTCPServer(nil, 0, func(conn net.Conn) {
+			defer func() { _ = conn.Close() }()
+
+			data, err := reader.ConnReadNWithTimeout(conn, 4, 5*time.Second)
+			if err == nil && string(data) == "PING" {
+				_, _ = conn.Write([]byte("PONG"))
+			}
+		})
+		defer server.Close()
+		_, port, err := net.SplitHostPort(server.URL)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		targets := filepath.Join(t.TempDir(), "targets.txt")
+		line := fmt.Sprintf(`{"target": "pinned.test:%s", "ip": "127.0.0.1"}`, port)
+		if err := os.WriteFile(targets, []byte(line), 0o600); err != nil {
+			t.Fatal(err)
+		}
+
+		// pinned.test does not resolve: the network request reaches the server
+		// only through the pinned ip
+		results, err := testutils.RunNucleiBareArgsAndGetResults(suite.debug, nil, "-t", "protocols/network/basic.yaml", "-l", targets)
+		if err != nil {
+			t.Fatalf("pinned network request failed: %v", err)
 		}
 		if err := expectResultsCount(results, 1); err != nil {
 			t.Fatal(err)
@@ -113,6 +146,46 @@ func TestNetwork(t *testing.T) {
 			expectedCount = 3
 		}
 		if err := expectResultsCount(results, expectedCount); err != nil {
+			t.Fatal(err)
+		}
+	})
+
+	t.Run("Duration", func(t *testing.T) {
+		errState := &capturedError{}
+		server := testutils.NewTCPServer(nil, 0, func(conn net.Conn) {
+			defer func() { _ = conn.Close() }()
+
+			data, err := reader.ConnReadNWithTimeout(conn, 5, 5*time.Second)
+			if err != nil {
+				errState.Set(err)
+				return
+			}
+			if string(data) == "FIRST" {
+				time.Sleep(integrationDurationObservationDelay)
+				_, _ = conn.Write([]byte("PING"))
+			}
+
+			data, err = reader.ConnReadNWithTimeout(conn, 6, 5*time.Second)
+			if err != nil {
+				errState.Set(err)
+				return
+			}
+			if string(data) == "SECOND" {
+				time.Sleep(integrationDurationObservationDelay)
+				_, _ = conn.Write([]byte("PONG"))
+			}
+			_, _ = conn.Write([]byte("NUCLEI"))
+		})
+		defer server.Close()
+
+		results, err := testutils.RunNucleiTemplateAndGetResults("protocols/network/duration.yaml", server.URL, suite.debug)
+		if err != nil {
+			t.Fatalf("duration network request failed: %v", err)
+		}
+		if err := errState.Err(); err != nil {
+			t.Fatal(err)
+		}
+		if err := expectResultsCount(results, 1); err != nil {
 			t.Fatal(err)
 		}
 	})
@@ -213,9 +286,24 @@ func TestNetwork(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		results, err = testutils.RunNucleiTemplateAndGetResults("protocols/network/network-port.yaml", strings.ReplaceAll(server.URL, "23846", "443"), suite.debug)
+		// An explicitly specified reserved port (e.g. host:8081) must be preserved
+		// and not overridden by the template port (regression test for #7323).
+		// 8081 is a reserved port but is used here on an unprivileged port so the
+		// listener binds without root. The server is started on 8081 and the
+		// template (port 23846) must dial the operator-specified 8081 to match.
+		serverReserved := testutils.NewTCPServer(nil, 8081, func(conn net.Conn) {
+			defer func() { _ = conn.Close() }()
+
+			data, err := reader.ConnReadNWithTimeout(conn, 4, 5*time.Second)
+			if err == nil && string(data) == "PING" {
+				_, _ = conn.Write([]byte("PONG"))
+			}
+		})
+		defer serverReserved.Close()
+
+		results, err = testutils.RunNucleiTemplateAndGetResults("protocols/network/network-port.yaml", serverReserved.URL, suite.debug)
 		if err != nil {
-			t.Fatalf("network-port template failed with overridden input port: %v", err)
+			t.Fatalf("network-port template failed with explicit reserved input port: %v", err)
 		}
 		if err := expectResultsCount(results, 1); err != nil {
 			t.Fatal(err)

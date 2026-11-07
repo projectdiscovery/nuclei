@@ -5,14 +5,18 @@ import (
 	"fmt"
 	"io"
 	"math/rand"
+	"net"
 	"net/http"
 	"net/http/cookiejar"
 	"net/http/httptest"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -25,6 +29,131 @@ import (
 	envutil "github.com/projectdiscovery/utils/env"
 	stringsutil "github.com/projectdiscovery/utils/strings"
 )
+
+type testInteractshURLSource struct {
+	calls int
+}
+
+func (s *testInteractshURLSource) NewURLWithData(string) (string, error) {
+	s.calls++
+	return fmt.Sprintf("test-%d.oast.invalid", s.calls), nil
+}
+
+func TestGetActionArgTreatsResolvedValuesAsData(t *testing.T) {
+	page := &Page{
+		instance: &Instance{},
+		mutex:    &sync.RWMutex{},
+		variables: map[string]interface{}{
+			"body":   "{{secret}}",
+			"secret": "leaked-secret",
+		},
+	}
+
+	got, err := page.getActionArg(&Action{Data: map[string]string{"value": "{{body}}"}}, "value")
+
+	require.NoError(t, err)
+	require.Equal(t, "{{secret}}", got)
+	require.Empty(t, page.InteractshURLs)
+}
+
+func TestGetActionArgRendersTemplateInteractshBeforeValidation(t *testing.T) {
+	source := &testInteractshURLSource{}
+
+	page := &Page{
+		instance:  &Instance{interactsh: source},
+		mutex:     &sync.RWMutex{},
+		variables: map[string]interface{}{},
+	}
+
+	got, err := page.getActionArg(&Action{Data: map[string]string{
+		"value": "{{url_encode('{{interactsh-url}}')}}",
+	}}, "value")
+
+	require.NoError(t, err)
+	require.Equal(t, 1, source.calls)
+	require.Len(t, page.InteractshURLs, 1)
+	require.NotContains(t, got, "{{interactsh-url}}")
+	require.NotContains(t, got, "%7B%7Binteractsh-url%7D%7D")
+}
+
+func TestPageElementByRendersLocatorArguments(t *testing.T) {
+	actions := []*Action{
+		{ActionType: ActionTypeHolder{ActionType: ActionNavigate}, Data: map[string]string{"url": "{{BaseURL}}"}},
+		{ActionType: ActionTypeHolder{ActionType: ActionWaitLoad}},
+	}
+	response := `<html><body><button id="first" data-marker="{{runtime}}">target</button><button id="second">second</button></body></html>`
+	testHeadlessSimpleResponse(t, response, actions, 20*time.Second, func(page *Page, pageErr error, out ActionData) {
+		require.NoError(t, pageErr)
+		for key, value := range map[string]interface{}{
+			"selector": "button", "text": "target", "xpath": "//button[@id='first']",
+			"js": "() => document.querySelector('#first')", "query": "target", "mode": "x",
+		} {
+			page.variables[key] = value
+		}
+		for name, data := range map[string]map[string]string{
+			"default":       {"selector": "{{selector}}", "xpath": "{{unused}}"},
+			"regex":         {"by": "r", "selector": "{{selector}}", "regex": "{{text}}"},
+			"xpath":         {"by": "xpath", "xpath": "{{xpath}}"},
+			"javascript":    {"by": "js", "js": "{{js}}"},
+			"search":        {"by": "search", "query": "{{query}}"},
+			"rendered mode": {"by": "{{mode}}", "xpath": "{{xpath}}"},
+			"static":        {"selector": "#first"},
+		} {
+			t.Run(name, func(t *testing.T) {
+				element, _, err := page.pageElementBy(page.page, &Action{Data: data})
+				require.NoError(t, err)
+				require.Equal(t, "target", element.MustText())
+			})
+		}
+
+		page.variables["marker"] = "{{runtime}}"
+		element, _, err := page.pageElementBy(page.page, &Action{Data: map[string]string{
+			"by": "xpath", "xpath": "//*[@data-marker='{{marker}}']",
+		}})
+		require.NoError(t, err)
+		require.Equal(t, "target", element.MustText())
+
+		action := &Action{Data: map[string]string{"selector": "#{{target}}"}}
+		page.variables["target"] = "first"
+		first, _, err := page.pageElementBy(page.page, action)
+		require.NoError(t, err)
+		require.Equal(t, "target", first.MustText())
+		page.variables["target"] = "second"
+		second, _, err := page.pageElementBy(page.page, action)
+		require.NoError(t, err)
+		require.Equal(t, "second", second.MustText())
+		require.Equal(t, "#{{target}}", action.Data["selector"])
+
+		_, _, err = page.pageElementBy(page.page, &Action{Data: map[string]string{"selector": "{{missing}}"}})
+		require.ErrorContains(t, err, "missing")
+	})
+}
+
+func TestLocatorInteractshTracking(t *testing.T) {
+	actions := []*Action{
+		{ActionType: ActionTypeHolder{ActionType: ActionNavigate}, Data: map[string]string{"url": "{{BaseURL}}"}},
+		{ActionType: ActionTypeHolder{ActionType: ActionWaitLoad}},
+	}
+	source := &testInteractshURLSource{}
+	testHeadlessSimpleResponse(t, "<html><body><select><option value='test'>Test</option></select></body></html>", actions, 20*time.Second, func(page *Page, pageErr error, out ActionData) {
+		require.NoError(t, pageErr)
+		page.instance.interactsh = source
+
+		err := page.WaitVisible(&Action{Data: map[string]string{
+			"selector": "[data-oast='{{interactsh-url}}']", "timeout": "50ms", "pollTime": "10ms",
+		}}, nil)
+		require.Error(t, err)
+		require.Equal(t, 1, source.calls)
+		require.Len(t, page.InteractshURLs, 1)
+
+		err = page.SelectInputElement(&Action{Data: map[string]string{
+			"selector": "select:not([data-oast='{{interactsh-url}}'])", "value": "Test", "selected": "true",
+		}}, nil)
+		require.NoError(t, err)
+		require.Equal(t, 2, source.calls)
+		require.Len(t, page.InteractshURLs, 2)
+	})
+}
 
 func TestActionNavigate(t *testing.T) {
 	response := `
@@ -102,7 +231,7 @@ func TestActionClick(t *testing.T) {
 	actions := []*Action{
 		{ActionType: ActionTypeHolder{ActionType: ActionNavigate}, Data: map[string]string{"url": "{{BaseURL}}"}},
 		{ActionType: ActionTypeHolder{ActionType: ActionWaitLoad}},
-		{ActionType: ActionTypeHolder{ActionType: ActionClick}, Data: map[string]string{"selector": "button"}}, // Use css selector for clicking
+		{ActionType: ActionTypeHolder{ActionType: ActionClick}, Data: map[string]string{"selector": "{{to_lower('BUTTON')}}"}}, // Use css selector for clicking
 	}
 
 	testHeadlessSimpleResponse(t, response, actions, 20*time.Second, func(page *Page, err error, out ActionData) {
@@ -192,6 +321,58 @@ func TestActionHeadersChange(t *testing.T) {
 	})
 }
 
+// Chrome keeps malformed percent-escapes such as "100%.png" in request paths,
+// as the WHATWG URL Standard requires, but net/url rejects them, so go-rod
+// hands the modification-rules hijack handler a request with a nil URL (#8015).
+//
+//nolint:exhaustruct,exhaustruct_v5,paralleltest // like the other action tests, which share browser and dialer state
+func TestRoutingRuleHandlerFailsRequestNetHTTPCannotParse(t *testing.T) {
+	for _, disableCookie := range []bool{false, true} {
+		t.Run(fmt.Sprintf("DisableCookie=%t", disableCookie), func(t *testing.T) {
+			// Count connections, not requests: net/http rejects the request line
+			// before any handler runs. TLS makes the headless proxy tunnel the
+			// request with CONNECT instead of rejecting the unparsable path itself.
+			var imageConns atomic.Int32
+
+			imageServer := httptest.NewUnstartedServer(http.NotFoundHandler())
+			imageServer.Config.ConnState = func(_ net.Conn, state http.ConnState) {
+				if state == http.StateNew {
+					imageConns.Add(1)
+				}
+			}
+
+			imageServer.StartTLS()
+			defer imageServer.Close()
+
+			actions := []*Action{
+				{
+					ActionType: ActionTypeHolder{ActionType: ActionSetHeader},
+					Data:       map[string]string{"part": "request", "key": "Test", "value": "Hello"},
+				},
+				{ActionType: ActionTypeHolder{ActionType: ActionNavigate}, Data: map[string]string{"url": "{{BaseURL}}"}},
+				{ActionType: ActionTypeHolder{ActionType: ActionWaitLoad}},
+			}
+			handler := func(w http.ResponseWriter, r *http.Request) {
+				if r.Header.Get("Test") == "Hello" {
+					_, _ = fmt.Fprintf(w, `<html><body>found<img src="%s/100%%.png"></body></html>`, imageServer.URL)
+				}
+			}
+			options := &Options{Timeout: 20 * time.Second, DisableCookie: disableCookie}
+
+			testHeadlessWithOptions(t, actions, options, handler, func(page *Page, err error, _ ActionData) {
+				require.NoError(t, err)
+
+				body := page.Page().MustElement("body").MustText()
+				require.Equal(t, "found", strings.TrimSpace(body), "modification rules were not applied")
+				require.Zero(t, imageConns.Load(), "unparsable request reached the image server")
+
+				imageDone := page.Page().MustEval(`() => document.querySelector("img").complete`).Bool()
+				require.True(t, imageDone, "unparsable request is still paused")
+			})
+		})
+	}
+}
+
 func TestActionScreenshot(t *testing.T) {
 	response := `
 		<html>
@@ -246,6 +427,149 @@ func TestActionScreenshotToDir(t *testing.T) {
 			t.Logf("got error %v while deleting temp file", err)
 		}
 	})
+}
+
+func TestActionScreenshotDeniesSiblingPrefixPathWithoutLFA(t *testing.T) {
+	tmpDir := t.TempDir()
+	cwd := filepath.Join(tmpDir, "work")
+	sibling := cwd + "-evil"
+	require.NoError(t, os.MkdirAll(cwd, 0700))
+	require.NoError(t, os.MkdirAll(sibling, 0700))
+
+	originalWd, err := os.Getwd()
+	require.NoError(t, err)
+	require.NoError(t, os.Chdir(cwd))
+	t.Cleanup(func() {
+		require.NoError(t, os.Chdir(originalWd))
+	})
+
+	filePath := filepath.Join(sibling, "test.png")
+	opts := &types.Options{ExecutionId: t.Name(), AllowLocalFileAccess: false}
+	page := &Page{options: &Options{Options: opts}}
+	err = page.isScreenshotPathAllowed(filePath)
+	require.ErrorIs(t, err, ErrLFAccessDenied)
+
+	err = page.isScreenshotPathAllowed("test.png")
+	require.NoError(t, err)
+}
+
+// TestFilesInputAndScreenshotShareLfaGate verifies that the LFA gate used by
+// ActionFilesInput is the same predicate used by Screenshot — i.e.
+// protocolstate.IsLfaAllowed — so a runtime LfaAllowed override (no Options
+// field flip) is honoured in both code paths.
+//
+// Regression: ActionFilesInput previously read p.options.Options.AllowLocalFileAccess
+// directly, which silently disagreed with Screenshot whenever a caller
+// configured LFA via protocolstate.SetLfaAllowed without also editing the
+// Options struct. To prove the call sites actually consult the same
+// predicate (and not just the predicate in isolation), this test exercises
+// page.isScreenshotPathAllowed against a path outside cwd while flipping
+// only the runtime override. Before the fix, screenshot dispatch would deny
+// the path (correct) but FilesInput would still consult Options.AllowLocalFileAccess
+// (incorrect). With the fix, both share IsLfaAllowed and both observe the
+// override.
+func TestFilesInputAndScreenshotShareLfaGate(t *testing.T) {
+	executionId := t.Name()
+	t.Cleanup(func() {
+		protocolstate.LfaAllowed.Delete(executionId)
+	})
+
+	opts := &types.Options{ExecutionId: executionId, AllowLocalFileAccess: false}
+	page := &Page{options: &Options{Options: opts}}
+
+	// Sanity: with no override, both gates must report deny.
+	require.False(t, protocolstate.IsLfaAllowed(opts),
+		"baseline IsLfaAllowed should be false when nothing is configured")
+
+	tmpDir := t.TempDir()
+	cwd := filepath.Join(tmpDir, "work")
+	require.NoError(t, os.MkdirAll(cwd, 0700))
+	outsideTarget := filepath.Join(tmpDir, "outside", "test.png")
+	require.NoError(t, os.MkdirAll(filepath.Dir(outsideTarget), 0700))
+	originalWd, err := os.Getwd()
+	require.NoError(t, err)
+	require.NoError(t, os.Chdir(cwd))
+	t.Cleanup(func() { require.NoError(t, os.Chdir(originalWd)) })
+
+	// Without override: Screenshot's gate denies a path outside cwd.
+	require.ErrorIs(t, page.isScreenshotPathAllowed(outsideTarget), ErrLFAccessDenied,
+		"baseline: writing outside cwd must be denied without LFA")
+
+	// Configure a runtime override via the LfaAllowed map without touching
+	// opts.AllowLocalFileAccess.
+	require.NoError(t, protocolstate.LfaAllowed.Set(executionId, true))
+	require.True(t, protocolstate.IsLfaAllowed(opts),
+		"IsLfaAllowed must honour the LfaAllowed runtime override")
+
+	// With override: Screenshot's gate now allows the same path. The
+	// FilesInput dispatch in page_actions.go reads from this same predicate,
+	// so a runtime override unblocks both call sites.
+	require.NoError(t, page.isScreenshotPathAllowed(outsideTarget),
+		"runtime override must unblock Screenshot's path gate")
+}
+
+// TestActionScreenshotDeniesPostExtensionEscape locks in the fix for the
+// pre-extension containment bypass. Inputs like "." or a bare directory path
+// would lexically pass the containment gate against the unmodified `to`
+// argument and only ESCAPE cwd after the screenshot writer appends ".png" to
+// produce a sibling file (e.g. <cwd>.png). The gate must run on the final
+// filePath, not on the pre-extension input.
+func TestActionScreenshotDeniesPostExtensionEscape(t *testing.T) {
+	tmpDir := t.TempDir()
+	cwd := filepath.Join(tmpDir, "work")
+	require.NoError(t, os.MkdirAll(cwd, 0700))
+
+	originalWd, err := os.Getwd()
+	require.NoError(t, err)
+	require.NoError(t, os.Chdir(cwd))
+	t.Cleanup(func() { require.NoError(t, os.Chdir(originalWd)) })
+
+	opts := &types.Options{ExecutionId: t.Name(), AllowLocalFileAccess: false}
+	page := &Page{options: &Options{Options: opts}}
+
+	// "." would resolve to cwd; cwd + ".png" is the SIBLING <work>.png in
+	// tmpDir, which is outside the cwd sandbox. The gate must reject the
+	// final write target, not the pre-extension input.
+	postExtension := cwd + ".png"
+	require.ErrorIs(t, page.isScreenshotPathAllowed(postExtension), ErrLFAccessDenied,
+		"<cwd>.png is a sibling of cwd and must be rejected")
+
+	// Same idea, expressed via a child-of-parent path.
+	require.ErrorIs(t,
+		page.isScreenshotPathAllowed(filepath.Join(filepath.Dir(cwd), "evil.png")),
+		ErrLFAccessDenied,
+		"a sibling .png in cwd's parent must be rejected")
+
+	// Sanity: a path inside cwd remains allowed.
+	require.NoError(t, page.isScreenshotPathAllowed("ok.png"),
+		"a relative path must still be allowed")
+}
+
+func TestActionScreenshotDeniesSymlinkedParentOutsideCWDWithoutLFA(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("symlink creation is not reliable on all Windows runners")
+	}
+
+	tmpDir := t.TempDir()
+	cwd := filepath.Join(tmpDir, "work")
+	outside := filepath.Join(tmpDir, "outside")
+	require.NoError(t, os.MkdirAll(cwd, 0700))
+	require.NoError(t, os.MkdirAll(outside, 0700))
+
+	linkPath := filepath.Join(cwd, "link")
+	require.NoError(t, os.Symlink(outside, linkPath))
+
+	originalWd, err := os.Getwd()
+	require.NoError(t, err)
+	require.NoError(t, os.Chdir(cwd))
+	t.Cleanup(func() {
+		require.NoError(t, os.Chdir(originalWd))
+	})
+
+	opts := &types.Options{ExecutionId: t.Name(), AllowLocalFileAccess: false}
+	page := &Page{options: &Options{Options: opts}}
+	err = page.isScreenshotPathAllowed(filepath.Join(linkPath, "test.png"))
+	require.ErrorIs(t, err, ErrLFAccessDenied)
 }
 
 func TestActionTimeInput(t *testing.T) {
@@ -539,28 +863,86 @@ func TestActionSleep(t *testing.T) {
 	testHeadlessSimpleResponse(t, response, actions, 20*time.Second, func(page *Page, err error, out ActionData) {
 		require.Nil(t, err, "could not run page actions")
 		require.True(t, page.Page().MustElement("button").MustVisible(), "could not get button")
+		require.Len(t, page.ActionDurations, 2)
+		require.Greater(t, page.ActionDurations[0], time.Duration(0))
+		require.GreaterOrEqual(t, page.ActionDurations[1], 2*time.Second)
+	})
+}
+
+func TestActionWaitEventDuration(t *testing.T) {
+	actions := []*Action{
+		{ActionType: ActionTypeHolder{ActionType: ActionWaitEvent}, Data: map[string]string{"event": "Page.loadEventFired", "max-duration": "5s"}},
+		{ActionType: ActionTypeHolder{ActionType: ActionNavigate}, Data: map[string]string{"url": "{{BaseURL}}"}},
+	}
+
+	// a slow subresource delays the load event, so the wait is long enough to
+	// measure on platforms with a coarse monotonic clock such as Windows
+	handler := func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/slow" {
+			time.Sleep(300 * time.Millisecond)
+			return
+		}
+		_, _ = fmt.Fprintln(w, `<html><body>loaded<img src="/slow"></body></html>`)
+	}
+
+	testHeadless(t, actions, 20*time.Second, handler, func(page *Page, err error, out ActionData) {
+		require.Nil(t, err, "could not run page actions")
+		require.Len(t, page.ActionDurations, 2)
+		require.GreaterOrEqual(t, page.ActionDurations[0], 100*time.Millisecond)
+		require.Greater(t, page.ActionDurations[1], time.Duration(0))
+	})
+}
+
+func TestActionWaitEventSeesEventFiredBeforeWaiting(t *testing.T) {
+	actions := []*Action{
+		{ActionType: ActionTypeHolder{ActionType: ActionNavigate}, Data: map[string]string{"url": "{{BaseURL}}"}},
+	}
+
+	testHeadlessSimpleResponse(t, `<html><body>loaded</body></html>`, actions, 20*time.Second, func(page *Page, err error, out ActionData) {
+		require.Nil(t, err, "could not run page actions")
+
+		wait, err := page.WaitEvent(&Action{
+			ActionType: ActionTypeHolder{ActionType: ActionWaitEvent},
+			Data:       map[string]string{"event": "Page.loadEventFired", "max-duration": "3s"},
+		}, out)
+		require.Nil(t, err)
+
+		// the load event fires before the wait starts, as it can for a fast
+		// page during the navigation that precedes the deferred wait
+		require.Nil(t, page.page.Reload())
+		require.Nil(t, page.page.WaitLoad())
+		require.Nil(t, wait(), "an event fired after the wait-event action must not be missed")
 	})
 }
 
 func TestActionWaitVisible(t *testing.T) {
-	response := `
+	// responseWithDelay renders a button that becomes visible after appearDelayMs.
+	// Each subtest uses its own delay so the page timing and the action timeout
+	// never race at the same boundary, which previously caused flaky failures on
+	// slower runners (e.g. windows CI) where navigation/startup overhead shifted
+	// the moment the wait actually began.
+	responseWithDelay := func(appearDelayMs int) string {
+		return fmt.Sprintf(`
 		<html>
 			<head>
 				<title>Nuclei Test Page</title>
 			</head>
 			<button style="display:none" id="test">Wait for me!</button>
 			<script>
-				setTimeout(() => document.querySelector('#test').style.display = '', 1000);
+				setTimeout(() => document.querySelector('#test').style.display = '', %d);
 			</script>
-		</html>`
+		</html>`, appearDelayMs)
+	}
 
 	actions := []*Action{
 		{ActionType: ActionTypeHolder{ActionType: ActionNavigate}, Data: map[string]string{"url": "{{BaseURL}}"}},
-		{ActionType: ActionTypeHolder{ActionType: ActionWaitVisible}, Data: map[string]string{"by": "x", "xpath": "//button[@id='test']"}},
+		{ActionType: ActionTypeHolder{ActionType: ActionWaitVisible}, Data: map[string]string{"by": "x", "xpath": "//button[@id='{{to_lower('TEST')}}']"}},
 	}
 
 	t.Run("wait for an element being visible", func(t *testing.T) {
-		testHeadlessSimpleResponse(t, response, actions, 2*time.Second, func(page *Page, err error, out ActionData) {
+		// element appears quickly (500ms) and the wait has a generous timeout (5s),
+		// so it reliably becomes visible before the action times out.
+		testHeadlessSimpleResponse(t, responseWithDelay(500), actions, 5*time.Second, func(page *Page, err error, out ActionData) {
 			require.Nil(t, err, "could not run page actions")
 
 			page.Page().MustElement("button").MustVisible()
@@ -568,8 +950,9 @@ func TestActionWaitVisible(t *testing.T) {
 	})
 
 	t.Run("timeout because of element not visible", func(t *testing.T) {
-		// increased timeout from time.Second/2 to time.Second due to random fails (probably due to overhead and system)
-		testHeadlessSimpleResponse(t, response, actions, time.Second, func(page *Page, err error, out ActionData) {
+		// element only appears after 10s while the wait times out at 1s, leaving a
+		// wide margin so the timeout reliably fires before the element is shown.
+		testHeadlessSimpleResponse(t, responseWithDelay(10000), actions, time.Second, func(page *Page, err error, out ActionData) {
 			require.Error(t, err)
 			require.Contains(t, err.Error(), "Element did not appear in the given amount of time")
 		})
@@ -647,7 +1030,50 @@ func testHeadlessSimpleResponse(t *testing.T, response string, actions []*Action
 	}, assert)
 }
 
+// sharedBrowser is launched once for the package. Every test used to start and
+// tear down its own chromium, which dominated the suite: a launch also spawns a
+// second chromium to validate the binary, so 30-odd tests cost 60-odd cold
+// starts. NewInstance below is the real isolation boundary between tests, so
+// sharing the browser costs no coverage.
+var sharedBrowser *Browser
+
+func TestMain(m *testing.M) {
+	browser, err := New(&types.Options{
+		ShowBrowser:        false,
+		UseInstalledChrome: testheadless.HeadlessLocal,
+	})
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "could not create browser: %v\n", err)
+		os.Exit(1)
+	}
+	sharedBrowser = browser
+
+	code := m.Run()
+
+	browser.Close()
+	// screenshots of tests without local file access land here
+	if browser.screenshotDir != "" {
+		_ = os.RemoveAll(browser.screenshotDir)
+	}
+	os.Exit(code)
+}
+
 func testHeadless(t *testing.T, actions []*Action, timeout time.Duration, handler func(w http.ResponseWriter, r *http.Request), assert func(page *Page, pageErr error, extractedData ActionData)) {
+	t.Helper()
+
+	options := &Options{Timeout: timeout} //nolint:exhaustruct,exhaustruct_v5 // zero values are the defaults
+	testHeadlessWithOptions(t, actions, options, handler, assert)
+}
+
+// testHeadlessWithOptions is testHeadless with caller-chosen page options. It
+// overwrites options.Options with the test scan options.
+func testHeadlessWithOptions(
+	t *testing.T,
+	actions []*Action,
+	options *Options,
+	handler func(w http.ResponseWriter, r *http.Request),
+	assert func(page *Page, pageErr error, extractedData ActionData),
+) {
 	t.Helper()
 
 	lfa := envutil.GetEnvOrDefault("LOCAL_FILE_ACCESS", true)
@@ -657,17 +1083,14 @@ func testHeadless(t *testing.T, actions []*Action, timeout time.Duration, handle
 
 	_ = protocolstate.Init(opts)
 
-	browser, err := New(&types.Options{
-		ShowBrowser:        false,
-		UseInstalledChrome: testheadless.HeadlessLocal,
-	})
-	require.Nil(t, err, "could not create browser")
-	defer browser.Close()
-
-	instance, err := browser.NewInstance()
+	instance, err := sharedBrowser.NewInstance()
 	require.Nil(t, err, "could not create browser instance")
 	defer func() {
 		_ = instance.Close()
+		// A debug action sets these on the browser rather than the page, so with
+		// a shared browser they would leak into every later test.
+		sharedBrowser.engine.SlowMotion(0)
+		sharedBrowser.engine.Trace(false)
 	}()
 
 	ts := httptest.NewServer(http.HandlerFunc(handler))
@@ -677,12 +1100,56 @@ func testHeadless(t *testing.T, actions []*Action, timeout time.Duration, handle
 	input.CookieJar, err = cookiejar.New(nil)
 	require.Nil(t, err)
 
-	extractedData, page, err := instance.Run(input, actions, nil, &Options{Timeout: timeout, Options: opts}) // allow file access in test
+	options.Options = opts // allow file access in test
+	extractedData, page, err := instance.Run(input, actions, nil, options)
 	assert(page, err, extractedData)
 
 	if page != nil {
 		page.Close()
 	}
+}
+
+func TestHeadlessRunHonorsParentCancellation(t *testing.T) {
+	opts := &types.Options{AllowLocalFileAccess: true}
+	require.NoError(t, protocolstate.Init(opts))
+
+	browser, err := New(&types.Options{
+		ShowBrowser:        false,
+		UseInstalledChrome: testheadless.HeadlessLocal,
+	})
+	require.NoError(t, err)
+	defer browser.Close()
+
+	instance, err := browser.NewInstance()
+	require.NoError(t, err)
+	defer func() { _ = instance.Close() }()
+
+	requestStarted := make(chan struct{}, 1)
+	server := httptest.NewServer(http.HandlerFunc(func(_ http.ResponseWriter, request *http.Request) {
+		requestStarted <- struct{}{}
+		<-request.Context().Done()
+	}))
+	defer server.Close()
+
+	parent, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go func() {
+		<-requestStarted
+		cancel()
+	}()
+
+	input := contextargs.NewWithInput(parent, server.URL)
+	actions := []*Action{{
+		ActionType: ActionTypeHolder{ActionType: ActionNavigate},
+		Data:       map[string]string{"url": "{{BaseURL}}"},
+	}}
+
+	startedAt := time.Now()
+	_, page, err := instance.Run(input, actions, nil, &Options{Timeout: 5 * time.Second, Options: opts})
+
+	require.ErrorIs(t, err, context.Canceled)
+	require.Nil(t, page)
+	require.Less(t, time.Since(startedAt), 2*time.Second)
 }
 
 func TestContainsAnyModificationActionType(t *testing.T) {
@@ -762,4 +1229,23 @@ func TestBlockedHeadlessURLS(t *testing.T) {
 			page.Close()
 		}
 	}
+}
+
+func TestBrowserCookiesOutsideInputPath(t *testing.T) {
+	actions := []*Action{
+		{ActionType: ActionTypeHolder{ActionType: ActionNavigate}, Data: map[string]string{"url": "{{BaseURL}}"}},
+		{ActionType: ActionTypeHolder{ActionType: ActionWaitLoad}},
+	}
+
+	handler := func(w http.ResponseWriter, r *http.Request) {
+		http.SetCookie(w, &http.Cookie{Name: "session", Value: "s1", Path: "/"})
+		http.SetCookie(w, &http.Cookie{Name: "token", Value: "abc", Path: "/admin"})
+		_, _ = fmt.Fprintln(w, `ok`)
+	}
+
+	testHeadless(t, actions, 20*time.Second, handler, func(page *Page, err error, out ActionData) {
+		require.Nil(t, err, "could not run page actions")
+		require.Equal(t, "s1", out["session"])
+		require.Equal(t, "abc", out["token"], "a cookie scoped to another path must still be exposed")
+	})
 }

@@ -19,8 +19,6 @@ import (
 	"github.com/jcmturner/gokrb5/v8/iana/nametype"
 	"github.com/jcmturner/gokrb5/v8/messages"
 	"github.com/jcmturner/gokrb5/v8/types"
-
-	"github.com/projectdiscovery/nuclei/v3/internal/tests/testutils"
 )
 
 // javascriptASRepRoast exercises templates/ad/asrep-roast.yaml end-to-end
@@ -46,7 +44,7 @@ func (j *javascriptASRepRoast) Execute(filePath string) error {
 	}
 	defer kdc.Close()
 
-	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, kdc.Address(), debug)
+	results, err := runSignedNucleiTemplateAndGetResults(filePath, kdc.Address(), debug)
 	if err != nil {
 		return err
 	}

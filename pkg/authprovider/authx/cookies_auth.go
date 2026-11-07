@@ -23,13 +23,16 @@ func NewCookiesAuthStrategy(data *Secret) *CookiesAuthStrategy {
 
 // Apply applies the cookies auth strategy to the request
 func (s *CookiesAuthStrategy) Apply(req *http.Request) {
+	var names []string
 	for _, cookie := range s.Data.Cookies {
 		c := &http.Cookie{
 			Name:  cookie.Key,
 			Value: cookie.Value,
 		}
 		req.AddCookie(c)
+		names = append(names, cookie.Key)
 	}
+	markCookieAuth(req, names)
 }
 
 // ApplyOnRR applies the cookies auth strategy to the retryable request
@@ -51,10 +54,13 @@ func (s *CookiesAuthStrategy) ApplyOnRR(req *retryablehttp.Request) {
 		req.AddCookie(cookie)
 	}
 	// Add new cookies
+	var names []string
 	for _, cookie := range s.Data.Cookies {
 		req.AddCookie(&http.Cookie{
 			Name:  cookie.Key,
 			Value: cookie.Value,
 		})
+		names = append(names, cookie.Key)
 	}
+	markCookieAuth(req.Request, names)
 }

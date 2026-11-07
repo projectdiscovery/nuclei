@@ -7,8 +7,8 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/model/types/severity"
 	"github.com/projectdiscovery/nuclei/v3/pkg/model/types/stringslice"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils/json"
+	"github.com/projectdiscovery/nuclei/v3/pkg/utils/yaml"
 	"github.com/stretchr/testify/require"
-	"gopkg.in/yaml.v2"
 )
 
 func TestInfoJsonMarshal(t *testing.T) {
@@ -35,6 +35,34 @@ func TestInfoJsonMarshal(t *testing.T) {
 	require.Equal(t, expected, string(result))
 }
 
+func TestInfoJsonMarshalNestedYAMLMetadata(t *testing.T) {
+	var info Info
+	err := yaml.Unmarshal([]byte(`
+name: Nested metadata
+author: pdteam
+tags: misc
+severity: info
+metadata:
+  labels:
+    en: Hello
+    1: one
+  items:
+    - name: first
+      tags:
+        fr: Bonjour
+  plain: value
+`), &info)
+	require.NoError(t, err)
+	require.IsType(t, map[interface{}]interface{}{}, info.Metadata["labels"])
+
+	for _, value := range []interface{}{info, &info} {
+		result, err := json.Marshal(value)
+		require.NoError(t, err)
+		require.JSONEq(t, `{"name":"Nested metadata","author":["pdteam"],"tags":["misc"],"severity":"info","metadata":{"labels":{"en":"Hello","1":"one"},"items":[{"name":"first","tags":{"fr":"Bonjour"}}],"plain":"value"}}`, string(result))
+	}
+	require.IsType(t, map[interface{}]interface{}{}, info.Metadata["labels"], "marshaling must not modify the info")
+}
+
 func TestInfoYamlMarshal(t *testing.T) {
 	info := Info{
 		Name:           "Test Template Name",
@@ -57,18 +85,18 @@ func TestInfoYamlMarshal(t *testing.T) {
 
 	expected := `name: Test Template Name
 author:
-- forgedhallpass
-- ice3man
+  - forgedhallpass
+  - ice3man
 tags:
-- cve
-- misc
+  - cve
+  - misc
 description: Test description
 reference: Reference1
 severity: high
 metadata:
   array_key:
-  - array_value1
-  - array_value2
+    - array_value1
+    - array_value2
   map_key:
     key1: val1
   string_key: string_value
@@ -134,4 +162,22 @@ func TestUnmarshal(t *testing.T) {
 	info1 := assertUnmarshalledTemplateInfo(t, yamlPayload1)
 	info2 := assertUnmarshalledTemplateInfo(t, yamlPayload2)
 	require.Equal(t, info1, info2)
+}
+
+func TestInfoFilledFields(t *testing.T) {
+	written := Info{Description: "{{host}} is exposed", Impact: "Data loss"}
+	filled := written
+	filled.Description = "example.com is exposed"
+
+	require.Nil(t, filled.FilledFields(nil))
+	fields := filled.FilledFields(&written)
+	require.Len(t, fields, 1)
+	require.Equal(t, "Description", fields[0].Label)
+	require.Equal(t, "example.com is exposed", *fields[0].Value)
+}
+
+func TestInfoHasPlaceholders(t *testing.T) {
+	require.False(t, (&Info{Description: "Redis is exposed"}).HasPlaceholders())
+	require.True(t, (&Info{Impact: "{{host}} is exposed"}).HasPlaceholders())
+	require.True(t, (&Info{Remediation: "rotate §password§"}).HasPlaceholders())
 }

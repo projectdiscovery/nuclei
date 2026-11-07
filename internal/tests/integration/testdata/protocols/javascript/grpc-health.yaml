@@ -1,0 +1,31 @@
+id: grpc-health-check
+
+info:
+  name: gRPC Health Check
+  author: pdteam
+  severity: info
+  description: |
+    Exercises the nuclei/grpc javascript library end to end: dial through the
+    network policy, resolve the schema via server reflection and invoke the
+    standard health check, expecting a SERVING response.
+
+javascript:
+  - code: |
+      const grpc = require('nuclei/grpc');
+      const opts = new grpc.Options();
+      opts.Plaintext = true;
+      const client = new grpc.Client(address, opts);
+      const resp = client.Invoke('grpc.health.v1.Health/Check', '{"service":""}');
+      client.Close();
+      resp;
+    args:
+      address: "{{Host}}:{{Port}}"
+    matchers-condition: and
+    matchers:
+      - type: dsl
+        dsl:
+          - "success == true"
+      - type: word
+        part: response
+        words:
+          - "SERVING"

@@ -9,7 +9,6 @@ import (
 
 	"github.com/cespare/xxhash"
 	"github.com/fatih/structs"
-	jsoniter "github.com/json-iterator/go"
 	"github.com/pkg/errors"
 
 	"github.com/projectdiscovery/fastdialer/fastdialer"
@@ -21,15 +20,16 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/expressions"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/helpers/eventcreator"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/helpers/responsehighlighter"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/render"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/utils/vardump"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/network/networkclientpool"
 	protocolutils "github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils"
 	templateTypes "github.com/projectdiscovery/nuclei/v3/pkg/templates/types"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
+	"github.com/projectdiscovery/nuclei/v3/pkg/utils/json"
 	"github.com/projectdiscovery/tlsx/pkg/tlsx"
 	"github.com/projectdiscovery/tlsx/pkg/tlsx/clients"
 	"github.com/projectdiscovery/tlsx/pkg/tlsx/openssl"
@@ -146,7 +146,6 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 	}
 
 	tlsxOptions := &clients.Options{
-		AllCiphers:        true,
 		ScanMode:          request.ScanMode,
 		Expired:           true,
 		SelfSigned:        true,
@@ -180,6 +179,9 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 		if err := compiled.Compile(); err != nil {
 			return errkit.Newf("could not compile operators got %v", err)
 		}
+		// llm operators only evaluate once they hold the scan's client; without
+		// it every llm path returns a negative result instead of an error.
+		protocols.BindLLMOperators(compiled, options)
 		request.CompiledOperators = compiled
 	}
 	return nil
@@ -197,7 +199,7 @@ func (request *Request) Requests() int {
 
 // GetID returns the ID for the request if any.
 func (request *Request) GetID() string {
-	return ""
+	return request.ID
 }
 
 // ExecuteWithResults executes the protocol requests and returns results instead of writing them.
@@ -215,25 +217,33 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 
 	hostnameVariables := protocolutils.GenerateDNSVariables(hostname)
 	// add template context variables to varMap
-	values := generators.MergeMaps(payloadValues, hostnameVariables)
+	scope := request.options.NewVariablesScope(payloadValues, hostnameVariables, previous)
 	if request.options.HasTemplateCtx(input.MetaInput) {
-		values = generators.MergeMaps(values, request.options.GetTemplateCtx(input.MetaInput).GetAll())
+		request.options.AddTemplateCtxToVariablesScope(input.MetaInput, scope)
 	}
 
-	variablesMap := request.options.Variables.Evaluate(values)
-	payloadValues = generators.MergeMaps(variablesMap, payloadValues, request.options.Constants)
+	scope.AddData(request.options.Constants)
+	variablesMap := request.options.Variables.EvaluateScope(scope).Values
+	payloadValues = generators.MergeMaps(variablesMap, payloadValues, previous)
+	if request.options.HasTemplateCtx(input.MetaInput) {
+		payloadValues = generators.MergeMaps(payloadValues, request.options.GetTemplateCtx(input.MetaInput).GetAll())
+	}
+	payloadValues = generators.MergeMaps(payloadValues, request.options.Constants)
 
 	if vardump.EnableVarDump {
 		gologger.Debug().Msgf("SSL Protocol request variables: %s\n", vardump.DumpVariables(payloadValues))
 	}
 
-	finalAddress, dataErr := expressions.EvaluateByte([]byte(request.Address), payloadValues)
+	result, dataErr := render.Render(render.Input{Options: request.options.GetOptions(), Text: request.Address, Values: payloadValues})
 	if dataErr != nil {
 		requestOptions.Output.Request(requestOptions.TemplateID, input.MetaInput.Input, request.Type().String(), dataErr)
 		requestOptions.Progress.IncrementFailedRequestsBy(1)
+
 		return errors.Wrap(dataErr, "could not evaluate template expressions")
 	}
-	addressToDial := string(finalAddress)
+
+	addressToDial := result.Text
+
 	host, port, err := net.SplitHostPort(addressToDial)
 	if err != nil {
 		return errkit.Wrap(err, "could not split input host port")
@@ -246,7 +256,19 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 		hostIp = host
 	}
 
+	if err := request.options.HostBackoffWait(input.Context(), addressToDial); err != nil {
+		return err
+	}
+	if err := request.options.RateLimitTakeContext(input.Context(), addressToDial); err != nil {
+		requestOptions.Output.Request(requestOptions.TemplateID, input.MetaInput.Input, request.Type().String(), err)
+		requestOptions.Progress.IncrementFailedRequestsBy(1)
+		return errkit.Wrap(err, "could not take rate limit")
+	}
+
+	timeStart := time.Now()
 	response, err := request.tlsx.Connect(host, hostIp, port)
+	duration := time.Since(timeStart)
+	request.options.HostBackoffObserveDial(addressToDial, err)
 	if err != nil {
 		requestOptions.Output.Request(requestOptions.TemplateID, input.MetaInput.Input, request.Type().String(), err)
 		requestOptions.Progress.IncrementFailedRequestsBy(1)
@@ -266,7 +288,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 		}
 	}
 
-	jsonData, _ := jsoniter.Marshal(response)
+	jsonData, _ := json.Marshal(response)
 	jsonDataString := string(jsonData)
 
 	data := make(map[string]interface{})
@@ -275,6 +297,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 	data["response"] = jsonDataString
 	data["host"] = input.MetaInput.Input
 	data["matched"] = addressToDial
+	data["duration"] = duration.Seconds()
 	if input.MetaInput.CustomIP != "" {
 		data["ip"] = hostIp
 	} else {
@@ -284,6 +307,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 	data["template-path"] = requestOptions.TemplatePath
 	data["template-id"] = requestOptions.TemplateID
 	data["template-info"] = requestOptions.TemplateInfo
+	request.options.AddTemplateVar(input.MetaInput, request.Type(), request.ID, "duration", data["duration"])
 
 	// if response is not struct compatible, error out
 	if !structs.IsStruct(response) {
@@ -355,6 +379,7 @@ var RequestPartDefinitions = map[string]string{
 	"matched":          "Matched is the input which was matched upon",
 	"type":             "Type is the type of request made",
 	"timestamp":        "Timestamp is the time when the request was made",
+	"duration":         "Protocol operation duration in seconds",
 	"response":         "JSON SSL protocol handshake details",
 	"cipher":           "Cipher is the encryption algorithm used",
 	"domains":          "Domains are the list of domain names in the certificate",
@@ -363,6 +388,7 @@ var RequestPartDefinitions = map[string]string{
 	"issuer_cn":        "Issuer CN is the common name of the certificate issuer",
 	"issuer_dn":        "Issuer DN is the distinguished name of the certificate issuer",
 	"issuer_org":       "Issuer organization is the organization of the certificate issuer",
+	"key_exchange":     "Key exchange is the TLS key exchange group negotiated in the handshake",
 	"not_after":        "Timestamp after which the remote cert expires",
 	"not_before":       "Timestamp before which the certificate is not valid",
 	"probe_status":     "Probe status indicates if the probe was successful",
@@ -380,12 +406,12 @@ var RequestPartDefinitions = map[string]string{
 // true and a list of matched snippets if the matcher type is supports it
 // otherwise false and an empty string slice
 func (request *Request) Match(data map[string]interface{}, matcher *matchers.Matcher) (bool, []string) {
-	return protocols.MakeDefaultMatchFunc(data, matcher)
+	return protocols.MakeDefaultMatchFuncWithExecutorOptions(data, matcher, request.options)
 }
 
 // Extract performs extracting operation for an extractor on model and returns true or false.
 func (request *Request) Extract(data map[string]interface{}, matcher *extractors.Extractor) map[string]struct{} {
-	return protocols.MakeDefaultExtractFunc(data, matcher)
+	return protocols.MakeDefaultExtractFuncWithExecutorOptions(data, matcher, request.options)
 }
 
 // MakeResultEvent creates a result event from internal wrapped event
@@ -438,5 +464,14 @@ func (request *Request) MakeResultEventItem(wrapped *output.InternalWrappedEvent
 
 // UpdateOptions replaces this request's options with a new copy
 func (r *Request) UpdateOptions(opts *protocols.ExecutorOptions) {
+	r.Operators = protocols.CloneOperators(r.Operators)
+	r.CompiledOperators = nil
+	if r.options == nil {
+		if opts != nil {
+			r.options = opts.Copy()
+		}
+		return
+	}
+	r.options = r.options.Copy()
 	r.options.ApplyNewEngineOptions(opts)
 }

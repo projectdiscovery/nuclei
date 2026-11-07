@@ -7,13 +7,14 @@ import (
 	"maps"
 	"net"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"time"
 
-	"github.com/Mzack9999/goja"
-	"github.com/alecthomas/chroma/quick"
+	"github.com/alecthomas/chroma/v2/quick"
 	"github.com/ditashi/jsbeautifier-go/jsbeautifier"
 	"github.com/pkg/errors"
+	"github.com/projectdiscovery/goja"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/js/compiler"
 	"github.com/projectdiscovery/nuclei/v3/pkg/js/gojs"
@@ -24,11 +25,11 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/expressions"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/helpers/eventcreator"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/interactsh"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/render"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/utils/vardump"
 	protocolutils "github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils"
 	templateTypes "github.com/projectdiscovery/nuclei/v3/pkg/templates/types"
@@ -130,6 +131,9 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 		if err := compiled.Compile(); err != nil {
 			return errkit.Newf("could not compile operators got %v", err)
 		}
+		// llm operators only evaluate once they hold the scan's client; without
+		// it every llm path returns a negative result instead of an error.
+		protocols.BindLLMOperators(compiled, options)
 		request.CompiledOperators = compiled
 	}
 
@@ -141,7 +145,18 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 		}
 	}
 
+	var initCompiled *goja.Program
+
 	if request.Init != "" {
+		// Validate init syntax for every template, but do not execute unsigned
+		// template code during compilation.
+		initCompiled, err = compiler.SourceAutoMode(request.Init, false)
+		if err != nil {
+			return errkit.Newf("could not compile init code: %s", err)
+		}
+	}
+
+	if initCompiled != nil && request.options.Verified {
 		// execute init code if any
 		if request.options.Options.Debug || request.options.Options.DebugRequests {
 			gologger.Debug().Msgf("[%s] Executing Template Init\n", request.TemplateID)
@@ -157,6 +172,8 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 		opts := &compiler.ExecuteOptions{
 			ExecutionId:     request.options.Options.ExecutionId,
 			TimeoutVariants: request.options.Options.GetTimeouts(),
+			ProxyURL:        request.options.Options.AliveHttpProxy,
+			CustomHeaders:   request.options.Options.CustomHeaders,
 			Source:          &request.Init,
 		}
 		// register 'export' function to export variables from init code
@@ -217,12 +234,8 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 		args := compiler.NewExecuteArgs()
 		allVars := generators.MergeMaps(options.Variables.GetAll(), options.Options.Vars.AsMap(), request.options.Constants)
 		// proceed with whatever args we have
-		args.Args, _ = request.evaluateArgs(allVars, options, true)
+		args.Args, _, _ = request.evaluateArgs(allVars, options, true)
 
-		initCompiled, err := compiler.SourceAutoMode(request.Init, false)
-		if err != nil {
-			return errkit.Newf("could not compile init code: %s", err)
-		}
 		result, err := request.options.JsCompiler.ExecuteWithOptions(context.Background(), initCompiled, args, opts)
 		if err != nil {
 			return errkit.Newf("could not execute pre-condition: %s", err)
@@ -270,11 +283,12 @@ func (request *Request) Requests() int {
 	if request.PreCondition != "" {
 		pre_conditions = 1
 	}
+	perPort := 1 + pre_conditions
 	if request.generator != nil {
-		payloadRequests := request.generator.NewIterator().Total()
-		return payloadRequests + pre_conditions
+		perPort = request.generator.NewIterator().Total() + pre_conditions
 	}
-	return 1 + pre_conditions
+	// ExecuteWithResults runs the whole request once per port
+	return perPort * max(1, len(request.getPorts()))
 }
 
 // GetID returns the ID for the request if any.
@@ -284,6 +298,10 @@ func (request *Request) GetID() string {
 
 // ExecuteWithResults executes the protocol requests and returns results instead of writing them.
 func (request *Request) ExecuteWithResults(target *contextargs.Context, dynamicValues, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
+	if request.options == nil || !request.options.Verified {
+		return errkit.New("refusing to execute unverified javascript template; sign it (-sign) or run a verified template")
+	}
+
 	// Get default port(s) if specified in template
 	ports := request.getPorts()
 	if len(ports) == 0 {
@@ -333,24 +351,32 @@ func (request *Request) executeWithResults(port string, target *contextargs.Cont
 	payloadValues["Port"] = port
 
 	hostnameVariables := protocolutils.GenerateDNSVariables(hostname)
-	values := generators.MergeMaps(payloadValues, hostnameVariables, request.options.Constants, templateCtx.GetAll())
-	variablesMap := request.options.Variables.Evaluate(values)
-	payloadValues = generators.MergeMaps(variablesMap, payloadValues, request.options.Constants, hostnameVariables)
+	scope := request.options.NewVariablesScope(payloadValues, hostnameVariables, request.options.Constants)
+	request.options.AddTemplateCtxToVariablesScope(input.MetaInput, scope)
 
 	var interactshURLs []string
-	if request.options.Interactsh != nil {
-		for payloadName, payloadValue := range payloadValues {
-			var urls []string
-			payloadValue, urls = request.options.Interactsh.Replace(types.ToString(payloadValue), interactshURLs)
-			if len(urls) > 0 {
-				interactshURLs = append(interactshURLs, urls...)
-				payloadValues[payloadName] = payloadValue
-			}
-		}
+
+	evaluation := request.options.Variables.EvaluateWithInteractshScope(scope, request.options.Interactsh)
+	variablesMap, interactshURLs := evaluation.Values, evaluation.InteractURLs
+	templateVariables := generators.CopyMap(evaluation.TemplateValues)
+
+	for key := range payloadValues {
+		delete(templateVariables, key)
 	}
+
+	for key := range request.options.Constants {
+		delete(templateVariables, key)
+	}
+
+	for key := range hostnameVariables {
+		delete(templateVariables, key)
+	}
+
+	payloadValues = generators.MergeMaps(variablesMap, payloadValues, request.options.Constants, hostnameVariables)
 
 	// export all variables to template context
 	templateCtx.Merge(payloadValues)
+	templateCtx.MergeTemplateVariables(templateVariables)
 
 	if vardump.EnableVarDump {
 		gologger.Debug().Msgf("JavaScript Protocol request variables: %s\n", vardump.DumpVariables(payloadValues))
@@ -361,36 +387,57 @@ func (request *Request) executeWithResults(port string, target *contextargs.Cont
 
 		if request.options.Options.Debug || request.options.Options.DebugRequests {
 			gologger.Debug().Msgf("[%s] Executing Precondition for request\n", request.TemplateID)
+
 			var highlightFormatter = "terminal256"
 			if requestOptions.Options.NoColor {
 				highlightFormatter = "text"
 			}
+
 			var buff bytes.Buffer
 			_ = quick.Highlight(&buff, beautifyJavascript(request.PreCondition), "javascript", highlightFormatter, "monokai")
+
 			prettyPrint(request.TemplateID, buff.String())
 		}
 
-		argsCopy, err := request.getArgsCopy(input, payloads, requestOptions, true)
+		argsCopy, argURLs, err := request.getArgsCopy(input, payloads, requestOptions, true)
 		if err != nil {
 			return err
 		}
+
+		interactshURLs = append(interactshURLs, argURLs...)
 		argsCopy.TemplateCtx = templateCtx.GetAll()
 
 		result, err := request.options.JsCompiler.ExecuteWithOptions(target.Context(), request.preConditionCompiled, argsCopy,
 			&compiler.ExecuteOptions{
 				ExecutionId:     requestOptions.Options.ExecutionId,
 				TimeoutVariants: requestOptions.Options.GetTimeouts(),
-				Source: &request.PreCondition,
+				ProxyURL:        requestOptions.Options.AliveHttpProxy,
+				CustomHeaders:   requestOptions.Options.CustomHeaders,
+				Source:          &request.PreCondition,
 			},
 		)
+
+		request.options.Progress.IncrementRequests()
+
 		// if precondition was successful
 		if err == nil && result.GetSuccess() {
 			if request.options.Options.Debug || request.options.Options.DebugRequests {
-				request.options.Progress.IncrementRequests()
 				gologger.Debug().Msgf("[%s] Precondition for request was satisfied\n", request.TemplateID)
 			}
 		} else {
+			// Requests() already counted the requests this run now skips
+			skipped := 1
+			if request.generator != nil {
+				skipped = request.generator.NewIterator().Total()
+			}
+			if err != nil {
+				request.options.Progress.IncrementFailedRequestsBy(int64(skipped))
+			} else {
+				request.options.Progress.SetRequests(uint64(skipped))
+			}
+
 			var outError error
+
 			// if js code failed to execute
 			if err != nil {
 				outError = errkit.Append(errkit.New("pre-condition not satisfied skipping template execution"), err)
@@ -398,24 +445,30 @@ func (request *Request) executeWithResults(port string, target *contextargs.Cont
 				// execution successful but pre-condition returned false
 				outError = errkit.New("pre-condition not satisfied skipping template execution")
 			}
+
 			results := map[string]interface{}(result)
 			results["error"] = outError.Error()
+
 			// generate and return failed event
-			data := request.generateEventData(input, results, hostPort)
+			data, genErr := request.generateEventData(input, results, hostPort)
+			if genErr != nil {
+				return genErr
+			}
 			data = generators.MergeMaps(data, payloadValues)
 			event := eventcreator.CreateEventWithAdditionalOptions(request, data, request.options.Options.Debug || request.options.Options.DebugResponse, func(wrappedEvent *output.InternalWrappedEvent) {
 				allVars := argsCopy.Map()
 				allVars = generators.MergeMaps(allVars, data)
 				wrappedEvent.OperatorsResult.PayloadValues = allVars
 			})
+
 			callback(event)
+
 			return err
 		}
 	}
 
 	if request.generator != nil && request.Threads > 1 {
-		request.executeRequestParallel(target.Context(), hostPort, hostname, input, payloadValues, callback)
-		return nil
+		return request.executeRequestParallel(target.Context(), hostPort, hostname, input, payloadValues, callback, interactshURLs)
 	}
 
 	var gotMatches bool
@@ -434,18 +487,31 @@ func (request *Request) executeWithResults(port string, target *contextargs.Cont
 			default:
 			}
 
-			if err := request.executeRequestWithPayloads(hostPort, input, hostname, value, payloadValues, func(result *output.InternalWrappedEvent) {
+			renderedValue, err := render.RenderMap(render.MapInput{
+				Options:      request.options.GetOptions(),
+				Source:       value,
+				Data:         payloadValues,
+				Values:       generators.MergeMaps(value, payloadValues),
+				Interactsh:   request.options.Interactsh,
+				InteractURLs: interactshURLs,
+			})
+			if err != nil {
+				return errors.Wrap(err, "could not evaluate payload helper expressions")
+			}
+
+			if err := request.executeRequestWithPayloads(hostPort, input, hostname, renderedValue.Values, nil, func(result *output.InternalWrappedEvent) {
 				if result.OperatorsResult != nil && result.OperatorsResult.Matched {
 					gotMatches = true
 					request.options.Progress.IncrementMatched()
 				}
 				callback(result)
-			}, requestOptions, interactshURLs); err != nil {
+			}, requestOptions, renderedValue.InteractURLs); err != nil {
 				if errkit.IsNetworkPermanentErr(err) {
 					// gologger.Verbose().Msgf("Could not execute request: %s\n", err)
 					return err
 				}
 			}
+
 			// If this was a match, and we want to stop at first match, skip all further requests.
 			shouldStopAtFirstMatch := request.options.Options.StopAtFirstMatch || request.StopAtFirstMatch
 			if shouldStopAtFirstMatch && gotMatches {
@@ -456,15 +522,36 @@ func (request *Request) executeWithResults(port string, target *contextargs.Cont
 	return request.executeRequestWithPayloads(hostPort, input, hostname, nil, payloadValues, callback, requestOptions, interactshURLs)
 }
 
-func (request *Request) executeRequestParallel(ctxParent context.Context, hostPort, hostname string, input *contextargs.Context, payloadValues map[string]interface{}, callback protocols.OutputEventCallback) {
+func (request *Request) executeRequestParallel(ctxParent context.Context, hostPort, hostname string, input *contextargs.Context, payloadValues map[string]interface{}, callback protocols.OutputEventCallback, interactshURLs []string) error {
 	threads := request.Threads
 	if threads == 0 {
 		threads = 1
 	}
+
 	ctx, cancel := context.WithCancelCause(ctxParent)
 	defer cancel(nil)
+
 	requestOptions := request.options
 	gotmatches := &atomic.Bool{}
+
+	var (
+		errMu  sync.Mutex
+		runErr error
+	)
+
+	setRunErr := func(err error) {
+		if err == nil {
+			return
+		}
+
+		errMu.Lock()
+		if runErr == nil {
+			runErr = err
+		}
+		errMu.Unlock()
+
+		cancel(err)
+	}
 
 	// if request threads matches global payload concurrency we follow it
 	shouldFollowGlobal := threads == request.options.Options.PayloadConcurrency
@@ -473,6 +560,7 @@ func (request *Request) executeRequestParallel(ctxParent context.Context, hostPo
 
 	if request.generator != nil {
 		iterator := request.generator.NewIterator()
+	iteratorLoop:
 		for {
 			value, ok := iterator.Value()
 			if !ok {
@@ -481,7 +569,9 @@ func (request *Request) executeRequestParallel(ctxParent context.Context, hostPo
 
 			select {
 			case <-input.Context().Done():
-				return
+				break iteratorLoop
+			case <-ctx.Done():
+				break iteratorLoop
 			default:
 			}
 
@@ -492,38 +582,63 @@ func (request *Request) executeRequestParallel(ctxParent context.Context, hostPo
 				}
 			}
 
-			sg.Add()
-			go func() {
+			renderedValue, err := render.RenderMap(render.MapInput{
+				Options:      request.options.GetOptions(),
+				Source:       value,
+				Data:         payloadValues,
+				Values:       generators.MergeMaps(value, payloadValues),
+				Interactsh:   request.options.Interactsh,
+				InteractURLs: interactshURLs,
+			})
+			if err != nil {
+				setRunErr(errors.Wrap(err, "could not evaluate payload helper expressions"))
+				break
+			}
+
+			if err := sg.AddWithContext(ctx); err != nil {
+				setRunErr(err)
+				break iteratorLoop
+			}
+			go func(value map[string]interface{}, urls []string) {
 				defer sg.Done()
 				if ctx.Err() != nil {
 					// work already done exit
 					return
 				}
+
 				shouldStopAtFirstMatch := request.options.Options.StopAtFirstMatch || request.StopAtFirstMatch
-				if err := request.executeRequestWithPayloads(hostPort, input, hostname, value, payloadValues, func(result *output.InternalWrappedEvent) {
+				if err := request.executeRequestWithPayloads(hostPort, input, hostname, value, nil, func(result *output.InternalWrappedEvent) {
 					if result.OperatorsResult != nil && result.OperatorsResult.Matched {
 						gotmatches.Store(true)
 					}
 					callback(result)
-				}, requestOptions, []string{}); err != nil {
+				}, requestOptions, urls); err != nil {
 					if errkit.IsNetworkPermanentErr(err) {
-						cancel(err)
+						setRunErr(err)
 						return
 					}
 				}
-				// If this was a match, and we want to stop at first match, skip all further requests.
 
+				// If this was a match, and we want to stop at first match, skip all further requests.
 				if shouldStopAtFirstMatch && gotmatches.Load() {
 					cancel(nil)
 					return
 				}
-			}()
+			}(renderedValue.Values, renderedValue.InteractURLs)
 		}
 	}
+
 	sg.Wait()
+
+	if runErr != nil {
+		return runErr
+	}
+
 	if gotmatches.Load() {
 		request.options.Progress.IncrementMatched()
 	}
+
+	return nil
 }
 
 func (request *Request) executeRequestWithPayloads(
@@ -536,34 +651,41 @@ func (request *Request) executeRequestWithPayloads(
 	requestOptions *protocols.ExecutorOptions,
 	interactshURLs []string,
 ) error {
+	interactshURLs = append([]string(nil), interactshURLs...)
 	payloadValues := generators.MergeMaps(payload, previous)
-	argsCopy, err := request.getArgsCopy(input, payloadValues, requestOptions, false)
+
+	argsCopy, argURLs, err := request.getArgsCopy(input, payloadValues, requestOptions, false)
 	if err != nil {
 		return err
 	}
+
+	interactshURLs = append(interactshURLs, argURLs...)
 	if request.options.HasTemplateCtx(input.MetaInput) {
 		argsCopy.TemplateCtx = request.options.GetTemplateCtx(input.MetaInput).GetAll()
 	} else {
 		argsCopy.TemplateCtx = map[string]interface{}{}
 	}
 
-	if request.options.Interactsh != nil {
-		if argsCopy.Args != nil {
-			for k, v := range argsCopy.Args {
-				var urls []string
-				v, urls = request.options.Interactsh.Replace(fmt.Sprint(v), []string{})
-				if len(urls) > 0 {
-					interactshURLs = append(interactshURLs, urls...)
-					argsCopy.Args[k] = v
-				}
-			}
-		}
+	// a script's network calls are not visible here, so like progress it is
+	// limited as one request per execution
+	if err := request.options.HostBackoffWait(input.Context(), hostPort); err != nil {
+		return err
+	}
+	if err := request.options.RateLimitTakeContext(input.Context(), hostPort); err != nil {
+		return err
 	}
 
-	results, err := request.options.JsCompiler.ExecuteWithOptions(input.Context(), request.scriptCompiled, argsCopy,
+	ctx := input.Context()
+	if request.options.HostBackoff != nil {
+		// the script's own dials are the only signal: report them as they happen
+		ctx = protocolstate.WithDialObserver(ctx, request.options.HostBackoffObserveDial)
+	}
+	results, err := request.options.JsCompiler.ExecuteWithOptions(ctx, request.scriptCompiled, argsCopy,
 		&compiler.ExecuteOptions{
 			ExecutionId:     requestOptions.Options.ExecutionId,
 			TimeoutVariants: requestOptions.Options.GetTimeouts(),
+			ProxyURL:        requestOptions.Options.AliveHttpProxy,
+			CustomHeaders:   requestOptions.Options.CustomHeaders,
 			Source:          &request.Code,
 		},
 	)
@@ -595,7 +717,10 @@ func (request *Request) executeRequestWithPayloads(
 
 	values := mapsutil.Merge(payloadValues, results)
 	// generate event data
-	data := request.generateEventData(input, values, hostPort)
+	data, genErr := request.generateEventData(input, values, hostPort)
+	if genErr != nil {
+		return genErr
+	}
 
 	// add and get values from templatectx
 	request.options.AddTemplateVars(input.MetaInput, request.Type(), request.GetID(), data)
@@ -631,7 +756,7 @@ func (request *Request) executeRequestWithPayloads(
 		callback(event)
 	} else if request.options.Interactsh != nil {
 		event = &output.InternalWrappedEvent{InternalEvent: data, UsesInteractsh: true}
-		request.options.Interactsh.RequestEvent(interactshURLs, &interactsh.RequestData{
+		request.options.RegisterInteractshRequest(interactshURLs, &interactsh.RequestData{
 			MakeResultFunc: request.MakeResultEvent,
 			Event:          event,
 			Operators:      request.CompiledOperators,
@@ -643,10 +768,10 @@ func (request *Request) executeRequestWithPayloads(
 }
 
 // generateEventData generates event data for the request
-func (request *Request) generateEventData(input *contextargs.Context, values map[string]interface{}, matched string) map[string]interface{} {
+func (request *Request) generateEventData(input *contextargs.Context, values map[string]interface{}, matched string) (map[string]interface{}, error) {
 	dialers := protocolstate.GetDialersWithId(request.options.Options.ExecutionId)
 	if dialers == nil {
-		panic(fmt.Sprintf("dialers not initialized for %s", request.options.Options.ExecutionId))
+		return nil, fmt.Errorf("dialers not initialized for %s", request.options.Options.ExecutionId)
 	}
 
 	data := make(map[string]interface{})
@@ -701,44 +826,59 @@ func (request *Request) generateEventData(input *contextargs.Context, values map
 			}
 		}
 	}
-	return data
+	return data, nil
 }
 
-func (request *Request) getArgsCopy(input *contextargs.Context, payloadValues map[string]interface{}, requestOptions *protocols.ExecutorOptions, ignoreErrors bool) (*compiler.ExecuteArgs, error) {
+func (request *Request) getArgsCopy(input *contextargs.Context, payloadValues map[string]interface{}, requestOptions *protocols.ExecutorOptions, ignoreErrors bool) (*compiler.ExecuteArgs, []string, error) {
 	// Template args from payloads
-	argsCopy, err := request.evaluateArgs(payloadValues, requestOptions, ignoreErrors)
+	argsCopy, interactshURLs, err := request.evaluateArgs(payloadValues, requestOptions, ignoreErrors)
 	if err != nil {
 		requestOptions.Output.Request(requestOptions.TemplateID, input.MetaInput.Input, request.Type().String(), err)
 		requestOptions.Progress.IncrementFailedRequestsBy(1)
-		return nil, err
+
+		return nil, nil, err
 	}
+
 	// "Port" is a special variable that is considered as network port
 	// and is conditional based on input port and default port specified in input
 	argsCopy["Port"] = input.Port()
 
-	return &compiler.ExecuteArgs{Args: argsCopy}, nil
+	return &compiler.ExecuteArgs{Args: argsCopy}, interactshURLs, nil
 }
 
 // evaluateArgs evaluates arguments using available payload values and returns a copy of args
-func (request *Request) evaluateArgs(payloadValues map[string]interface{}, _ *protocols.ExecutorOptions, ignoreErrors bool) (map[string]interface{}, error) {
+func (request *Request) evaluateArgs(payloadValues map[string]interface{}, _ *protocols.ExecutorOptions, ignoreErrors bool) (map[string]interface{}, []string, error) {
 	argsCopy := make(map[string]interface{})
+
+	var interactshURLs []string
+
 mainLoop:
 	for k, v := range request.Args {
 		if vVal, ok := v.(string); ok && strings.Contains(vVal, "{") {
-			finalAddress, dataErr := expressions.Evaluate(vVal, payloadValues)
+			result, dataErr := render.Render(render.Input{
+				Options:      request.options.GetOptions(),
+				Text:         vVal,
+				Values:       payloadValues,
+				Interactsh:   request.options.Interactsh,
+				InteractURLs: interactshURLs,
+			})
 			if dataErr != nil {
-				return nil, errors.Wrap(dataErr, "could not evaluate template expressions")
+				return nil, nil, errors.Wrap(dataErr, "could not evaluate template expressions")
 			}
-			if finalAddress == vVal && ignoreErrors {
+
+			interactshURLs = result.InteractURLs
+
+			if result.Text == vVal && ignoreErrors {
 				argsCopy[k] = ""
 				continue mainLoop
 			}
-			argsCopy[k] = finalAddress
+
+			argsCopy[k] = result.Text
 		} else {
 			argsCopy[k] = v
 		}
 	}
-	return argsCopy, nil
+	return argsCopy, interactshURLs, nil
 }
 
 // RequestPartDefinitions contains a mapping of request part definitions and their
@@ -765,12 +905,12 @@ func getAddress(toTest string) (string, error) {
 // true and a list of matched snippets if the matcher type is supports it
 // otherwise false and an empty string slice
 func (request *Request) Match(data map[string]interface{}, matcher *matchers.Matcher) (bool, []string) {
-	return protocols.MakeDefaultMatchFunc(data, matcher)
+	return protocols.MakeDefaultMatchFuncWithExecutorOptions(data, matcher, request.options)
 }
 
 // Extract performs extracting operation for an extractor on model and returns true or false.
 func (request *Request) Extract(data map[string]interface{}, matcher *extractors.Extractor) map[string]struct{} {
-	return protocols.MakeDefaultExtractFunc(data, matcher)
+	return protocols.MakeDefaultExtractFuncWithExecutorOptions(data, matcher, request.options)
 }
 
 // MakeResultEvent creates a result event from internal wrapped event
@@ -793,7 +933,7 @@ func (request *Request) getPorts() []string {
 		if strings.EqualFold(k, "Port") {
 			portStr := types.ToString(v)
 			ports := []string{}
-			for _, p := range strings.Split(portStr, ",") {
+			for p := range strings.SplitSeq(portStr, ",") {
 				trimmed := strings.TrimSpace(p)
 				if trimmed != "" {
 					ports = append(ports, trimmed)
@@ -867,5 +1007,14 @@ func prettyPrint(templateId string, buff string) {
 
 // UpdateOptions replaces this request's options with a new copy
 func (r *Request) UpdateOptions(opts *protocols.ExecutorOptions) {
+	r.Operators = protocols.CloneOperators(r.Operators)
+	r.CompiledOperators = nil
+	if r.options == nil {
+		if opts != nil {
+			r.options = opts.Copy()
+		}
+		return
+	}
+	r.options = r.options.Copy()
 	r.options.ApplyNewEngineOptions(opts)
 }

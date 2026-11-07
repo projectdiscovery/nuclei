@@ -10,10 +10,6 @@ import (
 	"github.com/projectdiscovery/goflags"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/internal/runner"
-	"github.com/projectdiscovery/nuclei/v3/pkg/utils"
-	"github.com/projectdiscovery/utils/errkit"
-	"gopkg.in/yaml.v2"
-
 	"github.com/projectdiscovery/nuclei/v3/pkg/authprovider"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog"
 	"github.com/projectdiscovery/nuclei/v3/pkg/model/types/severity"
@@ -24,6 +20,9 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/utils/vardump"
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates/types"
 	pkgtypes "github.com/projectdiscovery/nuclei/v3/pkg/types"
+	"github.com/projectdiscovery/nuclei/v3/pkg/utils"
+	"github.com/projectdiscovery/nuclei/v3/pkg/utils/yaml"
+	"github.com/projectdiscovery/utils/errkit"
 )
 
 // TemplateSources contains template sources
@@ -340,6 +339,21 @@ func WithScanStrategy(strategy string) NucleiSDKOptions {
 // OutputWriter
 type OutputWriter output.Writer
 
+// WithResultCallback sets a result callback invoked for each finding.
+//
+// When used with ThreadSafeNucleiEngine.ExecuteNucleiWithOpts / ExecuteNucleiWithOptsCtx,
+// the callback is scoped to that execution only (combined with any GlobalResultCallback).
+// When used at engine construction time, it behaves like the default result callback list.
+func WithResultCallback(callback func(event *output.ResultEvent)) NucleiSDKOptions {
+	return func(e *NucleiEngine) error {
+		if callback == nil {
+			return nil
+		}
+		e.resultCallbacks = append(e.resultCallbacks, callback)
+		return nil
+	}
+}
+
 // UseOutputWriter allows setting custom output writer
 // by default a mock writer is used with user defined callback
 // if outputWriter is used callback will be ignored
@@ -353,7 +367,9 @@ func UseOutputWriter(writer OutputWriter) NucleiSDKOptions {
 	}
 }
 
-// StatsWriter
+// StatsWriter receives scan statistics. A writer that also implements
+// progress.TaskTracker is told how many template executions the scan runs
+// and how many are done.
 type StatsWriter progress.Progress
 
 // UseStatsWriter allows setting a custom stats writer

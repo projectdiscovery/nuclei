@@ -6,6 +6,7 @@ import (
 	"maps"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/miekg/dns"
 	"github.com/pkg/errors"
@@ -45,11 +46,15 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata,
 	vars := protocolutils.GenerateDNSVariables(domain)
 	// optionvars are vars passed from CLI or env variables
 	optionVars := generators.BuildPayloadFromOptions(request.options.Options)
-	// merge with metadata (eg. from workflow context)
+	scope := request.options.NewVariablesScope(vars, metadata, optionVars)
+	request.options.AddTemplateCtxToVariablesScope(input.MetaInput, scope)
+	scope.AddData(request.options.Constants)
+	variablesMap := request.options.Variables.EvaluateScope(scope).Values
 	if request.options.HasTemplateCtx(input.MetaInput) {
 		vars = generators.MergeMaps(vars, metadata, optionVars, request.options.GetTemplateCtx(input.MetaInput).GetAll())
+	} else {
+		vars = generators.MergeMaps(vars, metadata, optionVars)
 	}
-	variablesMap := request.options.Variables.Evaluate(vars)
 	vars = generators.MergeMaps(vars, variablesMap, request.options.Constants)
 
 	// if request threads matches global payload concurrency we follow it
@@ -64,6 +69,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata,
 		var multiErr error
 		m := &sync.Mutex{}
 
+	payloadLoop:
 		for {
 			value, ok := iterator.Value()
 			if !ok {
@@ -72,7 +78,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata,
 
 			select {
 			case <-input.Context().Done():
-				return input.Context().Err()
+				break payloadLoop
 			default:
 			}
 
@@ -84,7 +90,9 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata,
 			}
 
 			value = generators.MergeMaps(vars, value)
-			swg.Add()
+			if err := swg.AddWithContext(input.Context()); err != nil {
+				break payloadLoop
+			}
 			go func(newVars map[string]interface{}) {
 				defer swg.Done()
 				if err := request.execute(input, domain, metadata, previous, newVars, callback); err != nil {
@@ -95,6 +103,9 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata,
 			}(value)
 		}
 		swg.Wait()
+		if err := input.Context().Err(); err != nil {
+			return err
+		}
 		if multiErr != nil {
 			return multiErr
 		}
@@ -157,10 +168,17 @@ func (request *Request) execute(input *contextargs.Context, domain string, metad
 		}
 	}
 
-	request.options.RateLimitTake()
+	// per host means per queried domain: resolvers are shared by every target
+	if err := request.options.RateLimitTakeContext(input.Context(), question); err != nil {
+		request.options.Output.Request(request.options.TemplatePath, domain, request.Type().String(), err)
+		request.options.Progress.IncrementFailedRequestsBy(1)
+		return errors.Wrap(err, "could not take rate limit")
+	}
 
 	// Send the request to the target servers
+	timeStart := time.Now()
 	response, err := dnsClient.Do(compiledRequest)
+	duration := time.Since(timeStart)
 	if err != nil {
 		request.options.Output.Request(request.options.TemplatePath, domain, request.Type().String(), err)
 		request.options.Progress.IncrementFailedRequestsBy(1)
@@ -174,7 +192,7 @@ func (request *Request) execute(input *contextargs.Context, domain string, metad
 	request.options.Output.Request(request.options.TemplatePath, domain, request.Type().String(), err)
 	gologger.Verbose().Msgf("[%s] Sent DNS request to %s\n", request.options.TemplateID, question)
 
-	// perform trace if necessary
+	// perform trace if necessary (excluded from duration — only the query RTT is measured)
 	var traceData *retryabledns.TraceData
 	if request.Trace {
 		traceData, err = request.dnsClient.Trace(domain, request.question, request.TraceMaxRecursion)
@@ -184,7 +202,7 @@ func (request *Request) execute(input *contextargs.Context, domain string, metad
 	}
 
 	// Create the output event
-	outputEvent := request.responseToDSLMap(compiledRequest, response, domain, question, traceData)
+	outputEvent := request.responseToDSLMap(compiledRequest, response, domain, question, traceData, duration)
 	// expose response variables in proto_var format
 	// this is no-op if the template is not a multi protocol template
 	request.options.AddTemplateVars(input.MetaInput, request.Type(), request.ID, outputEvent)

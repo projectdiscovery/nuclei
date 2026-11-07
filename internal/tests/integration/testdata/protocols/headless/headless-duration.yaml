@@ -1,0 +1,35 @@
+id: headless-duration
+
+info:
+  name: Headless Duration
+  author: pdteam
+  severity: info
+  tags: headless
+
+flow: headless("duration_headless")
+
+headless:
+  - id: duration_headless
+    steps:
+      - action: navigate
+        args:
+          url: "{{BaseURL}}/"
+      - action: waitload
+    matchers:
+      - type: dsl
+        condition: and
+        dsl:
+          - "duration > 0 && duration < 60"
+          - "duration_1 > 0 && duration_1 < 60"
+          - "duration_2 > 0 && duration_2 < 60"
+          - "duration == duration_2"
+          - "duration_headless_duration > 0 && duration_headless_duration < 60"
+          - "duration_headless_duration_1 > 0 && duration_headless_duration_1 < 60"
+          - "duration_headless_duration_2 > 0 && duration_headless_duration_2 < 60"
+          - "duration_headless_duration == duration"
+          - "duration_headless_duration_1 == duration_1"
+          - "duration_headless_duration_2 == duration_2"
+      - type: word
+        words:
+          - "<html>"
+    matchers-condition: and

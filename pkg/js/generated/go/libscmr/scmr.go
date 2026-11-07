@@ -3,7 +3,7 @@ package scmr
 import (
 	lib_scmr "github.com/projectdiscovery/nuclei/v3/pkg/js/libs/scmr"
 
-	"github.com/Mzack9999/goja"
+	"github.com/projectdiscovery/goja"
 	"github.com/projectdiscovery/nuclei/v3/pkg/js/gojs"
 )
 

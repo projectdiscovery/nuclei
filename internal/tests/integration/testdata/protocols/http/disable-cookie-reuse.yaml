@@ -1,0 +1,27 @@
+id: disable-cookie-reuse
+
+info:
+  name: Disable Cookie Reuse
+  author: pdteam
+  severity: info
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/login"
+
+    matchers:
+      - type: word
+        words:
+          - "logged in"
+        internal: true
+
+  - method: GET
+    path:
+      - "{{BaseURL}}/anonymous"
+    disable-cookie: true
+
+    matchers:
+      - type: word
+        words:
+          - "anonymous"

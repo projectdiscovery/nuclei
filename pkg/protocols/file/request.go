@@ -57,10 +57,38 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata,
 	if input.MetaInput.Input == "" {
 		return errors.New("input cannot be empty file or folder expected")
 	}
-	err = request.getInputPaths(input.MetaInput.Input, func(filePath string) {
-		wg.Add()
+	err = request.getInputPaths(input.Context(), input.MetaInput.Input, func(filePath string) error {
+		if err := wg.AddWithContext(input.Context()); err != nil {
+			return err
+		}
 		go func(filePath string) {
 			defer wg.Done()
+
+			if IsSMBPath(filePath) {
+				request.options.Progress.AddToTotal(1)
+				body, err := request.readSMBFile(input.Context(), filePath)
+				if err != nil {
+					gologger.Error().Msgf("%s\n", err)
+					request.options.Progress.IncrementFailedRequestsBy(1)
+					return
+				}
+				reader := strings.NewReader(body)
+				event, fileMatches, err := request.processReader(reader, filePath, input, int64(len(body)), previous)
+				if err != nil {
+					if errors.Is(err, errEmptyResult) {
+						request.options.Progress.IncrementRequests()
+						return
+					}
+					gologger.Error().Msgf("%s\n", err)
+					request.options.Progress.IncrementFailedRequestsBy(1)
+					return
+				}
+				dumpResponse(event, request.options, fileMatches, filePath)
+				callback(event)
+				request.options.Progress.IncrementRequests()
+				return
+			}
+
 			fi, err := os.Open(filePath)
 			if err != nil {
 				gologger.Error().Msgf("%s\n", err)
@@ -186,9 +214,13 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata,
 				request.options.Progress.IncrementRequests()
 			}
 		}(filePath)
+		return nil
 	})
 
 	wg.Wait()
+	if err := input.Context().Err(); err != nil {
+		return err
+	}
 	if err != nil {
 		request.options.Output.Request(request.options.TemplatePath, input.MetaInput.Input, request.Type().String(), err)
 		request.options.Progress.IncrementFailedRequestsBy(1)

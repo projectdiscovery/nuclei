@@ -5,18 +5,23 @@ import (
 	"fmt"
 	"net"
 	"net/url"
+	"regexp"
+	"slices"
+	"strings"
 	"time"
 
 	"github.com/go-sql-driver/mysql"
 	"github.com/pkg/errors"
+	"golang.org/x/net/idna"
 	"golang.org/x/net/proxy"
 
 	"github.com/projectdiscovery/fastdialer/fastdialer"
 	"github.com/projectdiscovery/mapcidr/asn"
 	"github.com/projectdiscovery/networkpolicy"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/httpcache"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils/expand"
-	"github.com/projectdiscovery/retryablehttp-go"
+	iputil "github.com/projectdiscovery/utils/ip"
 	mapsutil "github.com/projectdiscovery/utils/maps"
 )
 
@@ -55,7 +60,31 @@ func ShouldInit(id string) bool {
 
 // Init creates the Dialers instance based on user configuration
 func Init(options *types.Options) error {
-	if GetDialersWithId(options.ExecutionId) != nil {
+	if existingDialers := GetDialersWithId(options.ExecutionId); existingDialers != nil {
+		// the network policy is baked into the fastdialer when it is created,
+		// so rebuild the dialers when any input to that policy changed for this
+		// execution id (the RestrictLocalNetworkAccess flag or the exclude
+		// targets denylist).
+		existingDialers.Lock()
+		policyChanged := existingDialers.RestrictLocalNetworkAccess != options.RestrictLocalNetworkAccess ||
+			!slices.Equal(existingDialers.ExcludeTargets, options.ExcludeTargets)
+		existingDialers.Unlock()
+		if policyChanged {
+			if existingDialers.Fastdialer != nil {
+				existingDialers.Fastdialer.Close()
+			}
+			dialers.Delete(options.ExecutionId)
+			return initDialers(options)
+		}
+
+		// otherwise refresh the LFA / network-policy state derived from options
+		// so a second Init call with different options is reflected.
+		existingDialers.Lock()
+		existingDialers.LocalFileAccessAllowed = options.AllowLocalFileAccess
+		existingDialers.RestrictLocalNetworkAccess = options.RestrictLocalNetworkAccess
+		existingDialers.ExcludeTargets = options.ExcludeTargets
+		existingDialers.Unlock()
+		SetLfaAllowed(options)
 		return nil
 	}
 
@@ -66,6 +95,7 @@ func Init(options *types.Options) error {
 func initDialers(options *types.Options) error {
 	opts := fastdialer.DefaultOptions
 	opts.DialerTimeout = options.GetTimeouts().DialTimeout
+	opts.OnDialResult = reportDialResult
 	if options.DialerKeepAlive > 0 {
 		opts.DialerKeepAlive = options.DialerKeepAlive
 	}
@@ -75,15 +105,20 @@ func initDialers(options *types.Options) error {
 		switch {
 		case asn.IsASN(excludeTarget):
 			expandedDenyList = append(expandedDenyList, expand.ASN(excludeTarget)...)
-		default:
+		case iputil.IsIP(excludeTarget) || iputil.IsCIDR(excludeTarget):
 			expandedDenyList = append(expandedDenyList, excludeTarget)
+		default:
+			expandedDenyList = append(expandedDenyList, excludeHostRules(excludeTarget)...)
 		}
 	}
 
 	if options.RestrictLocalNetworkAccess {
 		expandedDenyList = append(expandedDenyList, networkpolicy.DefaultIPv4DenylistRanges...)
 		expandedDenyList = append(expandedDenyList, networkpolicy.DefaultIPv6DenylistRanges...)
+		// the unspecified address connects to the local host
+		expandedDenyList = append(expandedDenyList, "::/128")
 	}
+	expandedDenyList = append(expandedDenyList, mappedDenyRanges(expandedDenyList)...)
 	npOptions := &networkpolicy.Options{
 		DenyList: expandedDenyList,
 	}
@@ -141,7 +176,6 @@ func initDialers(options *types.Options) error {
 			forward = &net.Dialer{
 				Timeout:   opts.DialerTimeout,
 				KeepAlive: opts.DialerKeepAlive,
-				DualStack: true,
 			}
 		}
 		dialer, err := proxy.FromURL(proxyURL, forward)
@@ -173,19 +207,29 @@ func initDialers(options *types.Options) error {
 		return errors.Wrap(err, "could not create dialer")
 	}
 
-	networkPolicy, _ := networkpolicy.New(*npOptions)
+	// fail initialization if the network policy cannot be created rather than
+	// continuing with no denylist.
+	networkPolicy, err := networkpolicy.New(*npOptions)
+	if err != nil {
+		// close the already-created dialer to avoid leaking its resources.
+		dialer.Close()
+		return errors.Wrap(err, "could not create network policy")
+	}
 
-	httpClientPool := mapsutil.NewSyncLockMap(
-		// evicts inactive httpclientpool entries after 24 hours
-		// of inactivity (long running instances)
-		mapsutil.WithEviction[string, *retryablehttp.Client](24*time.Hour, 12*time.Hour),
-	)
+	// Per-host HTTP clients and transports are evicted after 90 seconds of
+	// inactivity (checked lazily every 30 seconds). Evicted transports get
+	// their idle connections closed immediately, so connections to
+	// already-scanned hosts are cleaned up promptly.
+	httpClientPool := NewHTTPPool(90*time.Second, 30*time.Second)
 
 	dialersInstance := &Dialers{
-		Fastdialer:             dialer,
-		NetworkPolicy:          networkPolicy,
-		HTTPClientPool:         httpClientPool,
-		LocalFileAccessAllowed: options.AllowLocalFileAccess,
+		Fastdialer:                 dialer,
+		NetworkPolicy:              networkPolicy,
+		HTTPClientPool:             httpClientPool,
+		HTTPDesyncHosts:            NewExpiringSet(time.Minute),
+		LocalFileAccessAllowed:     options.AllowLocalFileAccess,
+		RestrictLocalNetworkAccess: options.RestrictLocalNetworkAccess,
+		ExcludeTargets:             options.ExcludeTargets,
 	}
 
 	_ = dialers.Set(options.ExecutionId, dialersInstance)
@@ -279,12 +323,68 @@ func Close(executionId string) {
 	}
 
 	if dialersInstance != nil {
+		// Drop all cached HTTP clients/transports and close their idle
+		// keep-alive connections to avoid lingering transport goroutines
+		// after shutdown.
+		dialersInstance.HTTPClientPool.Close()
+		// Stop the per-host rate limit pool so its background limiters (one
+		// goroutine each, up to the pool capacity) are released instead of
+		// leaking on shutdown or engine recreate. Typed as any here to avoid
+		// an import cycle with the httpclientpool package.
+		if pool, ok := dialersInstance.PerHostRateLimitPool.(interface{ Close() }); ok && pool != nil {
+			pool.Close()
+		}
 		dialersInstance.Fastdialer.Close()
 	}
 
 	dialers.Delete(executionId)
 
 	if dialers.IsEmpty() {
+		httpcache.Close()
 		StopActiveMemGuardian()
 	}
+}
+
+// mappedDenyRanges returns the IPv4-mapped IPv6 form (::ffff:a.b.c.d) of each
+// IPv4 address and range in denyList. The network policy checks a mapped
+// address such as [::ffff:127.0.0.1] only against IPv6 ranges, but the dialer
+// connects to the IPv4 host, so without these forms it passes -eh and -lna.
+func mappedDenyRanges(denyList []string) []string {
+	var mapped []string
+	for _, entry := range denyList {
+		cidr := entry
+		if !strings.Contains(cidr, "/") {
+			cidr += "/32"
+		}
+		_, ipNet, err := net.ParseCIDR(cidr)
+		if err != nil || ipNet.IP.To4() == nil || strings.Contains(entry, ":") {
+			continue
+		}
+		ones, _ := ipNet.Mask.Size()
+		mapped = append(mapped, fmt.Sprintf("::ffff:%s/%d", ipNet.IP.To4(), 96+ones))
+	}
+	return mapped
+}
+
+// excludeHostRules turns an exclude entry into network policy deny rules.
+// networkpolicy treats non-IP entries as unanchored regexes, so a plain
+// "test.com" would also deny "latest.com". Plain hostnames match the host and
+// its subdomains instead; entries with regex syntax are kept as given.
+func excludeHostRules(target string) []string {
+	if strings.ContainsAny(target, `\^$*+?()[]{}|`) {
+		return []string{target}
+	}
+
+	host := strings.TrimSuffix(target, ".")
+	hosts := []string{host}
+	// the network DSL helpers only normalize plain rules, so add the IDNA form here
+	if ascii, err := idna.ToASCII(strings.ToLower(host)); err == nil && !strings.EqualFold(ascii, host) {
+		hosts = append(hosts, ascii)
+	}
+
+	rules := make([]string, 0, len(hosts))
+	for _, h := range hosts {
+		rules = append(rules, `(?i)(^|\.)`+regexp.QuoteMeta(h)+`\.?$`)
+	}
+	return rules
 }

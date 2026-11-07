@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httputil"
 	"os"
+	"strings"
 
 	"github.com/pkg/errors"
 
@@ -37,8 +38,27 @@ var RawInputMode = false
 
 // ExecuteWithResults executes the protocol requests and returns results instead of writing them.
 func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
+	// Prefer response bodies carried on multi-format inputs (burp/jsonl/yaml).
+	if rr := input.MetaInput.ReqResp; rr != nil && rr.Response != nil && strings.TrimSpace(rr.Response.Raw) != "" {
+		err := request.executeRawInput(rr.Response.Raw, rr.URL.String(), input, callback)
+		if err == nil {
+			request.options.Progress.IncrementRequests()
+		}
+		return err
+	}
+
 	if RawInputMode {
-		return request.executeRawInput(input.MetaInput.Input, "", input, callback)
+		err := request.executeRawInput(input.MetaInput.Input, "", input, callback)
+		if err == nil {
+			request.options.Progress.IncrementRequests()
+		}
+		return err
+	}
+
+	// Export inputs attach ReqResp with a URL-shaped MetaInput.Input. Without a
+	// response body there is nothing to match offline; do not treat the URL as a filepath.
+	if input.MetaInput.ReqResp != nil {
+		return nil
 	}
 
 	wg, err := syncutil.New(syncutil.WithSize(request.options.Options.BulkSize))
@@ -46,8 +66,10 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata,
 		return err
 	}
 
-	err = request.getInputPaths(input.MetaInput.Input, func(data string) {
-		wg.Add()
+	err = request.getInputPaths(input.Context(), input.MetaInput.Input, func(data string) error {
+		if err := wg.AddWithContext(input.Context()); err != nil {
+			return err
+		}
 
 		go func(data string) {
 			defer wg.Done()
@@ -83,8 +105,12 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata,
 				return
 			}
 		}(data)
+		return nil
 	})
 	wg.Wait()
+	if err := input.Context().Err(); err != nil {
+		return err
+	}
 	if err != nil {
 		request.options.Output.Request(request.options.TemplatePath, input.MetaInput.Input, "file", err)
 		request.options.Progress.IncrementFailedRequestsBy(1)
@@ -142,5 +168,7 @@ func getURLFromRequest(req *http.Request) string {
 
 // UpdateOptions replaces this request's options with a new copy
 func (r *Request) UpdateOptions(opts *protocols.ExecutorOptions) {
-	r.options = opts
+	if opts != nil {
+		r.options = opts.Copy()
+	}
 }

@@ -14,46 +14,65 @@ import (
 // compileWorkflow compiles the workflow for execution
 func compileWorkflow(path string, preprocessor Preprocessor, options *protocols.ExecutorOptions, workflow *workflows.Workflow, loader model.WorkflowLoader) {
 	for _, workflow := range workflow.Workflows {
-		if err := parseWorkflow(preprocessor, workflow, options, loader); err != nil {
+		if err := parseWorkflow(path, preprocessor, workflow, options, loader); err != nil {
 			gologger.Warning().Msgf("Could not parse workflow %s: %v\n", path, err)
 			continue
 		}
 	}
 }
 
-// parseWorkflow parses and compiles all templates in a workflow recursively
-func parseWorkflow(preprocessor Preprocessor, workflow *workflows.WorkflowTemplate, options *protocols.ExecutorOptions, loader model.WorkflowLoader) error {
-	shouldNotValidate := false
-
+// parseWorkflow parses and compiles all templates of the workflow at path
+// recursively.
+func parseWorkflow(path string, preprocessor Preprocessor, workflow *workflows.WorkflowTemplate, options *protocols.ExecutorOptions, loader model.WorkflowLoader) error {
 	if workflow.Template == "" && workflow.Tags.IsEmpty() {
 		return errors.New("invalid workflow with no templates or tags")
 	}
-	if len(workflow.Subtemplates) > 0 || len(workflow.Matchers) > 0 {
-		shouldNotValidate = true
+
+	// subtemplates are parsed first: a template that does not pass the
+	// filters is loaded only when one of its subtemplates was loaded, as
+	// subtemplates run only after it
+	shouldNotValidate := false
+	for _, subtemplates := range workflow.Subtemplates {
+		if err := parseWorkflow(path, preprocessor, subtemplates, options, loader); err != nil {
+			gologger.Warning().Msgf("Could not parse workflow: %v\n", err)
+			continue
+		}
+		shouldNotValidate = shouldNotValidate || len(subtemplates.Executers) > 0
+	}
+	var matcherErr error
+	for _, matcher := range workflow.Matchers {
+		if len(matcher.Name.ToSlice()) > 0 {
+			if err := matcher.Compile(); err != nil {
+				matcherErr = errors.Wrap(err, "could not compile workflow matcher")
+				break
+			}
+		}
+		for _, subtemplates := range matcher.Subtemplates {
+			if err := parseWorkflow(path, preprocessor, subtemplates, options, loader); err != nil {
+				gologger.Warning().Msgf("Could not parse workflow: %v\n", err)
+				continue
+			}
+			shouldNotValidate = shouldNotValidate || len(subtemplates.Executers) > 0
+		}
 	}
 	if err := parseWorkflowTemplate(workflow, preprocessor, options, loader, shouldNotValidate); err != nil {
 		return err
 	}
-	for _, subtemplates := range workflow.Subtemplates {
-		if err := parseWorkflow(preprocessor, subtemplates, options, loader); err != nil {
-			gologger.Warning().Msgf("Could not parse workflow: %v\n", err)
-			continue
-		}
+	// warnings show only with -v, so the count is shown after loading
+	if shouldNotValidate && len(workflow.Executers) == 0 {
+		stats.Increment(SkippedWorkflowStepStats)
+		gologger.Warning().Msgf("Workflow %s: step %s loaded no templates, so its subtemplates will not run",
+			path, describeWorkflowStep(workflow))
 	}
-	for _, matcher := range workflow.Matchers {
-		if len(matcher.Name.ToSlice()) > 0 {
-			if err := matcher.Compile(); err != nil {
-				return errors.Wrap(err, "could not compile workflow matcher")
-			}
-		}
-		for _, subtemplates := range matcher.Subtemplates {
-			if err := parseWorkflow(preprocessor, subtemplates, options, loader); err != nil {
-				gologger.Warning().Msgf("Could not parse workflow: %v\n", err)
-				continue
-			}
-		}
+	return matcherErr
+}
+
+// describeWorkflowStep names a workflow step by the templates it selects.
+func describeWorkflowStep(workflow *workflows.WorkflowTemplate) string {
+	if !workflow.Tags.IsEmpty() {
+		return "tags " + workflow.Tags.String()
 	}
-	return nil
+	return workflow.Template
 }
 
 // parseWorkflowTemplate parses a workflow template creating an executer
@@ -62,7 +81,7 @@ func parseWorkflowTemplate(workflow *workflows.WorkflowTemplate, preprocessor Pr
 
 	subTemplateTags := workflow.Tags
 	if !subTemplateTags.IsEmpty() {
-		paths = loader.GetTemplatePathsByTags(subTemplateTags.ToSlice())
+		paths = loader.GetTemplatePathsByTags(subTemplateTags.ToSlice(), noValidate)
 	} else {
 		paths = loader.GetTemplatePaths([]string{workflow.Template}, noValidate)
 	}
@@ -71,15 +90,19 @@ func parseWorkflowTemplate(workflow *workflows.WorkflowTemplate, preprocessor Pr
 	}
 
 	var workflowTemplates []*Template
+
+	caps := CapabilitiesFromOptions(options.Options)
 	for _, path := range paths {
 		template, err := Parse(path, preprocessor, options.Copy())
 		if err != nil {
 			gologger.Warning().Msgf("Could not parse workflow template %s: %v\n", path, err)
 			continue
 		}
+
 		if template == nil {
 			continue
 		}
+
 		if template.Executer == nil {
 			gologger.Warning().Msgf("Could not parse workflow template %s: no executer found\n", path)
 			continue
@@ -87,30 +110,35 @@ func parseWorkflowTemplate(workflow *workflows.WorkflowTemplate, preprocessor Pr
 
 		if options.Options.DisableUnsignedTemplates && !template.Verified {
 			// skip unverified templates when prompted to do so
-			stats.Increment(SkippedUnsignedStats)
-			continue
-		}
-		if template.UsesRequestSignature() && !template.Verified {
-			stats.Increment(SkippedRequestSignatureStats)
+			stats.Increment(SkippedUnverifiedTemplateStats)
 			continue
 		}
 
-		if template.HasCodeRequest() {
-			if !options.Options.EnableCodeTemplates {
-				// NOTE(dwisiswant0): It is safe to continue here during
-				// validation mode, because the template has already been parsed
-				// and syntax-validated by templates.Parse() above. It only
-				// prevents adding to workflow's executer list and suppresses
-				// warning messages.
-				if !options.Options.Validate {
-					gologger.Warning().Msgf("`-code` flag not found, skipping code template from workflow: %v\n", path)
-				}
-				continue
-			} else if !template.Verified {
-				// unverified code templates are not allowed in workflows
-				gologger.Warning().Msgf("skipping unverified code template from workflow: %v\n", path)
-				continue
+		if template.HasCodeRequest() && !template.Verified {
+			// unverified code templates are not allowed in workflows
+			stats.Increment(SkippedUnverifiedCodeTemplateStats)
+			gologger.Warning().Msgf("Skipping unverified code template(s) from workflow: %v\n", path)
+			continue
+		}
+
+		if template.IsUnsignedJavascriptTemplate() {
+			// unverified javascript templates are not allowed in workflows
+			stats.Increment(SkippedUnverifiedJavascriptTemplateStats)
+			gologger.Warning().Msgf("Skipping unverified javascript template(s) from workflow: %v\n", path)
+			continue
+		}
+
+		if missingCaps := template.MissingLoadCapabilities(caps); len(missingCaps) > 0 {
+			for _, capability := range missingCaps {
+				stats.Increment(capability.Stat())
+				gologger.Warning().Msgf("Skipping workflow subtemplate: %s", capability.MissingFlagMessage(path))
 			}
+			continue
+		}
+
+		if template.UsesRequestSignature() && !template.Verified {
+			stats.Increment(SkippedRequestSignatureTemplateStats)
+			continue
 		}
 
 		// increment signed/unsigned counters

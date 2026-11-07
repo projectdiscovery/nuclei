@@ -1,6 +1,7 @@
 package types
 
 import (
+	"context"
 	"io"
 	"os"
 	"path/filepath"
@@ -102,6 +103,8 @@ type Options struct {
 	ListDslSignatures bool
 	// List of HTTP(s)/SOCKS5 proxy to use (comma separated or file input)
 	Proxy goflags.StringSlice
+	// ReplayProxy re-sends the requests that produced a finding through this proxy
+	ReplayProxy string
 	// AliveProxy is the alive proxy to use
 	AliveHttpProxy string
 	// AliveSocksProxy is the alive socks proxy to use
@@ -205,6 +208,41 @@ type Options struct {
 	DebugResponse bool
 	// DisableHTTPProbe disables http probing feature of input normalization
 	DisableHTTPProbe bool
+	// PreflightPortScan enables a preflight resolve + TCP portscan and filters targets
+	// before running templates. Disabled by default.
+	PreflightPortScan bool
+	// HostBackoff slows a host down when it signals it is being overloaded
+	// (429, a run of 403s, or transport failures) instead of scanning it at full
+	// rate until it blocks the scanner. Opt-in, since it changes scan pacing.
+	HostBackoff bool
+	// HostBackoffMax caps the per-host backoff delay.
+	HostBackoffMax time.Duration
+	// AutoCalibrate drops HTTP matches whose response is the page the host
+	// serves for any missing path. Opt-in, since it sends a few probes per host
+	// that has a match.
+	AutoCalibrate bool
+	// MaxURLsPerPattern caps how many targets sharing one structural shape
+	// (/user/1, /user/2, ...) are scanned. Zero, the default, scans every
+	// target: dropping one means never scanning it.
+	MaxURLsPerPattern int
+	// DisableURLNormalization keeps every target exactly as supplied, instead of
+	// collapsing URLs that address the same resource (host case, fragment,
+	// default port, trailing slash, tracking parameters) before deduplication.
+	DisableURLNormalization bool
+	// PerHostRateLimit enables per-host rate limiting for HTTP requests.
+	// When enabled, each host gets its own rate limiter and global rate limit becomes unlimited.
+	// Disabled by default.
+	PerHostRateLimit bool
+	// PerHostRateLimitPoolSize bounds the number of remembered HTTP host
+	// limiters. Zero uses the default bounded pool. A negative value retains
+	// every host for the lifetime of the scan protocol state; embedders should
+	// use that mode only when they provide bounded scan-lifetime cleanup.
+	PerHostRateLimitPoolSize int
+	// EnableHTTPCache enables HTTP caching (RFC 9111) for requests
+	//
+	// NOTE(dwisiswant0): this is experimental and might be enabled by default
+	// in the future releases.
+	EnableHTTPCache bool
 	// LeaveDefaultPorts skips normalization of default ports
 	LeaveDefaultPorts bool
 	// AutomaticScan enables automatic tech based template execution
@@ -229,6 +267,8 @@ type Options struct {
 	NoColor bool
 	// UpdateTemplates updates the templates installed at startup (also used by cloud to update datasources)
 	UpdateTemplates bool
+	// UpdateTemplatesChannel is the nuclei-templates update channel (stable or latest)
+	UpdateTemplatesChannel string
 	// JSON writes json line output to files
 	JSONL bool
 	// JSONRequests writes requests/responses for matches in JSON output
@@ -248,6 +288,8 @@ type Options struct {
 	PDFExport string
 	// Redact redacts given keys in
 	Redact goflags.StringSlice
+	// NoRedact disables the built-in redaction of credential headers in output
+	NoRedact bool
 	// EnableProgressBar enables progress bar
 	EnableProgressBar bool
 	// TemplateDisplay displays the template contents
@@ -321,10 +363,16 @@ type Options struct {
 	SourceIP string
 	// AttackType overrides template level attack-type configuration
 	AttackType string
+	// PayloadRandomOrder iterates payload combinations in a random order
+	// instead of the sequential order of the payload sets
+	PayloadRandomOrder bool
 	// ResponseReadSize is the maximum size of response to read
 	ResponseReadSize int
 	// ResponseSaveSize is the maximum size of response to save
 	ResponseSaveSize int
+	// RequestSaveSize is the maximum request body kept in saved output and
+	// debug dumps. Matchers see the full request. 0 keeps the whole body.
+	RequestSaveSize int
 	// Health Check
 	HealthCheck bool
 	// Time to wait between each input read operation before closing the stream
@@ -419,6 +467,22 @@ type Options struct {
 	EnableGlobalMatchersTemplates bool
 	// EnableFileTemplates enables file templates
 	EnableFileTemplates bool
+	// EnableLLM enables llm matchers and extractors (semantic matching)
+	EnableLLM bool
+	// LLMProvider selects a preset endpoint for llm matching
+	LLMProvider string
+	// LLMBaseURL is any OpenAI-compatible endpoint for llm matching, local included
+	LLMBaseURL string
+	// LLMModel is the model used for llm matching
+	LLMModel string
+	// LLMTimeout bounds a single llm call, in seconds
+	LLMTimeout int
+	// LLMMaxCalls caps llm calls for the whole scan (0 = unlimited)
+	LLMMaxCalls int
+	// LLMConcurrency caps in-flight llm calls
+	LLMConcurrency int
+	// LLMCache enables caching of llm responses within a scan
+	LLMCache bool
 	// Disables cloud upload
 	EnableCloudUpload bool
 	// ScanID is the scan ID to use for cloud upload
@@ -459,6 +523,12 @@ type Options struct {
 	DASTServerAddress string
 	// DASTReport enables dast report server & final report generation
 	DASTReport bool
+	// DASTProxy is the flag to start nuclei as an intercepting dast proxy
+	DASTProxy bool
+	// DASTProxyAddress is the listen address for the dast proxy
+	DASTProxyAddress string
+	// DASTProxyAuth is the user:pass credential pair required by the dast proxy
+	DASTProxyAuth string
 	// Scope contains a list of regexes for in-scope URLS
 	Scope goflags.StringSlice
 	// OutOfScope contains a list of regexes for out-scope URLS
@@ -487,8 +557,63 @@ type Options struct {
 	timeouts *Timeouts
 	// m is a mutex to protect timeouts from concurrent access
 	m sync.Mutex
+	// templateThreadsProvider is private so Options remains safe for integrations
+	// that serialize its exported configuration fields.
+	templateThreadsProvider func() int
+	// templateThreadAcquire and templateThreadRelease optionally enforce a
+	// concurrency budget shared by multiple embedded Nuclei engines.
+	templateThreadAcquire func(context.Context) error
+	templateThreadRelease func()
 }
 
+// SetTemplateThreadsProvider configures a dynamic template concurrency source.
+// The provider is consulted while an execution schedules templates, allowing an
+// embedding application to redistribute a fixed concurrency budget as peer
+// executions start and finish. It must be safe for concurrent use.
+func (options *Options) SetTemplateThreadsProvider(provider func() int) {
+	options.templateThreadsProvider = provider
+}
+
+// CurrentTemplateThreads returns the dynamic template concurrency when the
+// configured provider returns a positive value, or TemplateThreads otherwise.
+func (options *Options) CurrentTemplateThreads() int {
+	if options.templateThreadsProvider != nil {
+		if current := options.templateThreadsProvider(); current > 0 {
+			return current
+		}
+	}
+	return options.TemplateThreads
+}
+
+// SetTemplateThreadsLimiter configures an optional concurrency limiter shared
+// by embedding applications across multiple Nuclei engines. A successful
+// acquire must have a matching release. Both callbacks must be concurrency-safe.
+func (options *Options) SetTemplateThreadsLimiter(acquire func(context.Context) error, release func()) {
+	if acquire == nil || release == nil {
+		options.templateThreadAcquire = nil
+		options.templateThreadRelease = nil
+		return
+	}
+	options.templateThreadAcquire = acquire
+	options.templateThreadRelease = release
+}
+
+// AcquireTemplateThread reserves one shared template-execution slot.
+func (options *Options) AcquireTemplateThread(ctx context.Context) error {
+	if options.templateThreadAcquire == nil {
+		return nil
+	}
+	return options.templateThreadAcquire(ctx)
+}
+
+// ReleaseTemplateThread releases one shared template-execution slot.
+func (options *Options) ReleaseTemplateThread() {
+	if options.templateThreadRelease != nil {
+		options.templateThreadRelease()
+	}
+}
+
+// Copy returns a copy of the options.
 func (options *Options) Copy() *Options {
 	optCopy := &Options{
 		Tags:                           options.Tags,
@@ -522,6 +647,7 @@ func (options *Options) Copy() *Options {
 		Resume:                         options.Resume,
 		Output:                         options.Output,
 		ProxyInternal:                  options.ProxyInternal,
+		ReplayProxy:                    options.ReplayProxy,
 		ListDslSignatures:              options.ListDslSignatures,
 		Proxy:                          options.Proxy,
 		AliveHttpProxy:                 options.AliveHttpProxy,
@@ -542,6 +668,9 @@ func (options *Options) Copy() *Options {
 		NoHostErrors:                   options.NoHostErrors,
 		BulkSize:                       options.BulkSize,
 		TemplateThreads:                options.TemplateThreads,
+		templateThreadsProvider:        options.templateThreadsProvider,
+		templateThreadAcquire:          options.templateThreadAcquire,
+		templateThreadRelease:          options.templateThreadRelease,
 		HeadlessBulkSize:               options.HeadlessBulkSize,
 		HeadlessTemplateThreads:        options.HeadlessTemplateThreads,
 		Timeout:                        options.Timeout,
@@ -572,6 +701,11 @@ func (options *Options) Copy() *Options {
 		DebugRequests:                  options.DebugRequests,
 		DebugResponse:                  options.DebugResponse,
 		DisableHTTPProbe:               options.DisableHTTPProbe,
+		PreflightPortScan:              options.PreflightPortScan,
+		PerHostRateLimit:               options.PerHostRateLimit,
+		PerHostRateLimitPoolSize:       options.PerHostRateLimitPoolSize,
+		EnableHTTPCache:                options.EnableHTTPCache,
+		AutoCalibrate:                  options.AutoCalibrate,
 		LeaveDefaultPorts:              options.LeaveDefaultPorts,
 		AutomaticScan:                  options.AutomaticScan,
 		AutomaticScanCoverage:          options.AutomaticScanCoverage,
@@ -584,6 +718,7 @@ func (options *Options) Copy() *Options {
 		VarDumpLimit:                   options.VarDumpLimit,
 		NoColor:                        options.NoColor,
 		UpdateTemplates:                options.UpdateTemplates,
+		UpdateTemplatesChannel:         options.UpdateTemplatesChannel,
 		JSONL:                          options.JSONL,
 		JSONRequests:                   options.JSONRequests,
 		OmitRawRequests:                options.OmitRawRequests,
@@ -593,6 +728,7 @@ func (options *Options) Copy() *Options {
 		JSONLExport:                    options.JSONLExport,
 		PDFExport:                      options.PDFExport,
 		Redact:                         options.Redact,
+		NoRedact:                       options.NoRedact,
 		EnableProgressBar:              options.EnableProgressBar,
 		TemplateDisplay:                options.TemplateDisplay,
 		TemplateList:                   options.TemplateList,
@@ -629,8 +765,10 @@ func (options *Options) Copy() *Options {
 		Interface:                      options.Interface,
 		SourceIP:                       options.SourceIP,
 		AttackType:                     options.AttackType,
+		PayloadRandomOrder:             options.PayloadRandomOrder,
 		ResponseReadSize:               options.ResponseReadSize,
 		ResponseSaveSize:               options.ResponseSaveSize,
+		RequestSaveSize:                options.RequestSaveSize,
 		HealthCheck:                    options.HealthCheck,
 		InputReadTimeout:               options.InputReadTimeout,
 		DisableStdin:                   options.DisableStdin,
@@ -695,6 +833,9 @@ func (options *Options) Copy() *Options {
 		DASTServerToken:                options.DASTServerToken,
 		DASTServerAddress:              options.DASTServerAddress,
 		DASTReport:                     options.DASTReport,
+		DASTProxy:                      options.DASTProxy,
+		DASTProxyAddress:               options.DASTProxyAddress,
+		DASTProxyAuth:                  options.DASTProxyAuth,
 		Scope:                          options.Scope,
 		OutOfScope:                     options.OutOfScope,
 		HttpApiEndpoint:                options.HttpApiEndpoint,
@@ -817,6 +958,7 @@ func DefaultOptions() *Options {
 		MaxHostError:               30,
 		ResponseReadSize:           10 * unitutils.Mega,
 		ResponseSaveSize:           unitutils.Mega,
+		RequestSaveSize:            32 * unitutils.Kilo,
 		ExecutionId:                xid.New().String(),
 		Logger:                     &gologger.Logger{},
 	}
@@ -861,6 +1003,11 @@ func (options *Options) defaultLoadHelperFile(helperFile, templatePath string, c
 		if err != nil {
 			return nil, err
 		}
+		// reject hard-linked regular files, whose inode can alias content
+		// outside the allowed directory.
+		if filepathutil.IsHardLinkedRegularFile(absPath) {
+			return nil, errkit.Newf("access to helper file %v denied (hard link)", helperFile)
+		}
 		helperFile = absPath
 	}
 	f, err := os.Open(helperFile)
@@ -887,22 +1034,35 @@ func (o *Options) GetValidAbsPath(helperFilePath, templatePath string) (string, 
 		}
 	}
 
-	// CleanPath resolves using CWD and cleans the path
-	helperFilePath, err = fileutil.CleanPath(helperFilePath)
-	if err != nil {
-		return "", errkit.Wrapf(err, "could not clean helper file path %v", helperFilePath)
-	}
-
-	templatePath, err = fileutil.CleanPath(templatePath)
+	// templatePath must be absolute for the rule-2 sandbox checks below.
+	cleanedTemplatePath, err := fileutil.CleanPath(templatePath)
 	if err != nil {
 		return "", errkit.Wrapf(err, "could not clean template path %v", templatePath)
 	}
 
+	// Resolve relative helper paths against the template's own directory
+	// rather than the process CWD. fileutil.CleanPath on a relative path
+	// uses os.Getwd(), which silently turns a helper reference like
+	// "payloads.txt" into "<cwd>/payloads.txt"; that disagrees with how
+	// templates expect helpers to be looked up (relative to the template
+	// file itself) and makes rule 2 effectively unreachable unless the
+	// process happens to be running from the template's directory.
+	cleanedHelperPath := helperFilePath
+	if !filepath.IsAbs(cleanedHelperPath) {
+		cleanedHelperPath = filepath.Join(filepath.Dir(cleanedTemplatePath), cleanedHelperPath)
+	}
+	cleanedHelperPath, err = fileutil.CleanPath(cleanedHelperPath)
+	if err != nil {
+		return "", errkit.Wrapf(err, "could not clean helper file path %v", helperFilePath)
+	}
+
 	// As per rule 2, if template and helper file exist in same directory or helper file existed in any child dir of template dir
-	// and both of them are present in user home directory, allow it
-	// Review: should we keep this rule ? add extra option to disable this ?
-	if isHomeDir(helperFilePath) && isHomeDir(templatePath) && strings.HasPrefix(filepath.Dir(helperFilePath), filepath.Dir(templatePath)) {
-		return helperFilePath, nil
+	// and both of them are present in user home directory, allow it.
+	// The case where the template's own directory is the home directory root is
+	// refused so it does not expand the allowed directory to the whole home dir.
+	templateDir := filepath.Dir(cleanedTemplatePath)
+	if isHomeDir(cleanedHelperPath) && isHomeDir(cleanedTemplatePath) && !isHomeDirRoot(templateDir) && filepathutil.IsPathWithinDirectory(cleanedHelperPath, templateDir) {
+		return cleanedHelperPath, nil
 	}
 
 	// all other cases are denied
@@ -926,5 +1086,32 @@ func (options *Options) GetExecutionID() string {
 // isHomeDir checks if given is home directory
 func isHomeDir(path string) bool {
 	homeDir := folderutil.HomeDirOrDefault("")
-	return strings.HasPrefix(path, homeDir)
+	if homeDir == "" {
+		return false
+	}
+	return filepathutil.IsPathWithinDirectory(path, homeDir)
+}
+
+// isHomeDirRoot reports whether path resolves to the user's home directory root
+// itself (as opposed to a subdirectory of it).
+func isHomeDirRoot(path string) bool {
+	homeDir := folderutil.HomeDirOrDefault("")
+	if homeDir == "" || path == "" {
+		return false
+	}
+	absHome, err := filepath.Abs(homeDir)
+	if err != nil {
+		return false
+	}
+	absPath, err := filepath.Abs(path)
+	if err != nil {
+		return false
+	}
+	if resolved, err := filepath.EvalSymlinks(absPath); err == nil {
+		absPath = resolved
+	}
+	if resolved, err := filepath.EvalSymlinks(absHome); err == nil {
+		absHome = resolved
+	}
+	return filepath.Clean(absPath) == filepath.Clean(absHome)
 }

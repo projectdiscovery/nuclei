@@ -1,0 +1,29 @@
+id: redis-lua-script
+
+info:
+  name: Redis RunLuaScript - Detect
+  author: DhiyaneshDK
+  severity: info
+
+javascript:
+  - code: |
+      const redis = require('nuclei/redis');
+      // Set a key via KEYS with a string and a numeric arg via ARGV: validates
+      // that keys are passed through and non-string args are not dropped
+      redis.RunLuaScript(Host, Port, Password, 'return redis.call("set", KEYS[1], ARGV[1] .. ":" .. ARGV[2])', ['testkey'], ['testvalue', 123]);
+
+      // Read the value back via KEYS and return it as the response so the
+      // matcher can assert the combined string was stored correctly
+      redis.RunLuaScript(Host, Port, Password, 'return redis.call("get", KEYS[1])', ['testkey'], []);
+
+    args:
+      Host: "{{Host}}"
+      Port: "6379"
+      # must match the --requirepass value of the dockerized redis instance
+      # started by internal/tests/integration/javascript_test.go
+      Password: "iamadmin"
+
+    matchers:
+      - type: dsl
+        dsl:
+          - 'success == true && contains(response, "testvalue:123")'
