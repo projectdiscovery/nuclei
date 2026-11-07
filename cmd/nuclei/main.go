@@ -55,6 +55,17 @@ var (
 	inlineSecretsTempMu  sync.Mutex
 )
 
+// normalizeHeaderValue trims a -H value and drops it when the whole line is a
+// "#" comment. The goflags default strips inline comments, which cut values
+// such as "Cookie: color=#fff" at the "#".
+func normalizeHeaderValue(s string) string {
+	s = strings.TrimSpace(s)
+	if strings.HasPrefix(s, "#") {
+		return ""
+	}
+	return s
+}
+
 func main() {
 	options.Logger = gologger.DefaultLogger
 
@@ -255,6 +266,11 @@ func readConfig() *goflags.FlagSet {
 	var pdcpAuth string
 	var fuzzFlag bool
 
+	// FileStringSliceOptions as set up by runner.ConfigureOptions, but keeping
+	// "#" inside -H values
+	headerSliceOptions := goflags.FileStringSliceOptions
+	headerSliceOptions.Normalize = normalizeHeaderValue
+
 	flagSet := goflags.NewFlagSet()
 	flagSet.CaseSensitive = true
 	flagSet.SetDescription(`Nuclei is a fast, template based vulnerability scanner focusing
@@ -271,10 +287,10 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.StringSliceVarP(&options.Targets, "target", "u", nil, "target URLs/hosts to scan", goflags.CommaSeparatedStringSliceOptions),
 		flagSet.StringVarP(&options.TargetsFilePath, "list", "l", "", "path to file containing a list of target URLs/hosts to scan (one per line)"),
 		flagSet.StringVarP(&options.InlineTargetsList, "targets-inline", "", "", "inline multiline target list (for use in template profiles)"),
-		flagSet.StringSliceVarP(&options.ExcludeTargets, "exclude-hosts", "eh", nil, "hosts to exclude to scan from the input list (ip, cidr, hostname)", goflags.FileCommaSeparatedStringSliceOptions),
+		flagSet.StringSliceVarP(&options.ExcludeTargets, "exclude-hosts", "eh", nil, "hosts to exclude to scan from the input list (ip, cidr, hostname)", goflags.FileNormalizedOriginalStringSliceOptions),
 		flagSet.StringVar(&options.Resume, "resume", "", "resume scan from and save to specified file (clustering will be disabled)"),
 		flagSet.BoolVarP(&options.ScanAllIPs, "scan-all-ips", "sa", false, "scan all the IP's associated with dns record"),
-		flagSet.StringSliceVarP(&options.IPVersion, "ip-version", "iv", nil, "IP version to scan of hostname (4,6) - (default 4)", goflags.CommaSeparatedStringSliceOptions),
+		flagSet.StringSliceVarP(&options.IPVersion, "ip-version", "iv", nil, "IP version to scan of hostname (4,6); default uses dialer fallback, -sa scans all addresses", goflags.CommaSeparatedStringSliceOptions),
 		flagSet.BoolVarP(&options.DisableURLNormalization, "disable-url-normalization", "dun", false, "keep targets exactly as supplied instead of collapsing urls that address the same resource"),
 		flagSet.IntVarP(&options.MaxURLsPerPattern, "max-urls-per-pattern", "mup", 0, "scan at most this many urls sharing one structural shape, e.g. /user/1 and /user/2 (0 to scan all)"),
 	)
@@ -309,7 +325,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.BoolVarP(&options.EnableGlobalMatchersTemplates, "enable-global-matchers", "egm", false, "enable loading global matchers templates"),
 		flagSet.BoolVar(&options.EnableFileTemplates, "file", false, "enable loading file templates"),
 		flagSet.BoolVar(&options.EnableLLM, "llm", false, "enable llm matchers and extractors (semantic matching)"),
-		flagSet.StringVar(&options.LLMProvider, "llm-provider", "openai", "llm provider for semantic matching (openai, ollama, llamacpp, vllm, lmstudio, groq, openrouter, together, orcarouter)"),
+		flagSet.StringVar(&options.LLMProvider, "llm-provider", "openai", "llm provider for semantic matching (openai, ollama, llamacpp, vllm, lmstudio, groq, openrouter, together, orcarouter, jev)"),
 		flagSet.StringVar(&options.LLMBaseURL, "llm-base-url", "", "openai-compatible endpoint for semantic matching (overrides -llm-provider, e.g. a local model)"),
 		flagSet.StringVar(&options.LLMModel, "llm-model", "", "model used for semantic matching"),
 		flagSet.IntVar(&options.LLMTimeout, "llm-timeout", 30, "time in seconds to wait for a single llm call"),
@@ -367,7 +383,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.IntVarP(&options.MaxRedirects, "max-redirects", "mr", 10, "max number of redirects to follow for http templates"),
 		flagSet.BoolVarP(&options.DisableRedirects, "disable-redirects", "dr", false, "disable redirects for http templates"),
 		flagSet.StringVarP(&options.ReportingConfig, "report-config", "rc", "", "nuclei reporting module configuration file"), // TODO merge into the config file or rename to issue-tracking
-		flagSet.StringSliceVarP(&options.CustomHeaders, "header", "H", nil, "custom header/cookie to include in all http request in header:value format (cli, file)", goflags.FileStringSliceOptions),
+		flagSet.StringSliceVarP(&options.CustomHeaders, "header", "H", nil, "custom header/cookie to include in all http request in header:value format (cli, file)", headerSliceOptions),
 		flagSet.RuntimeMapVarP(&options.Vars, "var", "V", nil, "custom vars in key=value format"),
 		flagSet.StringVarP(&options.ResolversFile, "resolvers", "r", "", "file containing resolver list for nuclei"),
 		flagSet.BoolVarP(&options.SystemResolvers, "system-resolvers", "sr", false, "use system DNS resolving as error fallback"),
@@ -472,6 +488,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.BoolVar(&options.PreflightPortScan, "preflight-portscan", false, "run preflight resolve + TCP portscan and filter targets before scanning (disabled by default)"),
 		flagSet.BoolVar(&options.DisableStdin, "no-stdin", false, "disable stdin processing"),
 		flagSet.BoolVar(&options.EnableHTTPCache, "http-cache", false, "enable HTTP cache (RFC 9111) for HTTP requests"),
+		flagSet.BoolVarP(&options.AutoCalibrate, "auto-calibrate", "ac", false, "drop HTTP matches on a host's catch-all page (answers missing paths with 2xx/3xx)"),
 	)
 
 	flagSet.CreateGroup("headless", "Headless",

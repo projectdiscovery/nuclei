@@ -217,6 +217,10 @@ type Options struct {
 	HostBackoff bool
 	// HostBackoffMax caps the per-host backoff delay.
 	HostBackoffMax time.Duration
+	// AutoCalibrate drops HTTP matches whose response is the page the host
+	// serves for any missing path. Opt-in, since it sends a few probes per host
+	// that has a match.
+	AutoCalibrate bool
 	// MaxURLsPerPattern caps how many targets sharing one structural shape
 	// (/user/1, /user/2, ...) are scanned. Zero, the default, scans every
 	// target: dropping one means never scanning it.
@@ -700,6 +704,7 @@ func (options *Options) Copy() *Options {
 		PerHostRateLimit:               options.PerHostRateLimit,
 		PerHostRateLimitPoolSize:       options.PerHostRateLimitPoolSize,
 		EnableHTTPCache:                options.EnableHTTPCache,
+		AutoCalibrate:                  options.AutoCalibrate,
 		LeaveDefaultPorts:              options.LeaveDefaultPorts,
 		AutomaticScan:                  options.AutomaticScan,
 		Silent:                         options.Silent,

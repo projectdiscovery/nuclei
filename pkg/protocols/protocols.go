@@ -39,6 +39,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/utils/excludematchers"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/variables"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/headless/engine"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/catchall"
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting"
 	"github.com/projectdiscovery/nuclei/v3/pkg/scan"
 	templateTypes "github.com/projectdiscovery/nuclei/v3/pkg/templates/types"
@@ -124,6 +125,8 @@ type ExecutorOptions struct {
 	// HostBackoff paces a host that signals it is being overloaded, so a scan
 	// slows down for it instead of being blocked outright. Nil disables it.
 	HostBackoff *hostbackoff.Governor
+	// CatchAll discounts HTTP matches on a host's catch-all page. Nil disables it.
+	CatchAll *catchall.Detector
 	// Stop execution once first match is found (Assigned while parsing templates)
 	// Note: this is different from Options.StopAtFirstMatch (Assigned from CLI option)
 	StopAtFirstMatch bool
@@ -403,6 +406,7 @@ func (e *ExecutorOptions) Copy() *ExecutorOptions {
 		HostErrorsCache:              e.HostErrorsCache,
 		InteractshScope:              e.InteractshScope,
 		HostBackoff:                  e.HostBackoff,
+		CatchAll:                     e.CatchAll,
 		StopAtFirstMatch:             e.StopAtFirstMatch,
 		Variables:                    e.Variables,
 		Constants:                    e.Constants,
@@ -714,6 +718,7 @@ func (e *ExecutorOptions) ApplyNewEngineOptions(n *ExecutorOptions) {
 	e.InteractshScope = n.InteractshScope
 	e.HostErrorsCache = n.HostErrorsCache
 	e.HostBackoff = n.HostBackoff
+	e.CatchAll = n.CatchAll
 	e.InputHelper = n.InputHelper
 	e.FuzzParamsFrequency = n.FuzzParamsFrequency
 	e.FuzzStatsDB = n.FuzzStatsDB

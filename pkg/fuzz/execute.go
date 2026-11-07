@@ -155,23 +155,14 @@ func (rule *Rule) Execute(input *ExecuteRuleInput) (err error) {
 	baseInteractURLs := append([]string(nil), input.InteractURLs...)
 	if rule.generator == nil {
 		for _, component := range finalComponentList {
-			var dataKeys map[string]struct{}
-
 			optionVars := rule.options.Options.Vars.AsMap()
 			constants := rule.options.Constants
 			dataValues := rule.options.NewVariablesScope(baseValues, optionVars, constants)
-			// get vars from variables while replacing interactsh urls
+			// Render variables once, allocating their interactsh URLs. The
+			// output may contain runtime data, so it is never rendered again.
 			evaluation := rule.options.Variables.EvaluateWithInteractshScope(dataValues, rule.options.Interactsh)
-			evaluatedValues, interactURLs := evaluation.Values, evaluation.InteractURLs
-			input.Values, dataKeys = mergeFuzzValueLayers(
-				fuzzValueLayer{values: evaluatedValues, kind: fuzzValueTemplate},
-				fuzzValueLayer{values: baseValues, kind: fuzzValueData},
-				fuzzValueLayer{values: optionVars, kind: fuzzValueData},
-				fuzzValueLayer{values: constants, kind: fuzzValueData},
-			)
-			// Replace template-text interactsh markers without evaluating runtime values.
-			input.Values, interactURLs = rule.evaluateVarsWithInteractsh(input.Values, interactURLs, dataKeys)
-			input.InteractURLs = mergeInteractURLs(baseInteractURLs, interactURLs)
+			input.Values = generators.MergeMaps(evaluation.Values, baseValues, optionVars, constants)
+			input.InteractURLs = mergeInteractURLs(baseInteractURLs, evaluation.InteractURLs)
 
 			err := rule.executeRuleValues(input, component)
 			if err != nil {
@@ -240,15 +231,17 @@ func (rule *Rule) prepareGeneratorValues(values, baseValues map[string]interface
 	evaluation := rule.options.Variables.EvaluateWithInteractshScope(evaluationValues, rule.options.Interactsh)
 	evaluatedValues, interactURLs := evaluation.Values, evaluation.InteractURLs
 	inputValues, dataKeys := mergeFuzzValueLayers(
+		fuzzValueLayer{values: evaluatedValues, kind: fuzzValueData},
 		fuzzValueLayer{values: values, kind: fuzzValueTemplate},
-		fuzzValueLayer{values: evaluatedValues, kind: fuzzValueTemplate},
 		fuzzValueLayer{values: baseValues, kind: fuzzValueData},
 		fuzzValueLayer{values: optionVars, kind: fuzzValueData},
 		fuzzValueLayer{values: constants, kind: fuzzValueData},
 	)
 
 	// Generator values are template-authored payload definitions until this
-	// render. Runtime/base, CLI option, and constant values remain data.
+	// render. Rendered variables, runtime/base, CLI option, and constant
+	// values remain data. Payloads layer over variables so a payload that
+	// shares a variable's name is still rendered.
 	return rule.evaluateVarsWithInteractsh(inputValues, interactURLs, dataKeys)
 }
 
@@ -326,7 +319,7 @@ func (rule *Rule) evaluateVars(input string) (string, error) {
 func (rule *Rule) evaluateVarsWithInteractsh(data map[string]interface{}, interactshUrls []string, dataKeys map[string]struct{}) (map[string]interface{}, []string) {
 	// Check if Interactsh options are configured
 	if rule.options.Interactsh != nil {
-		data = maps.Clone(data)
+		rendered := maps.Clone(data)
 
 		interactshUrlsMap := make(map[string]struct{})
 		for _, url := range interactshUrls {
@@ -335,7 +328,8 @@ func (rule *Rule) evaluateVarsWithInteractsh(data map[string]interface{}, intera
 
 		interactshUrls = mapsutil.GetKeys(interactshUrlsMap)
 
-		// Iterate through template-text data to replace Interactsh URL markers.
+		// Render each template-text value against the unrendered input, so
+		// the result does not depend on map iteration order.
 		for k, v := range data {
 			if _, ok := dataKeys[k]; ok {
 				continue
@@ -349,7 +343,7 @@ func (rule *Rule) evaluateVarsWithInteractsh(data map[string]interface{}, intera
 				InteractURLs: interactshUrls,
 			})
 			if err == nil {
-				data[k] = got.Text
+				rendered[k] = got.Text
 				for _, url := range got.InteractURLs {
 					if _, ok := interactshUrlsMap[url]; ok {
 						continue
@@ -360,6 +354,8 @@ func (rule *Rule) evaluateVarsWithInteractsh(data map[string]interface{}, intera
 				}
 			}
 		}
+
+		data = rendered
 	}
 
 	return data, interactshUrls

@@ -127,6 +127,10 @@ type InternalWrappedEvent struct {
 	// Only applicable if interactsh is used
 	// This is used to avoid duplicate successful interactsh events
 	InteractshMatched atomic.Bool
+	// CatchAll reports whether the response is the page the host serves for
+	// any missing path. It probes the host on first call, so it is only asked
+	// once a template matched. Nil when calibration is off or does not apply.
+	CatchAll func() bool
 }
 
 func (iwe *InternalWrappedEvent) CloneShallow() *InternalWrappedEvent {
@@ -135,6 +139,7 @@ func (iwe *InternalWrappedEvent) CloneShallow() *InternalWrappedEvent {
 		Results:         nil,
 		OperatorsResult: nil,
 		UsesInteractsh:  iwe.UsesInteractsh,
+		CatchAll:        iwe.CatchAll,
 	}
 }
 
@@ -244,6 +249,20 @@ type ResultEvent struct {
 	// so they are redacted like the raw request and response. It is bookkeeping,
 	// so no exporter writes it; mongo serializes with bson tags, not json ones.
 	TemplateInfo *model.Info `json:"-" bson:"-"`
+}
+
+// MarshalJSON encodes the event with every map nested in Metadata keyed by
+// strings. Metadata can hold javascript args decoded from template YAML.
+func (r ResultEvent) MarshalJSON() ([]byte, error) {
+	// resultEvent has the fields of ResultEvent but not this method, so marshaling it does not recurse.
+	type resultEvent ResultEvent
+	encoded := resultEvent(r)
+	metadata, err := types.ToJSONMap(r.Metadata)
+	if err != nil {
+		return nil, err
+	}
+	encoded.Metadata = metadata
+	return json.Marshal(encoded)
 }
 
 type IssueTrackerMetadata struct {

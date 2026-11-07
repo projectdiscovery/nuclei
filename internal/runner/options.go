@@ -228,24 +228,13 @@ func ValidateOptions(options *types.Options) error {
 		}
 	}
 
-	// verify that a valid ip version type was selected (4, 6)
-	if len(options.IPVersion) == 0 {
-		// add ipv4 as default
-		options.IPVersion = append(options.IPVersion, "4")
-	}
-	var useIPV4, useIPV6 bool
+	// An empty -iv leaves one unpinned target so the dialer can fall back
+	// between address families. -sa resolves and scans every selected address.
+	// Explicit -iv 4, -iv 6 and -iv 4,6 retain their usual selection semantics.
 	for _, ipv := range options.IPVersion {
-		switch ipv {
-		case "4":
-			useIPV4 = true
-		case "6":
-			useIPV6 = true
-		default:
+		if ipv != "4" && ipv != "6" {
 			return fmt.Errorf("unsupported ip version: %s", ipv)
 		}
-	}
-	if !useIPV4 && !useIPV6 {
-		return errors.New("ipv4 and/or ipv6 must be selected")
 	}
 	return nil
 }

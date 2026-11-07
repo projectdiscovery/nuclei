@@ -10,6 +10,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -17,6 +18,9 @@ import (
 	"time"
 
 	"github.com/julienschmidt/httprouter"
+	"github.com/projectdiscovery/gologger"
+	"github.com/projectdiscovery/gologger/levels"
+	"github.com/projectdiscovery/gologger/writer"
 	"github.com/projectdiscovery/nuclei/v3/internal/tests/testutils"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
@@ -36,6 +40,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http"
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates"
 	templatesigner "github.com/projectdiscovery/nuclei/v3/pkg/templates/signer"
+	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils/stats"
 	"github.com/projectdiscovery/nuclei/v3/pkg/workflows"
 	"github.com/projectdiscovery/ratelimit"
@@ -339,6 +344,378 @@ workflows:
 	require.Empty(t, got.CompiledWorkflow.Workflows[0].Executers)
 	require.Equal(t, initialUnverifiedJavascript+1, stats.GetValue(templates.SkippedUnverifiedJavascriptTemplateStats))
 	require.Equal(t, initialUnverified, stats.GetValue(templates.SkippedUnverifiedTemplateStats))
+}
+
+func Test_ParseWorkflowLoadsTemplatesWithSubtemplatesOnlyForFilteredSubtemplates(t *testing.T) {
+	dir := t.TempDir()
+	path := func(id string) string { return filepath.Join(dir, id+".yaml") }
+	for _, id := range []string{"BA", "BB", "BC", "BC_A", "L1", "L2", "L3", "L4"} {
+		err := os.WriteFile(path(id), []byte(fmt.Sprintf(`id: %s
+
+info:
+  name: %s
+  author: pdteam
+  severity: info
+  tags: %s-tag
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/%s"
+`, id, id, strings.ToLower(id), id)), 0o600)
+		require.NoError(t, err)
+	}
+	workflowPath := filepath.Join(dir, "workflow.yaml")
+	err := os.WriteFile(workflowPath, []byte(fmt.Sprintf(`id: workflow-filters
+
+info:
+  name: Workflow Filters
+  author: pdteam
+  severity: info
+
+workflows:
+  - template: %q
+    subtemplates:
+      - template: %q
+      - template: %q
+  - template: %q
+    subtemplates:
+      - template: %q
+  - template: %q
+    subtemplates:
+      - template: %q
+        subtemplates:
+          - template: %q
+  - template: %q
+    matchers:
+      - name: found
+        subtemplates:
+          - template: %q
+`, path("BA"), path("L1"), path("L2"), path("BB"), path("L3"), path("BC"), path("BC_A"), path("L4"), path("BB"), path("L1"))), 0o600)
+	require.NoError(t, err)
+
+	tests := []struct {
+		name    string
+		ids     []string
+		tags    []string
+		authors []string
+		loaded  []string
+	}{
+		{name: "no filters", loaded: []string{"BA", "L1", "L2", "BB", "L3", "BC", "BC_A", "L4", "BB", "L1"}},
+		{name: "id of a subtemplate", ids: []string{"L1"}, loaded: []string{"BA", "L1", "BB", "L1"}},
+		{name: "tag of a subtemplate", tags: []string{"l1-tag"}, loaded: []string{"BA", "L1", "BB", "L1"}},
+		{name: "id of a nested subtemplate", ids: []string{"L4"}, loaded: []string{"BC", "BC_A", "L4"}},
+		{name: "id of a template with subtemplates", ids: []string{"BB"}, loaded: []string{"BB", "BB"}},
+		{name: "author of no template", authors: []string{"nobody"}},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			setup()
+			options := executerOpts.Options
+			previousIds, previousTags, previousAuthors := options.IncludeIds, options.Tags, options.Authors
+			defer func() {
+				options.IncludeIds, options.Tags, options.Authors = previousIds, previousTags, previousAuthors
+			}()
+			options.IncludeIds, options.Tags, options.Authors = tc.ids, tc.tags, tc.authors
+			workflowLoader, err := workflow.NewLoader(executerOpts)
+			require.NoError(t, err)
+			executerOpts.WorkflowLoader = workflowLoader
+
+			got, err := templates.Parse(workflowPath, nil, executerOpts)
+			require.NoError(t, err)
+			require.NotNil(t, got.CompiledWorkflow)
+
+			var loaded []string
+			var walk func(steps []*workflows.WorkflowTemplate)
+			walk = func(steps []*workflows.WorkflowTemplate) {
+				for _, step := range steps {
+					if len(step.Executers) > 0 {
+						loaded = append(loaded, strings.TrimSuffix(filepath.Base(step.Template), ".yaml"))
+					}
+					walk(step.Subtemplates)
+					for _, matcher := range step.Matchers {
+						walk(matcher.Subtemplates)
+					}
+				}
+			}
+			walk(got.CompiledWorkflow.Workflows)
+			require.Equal(t, tc.loaded, loaded)
+		})
+	}
+}
+
+func Test_ParseWorkflowLoadsStepsOfFilteredSubtemplatesUnlessExcluded(t *testing.T) {
+	// tags steps search the templates directory
+	templatesDir := t.TempDir()
+	cfg := config.DefaultConfig
+	previousTemplatesDir := cfg.TemplatesDirectory
+	t.Cleanup(func() { cfg.SetTemplatesDir(previousTemplatesDir) })
+	cfg.SetTemplatesDir(templatesDir)
+
+	path := func(id string) string { return filepath.Join(templatesDir, id+".yaml") }
+	for _, tpl := range []struct{ id, severity, tag string }{
+		{"BA", "low", "ba-tag"},
+		{"L1", "info", "l1-tag"},
+		{"other", "info", "other-tag"},
+	} {
+		err := os.WriteFile(path(tpl.id), fmt.Appendf(nil, `id: %s
+
+info:
+  name: %s
+  author: pdteam
+  severity: %s
+  tags: %s
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/%s"
+`, tpl.id, tpl.id, tpl.severity, tpl.tag, tpl.id), 0o600)
+		require.NoError(t, err)
+	}
+	workflowPath := filepath.Join(t.TempDir(), "workflow.yaml")
+	err := os.WriteFile(workflowPath, fmt.Appendf(nil, `id: workflow-step-filters
+
+info:
+  name: Workflow Step Filters
+  author: pdteam
+  severity: info
+
+workflows:
+  - tags: ba-tag
+    subtemplates:
+      - template: %q
+  - template: %q
+    subtemplates:
+      - template: %q
+`, path("L1"), path("BA"), path("L1")), 0o600)
+	require.NoError(t, err)
+
+	tests := []struct {
+		name   string
+		filter func(options *types.Options)
+		// executers of the tags step, its subtemplate, the template step and
+		// its subtemplate
+		loaded []int
+	}{
+		{name: "no filters", loaded: []int{1, 1, 1, 1}},
+		{name: "id of the subtemplate", filter: func(o *types.Options) {
+			o.IncludeIds = []string{"L1"}
+		}, loaded: []int{1, 1, 1, 1}},
+		{name: "tag of the subtemplate", filter: func(o *types.Options) {
+			o.Tags = []string{"l1-tag"}
+		}, loaded: []int{1, 1, 1, 1}},
+		{name: "id of the step template", filter: func(o *types.Options) {
+			o.IncludeIds = []string{"BA"}
+		}, loaded: []int{1, 0, 1, 0}},
+		{name: "excluded tag of the step template", filter: func(o *types.Options) {
+			o.IncludeIds, o.ExcludeTags = []string{"L1"}, []string{"ba-tag"}
+		}, loaded: []int{0, 1, 0, 1}},
+		{name: "included excluded tag of the step template", filter: func(o *types.Options) {
+			o.IncludeIds, o.ExcludeTags, o.IncludeTags = []string{"L1"}, []string{"ba-tag"}, []string{"ba-tag"}
+		}, loaded: []int{1, 1, 1, 1}},
+		{name: "excluded id of the step template", filter: func(o *types.Options) {
+			o.IncludeIds, o.ExcludeIds = []string{"L1"}, []string{"BA"}
+		}, loaded: []int{0, 1, 0, 1}},
+		{name: "excluded id of the step template and its subtemplate", filter: func(o *types.Options) {
+			o.IncludeIds, o.ExcludeIds = []string{"BA", "L1"}, []string{"BA"}
+		}, loaded: []int{0, 1, 0, 1}},
+		{name: "excluded id of the included step template", filter: func(o *types.Options) {
+			o.IncludeIds, o.ExcludeIds = []string{"BA"}, []string{"BA"}
+		}, loaded: []int{0, 0, 0, 0}},
+		// a step does not report its own results, so its severity only
+		// matters when no subtemplate loaded
+		{name: "excluded severity of the step template", filter: func(o *types.Options) {
+			o.ExcludeSeverities = severity.Severities{severity.Low}
+		}, loaded: []int{1, 1, 1, 1}},
+		{name: "excluded severity of the subtemplate", filter: func(o *types.Options) {
+			o.ExcludeSeverities = severity.Severities{severity.Info}
+		}, loaded: []int{1, 0, 1, 0}},
+		{name: "excluded severity of the step template and its subtemplate", filter: func(o *types.Options) {
+			o.ExcludeSeverities = severity.Severities{severity.Low, severity.Info}
+		}, loaded: []int{0, 0, 0, 0}},
+		{name: "excluded path of the step template", filter: func(o *types.Options) {
+			o.IncludeIds, o.ExcludedTemplates = []string{"L1"}, []string{path("BA")}
+		}, loaded: []int{0, 1, 0, 1}},
+		{name: "author of no template", filter: func(o *types.Options) {
+			o.Authors = []string{"nobody"}
+		}, loaded: []int{0, 0, 0, 0}},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			setup()
+			options := executerOpts.Options.Copy()
+			if tc.filter != nil {
+				tc.filter(options)
+			}
+			executerOpts.Options = options
+			workflowLoader, err := workflow.NewLoader(executerOpts)
+			require.NoError(t, err)
+			executerOpts.WorkflowLoader = workflowLoader
+			warnings := recordWarnings(t)
+			skippedSteps := stats.GetValue(templates.SkippedWorkflowStepStats)
+
+			got, err := templates.Parse(workflowPath, nil, executerOpts)
+			require.NoError(t, err)
+			require.NotNil(t, got.CompiledWorkflow)
+			loaded := make([]int, 0, 2*len(got.CompiledWorkflow.Workflows))
+			for _, step := range got.CompiledWorkflow.Workflows {
+				loaded = append(loaded, len(step.Executers), len(step.Subtemplates[0].Executers))
+			}
+			require.Equal(t, tc.loaded, loaded)
+
+			// a step that loads nothing is counted, and with -v logged, as its
+			// loaded subtemplate will not run
+			var blockedSteps int64
+			for i, step := range []string{"tags ba-tag", path("BA")} {
+				blocked := loaded[2*i] == 0 && loaded[2*i+1] > 0
+				if blocked {
+					blockedSteps++
+				}
+				require.Equal(t, blocked, warnings.contain(workflowPath, step, "subtemplates will not run"), step)
+			}
+			require.Equal(t, blockedSteps, stats.GetValue(templates.SkippedWorkflowStepStats)-skippedSteps)
+		})
+	}
+}
+
+// warningRecorder records the warnings gologger writes.
+type warningRecorder struct {
+	mu    sync.Mutex
+	lines []string
+}
+
+// recordWarnings records the warnings gologger writes until t ends.
+func recordWarnings(t *testing.T) *warningRecorder {
+	t.Helper()
+	recorder := &warningRecorder{}
+	gologger.DefaultLogger.SetWriter(recorder)
+	gologger.DefaultLogger.SetMaxLevel(levels.LevelWarning)
+	t.Cleanup(func() {
+		// gologger's own defaults: it has no getter to save the previous ones
+		gologger.DefaultLogger.SetWriter(writer.NewCLI())
+		gologger.DefaultLogger.SetMaxLevel(levels.LevelInfo)
+	})
+	return recorder
+}
+
+func (w *warningRecorder) Write(data []byte, level levels.Level) {
+	if level != levels.LevelWarning {
+		return
+	}
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	w.lines = append(w.lines, string(data))
+}
+
+// contain reports whether a recorded warning contains all of parts.
+func (w *warningRecorder) contain(parts ...string) bool {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	return slices.ContainsFunc(w.lines, func(line string) bool {
+		return !slices.ContainsFunc(parts, func(part string) bool { return !strings.Contains(line, part) })
+	})
+}
+
+func Test_ParseWorkflowExcludesIdListedInExcludeTags(t *testing.T) {
+	dir := t.TempDir()
+	templatePath := filepath.Join(dir, "dup.yaml")
+	err := os.WriteFile(templatePath, []byte(`id: dup
+
+info:
+  name: dup
+  author: pdteam
+  severity: info
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}"
+`), 0o600)
+	require.NoError(t, err)
+
+	workflowPath := filepath.Join(dir, "workflow.yaml")
+	err = os.WriteFile(workflowPath, fmt.Appendf(nil, `id: wf
+
+info:
+  name: wf
+  author: pdteam
+
+workflows:
+  - template: %q
+`, templatePath), 0o600)
+	require.NoError(t, err)
+
+	tests := []struct {
+		name        string
+		excludeTags []string
+	}{
+		{name: "exclude id"},
+		{name: "exclude id and same tag", excludeTags: []string{"dup"}},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			setup()
+
+			options := executerOpts.Options.Copy()
+			options.ExcludeIds, options.ExcludeTags = []string{"dup"}, tc.excludeTags
+			executerOpts.Options = options
+			workflowLoader, err := workflow.NewLoader(executerOpts)
+			require.NoError(t, err)
+
+			executerOpts.WorkflowLoader = workflowLoader
+
+			got, err := templates.Parse(workflowPath, nil, executerOpts)
+			require.NoError(t, err)
+			require.NotNil(t, got.CompiledWorkflow)
+			require.Len(t, got.CompiledWorkflow.Workflows, 1)
+			require.Empty(t, got.CompiledWorkflow.Workflows[0].Executers)
+		})
+	}
+}
+
+func Test_ParseWorkflowLoadsTemplateWithUnknownMatcherCondition(t *testing.T) {
+	setup()
+	dir := t.TempDir()
+	templatePath := filepath.Join(dir, "template.yaml")
+	err := os.WriteFile(templatePath, []byte(`id: workflow-unknown-condition-template
+
+info:
+  name: Workflow Unknown Condition Template
+  author: pdteam
+  severity: info
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}"
+`), 0o600)
+	require.NoError(t, err)
+	workflowPath := filepath.Join(dir, "workflow.yaml")
+	err = os.WriteFile(workflowPath, []byte(fmt.Sprintf(`id: workflow-unknown-condition
+
+info:
+  name: Workflow Unknown Condition
+  author: pdteam
+  severity: info
+
+workflows:
+  - template: %q
+    matchers:
+      - name:
+          - a
+          - b
+        condition: xor
+        subtemplates:
+          - template: %q
+`, templatePath, templatePath)), 0o600)
+	require.NoError(t, err)
+
+	got, err := templates.Parse(workflowPath, nil, executerOpts)
+	require.NoError(t, err)
+	require.NotNil(t, got.CompiledWorkflow)
+	require.Len(t, got.CompiledWorkflow.Workflows, 1)
+	require.Len(t, got.CompiledWorkflow.Workflows[0].Executers, 1)
 }
 
 func TestParseTemplateExecutesJavascriptInitAfterVerification(t *testing.T) {

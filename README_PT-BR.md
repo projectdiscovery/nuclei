@@ -148,7 +148,7 @@ TARGET:
    -iv, -ip-version string[]     IP version to scan of hostname (4,6) - (default 4)
 
 TARGET-FORMAT:
-   -im, -input-mode string        mode of input file (list, burp, jsonl, yaml, openapi, swagger, http) (default "list")
+   -im, -input-mode string        mode of input file (list, burp, har, jsonl, yaml, openapi, swagger, http) (default "list")
    -ro, -required-only            use only required fields in input format when generating requests
    -sfv, -skip-format-validation  skip format validation (like missing vars) when parsing input file
    -vtt, -vars-text-templating    enable text templating for vars in input file (only for yaml input mode)
@@ -175,7 +175,7 @@ TEMPLATES:
    -egm, -enable-global-matchers          enable loading global matchers templates
    -file                                  enable loading file templates
    -llm                                   enable llm matchers and extractors (semantic matching)
-   -llm-provider string                   llm provider for semantic matching (openai, ollama, llamacpp, vllm, lmstudio, groq, openrouter, together, orcarouter) (default "openai")
+   -llm-provider string                   llm provider for semantic matching (openai, ollama, llamacpp, vllm, lmstudio, groq, openrouter, together, orcarouter, jev) (default "openai")
    -llm-base-url string                   openai-compatible endpoint for semantic matching (overrides -llm-provider, e.g. a local model)
    -llm-model string                      model used for semantic matching
    -llm-timeout int                       time in seconds to wait for a single llm call (default 30)

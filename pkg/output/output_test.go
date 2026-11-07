@@ -9,6 +9,8 @@ import (
 	"github.com/projectdiscovery/goflags"
 	"github.com/projectdiscovery/nuclei/v3/pkg/model"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
+	"github.com/projectdiscovery/nuclei/v3/pkg/utils/json"
+	"github.com/projectdiscovery/nuclei/v3/pkg/utils/yaml"
 	"github.com/stretchr/testify/require"
 	"go.mongodb.org/mongo-driver/bson"
 )
@@ -158,10 +160,82 @@ func TestResultEventKeepsTemplateInfoOutOfBSON(t *testing.T) {
 	require.Contains(t, doc, "info")
 }
 
+// Template YAML decodes nested maps with interface keys, in the info metadata and
+// in the javascript args a result carries as its metadata.
+func TestFormatJSONNestedYAMLMaps(t *testing.T) {
+	var template struct {
+		Info model.Info             `yaml:"info"`
+		Args map[string]interface{} `yaml:"args"`
+	}
+	err := yaml.Unmarshal([]byte(`
+info:
+  name: Nested metadata
+  author: repro
+  severity: info
+  metadata:
+    labels:
+      en: Hello
+    items:
+      - fr: Bonjour
+args:
+  Nested:
+    en: Hello
+`), &template)
+	require.NoError(t, err)
+
+	w, err := NewStandardWriter(&types.Options{JSONL: true})
+	require.NoError(t, err)
+	data, err := w.formatJSON(&ResultEvent{TemplateID: "nested-metadata", Info: template.Info, Metadata: template.Args})
+	require.NoError(t, err)
+
+	var decoded struct {
+		Info struct {
+			Metadata map[string]interface{} `json:"metadata"`
+		} `json:"info"`
+		Meta map[string]interface{} `json:"meta"`
+	}
+	require.NoError(t, json.Unmarshal(data, &decoded))
+	require.Equal(t, map[string]interface{}{
+		"labels": map[string]interface{}{"en": "Hello"},
+		"items":  []interface{}{map[string]interface{}{"fr": "Bonjour"}},
+	}, decoded.Info.Metadata)
+	require.Equal(t, map[string]interface{}{"Nested": map[string]interface{}{"en": "Hello"}}, decoded.Meta)
+}
+
 type testWriteCloser struct {
 	strings.Builder
 }
 
 func (w testWriteCloser) Close() error {
 	return nil
+}
+
+
+func TestFormatJSONSanitizesNestedMetadataMaps(t *testing.T) {
+	w, err := NewStandardWriter(&types.Options{})
+	require.NoError(t, err)
+
+	event := &ResultEvent{
+		TemplateID: "nested-metadata",
+		Type:       "file",
+		Host:       "target",
+		Matched:    "target/input.txt",
+		Info: model.Info{
+			Name: "Nested metadata",
+			Metadata: map[string]interface{}{
+				"labels": map[interface{}]interface{}{
+					"en": "Hello",
+					"nested_list": []interface{}{
+						map[interface{}]interface{}{
+							"inner_key": "inner_val",
+						},
+					},
+				},
+			},
+		},
+	}
+
+	data, err := w.formatJSON(event)
+	require.NoError(t, err, "formatJSON should not fail on nested map[interface{}]interface{} (#7971)")
+	require.Contains(t, string(data), `"labels":{"en":"Hello","nested_list":[{"inner_key":"inner_val"}]}`)
 }

@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/alecthomas/chroma/quick"
+	"github.com/alecthomas/chroma/v2/quick"
 	"github.com/ditashi/jsbeautifier-go/jsbeautifier"
 	"github.com/projectdiscovery/goja"
 

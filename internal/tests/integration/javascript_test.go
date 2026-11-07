@@ -46,6 +46,7 @@ var jsTestcases = []integrationCase{
 	{Path: "protocols/javascript/http-get.yaml", TestCase: &javascriptHTTPGet{}},
 	{Path: "protocols/javascript/http-client-flow.yaml", TestCase: &javascriptHTTPClientFlow{}},
 	{Path: "protocols/javascript/http-denied.yaml", TestCase: &javascriptHTTPDenied{}},
+	{Path: "protocols/javascript/ipmi.yaml", TestCase: &javascriptIPMI{}, DisableOn: javascriptDockerDisabled, Serial: true},
 	{Path: "protocols/javascript/rsync-test.yaml", TestCase: &javascriptRsyncTest{}, DisableOn: javascriptDockerDisabled, Serial: true},
 	{Path: "protocols/javascript/vnc-pass-brute.yaml", TestCase: &javascriptVncPassBrute{}, DisableOn: javascriptDockerDisabled, Serial: true},
 	{Path: "protocols/javascript/postgres-pass-brute.yaml", TestCase: &javascriptPostgresPassBrute{}, DisableOn: javascriptDockerDisabled, Serial: true},

@@ -310,6 +310,51 @@ Connection: close`, parseURL(t, "http://scanme.sh"), true, false)
 	require.NotContains(t, string(request.UnsafeRawBytes), "@Host:", "annotation lines must not be present in unsafe raw bytes")
 }
 
+func TestSplitAnnotations(t *testing.T) {
+	tests := []struct {
+		name        string
+		request     string
+		annotations string
+	}{
+		{name: "empty"},
+		{name: "no annotations", request: "GET / HTTP/1.1\r\nHost: a\r\n\r\n"},
+		{
+			name:        "leading annotations",
+			request:     "@Host: b\r\n@timeout: 5s\r\nGET / HTTP/1.1\r\nHost: a\r\n\r\n",
+			annotations: "@Host: b\r\n@timeout: 5s\r\n",
+		},
+		{
+			name:        "annotation lines after the request line",
+			request:     "@once\nPOST / HTTP/1.1\n@Host: c\n\nhello\n@Host: d\n",
+			annotations: "@once\n",
+		},
+		{
+			name:        "annotations without a request line",
+			request:     "@Host: b\n@once",
+			annotations: "@Host: b\n@once",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			annotations, rest := SplitAnnotations(tt.request)
+			require.Equal(t, tt.annotations, annotations)
+			require.Equal(t, tt.request, annotations+rest)
+		})
+	}
+}
+
+func TestParseUnsafeRequestKeepsAnnotationLinesInBody(t *testing.T) {
+	const (
+		head = "POST /foo HTTP/1.1\nHost: {{Hostname}}\n\n"
+		body = "hello\n@Host: decoy.example\n"
+	)
+	request, err := Parse("@Host: honey.scanme.sh\n"+head+body, parseURL(t, "http://scanme.sh"), true, false)
+	require.NoError(t, err)
+	require.Equal(t, head+body, string(request.UnsafeRawBytes))
+	require.Equal(t, body, request.Data)
+}
+
 func TestTryFillCustomHeaders(t *testing.T) {
 	testValue := "GET /manager/html HTTP/1.1\r\nHost: Test\r\n"
 	expected := "GET /test/manager/html HTTP/1.1\r\nHost: Test\r\ntest: test\r\n"
