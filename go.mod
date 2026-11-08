@@ -18,7 +18,7 @@ require (
 	github.com/alecthomas/chroma/v2 v2.27.0
 	github.com/alexsnet/go-vnc v0.1.0
 	github.com/alitto/pond v1.9.2
-	github.com/andybalholm/brotli v1.2.0
+	github.com/andybalholm/brotli v1.2.7
 	github.com/andygrunwald/go-jira v1.16.1
 	github.com/antchfx/htmlquery v1.3.7
 	github.com/antchfx/xmlquery v1.4.4
@@ -63,7 +63,7 @@ require (
 	github.com/jhump/protoreflect v1.17.0
 	github.com/julienschmidt/httprouter v1.3.0
 	github.com/kitabisa/go-ci v1.0.3
-	github.com/klauspost/compress v1.18.7
+	github.com/klauspost/compress v1.20.2
 	github.com/leslie-qiwa/flat v0.0.0-20230424180412-f9d1cf014baa
 	github.com/lib/pq v1.12.3
 	github.com/logrusorgru/aurora/v4 v4.0.0
@@ -129,14 +129,14 @@ require (
 	go.mongodb.org/mongo-driver v1.17.9
 	go.uber.org/multierr v1.11.0
 	golang.org/x/exp v0.0.0-20260527015227-08cc5374adb3
-	golang.org/x/net v0.59.0
+	golang.org/x/net v0.62.0
 	golang.org/x/oauth2 v0.36.0
-	golang.org/x/sync v0.23.0
-	golang.org/x/sys v0.48.0
-	golang.org/x/term v0.46.0
-	golang.org/x/text v0.42.0
+	golang.org/x/sync v0.24.0
+	golang.org/x/sys v0.49.0
+	golang.org/x/term v0.47.0
+	golang.org/x/text v0.43.0
 	golang.org/x/time v0.15.0
-	golang.org/x/tools v0.49.0
+	golang.org/x/tools v0.51.0
 	google.golang.org/grpc v1.83.2
 	google.golang.org/protobuf v1.36.11
 	gopkg.in/yaml.v3 v3.0.1
@@ -455,7 +455,7 @@ require (
 	go4.org v0.0.0-20230225012048-214862532bf5 // indirect
 	goftp.io/server/v2 v2.0.1 // indirect
 	golang.org/x/arch v0.3.0 // indirect
-	golang.org/x/crypto v0.57.0 // indirect
+	golang.org/x/crypto v0.58.0 // indirect
 	golang.org/x/mod v0.41.0 // indirect
 	google.golang.org/api v0.264.0 // indirect
 	google.golang.org/genproto v0.0.0-20260128011058-8636f8732409 // indirect
