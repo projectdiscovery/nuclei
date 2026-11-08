@@ -46,6 +46,7 @@ export class NetConn {
     constructor() {}
     /**
     * Close closes the connection.
+    * Close does nothing if no connection is open.
     * @example
     * ```javascript
     * const net = require('nuclei/net');

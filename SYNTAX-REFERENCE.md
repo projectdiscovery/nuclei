@@ -530,6 +530,16 @@ Description of the template.
 
 You can go in-depth here on what the template actually does.
 
+Description, impact and remediation may hold {{placeholders}} filled for
+each finding: named extractors, payloads, variables and DSL helpers
+(network helpers excluded), and the result fields host, port, ip, url,
+scheme, path, matched-at, matcher-name and extractor-name, which win over
+values of the same name. Use join(", ", name) for an extractor with
+several values, and brackets for a hyphenated name inside a helper:
+to_upper([matcher-name]). Unknown placeholders stay as written, and so
+does a field whose expression fails. Global matcher templates match on
+other templates' responses, so only the result fields fill their text.
+
 
 
 Examples:
@@ -541,6 +551,10 @@ description: Bower is a package manager which stores package information in the 
 
 ```yaml
 description: Subversion ALM for the enterprise before 8.8.2 allows reflected XSS at multiple locations
+```
+
+```yaml
+description: Redis {{version}} on {{host}}:{{port}} accepts the default password
 ```
 
 
@@ -558,6 +572,8 @@ description: Subversion ALM for the enterprise before 8.8.2 allows reflected XSS
 Impact of the template.
 
 You can go in-depth here on impact of the template.
+
+Supports the same placeholders as description.
 
 
 
@@ -664,6 +680,8 @@ Classification contains classification information about the template.
 Remediation steps for the template.
 
 You can go in-depth here on how to mitigate the problem found by this template.
+
+Supports the same placeholders as description.
 
 
 
@@ -1011,6 +1029,7 @@ Part Definitions:
 - <code>headers_from_response</code> - HTTP response headers in name:value format
 - <code>tls_version</code> - TLS version negotiated for the HTTP connection
 - <code>cipher</code> - TLS cipher suite negotiated for the HTTP connection
+- <code>key_exchange</code> - TLS key exchange group negotiated for the HTTP connection
 - <code>sni</code> - SNI value used in the TLS handshake
 - <code>subject_cn</code> - Leaf certificate subject common name
 - <code>subject_dn</code> - Leaf certificate subject distinguished name
@@ -2481,6 +2500,136 @@ xpath:
 
 <div class="dd">
 
+<code>prompt</code>  <i>string</i>
+
+</div>
+<div class="dt">
+
+Prompt is the natural-language question for an llm matcher. The model
+judges the selected response part and returns a verdict; the matcher
+fires when the verdict equals Expect with at least MinConfidence.
+
+{{...}} placeholders are interpolated from the template variables,
+-var and target. Response derived values are not interpolated, since
+the response is attacker controlled.
+
+
+
+Examples:
+
+
+```yaml
+prompt: Is this a working admin login form rather than a marketing page?
+```
+
+
+</div>
+
+<hr />
+
+<div class="dd">
+
+<code>expect</code>  <i>string</i>
+
+</div>
+<div class="dt">
+
+Expect is the verdict that counts as a match for an llm matcher.
+Defaults to "yes".
+
+</div>
+
+<hr />
+
+<div class="dd">
+
+<code>options</code>  <i>[]string</i>
+
+</div>
+<div class="dt">
+
+Options restricts the model to a fixed set of verdicts for an llm
+matcher. Defaults to yes/no.
+
+</div>
+
+<hr />
+
+<div class="dd">
+
+<code>min-confidence</code>  <i>float64</i>
+
+</div>
+<div class="dt">
+
+MinConfidence is the minimum confidence (0-1) an llm verdict needs to
+count as a match. Defaults to 0.
+
+</div>
+
+<hr />
+
+<div class="dd">
+
+<code>inputs</code>  <i>[]string</i>
+
+</div>
+<div class="dt">
+
+Inputs compares several responses instead of a single part, for
+checks that are about the difference between responses (blind
+boolean injection, user enumeration, IDOR). Each entry is resolved
+against the runtime values, so {{body_1}} and {{body_2}} work with
+req-condition, and each response is framed separately for the model.
+Part is ignored when Inputs is set.
+
+
+
+Examples:
+
+
+```yaml
+inputs:
+    - '{{body_1}}'
+    - '{{body_2}}'
+```
+
+
+</div>
+
+<hr />
+
+<div class="dd">
+
+<code>max-input-tokens</code>  <i>int</i>
+
+</div>
+<div class="dt">
+
+MaxInputTokens caps how much of the response part is sent to the model
+   for an llm matcher, as an approximate token count.
+
+</div>
+
+<hr />
+
+<div class="dd">
+
+<code>allow-sole</code>  <i>bool</i>
+
+</div>
+<div class="dt">
+
+AllowSole permits an llm matcher to be the only matcher on a high or
+critical template. Without it such a template is rejected, so a model is
+never the sole arbiter of a severe finding by accident.
+
+</div>
+
+<hr />
+
+<div class="dd">
+
 <code>encoding</code>  <i>string</i>
 
 </div>
@@ -2600,6 +2749,8 @@ Enum Values:
   - <code>dsl</code>
 
   - <code>xpath</code>
+
+  - <code>llm</code>
 </div>
 
 <hr />
@@ -3624,6 +3775,8 @@ Part Definitions:
 - <code>req</code> - Headless request made from the client
 - <code>duration</code> - Latest measured operation duration in seconds
 - <code>resp,body,data</code> - Headless response received from client (default)
+- <code>header,all_headers</code> - Headless response headers
+- <code>status_code</code> - Status code received from the server
 
 <hr />
 
@@ -4012,6 +4165,7 @@ Part Definitions:
 - <code>issuer_cn</code> - Issuer CN is the common name of the certificate issuer
 - <code>issuer_dn</code> - Issuer DN is the distinguished name of the certificate issuer
 - <code>issuer_org</code> - Issuer organization is the organization of the certificate issuer
+- <code>key_exchange</code> - Key exchange is the TLS key exchange group negotiated in the handshake
 - <code>not_after</code> - Timestamp after which the remote cert expires
 - <code>not_before</code> - Timestamp before which the certificate is not valid
 - <code>probe_status</code> - Probe status indicates if the probe was successful

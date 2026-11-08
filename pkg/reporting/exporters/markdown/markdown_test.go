@@ -4,9 +4,74 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"unicode/utf8"
 
+	"github.com/google/uuid"
+	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	"github.com/stretchr/testify/require"
 )
+
+func TestCreateFileNameIncludesOperatorName(t *testing.T) {
+	tests := []struct {
+		name          string
+		matcherName   string
+		extractorName string
+		wantSuffix    string
+	}{
+		{
+			name:        "matcher",
+			matcherName: "body-matcher",
+			wantSuffix:  "body-matcher.md",
+		},
+		{
+			name:          "extractor",
+			extractorName: "token-extractor",
+			wantSuffix:    "token-extractor.md",
+		},
+		{
+			name:          "matcher takes precedence",
+			matcherName:   "body-matcher",
+			extractorName: "token-extractor",
+			wantSuffix:    "body-matcher.md",
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			filename := createFileName(&output.ResultEvent{
+				TemplateID:    "template-id",
+				Host:          "example.com",
+				MatcherName:   test.matcherName,
+				ExtractorName: test.extractorName,
+			})
+
+			require.True(t, strings.HasSuffix(filename, test.wantSuffix), filename)
+		})
+	}
+}
+
+func TestCreateFileNamePreservesUniqueSuffixWhenLong(t *testing.T) {
+	filename := createFileName(&output.ResultEvent{
+		TemplateID:    strings.Repeat("template", 100),
+		Host:          strings.Repeat("host", 100),
+		ExtractorName: "token-extractor",
+	})
+
+	require.LessOrEqual(t, len(filename), maxFilenameLength)
+	const operatorSuffix = "-token-extractor.md"
+	require.True(t, strings.HasSuffix(filename, operatorSuffix), filename)
+	withoutOperator := strings.TrimSuffix(filename, operatorSuffix)
+	require.GreaterOrEqual(t, len(withoutOperator), 37)
+	_, err := uuid.Parse(withoutOperator[len(withoutOperator)-36:])
+	require.NoError(t, err)
+}
+
+func TestSanitizeFilenameTruncatesAtUTF8Boundary(t *testing.T) {
+	filename := sanitizeFilename(strings.Repeat("界", maxFilenameLength))
+
+	require.LessOrEqual(t, len(filename), maxFilenameLength)
+	require.True(t, utf8.ValidString(filename))
+}
 
 // TestSanitizeFilenameStripsPathSeparatorsAndDotDot ensures user-supplied
 // values (event.Host, event.TemplateID) used to build subdirectory and file

@@ -1,0 +1,25 @@
+id: javascript-target-line-ip
+
+info:
+  name: JavaScript Target Line IP
+  author: pdteam
+  severity: info
+
+javascript:
+  - code: |
+      var m = require("nuclei/net");
+      var conn = m.Open("tcp", address);
+      conn.SetTimeout(timeout);
+      conn.RecvString(3)
+
+    args:
+      address: "{{Host}}:{{Port}}"
+      Host: "{{Host}}"
+      Port: 5431
+      timeout: 3
+
+    extractors:
+      - type: regex
+        part: response
+        regex:
+          - "[a-z]+"

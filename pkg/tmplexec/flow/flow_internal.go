@@ -37,12 +37,13 @@ func (f *FlowExecutor) requestExecutor(runtime *goja.Runtime, reqMap mapsutil.Ma
 			// transform input if required
 			inputItem := f.ctx.Input.Clone()
 			if f.options.InputHelper != nil && f.ctx.Input.MetaInput.Input != "" && !utils.HasOfflineHTTPResponse(f.ctx.Input.MetaInput, req.Type()) {
-				if inputItem.MetaInput.Input = f.options.InputHelper.Transform(inputItem.MetaInput.Input, req.Type()); inputItem.MetaInput.Input == "" {
+				if inputItem.MetaInput.Input = f.options.InputHelper.TransformPinned(inputItem.MetaInput.Input, inputItem.MetaInput.CustomIP, req.Type()); inputItem.MetaInput.Input == "" {
 					f.ctx.LogError(fmt.Errorf("failed to transform input for protocol %s", req.Type()))
 					return false
 				}
 			}
 			err := req.ExecuteWithResults(inputItem, output.InternalEvent(f.options.GetTemplateCtx(f.ctx.Input.MetaInput).GetAll()), output.InternalEvent{}, f.protocolResultCallback(req, matcherStatus, opts))
+			f.executions[req].Add(1)
 			if err != nil {
 				// save all errors in a map with id as key
 				// its less likely that there will be race condition but just in case
@@ -74,14 +75,13 @@ func (f *FlowExecutor) requestExecutor(runtime *goja.Runtime, reqMap mapsutil.Ma
 		// transform input if required
 		inputItem := f.ctx.Input.Clone()
 		if f.options.InputHelper != nil && f.ctx.Input.MetaInput.Input != "" && !utils.HasOfflineHTTPResponse(f.ctx.Input.MetaInput, req.Type()) {
-			if inputItem.MetaInput.Input = f.options.InputHelper.Transform(inputItem.MetaInput.Input, req.Type()); inputItem.MetaInput.Input == "" {
+			if inputItem.MetaInput.Input = f.options.InputHelper.TransformPinned(inputItem.MetaInput.Input, inputItem.MetaInput.CustomIP, req.Type()); inputItem.MetaInput.Input == "" {
 				f.ctx.LogError(fmt.Errorf("failed to transform input for protocol %s", req.Type()))
 				return false
 			}
 		}
 		err := req.ExecuteWithResults(inputItem, output.InternalEvent(f.options.GetTemplateCtx(f.ctx.Input.MetaInput).GetAll()), output.InternalEvent{}, f.protocolResultCallback(req, matcherStatus, opts))
-		// Mark the request as seen
-		_ = f.executed.Set(requestKey(opts.protoName, req, id), struct{}{})
+		f.executions[req].Add(1)
 		if err != nil {
 			index := id
 			err = f.allErrs.Set(opts.protoName+":"+index, err)
@@ -91,13 +91,6 @@ func (f *FlowExecutor) requestExecutor(runtime *goja.Runtime, reqMap mapsutil.Ma
 		}
 	}
 	return matcherStatus.Load()
-}
-
-func requestKey(proto string, req protocols.Request, id string) string {
-	if id == "" {
-		id = req.GetID()
-	}
-	return proto + ":" + id
 }
 
 // protocolResultCallback returns a callback that is executed

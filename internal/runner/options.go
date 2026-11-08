@@ -20,6 +20,7 @@ import (
 	"github.com/projectdiscovery/gologger/levels"
 	"github.com/projectdiscovery/nuclei/v3/internal/server/proxy"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
+	"github.com/projectdiscovery/nuclei/v3/pkg/installer"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolinit"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/utils/vardump"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/headless/engine"
@@ -57,10 +58,18 @@ func ConfigureOptions() error {
 	return nil
 }
 
+// readsTargetsFromStdin reports whether targets are read from a stdin pipe.
+// Targets given with -u, -l, or uncover take its place: under cron, CI or an
+// agent stdin is often a pipe nothing writes to or closes, and reading it
+// would hold the scan until it does.
+func readsTargetsFromStdin(options *types.Options, stdinIsPipe bool) bool {
+	hasOtherTargets := len(options.Targets) > 0 || options.TargetsFilePath != "" || options.Uncover || len(options.UncoverQuery) > 0
+	return stdinIsPipe && !options.DisableStdin && !hasOtherTargets
+}
+
 // ParseOptions parses the command line flags provided by a user
 func ParseOptions(options *types.Options) {
-	// Check if stdin pipe was given
-	options.Stdin = !options.DisableStdin && fileutil.HasStdin()
+	options.Stdin = readsTargetsFromStdin(options, fileutil.HasStdin())
 
 	// Read the inputs from env variables that not passed by flag.
 	readEnvInputVars(options)
@@ -142,7 +151,7 @@ func ParseOptions(options *types.Options) {
 	}
 }
 
-// validateOptions validates the configuration options passed
+// ValidateOptions validates the configuration options passed
 func ValidateOptions(options *types.Options) error {
 	if err := validateOptions.Struct(options); err != nil {
 		if _, ok := err.(*validator.InvalidValidationError); ok {
@@ -168,8 +177,16 @@ func ValidateOptions(options *types.Options) error {
 	if options.ShouldFollowHTTPRedirects() && options.DisableRedirects {
 		return errors.New("both follow redirects and disable redirects specified")
 	}
+	switch options.UpdateTemplatesChannel {
+	case "", installer.TemplatesChannelStable, installer.TemplatesChannelLatest:
+	default:
+		return fmt.Errorf("invalid templates update channel %q, must be %q or %q", options.UpdateTemplatesChannel, installer.TemplatesChannelStable, installer.TemplatesChannelLatest)
+	}
 	// loading the proxy server list from file or cli and test the connectivity
 	if err := loadProxyServers(options); err != nil {
+		return err
+	}
+	if err := validateReplayProxy(options.ReplayProxy); err != nil {
 		return err
 	}
 	if options.Validate {
@@ -212,24 +229,13 @@ func ValidateOptions(options *types.Options) error {
 		}
 	}
 
-	// verify that a valid ip version type was selected (4, 6)
-	if len(options.IPVersion) == 0 {
-		// add ipv4 as default
-		options.IPVersion = append(options.IPVersion, "4")
-	}
-	var useIPV4, useIPV6 bool
+	// An empty -iv leaves one unpinned target so the dialer can fall back
+	// between address families. -sa resolves and scans every selected address.
+	// Explicit -iv 4, -iv 6 and -iv 4,6 retain their usual selection semantics.
 	for _, ipv := range options.IPVersion {
-		switch ipv {
-		case "4":
-			useIPV4 = true
-		case "6":
-			useIPV6 = true
-		default:
+		if ipv != "4" && ipv != "6" {
 			return fmt.Errorf("unsupported ip version: %s", ipv)
 		}
-	}
-	if !useIPV4 && !useIPV6 {
-		return errors.New("ipv4 and/or ipv6 must be selected")
 	}
 	return nil
 }

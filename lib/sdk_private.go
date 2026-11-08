@@ -36,6 +36,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	nucleiUtils "github.com/projectdiscovery/nuclei/v3/pkg/utils"
+	"github.com/projectdiscovery/nuclei/v3/pkg/utils/httpbody"
 	"github.com/projectdiscovery/ratelimit"
 	pdcpauth "github.com/projectdiscovery/utils/auth/pdcp"
 )
@@ -44,6 +45,9 @@ import (
 func (e *NucleiEngine) applyRequiredDefaults(ctx context.Context) {
 	mockoutput := testutils.NewMockOutputWriter(e.opts.OmitTemplate)
 	mockoutput.WriteCallback = func(event *output.ResultEvent) {
+		if (event.Error != "" || !event.MatcherStatus) && !e.opts.MatcherStatus {
+			return
+		}
 		if len(e.resultCallbacks) > 0 {
 			for _, callback := range e.resultCallbacks {
 				if callback != nil {
@@ -184,10 +188,6 @@ func (e *NucleiEngine) init(ctx context.Context) error {
 		return err
 	}
 
-	if err := e.loadIgnoreFile(); err != nil {
-		return err
-	}
-
 	if e.opts.Parser != nil {
 		if op, ok := e.opts.Parser.(*templates.Parser); ok {
 			e.parser = op
@@ -211,7 +211,7 @@ func (e *NucleiEngine) init(ctx context.Context) error {
 		_ = protocolinit.Init(e.opts)
 	}
 
-	if e.opts.ProxyInternal && e.opts.AliveHttpProxy != "" || e.opts.AliveSocksProxy != "" {
+	if e.opts.ProxyInternal && (e.opts.AliveHttpProxy != "" || e.opts.AliveSocksProxy != "") {
 		httpclient, err := httpclientpool.Get(e.opts, &httpclientpool.Configuration{}, "")
 		if err != nil {
 			return err
@@ -280,6 +280,7 @@ func (e *NucleiEngine) init(ctx context.Context) error {
 		Catalog:            e.catalog,
 		IssuesClient:       e.rc,
 		RateLimiter:        e.rateLimiter,
+		RequestBodyBudget:  httpbody.NewBudget(int64(e.opts.MaxRequestBodyInFlight)),
 		Interactsh:         e.interactshClient,
 		Colorizer:          aurora.New(aurora.WithColors(true)),
 		ResumeCfg:          types.NewResumeCfg(),
@@ -359,6 +360,9 @@ func (e *NucleiEngine) init(ctx context.Context) error {
 
 	httpxOptions := httpx.DefaultOptions
 	httpxOptions.Timeout = 5 * time.Second
+	if len(e.opts.InternalResolversList) > 0 {
+		httpxOptions.Resolvers = e.opts.InternalResolversList
+	}
 	if client, err := httpx.New(&httpxOptions); err != nil {
 		return err
 	} else {
@@ -382,6 +386,26 @@ func (e *NucleiEngine) init(ctx context.Context) error {
 		}
 	}
 
+	// Read .nuclei-ignore LAST, once init has finished managing that file and
+	// the options it writes into.
+	//
+	// It must come after the update block above: init creates or replaces the
+	// ignore file there (UpdateIgnoreFile), so reading earlier reads a file this
+	// same call is about to write. On a host without a pre-existing ignore file
+	// — a fresh install, or any container whose filesystem was reset — the read
+	// found nothing, warned, and left the engine with an empty deny-list for its
+	// whole lifetime, because ExcludeTags is never re-read after init. Reading
+	// afterwards also makes the corrupt-file check recoverable rather than fatal:
+	// a malformed local file that IgnoreFileNeedsUpdate replaces no longer fails
+	// the scan.
+	//
+	// GetAuthTmplStore scopes a copy of the options, so it no longer clears
+	// the engine filters. This read is still what installs the deny-list, and
+	// it has to follow the update block above.
+	if err := e.loadIgnoreFile(); err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -389,7 +413,10 @@ type syncOnce struct {
 	sync.Once
 }
 
-var updateCheckInstance = &syncOnce{}
+var (
+	updateCheckInstance    = &syncOnce{}
+	templateUpdateInstance = &syncOnce{}
+)
 
 // processUpdateCheckResults processes update check results
 func (e *NucleiEngine) processUpdateCheckResults() error {
@@ -398,8 +425,12 @@ func (e *NucleiEngine) processUpdateCheckResults() error {
 		if e.onUpdateAvailableCallback != nil {
 			e.onUpdateAvailableCallback(config.DefaultConfig.LatestNucleiTemplatesVersion)
 		}
-		tm := installer.TemplateManager{}
-		err = tm.UpdateIfOutdated()
 	})
+	if !e.disableTemplatesAutoUpgrade {
+		templateUpdateInstance.Do(func() {
+			tm := installer.TemplateManager{}
+			err = tm.UpdateIfOutdated()
+		})
+	}
 	return err
 }

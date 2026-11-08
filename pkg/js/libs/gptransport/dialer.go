@@ -1,4 +1,4 @@
-// Package gptransport binds Mzack9999/goimpacket TCP dials to nuclei's
+// Package gptransport binds projectdiscovery/goimpacket TCP dials to nuclei's
 // per-execution fastdialer and network policy.
 //
 // Import this package (directly or via smbsession / dcerpc) so init() installs
@@ -11,7 +11,7 @@ import (
 	"fmt"
 	"net"
 
-	gptr "github.com/Mzack9999/goimpacket/pkg/transport"
+	gptr "github.com/projectdiscovery/goimpacket/pkg/transport"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 )

@@ -15,7 +15,7 @@ export function NewExecDialer(execID: string): Dialer | null {
 
 
 /**
- * Client is a stateful DCE/RPC + SMB client backed by Mzack9999/goimpacket.
+ * Client is a stateful DCE/RPC + SMB client backed by projectdiscovery/goimpacket.
  * One Client wraps one authenticated SMB session against the target host;
  * individual RPC interfaces (SAMR, LSARPC, EPMAPPER, ...) are bound on
  * demand by the corresponding helper methods.

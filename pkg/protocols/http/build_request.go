@@ -1,7 +1,6 @@
 package http
 
 import (
-	"bufio"
 	"context"
 	"fmt"
 	"net/http"
@@ -9,7 +8,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/pkg/errors"
 	"github.com/projectdiscovery/useragent"
 
 	"github.com/projectdiscovery/gologger"
@@ -26,6 +24,7 @@ import (
 	protocolutils "github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils"
 	httputil "github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils/http"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
+	"github.com/projectdiscovery/nuclei/v3/pkg/utils/httpbody"
 	"github.com/projectdiscovery/rawhttp"
 	"github.com/projectdiscovery/retryablehttp-go"
 	"github.com/projectdiscovery/utils/errkit"
@@ -83,6 +82,9 @@ type generatedRequest struct {
 	dynamicValues        map[string]interface{}
 	interactshURLs       []string
 	customCancelFunction context.CancelFunc
+	// sendTimeout starts after the body budget admits the request.
+	sendTimeout  time.Duration
+	bodyReserved bool
 	// requestURLPattern tracks unmodified request url pattern without values ( it is used for constant vuln_hash)
 	// ex: {{BaseURL}}/api/exp?param={{randstr}}
 	requestURLPattern string
@@ -196,9 +198,9 @@ func (r *requestGenerator) Make(ctx context.Context, input *contextargs.Context,
 	// optionvars are vars passed from CLI or env variables
 	optionVars := generators.BuildPayloadFromOptions(r.request.options.Options)
 
-	scope := r.options.NewVariablesScope(dynamicValues)
+	scope := r.options.NewVariablesScope()
 	r.options.AddTemplateCtxToVariablesScope(input.MetaInput, scope)
-	scope.AddData(defaultReqVars, optionVars, r.options.Constants)
+	scope.AddData(dynamicValues, defaultReqVars, optionVars, r.options.Constants)
 	evaluation := r.options.Variables.EvaluateWithInteractshScope(scope, r.options.Interactsh)
 
 	variablesMap, interactURLs := evaluation.Values, evaluation.InteractURLs
@@ -207,13 +209,12 @@ func (r *requestGenerator) Make(ctx context.Context, input *contextargs.Context,
 	}
 
 	// allVars contains all variables from all sources
-	allVars := generators.MergeMaps(dynamicValues)
-
+	allVars := make(map[string]interface{})
 	if r.request.options.HasTemplateCtx(input.MetaInput) {
-		allVars = generators.MergeMaps(allVars, r.request.options.GetTemplateCtx(input.MetaInput).GetAll())
+		allVars = generators.MergeMaps(r.request.options.GetTemplateCtx(input.MetaInput).GetAll())
 	}
 
-	allVars = generators.MergeMaps(allVars, defaultReqVars, optionVars, variablesMap, r.options.Constants)
+	allVars = generators.MergeMaps(allVars, dynamicValues, defaultReqVars, optionVars, variablesMap, r.options.Constants)
 
 	// Evaluate payload variables
 	// eg: payload variables can be username: jon.doe@{{Hostname}}
@@ -273,100 +274,18 @@ func (r *requestGenerator) validateSelfContainedHost(host string) error {
 // selfContained templates do not need/use target data and all values i.e {{Hostname}} , {{BaseURL}} etc are already available
 // in template . makeSelfContainedRequest parses and creates variables map and then creates corresponding http request or raw request
 func (r *requestGenerator) makeSelfContainedRequest(ctx context.Context, input *contextargs.Context, data string, payloads, dynamicValues map[string]interface{}) (*generatedRequest, error) {
-	isRawRequest := r.request.isRaw()
-
-	values := generators.MergeMaps(
-		generators.BuildPayloadFromOptions(r.request.options.Options),
-		dynamicValues,
-		payloads, // payloads should override other variables in case of duplicate vars
-	)
-	// adds all variables from `variables` section in template
-	scope := r.request.options.NewVariablesScope(generators.BuildPayloadFromOptions(r.request.options.Options), dynamicValues, payloads)
-	r.request.options.AddTemplateCtxToVariablesScope(input.MetaInput, scope)
-	scope.AddData(r.options.Constants)
-	evaluation := r.request.options.Variables.EvaluateWithInteractshScope(scope, r.request.options.Interactsh)
-
-	variablesMap, interactURLs := evaluation.Values, evaluation.InteractURLs
-	if len(interactURLs) > 0 {
-		r.interactshURLs = append(r.interactshURLs, interactURLs...)
+	if r.request.isRaw() {
+		return r.makeSelfContainedRawRequest(ctx, input, data, payloads, dynamicValues)
 	}
 
-	if r.request.options.HasTemplateCtx(input.MetaInput) {
-		values = generators.MergeMaps(values, r.request.options.GetTemplateCtx(input.MetaInput).GetAll())
+	values, _, err := r.selfContainedValues(input, payloads, dynamicValues, nil)
+	if err != nil {
+		return nil, err
 	}
 
-	values = generators.MergeMaps(variablesMap, values)
-	signerVars := GetDefaultSignerVars(r.request.Signature.Value)
-
-	// this will ensure that default signer variables are overwritten by other variables
-	values = generators.MergeMaps(signerVars, values, r.options.Constants)
-
-	for payloadName, payloadValue := range payloads {
-		renderedPayload, err := r.renderText(types.ToString(payloadValue), values)
-		if err != nil {
-			return nil, errkit.Wrap(err, "could not evaluate payload helper expressions")
-		}
-
-		payloads[payloadName] = renderedPayload
-	}
-
-	values = generators.MergeMaps(values, payloads, r.options.Constants)
-
-	// priority of variables is as follows (from low to high) for self contained templates
-	// default signer vars < variables < cli vars < dynamic values < payload < constants
-
-	// evaluate request
-	data, err := r.renderText(data, values)
+	data, err = r.renderText(data, values)
 	if err != nil {
 		return nil, errkit.Wrap(err, "could not evaluate helper expressions")
-	}
-
-	// If the request is a raw request, get the URL from the request
-	// header and use it to make the request.
-	if isRawRequest {
-		// Get the hostname from the URL section to build the request.
-		reader := bufio.NewReader(strings.NewReader(data))
-	read_line:
-		s, err := reader.ReadString('\n')
-		if err != nil {
-			return nil, fmt.Errorf("could not read request: %w", err)
-		}
-
-		// ignore all annotations
-		if stringsutil.HasPrefixAny(s, "@") {
-			goto read_line
-		}
-
-		parts := strings.Split(s, " ")
-		if len(parts) < 3 {
-			return nil, fmt.Errorf("malformed request supplied")
-		}
-
-		if err := expressions.ContainsUnresolvedVariables(parts[1]); err != nil && !r.request.SkipVariablesCheck {
-			return nil, errkit.Newf("unresolved variables `%v` found in request", parts[1])
-		}
-
-		parsed, err := urlutil.ParseURL(parts[1], true)
-		if err != nil {
-			return nil, fmt.Errorf("could not parse request URL: %w", err)
-		}
-		// self-contained requests choose their own destination URL, so validate
-		// that host against the network policy.
-		if err := r.validateSelfContainedHost(parsed.Hostname()); err != nil {
-			return nil, err
-		}
-		values = generators.MergeMaps(
-			generators.MergeMaps(dynamicValues, protocolutils.GenerateVariables(parsed, false, nil)),
-			values,
-		)
-
-		// Evaluate (replace) variable with final values
-		data, err = r.renderText(data, values)
-		if err != nil {
-			return nil, errkit.Wrap(err, "could not evaluate helper expressions")
-		}
-
-		return r.generateRawRequest(ctx, data, parsed, values, payloads)
 	}
 	if err := expressions.ContainsUnresolvedVariables(data); err != nil && !r.request.SkipVariablesCheck {
 		// early exit: if there are any unresolved variables in `path` after evaluation
@@ -383,6 +302,227 @@ func (r *requestGenerator) makeSelfContainedRequest(ctx context.Context, input *
 		return nil, err
 	}
 	return r.generateHttpRequest(ctx, urlx, values, payloads)
+}
+
+// makeSelfContainedRawRequest makes a self-contained raw request. Its request
+// line names the URL, and that URL provides variables such as {{Hostname}} to
+// the rest of the request. Each part of the template text is rendered once,
+// so inserted values such as response data are sent unchanged:
+//
+//  1. Render the request line and check its host against the network policy.
+//  2. Evaluate again the template variables and payloads whose template text
+//     names URL variables. The others keep their values, so a random value
+//     is the same in the request line and in the rest of the request.
+//  3. Render the annotations and the rest of the request.
+func (r *requestGenerator) makeSelfContainedRawRequest(ctx context.Context, input *contextargs.Context, data string, payloads, dynamicValues map[string]interface{}) (*generatedRequest, error) {
+	annotations, requestLine, rest, err := splitRequestLine(data)
+	if err != nil {
+		return nil, err
+	}
+
+	// Payloads are rendered in place, so keep their template text for step 2.
+	payloadText := generators.CopyMap(payloads)
+
+	values, authored, err := r.selfContainedValues(input, payloads, dynamicValues, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	requestLine, err = r.renderText(requestLine, values)
+	if err != nil {
+		return nil, errkit.Wrap(err, "could not evaluate helper expressions")
+	}
+
+	// Parse the line that raw.ParseRawRequest will read, even if a value
+	// added a line break.
+	firstLine, _, _ := strings.Cut(requestLine, "\n")
+
+	parsed, err := r.requestLineURL(firstLine)
+	if err != nil {
+		return nil, err
+	}
+
+	// URL variables only fill in names that have no other value.
+	fixed := make(map[string]interface{})
+
+	for name, value := range protocolutils.GenerateVariables(parsed, false, nil) {
+		if _, ok := values[name]; !ok {
+			fixed[name] = value
+		}
+	}
+
+	stale := r.staleValues(authored, payloadText, fixed)
+	if len(stale) == 0 {
+		values = generators.MergeMaps(fixed, values)
+	} else {
+		// Keep every other value, and evaluate the stale template variables
+		// and payloads again from their template text.
+		for name, value := range values {
+			if _, ok := stale[name]; !ok {
+				fixed[name] = value
+			}
+		}
+
+		for name := range stale {
+			if text, ok := payloadText[name]; ok {
+				payloads[name] = text
+			}
+		}
+
+		values, _, err = r.selfContainedValues(input, payloads, dynamicValues, fixed)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	annotations, err = r.renderText(annotations, values)
+	if err != nil {
+		return nil, errkit.Wrap(err, "could not evaluate helper expressions")
+	}
+
+	rest, err = r.renderText(rest, values)
+	if err != nil {
+		return nil, errkit.Wrap(err, "could not evaluate helper expressions")
+	}
+
+	data = annotations + requestLine + rest
+
+	// A value with a line break must not change which line is the request
+	// line, or the request would go to a host that was not checked.
+	if _, line, _, err := splitRequestLine(data); err != nil || line != firstLine {
+		return nil, errkit.New("malformed request supplied: a value changed the request line")
+	}
+
+	return r.generateRawRequest(ctx, data, parsed, values, payloads)
+}
+
+// staleValues returns the names of the authored values whose template text
+// names one of urlValues, directly or through another stale value. It reads
+// template text only, so data inserted into a value cannot mark it stale.
+// Variables are checked in evaluation order, then payloads, which are
+// rendered after the variables.
+func (r *requestGenerator) staleValues(authored, payloadText, urlValues map[string]interface{}) map[string]struct{} {
+	stale := make(map[string]struct{})
+	names := generators.CopyMap(urlValues)
+
+	mark := func(name string, text interface{}) {
+		if _, ok := authored[name]; !ok {
+			return
+		}
+
+		if expressions.ReferencesVariables(types.ToString(text), names) {
+			stale[name] = struct{}{}
+			names[name] = nil
+		}
+	}
+
+	r.request.options.Variables.ForEach(mark)
+
+	for name, text := range payloadText {
+		mark(name, text)
+	}
+
+	return stale
+}
+
+// requestLineURL returns the URL named by a rendered raw request line after
+// checking its host against the network policy.
+func (r *requestGenerator) requestLineURL(line string) (*urlutil.URL, error) {
+	parts := strings.Split(line, " ")
+	if len(parts) < 3 {
+		return nil, fmt.Errorf("malformed request supplied")
+	}
+
+	if err := expressions.ContainsUnresolvedVariables(parts[1]); err != nil && !r.request.SkipVariablesCheck {
+		return nil, errkit.Newf("unresolved variables `%v` found in request", parts[1])
+	}
+
+	parsed, err := urlutil.ParseURL(parts[1], true)
+	if err != nil {
+		return nil, fmt.Errorf("could not parse request URL: %w", err)
+	}
+	// self-contained requests choose their own destination URL, so validate
+	// that host against the network policy.
+	if err := r.validateSelfContainedHost(parsed.Hostname()); err != nil {
+		return nil, err
+	}
+
+	return parsed, nil
+}
+
+// selfContainedValues evaluates the template variables and renders the
+// payloads of a self-contained request, and returns the values to render the
+// request with. Payloads are rendered in place. Values in fixed are data:
+// they fill in names that have no other value, and a template variable or
+// payload with the same name keeps that value instead of being evaluated.
+// It also returns the values it produced from template text, that is the
+// evaluated template variables and the rendered payloads.
+func (r *requestGenerator) selfContainedValues(input *contextargs.Context, payloads, dynamicValues, fixed map[string]interface{}) (map[string]interface{}, map[string]interface{}, error) {
+	optionValues := generators.BuildPayloadFromOptions(r.request.options.Options)
+	values := generators.MergeMaps(fixed, optionValues)
+
+	if r.request.options.HasTemplateCtx(input.MetaInput) {
+		values = generators.MergeMaps(values, r.request.options.GetTemplateCtx(input.MetaInput).GetAll())
+	}
+	values = generators.MergeMaps(values, dynamicValues, payloads)
+	// adds all variables from `variables` section in template
+	scope := r.request.options.NewVariablesScope(optionValues)
+	r.request.options.AddTemplateCtxToVariablesScope(input.MetaInput, scope)
+	scope.AddData(dynamicValues, payloads, r.options.Constants, fixed)
+	evaluation := r.request.options.Variables.EvaluateWithInteractshScope(scope, r.request.options.Interactsh)
+
+	variablesMap, interactURLs := evaluation.Values, evaluation.InteractURLs
+	if len(interactURLs) > 0 {
+		r.interactshURLs = append(r.interactshURLs, interactURLs...)
+	}
+
+	values = generators.MergeMaps(variablesMap, values)
+	signerVars := GetDefaultSignerVars(r.request.Signature.Value)
+
+	// this will ensure that default signer variables are overwritten by other variables
+	values = generators.MergeMaps(signerVars, values, r.options.Constants)
+
+	// The evaluation owns TemplateValues, so add the rendered payloads to it.
+	authored := evaluation.TemplateValues
+
+	for payloadName, payloadValue := range payloads {
+		if _, ok := fixed[payloadName]; ok {
+			continue
+		}
+
+		renderedPayload, err := r.renderText(types.ToString(payloadValue), values)
+		if err != nil {
+			return nil, nil, errkit.Wrap(err, "could not evaluate payload helper expressions")
+		}
+
+		payloads[payloadName] = renderedPayload
+		authored[payloadName] = renderedPayload
+	}
+
+	// priority of variables is as follows (from low to high) for self contained templates
+	// default signer vars < variables < cli vars < dynamic values < payload < constants
+	return generators.MergeMaps(values, payloads, r.options.Constants), authored, nil
+}
+
+// splitRequestLine splits raw request template text at its request line, the
+// first line that is not an annotation. It returns the annotation lines, the
+// request line without its line break, and the remaining text starting with
+// that line break. The three parts concatenate back to raw.
+func splitRequestLine(raw string) (annotations, requestLine, rest string, err error) {
+	start := 0
+
+	for {
+		line, _, found := strings.Cut(raw[start:], "\n")
+		if !found {
+			return "", "", "", errkit.New("could not read request: no request line found")
+		}
+
+		if !strings.HasPrefix(line, "@") {
+			return raw[:start], line, raw[start+len(line):], nil
+		}
+
+		start += len(line) + 1
+	}
 }
 
 // generateHttpRequest generates http request from request data from template and variables
@@ -456,7 +596,11 @@ func (r *requestGenerator) generateRawRequest(ctx context.Context, rawRequest st
 		}
 
 		if len(r.options.Options.CustomHeaders) > 0 {
-			_ = rawRequestData.TryFillCustomHeaders(r.options.Options.CustomHeaders)
+			customHeaders := make([]string, 0, len(r.options.Options.CustomHeaders))
+			for _, header := range r.options.Options.CustomHeaders {
+				customHeaders = append(customHeaders, evaluateCustomHeaderExpressions(r.options.TemplateID, header, finalVars))
+			}
+			_ = rawRequestData.TryFillCustomHeaders(customHeaders)
 		}
 
 		if rawRequestData.Data != "" && !stringsutil.EqualFoldAny(rawRequestData.Method, http.MethodHead, http.MethodGet) && rawRequestData.Headers["Transfer-Encoding"] != "chunked" {
@@ -478,10 +622,13 @@ func (r *requestGenerator) generateRawRequest(ctx context.Context, rawRequest st
 	if err != nil {
 		return nil, errkit.Wrapf(err, "failed to create request with url %v got %v", rawRequestData.FullURL, err)
 	}
-	req, err := retryablehttp.NewRequestFromURLWithContext(ctx, rawRequestData.Method, urlx, rawRequestData.Data)
+	req, err := retryablehttp.NewRequestFromURLWithContext(ctx, rawRequestData.Method, urlx, nil)
 	if err != nil {
 		return nil, err
 	}
+	// Set the body here rather than through retryablehttp, which copies it
+	// several times over.
+	httpbody.SetString(req, rawRequestData.Data)
 
 	// force transfer encoding if conditions are met
 	if len(rawRequestData.Data) > 0 && req.Header.Get("Transfer-Encoding") != "chunked" && !stringsutil.EqualFoldAny(rawRequestData.Method, http.MethodGet, http.MethodHead) {
@@ -573,9 +720,7 @@ func (r *requestGenerator) fillRequest(req *retryablehttp.Request, values map[st
 			return nil, errkit.Wrap(err, "could not evaluate helper expressions")
 		}
 
-		if err := req.SetBodyString(body); err != nil {
-			return nil, errors.Wrap(err, "failed to set request body")
-		}
+		httpbody.SetString(req, body)
 	}
 
 	if !r.request.Unsafe {
@@ -611,6 +756,7 @@ func (r *requestGenerator) fillRequest(req *retryablehttp.Request, values map[st
 
 func (r *requestGenerator) renderText(text string, values map[string]interface{}) (string, error) {
 	result, err := render.Render(render.Input{
+		Options:      r.options.GetOptions(),
 		Text:         text,
 		Values:       values,
 		Interactsh:   r.options.Interactsh,

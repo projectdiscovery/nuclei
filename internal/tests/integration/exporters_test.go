@@ -18,9 +18,11 @@ import (
 )
 
 const (
-	dbName                    = "test"
-	dbRepository              = "mongo"
-	dbTag                     = "8"
+	dbName       = "test"
+	dbRepository = "mongo"
+	// 8.x refuses to start on kernels 6.19 through 7.0.13 (SERVER-125742).
+	// The GitHub Ubuntu image is in that range. 7.0 stays up.
+	dbTag                     = "7.0"
 	dbPort                    = "27017/tcp"
 	mongoDatabaseReadyTimeout = 3 * time.Minute
 	mongoServerSelectionDelay = time.Second

@@ -3,6 +3,7 @@ package index
 import (
 	"os"
 	"slices"
+	"strings"
 	"time"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/model/types/severity"
@@ -47,6 +48,9 @@ type Metadata struct {
 
 	// ProtocolType is the primary protocol type of the template.
 	ProtocolType string `gob:"protocol_type"`
+
+	// Product is the lowercased info.metadata.product of the template.
+	Product string `gob:"product,omitempty"`
 
 	// Verified indicates whether the template is verified.
 	Verified bool `gob:"verified"`
@@ -114,12 +118,18 @@ func NewMetadataFromTemplate(path string, tpl *templates.Template) *Metadata {
 		Severity: tpl.Info.SeverityHolder.Severity.String(),
 
 		ProtocolType: tpl.Type().String(),
+		Product:      templateProduct(tpl),
 
 		Verified:            tpl.Verified,
 		TemplateVerifier:    tpl.TemplateVerifier,
 		VerifierFingerprint: tpl.VerifierFingerprint(),
 		ContentDigest:       tpl.ContentDigest(),
 	}
+}
+
+func templateProduct(tpl *templates.Template) string {
+	product, _ := tpl.Info.Metadata["product"].(string)
+	return strings.ToLower(strings.TrimSpace(product))
 }
 
 // IsValid checks if the cached metadata is still valid by comparing the file

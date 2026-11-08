@@ -6,6 +6,7 @@ import (
 	"crypto/tls"
 	"encoding/base64"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"net"
 	"net/http"
@@ -20,6 +21,8 @@ import (
 
 var (
 	defaultTimeout = time.Duration(5) * time.Second
+
+	errNoConnection = errors.New("no connection: open one with net.Open or net.OpenTLS")
 )
 
 // getTimeoutFromContext returns the configured TCP timeout or defaultTimeout.
@@ -146,6 +149,16 @@ func (c *bufferedConn) Read(b []byte) (int, error) {
 	return c.reader.Read(b)
 }
 
+// dialTargetHost returns the host portion of a dial address. Addresses that
+// are already a bare host are returned unchanged.
+func dialTargetHost(address string) string {
+	host, _, err := net.SplitHostPort(address)
+	if err != nil {
+		return address
+	}
+	return host
+}
+
 // Dial opens a connection using the execution dialer.
 // When an HTTP(S) proxy is present in context, TCP dials use HTTP CONNECT.
 // Misconfigured proxies return an error instead of silently dialing direct.
@@ -169,6 +182,19 @@ func Dial(ctx context.Context, protocol, address string) (net.Conn, error) {
 		}
 		switch parsed.Scheme {
 		case "http", "https":
+			// Enforce the network policy on the tunneled target. Direct dials go
+			// through Fastdialer, which validates the destination itself, but the
+			// proxy path only dials the proxy through Fastdialer and tunnels the
+			// target inside an HTTP CONNECT, so the target would otherwise skip the
+			// deny-list (-exclude-hosts / -restrict-local-network-access) checks.
+			// Split the port off first. IsHostAllowed only does that for a single
+			// colon, so an address like [::1]:80 would skip the IP deny list.
+			// Do this only for schemes that actually tunnel. IsHostAllowed resolves
+			// hostnames, and an earlier check would hide "unsupported proxy scheme"
+			// behind a DNS failure.
+			if !protocolstate.IsHostAllowed(executionId, dialTargetHost(address)) {
+				return nil, fmt.Errorf("host %s is not allowed by network policy", address)
+			}
 			return dialHTTPProxy(ctx, dialer.Fastdialer.Dial, proxyURL, address, getTimeoutFromContext(ctx))
 		default:
 			return nil, fmt.Errorf("unsupported proxy scheme %q in %s (expected http or https)", parsed.Scheme, redactProxyURL(proxyURL))
@@ -248,12 +274,14 @@ type (
 	// const conn = net.Open('tcp', 'acme.com:80');
 	// ```
 	NetConn struct {
+		// conn is nil when no connection is open.
 		conn    net.Conn
 		timeout time.Duration
 	}
 )
 
 // Close closes the connection.
+// Close does nothing if no connection is open.
 // @example
 // ```javascript
 // const net = require('nuclei/net');
@@ -261,7 +289,13 @@ type (
 // conn.Close();
 // ```
 func (c *NetConn) Close() error {
+	if c.conn == nil {
+		return nil
+	}
+
 	err := c.conn.Close()
+	c.conn = nil
+
 	return err
 }
 
@@ -298,6 +332,10 @@ func (c *NetConn) unsetDeadLine() {
 // conn.SendArray(['hello', 'world']);
 // ```
 func (c *NetConn) SendArray(data []interface{}) error {
+	if c.conn == nil {
+		return errNoConnection
+	}
+
 	c.setDeadLine()
 	defer c.unsetDeadLine()
 	input := types.ToByteSlice(data)
@@ -319,6 +357,10 @@ func (c *NetConn) SendArray(data []interface{}) error {
 // conn.SendHex('68656c6c6f');
 // ```
 func (c *NetConn) SendHex(data string) error {
+	if c.conn == nil {
+		return errNoConnection
+	}
+
 	c.setDeadLine()
 	defer c.unsetDeadLine()
 	bin, err := hex.DecodeString(data)
@@ -343,6 +385,10 @@ func (c *NetConn) SendHex(data string) error {
 // conn.Send('hello');
 // ```
 func (c *NetConn) Send(data string) error {
+	if c.conn == nil {
+		return errNoConnection
+	}
+
 	c.setDeadLine()
 	defer c.unsetDeadLine()
 	bin := []byte(data)
@@ -366,6 +412,10 @@ func (c *NetConn) Send(data string) error {
 // const data = conn.RecvFull(1024);
 // ```
 func (c *NetConn) RecvFull(N int) ([]byte, error) {
+	if c.conn == nil {
+		return []byte{}, errNoConnection
+	}
+
 	c.setDeadLine()
 	defer c.unsetDeadLine()
 	if N == 0 {
@@ -391,6 +441,10 @@ func (c *NetConn) RecvFull(N int) ([]byte, error) {
 // log(`Received ${data.length} bytes from the server`)
 // ```
 func (c *NetConn) Recv(N int) ([]byte, error) {
+	if c.conn == nil {
+		return []byte{}, errNoConnection
+	}
+
 	c.setDeadLine()
 	defer c.unsetDeadLine()
 	if N == 0 {

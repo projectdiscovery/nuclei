@@ -29,6 +29,52 @@ func TestExtractor_CompileRejectsNegativeRegexGroup(t *testing.T) {
 	require.ErrorContains(t, err, "group must be >= 0")
 }
 
+func TestExtractor_CompileRejectsOutOfRangeRegexGroup(t *testing.T) {
+	// A group beyond what the pattern captures can never match:
+	// FindAllStringSubmatch returns NumSubexp()+1 entries, so ExtractRegex
+	// skips every submatch and yields nothing. Before this check the template
+	// compiled and ran, and an empty result was indistinguishable from "the
+	// pattern didn't match the target".
+	e := &Extractor{
+		Type:       ExtractorTypeHolder{ExtractorType: RegexExtractor},
+		Regex:      []string{`(\d+)`},
+		RegexGroup: 5,
+	}
+	err := e.CompileExtractors()
+	require.ErrorContains(t, err, "out of range")
+	require.ErrorContains(t, err, "1 capture group")
+}
+
+func TestExtractor_CompileAcceptsInRangeRegexGroup(t *testing.T) {
+	e := &Extractor{
+		Type:       ExtractorTypeHolder{ExtractorType: RegexExtractor},
+		Regex:      []string{`(\w+)@(\w+)`},
+		RegexGroup: 2,
+	}
+	require.NoError(t, e.CompileExtractors())
+	require.Equal(t, map[string]struct{}{"example": {}}, e.ExtractRegex("user@example"))
+}
+
+func TestExtractor_CompileValidatesGroupOnCachedRegex(t *testing.T) {
+	// The compile path short-circuits on a cache hit. Validating only the
+	// freshly-compiled branch would let the same pattern pass unchecked once
+	// any other template had already compiled it.
+	pattern := `(?:cached)-(\d+)-marker`
+
+	warm := &Extractor{
+		Type:  ExtractorTypeHolder{ExtractorType: RegexExtractor},
+		Regex: []string{pattern},
+	}
+	require.NoError(t, warm.CompileExtractors())
+
+	reuse := &Extractor{
+		Type:       ExtractorTypeHolder{ExtractorType: RegexExtractor},
+		Regex:      []string{pattern},
+		RegexGroup: 4,
+	}
+	require.ErrorContains(t, reuse.CompileExtractors(), "out of range")
+}
+
 func TestExtractor_ExtractRegexNegativeGroupDoesNotPanic(t *testing.T) {
 	// Defense in depth: even if an extractor is built programmatically (or
 	// otherwise ends up with compiled regexes) without compilation-time checks,

@@ -1,4 +1,4 @@
-//go:build gofuzz || !(linux || darwin || windows) || !(amd64 || arm64)
+//go:build gofuzz || !(linux || darwin || windows) || !(amd64 || arm64) || !go1.17 || go1.28
 
 package json
 

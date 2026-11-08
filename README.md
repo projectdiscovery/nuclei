@@ -1,7 +1,7 @@
 ![nuclei](/static/nuclei-cover-image.png)
 
 <div align="center">
-  
+
   <a href="https://github.com/projectdiscovery/nuclei/blob/main/README.md">`English`</a> •
   <a href="https://github.com/projectdiscovery/nuclei/blob/main/README_CN.md">`中文`</a> •
   <a href="https://github.com/projectdiscovery/nuclei/blob/main/README_KR.md">`Korean`</a> •
@@ -9,8 +9,9 @@
   <a href="https://github.com/projectdiscovery/nuclei/blob/main/README_ES.md">`Spanish`</a> •
   <a href="https://github.com/projectdiscovery/nuclei/blob/main/README_JP.md">`日本語`</a> •
   <a href="https://github.com/projectdiscovery/nuclei/blob/main/README_PT-BR.md">`Portuguese`</a> •
-  <a href="https://github.com/projectdiscovery/nuclei/blob/main/README_TR.md">`Türkçe`</a>
-  
+  <a href="https://github.com/projectdiscovery/nuclei/blob/main/README_TR.md">`Türkçe`</a> •
+  <a href="https://github.com/projectdiscovery/nuclei/blob/main/README_FA.md">`فارسی`</a>
+
 </div>
 
 <p align="center">
@@ -110,7 +111,7 @@ Browse the full Nuclei [**`documentation here`**](https://docs.projectdiscovery.
 
 ### Installation
 
-`nuclei` requires **go >= 1.24.2** to install successfully. Run the following command to get the repo:
+`nuclei` requires **go >= 1.27.3** to install successfully. Run the following command to get the repo:
 
 ```sh
 go install -v github.com/projectdiscovery/nuclei/v3/cmd/nuclei@latest
@@ -144,10 +145,12 @@ TARGET:
    -eh, -exclude-hosts string[]  hosts to exclude to scan from the input list (ip, cidr, hostname)
    -resume string                resume scan from and save to specified file (clustering will be disabled)
    -sa, -scan-all-ips            scan all the IP's associated with dns record
-   -iv, -ip-version string[]     IP version to scan of hostname (4,6) - (default 4)
+   -iv, -ip-version string[]     IP version to scan of hostname (4,6); default uses dialer fallback, -sa scans all addresses
+   -dun, -disable-url-normalization  keep targets exactly as supplied instead of collapsing urls that address the same resource
+   -mup, -max-urls-per-pattern int   scan at most this many urls sharing one structural shape, e.g. /user/1 and /user/2 (0 to scan all)
 
 TARGET-FORMAT:
-   -im, -input-mode string        mode of input file (list, burp, jsonl, yaml, openapi, swagger, http) (default "list")
+   -im, -input-mode string        mode of input file (list, burp, har, jsonl, yaml, openapi, swagger, http) (default "list")
    -ro, -required-only            use only required fields in input format when generating requests
    -sfv, -skip-format-validation  skip format validation (like missing vars) when parsing input file
    -vtt, -vars-text-templating    enable text templating for vars in input file (only for yaml input mode)
@@ -173,6 +176,14 @@ TEMPLATES:
    -esc, -enable-self-contained           enable loading self-contained templates
    -egm, -enable-global-matchers          enable loading global matchers templates
    -file                                  enable loading file templates
+   -llm                                   enable llm matchers and extractors (semantic matching)
+   -llm-provider string                   llm provider for semantic matching (openai, ollama, llamacpp, vllm, lmstudio, groq, openrouter, together, orcarouter, jev) (default "openai")
+   -llm-base-url string                   openai-compatible endpoint for semantic matching (overrides -llm-provider, e.g. a local model)
+   -llm-model string                      model used for semantic matching
+   -llm-timeout int                       time in seconds to wait for a single llm call (default 30)
+   -llm-max-calls int                     maximum llm calls per scan (0 for unlimited) (default 5000)
+   -llm-concurrency int                   maximum concurrent llm calls (default 4)
+   -llm-cache                             cache llm responses within a scan (default true)
 
 FILTERING:
    -a, -author string[]               templates to run based on authors (comma-separated, file)
@@ -210,6 +221,7 @@ OUTPUT:
    -jle, -jsonl-export string    file to export results in JSONL(ine) format
    -pe, -pdf-export string       file to export results in PDF format
    -rd, -redact string[]         redact given list of keys from query parameter, request header and body
+   -nrd, -no-redact              disable the built-in redaction of credential headers (Authorization, Cookie, Set-Cookie, ...) in output; keys given with -redact are still redacted
 
 CONFIGURATIONS:
    -config string                        path to the nuclei configuration file
@@ -239,9 +251,12 @@ CONFIGURATIONS:
    -lna, -restrict-local-network-access  blocks connections to the local / private network
    -i, -interface string                 network interface to use for network scan
    -at, -attack-type string              type of payload combinations to perform (batteringram,pitchfork,clusterbomb)
+   -pro, -payload-random-order           iterate payload combinations in a random order instead of sequentially
    -sip, -source-ip string               source ip address to use for network scan
    -rsr, -response-size-read int         max response size to read in bytes
    -rss, -response-size-save int         max response size to read in bytes (default 1048576)
+   -rqss, -request-size-save int         max request body size to save in bytes (0 to save the whole body) (default 32768)
+   -mrbi, -max-request-body-inflight int max request body bytes held by in-flight http requests; requests with bodies of 1MB or more queue past it (0 disables)
    -reset                                reset removes all nuclei configuration and data files (including nuclei-templates)
    -tlsi, -tls-impersonate               enable experimental client hello (ja3) tls randomization
    -hae, -http-api-endpoint string       experimental http api endpoint
@@ -284,6 +299,8 @@ UNCOVER:
 RATE-LIMIT:
    -rl, -rate-limit int               maximum number of requests to send per second (default 150)
    -rld, -rate-limit-duration value   maximum number of requests to send per second (default 1s)
+   -host-backoff                      slow down a host that starts blocking (429, repeated 403s, connection failures)
+   -host-backoff-max value            maximum delay applied to a host that is blocking (default 30s)
    -per-host-rate-limit               enable per-host rate limiting (global rate limit becomes unlimited when enabled)
    -rlm, -rate-limit-minute int       maximum number of requests to send per minute (DEPRECATED)
    -bs, -bulk-size int                maximum number of hosts to be analyzed in parallel per template (default 25)
@@ -311,6 +328,7 @@ OPTIMIZATIONS:
    -nh, -no-httpx                   disable httpx probing for non-url input
    -preflight-portscan              run preflight resolve + TCP portscan and filter targets before scanning (disabled by default)
    -no-stdin                        disable stdin processing
+   -ac, -auto-calibrate             drop HTTP matches on a host's catch-all page (answers missing paths with 2xx/3xx)
 
 HEADLESS:
    -headless                        enable templates that require headless browser support (root user on Linux will disable sandbox)
@@ -327,6 +345,7 @@ DEBUG:
    -dresp, -debug-resp        show all received responses
    -p, -proxy string[]        list of http/socks5 proxy to use (comma separated or file input)
    -pi, -proxy-internal       proxy all internal requests
+   -rp, -replay-proxy string  http/socks5 proxy to re-send requests that produced a finding through (e.g. burp)
    -ldf, -list-dsl-function   list all supported DSL function signatures
    -tlog, -trace-log string   file to write sent requests trace log
    -elog, -error-log string   file to write sent requests error log
@@ -342,10 +361,11 @@ DEBUG:
    -hc, -health-check         run diagnostic check up
 
 UPDATE:
-   -up, -update                      update nuclei engine to the latest released version
-   -ut, -update-templates            update nuclei-templates to latest released version
-   -ud, -update-template-dir string  custom directory to install / update nuclei-templates
-   -duc, -disable-update-check       disable automatic nuclei/templates update check
+   -up, -update                            update nuclei engine to the latest released version
+   -ut, -update-templates                  update nuclei-templates to latest released version
+   -utc, -update-templates-channel string  nuclei-templates update channel (stable, latest) (default "stable")
+   -ud, -update-template-dir string        custom directory to install / update nuclei-templates
+   -duc, -disable-update-check             disable automatic nuclei/templates update check
 
 HONEYPOT:
    -hpd, -honeypot-detect            detect potential honeypot hosts based on match concentration
@@ -667,7 +687,7 @@ Thanks to all the amazing [**`community contributors for sending PRs`**](https:/
 <br>
 
 <div align="center">
-  
+
   <sub>**`nuclei`** is distributed under [**MIT License**](https://github.com/projectdiscovery/nuclei/blob/main/LICENSE.md)</sub>
 
 </div>

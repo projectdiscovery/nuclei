@@ -76,6 +76,10 @@ type Config struct {
 	// MetadataIndex is an optional shared index borrowed by the store. The
 	// caller remains responsible for persisting it.
 	MetadataIndex *index.Index
+
+	// TargetFilter narrows loading to the templates per-target profiles
+	// select for at least one target; nil loads every filtered template.
+	TargetFilter index.FilterFunc
 }
 
 // Store is a storage for loaded nuclei templates
@@ -387,6 +391,11 @@ func (store *Store) buildIndexFilter() *index.Filter {
 	}
 }
 
+// selectedByTargets reports whether some target's profile selects the template.
+func (store *Store) selectedByTargets(metadata *index.Metadata) bool {
+	return store.config.TargetFilter == nil || store.config.TargetFilter(metadata)
+}
+
 func (store *Store) loadTemplatesIndex() *index.Index {
 	var metadataIdx *index.Index
 
@@ -622,10 +631,10 @@ func (store *Store) noteMissingCapabilities(templatePath string, missingCaps []t
 // erroring out on discovering any faulty templates.
 func (store *Store) ValidateTemplates() error {
 	templatePaths, errs := store.config.Catalog.GetTemplatesPath(store.finalTemplates)
-	store.logErroredTemplates(errs)
+	notFound := store.logErroredTemplates(errs)
 
 	workflowPaths, errs := store.config.Catalog.GetTemplatesPath(store.finalWorkflows)
-	store.logErroredTemplates(errs)
+	notFound += store.logErroredTemplates(errs)
 
 	templatePathsMap := make(map[string]struct{}, len(templatePaths))
 	for _, path := range templatePaths {
@@ -637,7 +646,8 @@ func (store *Store) ValidateTemplates() error {
 		workflowPathsMap[path] = struct{}{}
 	}
 
-	if store.areTemplatesValid(templatePathsMap) && store.areWorkflowsValid(workflowPathsMap) {
+	// a path that can't be resolved is not validated, so it can't count as valid
+	if store.areTemplatesValid(templatePathsMap) && store.areWorkflowsValid(workflowPathsMap) && notFound == 0 {
 		return nil
 	}
 
@@ -882,6 +892,10 @@ func (store *Store) LoadTemplatesWithTags(templatesList, tags []string) ([]*temp
 						return
 					}
 
+					if !store.selectedByTargets(metadata) {
+						return
+					}
+
 					if len(tags) > 0 && !slices.ContainsFunc(tags, metadata.HasTag) {
 						return
 					}
@@ -914,6 +928,10 @@ func (store *Store) LoadTemplatesWithTags(templatesList, tags []string) ([]*temp
 
 					if metadata != nil && !indexFilter.Matches(metadata) {
 						noteExcludedByTag(templatePath, metadata)
+						return
+					}
+
+					if metadata != nil && !store.selectedByTargets(metadata) {
 						return
 					}
 				}
@@ -1039,10 +1057,15 @@ func workflowContainsProtocol(workflow []*workflows.WorkflowTemplate) bool {
 	return false
 }
 
-func (s *Store) logErroredTemplates(erred map[string]error) {
+// logErroredTemplates logs the templates that could not be found and returns
+// how many of them were not handled by the NotFoundCallback.
+func (s *Store) logErroredTemplates(erred map[string]error) int {
+	notFound := 0
 	for template, err := range erred {
 		if s.NotFoundCallback == nil || !s.NotFoundCallback(template) {
 			s.logger.Error().Msgf("Could not find template '%s': %s", template, err)
+			notFound++
 		}
 	}
+	return notFound
 }

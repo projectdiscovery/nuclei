@@ -56,6 +56,16 @@ func (metaInput *MetaInput) URL() (*urlutil.URL, error) {
 	return instance, nil
 }
 
+// Hostname returns the hostname of the target without the port, or an empty
+// string when the target cannot be parsed.
+func (metaInput *MetaInput) Hostname() string {
+	target, err := urlutil.Parse(metaInput.Target())
+	if err != nil {
+		return ""
+	}
+	return target.Hostname()
+}
+
 // Port returns the port of the target
 // if port is not present then empty string is returned
 func (metaInput *MetaInput) Port() string {

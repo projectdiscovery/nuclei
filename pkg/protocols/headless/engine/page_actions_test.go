@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"math/rand"
+	"net"
 	"net/http"
 	"net/http/cookiejar"
 	"net/http/httptest"
@@ -15,6 +16,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -319,6 +321,58 @@ func TestActionHeadersChange(t *testing.T) {
 	})
 }
 
+// Chrome keeps malformed percent-escapes such as "100%.png" in request paths,
+// as the WHATWG URL Standard requires, but net/url rejects them, so go-rod
+// hands the modification-rules hijack handler a request with a nil URL (#8015).
+//
+//nolint:exhaustruct,exhaustruct_v5,paralleltest // like the other action tests, which share browser and dialer state
+func TestRoutingRuleHandlerFailsRequestNetHTTPCannotParse(t *testing.T) {
+	for _, disableCookie := range []bool{false, true} {
+		t.Run(fmt.Sprintf("DisableCookie=%t", disableCookie), func(t *testing.T) {
+			// Count connections, not requests: net/http rejects the request line
+			// before any handler runs. TLS makes the headless proxy tunnel the
+			// request with CONNECT instead of rejecting the unparsable path itself.
+			var imageConns atomic.Int32
+
+			imageServer := httptest.NewUnstartedServer(http.NotFoundHandler())
+			imageServer.Config.ConnState = func(_ net.Conn, state http.ConnState) {
+				if state == http.StateNew {
+					imageConns.Add(1)
+				}
+			}
+
+			imageServer.StartTLS()
+			defer imageServer.Close()
+
+			actions := []*Action{
+				{
+					ActionType: ActionTypeHolder{ActionType: ActionSetHeader},
+					Data:       map[string]string{"part": "request", "key": "Test", "value": "Hello"},
+				},
+				{ActionType: ActionTypeHolder{ActionType: ActionNavigate}, Data: map[string]string{"url": "{{BaseURL}}"}},
+				{ActionType: ActionTypeHolder{ActionType: ActionWaitLoad}},
+			}
+			handler := func(w http.ResponseWriter, r *http.Request) {
+				if r.Header.Get("Test") == "Hello" {
+					_, _ = fmt.Fprintf(w, `<html><body>found<img src="%s/100%%.png"></body></html>`, imageServer.URL)
+				}
+			}
+			options := &Options{Timeout: 20 * time.Second, DisableCookie: disableCookie}
+
+			testHeadlessWithOptions(t, actions, options, handler, func(page *Page, err error, _ ActionData) {
+				require.NoError(t, err)
+
+				body := page.Page().MustElement("body").MustText()
+				require.Equal(t, "found", strings.TrimSpace(body), "modification rules were not applied")
+				require.Zero(t, imageConns.Load(), "unparsable request reached the image server")
+
+				imageDone := page.Page().MustEval(`() => document.querySelector("img").complete`).Bool()
+				require.True(t, imageDone, "unparsable request is still paused")
+			})
+		})
+	}
+}
+
 func TestActionScreenshot(t *testing.T) {
 	response := `
 		<html>
@@ -395,7 +449,7 @@ func TestActionScreenshotDeniesSiblingPrefixPathWithoutLFA(t *testing.T) {
 	err = page.isScreenshotPathAllowed(filePath)
 	require.ErrorIs(t, err, ErrLFAccessDenied)
 
-	err = page.isScreenshotPathAllowed(filepath.Join(cwd, "test.png"))
+	err = page.isScreenshotPathAllowed("test.png")
 	require.NoError(t, err)
 }
 
@@ -487,8 +541,8 @@ func TestActionScreenshotDeniesPostExtensionEscape(t *testing.T) {
 		"a sibling .png in cwd's parent must be rejected")
 
 	// Sanity: a path inside cwd remains allowed.
-	require.NoError(t, page.isScreenshotPathAllowed(filepath.Join(cwd, "ok.png")),
-		"a path inside cwd must still be allowed")
+	require.NoError(t, page.isScreenshotPathAllowed("ok.png"),
+		"a relative path must still be allowed")
 }
 
 func TestActionScreenshotDeniesSymlinkedParentOutsideCWDWithoutLFA(t *testing.T) {
@@ -816,18 +870,48 @@ func TestActionSleep(t *testing.T) {
 }
 
 func TestActionWaitEventDuration(t *testing.T) {
-	response := `<html><body>loaded</body></html>`
-
 	actions := []*Action{
 		{ActionType: ActionTypeHolder{ActionType: ActionWaitEvent}, Data: map[string]string{"event": "Page.loadEventFired", "max-duration": "5s"}},
 		{ActionType: ActionTypeHolder{ActionType: ActionNavigate}, Data: map[string]string{"url": "{{BaseURL}}"}},
 	}
 
-	testHeadlessSimpleResponse(t, response, actions, 20*time.Second, func(page *Page, err error, out ActionData) {
+	// a slow subresource delays the load event, so the wait is long enough to
+	// measure on platforms with a coarse monotonic clock such as Windows
+	handler := func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/slow" {
+			time.Sleep(300 * time.Millisecond)
+			return
+		}
+		_, _ = fmt.Fprintln(w, `<html><body>loaded<img src="/slow"></body></html>`)
+	}
+
+	testHeadless(t, actions, 20*time.Second, handler, func(page *Page, err error, out ActionData) {
 		require.Nil(t, err, "could not run page actions")
 		require.Len(t, page.ActionDurations, 2)
-		require.Greater(t, page.ActionDurations[0], time.Duration(0))
+		require.GreaterOrEqual(t, page.ActionDurations[0], 100*time.Millisecond)
 		require.Greater(t, page.ActionDurations[1], time.Duration(0))
+	})
+}
+
+func TestActionWaitEventSeesEventFiredBeforeWaiting(t *testing.T) {
+	actions := []*Action{
+		{ActionType: ActionTypeHolder{ActionType: ActionNavigate}, Data: map[string]string{"url": "{{BaseURL}}"}},
+	}
+
+	testHeadlessSimpleResponse(t, `<html><body>loaded</body></html>`, actions, 20*time.Second, func(page *Page, err error, out ActionData) {
+		require.Nil(t, err, "could not run page actions")
+
+		wait, err := page.WaitEvent(&Action{
+			ActionType: ActionTypeHolder{ActionType: ActionWaitEvent},
+			Data:       map[string]string{"event": "Page.loadEventFired", "max-duration": "3s"},
+		}, out)
+		require.Nil(t, err)
+
+		// the load event fires before the wait starts, as it can for a fast
+		// page during the navigation that precedes the deferred wait
+		require.Nil(t, page.page.Reload())
+		require.Nil(t, page.page.WaitLoad())
+		require.Nil(t, wait(), "an event fired after the wait-event action must not be missed")
 	})
 }
 
@@ -946,7 +1030,50 @@ func testHeadlessSimpleResponse(t *testing.T, response string, actions []*Action
 	}, assert)
 }
 
+// sharedBrowser is launched once for the package. Every test used to start and
+// tear down its own chromium, which dominated the suite: a launch also spawns a
+// second chromium to validate the binary, so 30-odd tests cost 60-odd cold
+// starts. NewInstance below is the real isolation boundary between tests, so
+// sharing the browser costs no coverage.
+var sharedBrowser *Browser
+
+func TestMain(m *testing.M) {
+	browser, err := New(&types.Options{
+		ShowBrowser:        false,
+		UseInstalledChrome: testheadless.HeadlessLocal,
+	})
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "could not create browser: %v\n", err)
+		os.Exit(1)
+	}
+	sharedBrowser = browser
+
+	code := m.Run()
+
+	browser.Close()
+	// screenshots of tests without local file access land here
+	if browser.screenshotDir != "" {
+		_ = os.RemoveAll(browser.screenshotDir)
+	}
+	os.Exit(code)
+}
+
 func testHeadless(t *testing.T, actions []*Action, timeout time.Duration, handler func(w http.ResponseWriter, r *http.Request), assert func(page *Page, pageErr error, extractedData ActionData)) {
+	t.Helper()
+
+	options := &Options{Timeout: timeout} //nolint:exhaustruct,exhaustruct_v5 // zero values are the defaults
+	testHeadlessWithOptions(t, actions, options, handler, assert)
+}
+
+// testHeadlessWithOptions is testHeadless with caller-chosen page options. It
+// overwrites options.Options with the test scan options.
+func testHeadlessWithOptions(
+	t *testing.T,
+	actions []*Action,
+	options *Options,
+	handler func(w http.ResponseWriter, r *http.Request),
+	assert func(page *Page, pageErr error, extractedData ActionData),
+) {
 	t.Helper()
 
 	lfa := envutil.GetEnvOrDefault("LOCAL_FILE_ACCESS", true)
@@ -956,17 +1083,14 @@ func testHeadless(t *testing.T, actions []*Action, timeout time.Duration, handle
 
 	_ = protocolstate.Init(opts)
 
-	browser, err := New(&types.Options{
-		ShowBrowser:        false,
-		UseInstalledChrome: testheadless.HeadlessLocal,
-	})
-	require.Nil(t, err, "could not create browser")
-	defer browser.Close()
-
-	instance, err := browser.NewInstance()
+	instance, err := sharedBrowser.NewInstance()
 	require.Nil(t, err, "could not create browser instance")
 	defer func() {
 		_ = instance.Close()
+		// A debug action sets these on the browser rather than the page, so with
+		// a shared browser they would leak into every later test.
+		sharedBrowser.engine.SlowMotion(0)
+		sharedBrowser.engine.Trace(false)
 	}()
 
 	ts := httptest.NewServer(http.HandlerFunc(handler))
@@ -976,7 +1100,8 @@ func testHeadless(t *testing.T, actions []*Action, timeout time.Duration, handle
 	input.CookieJar, err = cookiejar.New(nil)
 	require.Nil(t, err)
 
-	extractedData, page, err := instance.Run(input, actions, nil, &Options{Timeout: timeout, Options: opts}) // allow file access in test
+	options.Options = opts // allow file access in test
+	extractedData, page, err := instance.Run(input, actions, nil, options)
 	assert(page, err, extractedData)
 
 	if page != nil {
@@ -1104,4 +1229,23 @@ func TestBlockedHeadlessURLS(t *testing.T) {
 			page.Close()
 		}
 	}
+}
+
+func TestBrowserCookiesOutsideInputPath(t *testing.T) {
+	actions := []*Action{
+		{ActionType: ActionTypeHolder{ActionType: ActionNavigate}, Data: map[string]string{"url": "{{BaseURL}}"}},
+		{ActionType: ActionTypeHolder{ActionType: ActionWaitLoad}},
+	}
+
+	handler := func(w http.ResponseWriter, r *http.Request) {
+		http.SetCookie(w, &http.Cookie{Name: "session", Value: "s1", Path: "/"})
+		http.SetCookie(w, &http.Cookie{Name: "token", Value: "abc", Path: "/admin"})
+		_, _ = fmt.Fprintln(w, `ok`)
+	}
+
+	testHeadless(t, actions, 20*time.Second, handler, func(page *Page, err error, out ActionData) {
+		require.Nil(t, err, "could not run page actions")
+		require.Equal(t, "s1", out["session"])
+		require.Equal(t, "abc", out["token"], "a cookie scoped to another path must still be exposed")
+	})
 }

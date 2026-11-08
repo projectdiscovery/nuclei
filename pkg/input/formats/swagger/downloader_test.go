@@ -9,6 +9,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/projectdiscovery/retryablehttp-go"
+
 	"gopkg.in/yaml.v3"
 )
 
@@ -268,7 +270,9 @@ func TestSwaggerDownloader_Download_InvalidYAML(t *testing.T) {
 func TestSwaggerDownloader_Download_Timeout(t *testing.T) {
 	// Create mock server with delay
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		time.Sleep(35 * time.Second) // Longer than 30 second timeout
+		// Outlasts the client timeout below. Waiting out the real 30s default
+		// cost this test 35s, which was a seventh of the whole unit suite.
+		time.Sleep(500 * time.Millisecond)
 		if err := json.NewEncoder(w).Encode(map[string]interface{}{"test": "data"}); err != nil {
 			http.Error(w, "failed to encode response", http.StatusInternalServerError)
 		}
@@ -287,9 +291,17 @@ func TestSwaggerDownloader_Download_Timeout(t *testing.T) {
 	}()
 
 	downloader := &SwaggerDownloader{}
-	_, err = downloader.Download(server.URL+"/swagger.json", tmpDir, nil)
+	client := retryablehttp.NewClient(retryablehttp.DefaultOptionsSingle)
+	client.HTTPClient.Timeout = 100 * time.Millisecond
+	_, err = downloader.Download(server.URL+"/swagger.json", tmpDir, client)
 	if err == nil {
-		t.Error("Expected timeout error, but got none")
+		t.Fatal("Expected timeout error, but got none")
+	}
+	// Assert it timed out rather than merely erroring: the spec this server
+	// returns is invalid, so a test that only checks for any error passes even
+	// when the timeout never fires.
+	if !os.IsTimeout(err) && !strings.Contains(err.Error(), "Timeout") {
+		t.Fatalf("Expected a timeout error, got: %v", err)
 	}
 }
 

@@ -1,4 +1,9 @@
-//go:build !gofuzz && (linux || darwin || windows) && (amd64 || arm64)
+// sonic compiles its fast paths only for the Go versions it has adopted, and
+// prints a warning from init on any other toolchain before falling back to
+// encoding/json. Mirroring its constraint here keeps that fallback silent: on a
+// Go version sonic does not support we never link it and use encoding/json
+// directly. Raise the upper bound when sonic adds support for a new Go version.
+//go:build !gofuzz && (linux || darwin || windows) && (amd64 || arm64) && go1.17 && !go1.28
 
 package json
 

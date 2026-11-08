@@ -5,7 +5,7 @@ import (
 	"net"
 	"time"
 
-	gpwmiexec "github.com/Mzack9999/goimpacket/pkg/wmiexec"
+	gpwmiexec "github.com/projectdiscovery/goimpacket/pkg/wmiexec"
 	"github.com/oiweiwei/go-msrpc/dcerpc"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/js/libs/gptransport"

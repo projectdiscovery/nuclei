@@ -6,6 +6,7 @@ import (
 	"strings"
 	"sync/atomic"
 
+	"github.com/projectdiscovery/fastdialer/fastdialer"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/portutil"
 	mapsutil "github.com/projectdiscovery/utils/maps"
@@ -72,6 +73,20 @@ func NewWithInput(ctx context.Context, input string) *Context {
 // Context returns the context of the current contextargs
 func (ctx *Context) Context() context.Context {
 	return ctx.ctx
+}
+
+// WithCustomIP returns ctx with dials to the hostname of input pinned to its
+// CustomIP. Dials made with ctx to other hosts, such as redirect targets or a
+// proxy, are resolved as usual.
+func WithCustomIP(ctx context.Context, input *MetaInput) context.Context {
+	if input == nil || input.CustomIP == "" {
+		return ctx
+	}
+	hostname := input.Hostname()
+	if hostname == "" {
+		return ctx
+	}
+	return fastdialer.WithResolveOverride(ctx, hostname, input.CustomIP)
 }
 
 // Set the specific key-value pair
@@ -280,9 +295,13 @@ func GetCopyIfHostOutdated(ctx *Context, url string) *Context {
 	}
 	orig, _ := urlutil.Parse(ctx.MetaInput.Input)
 	newURL, _ := urlutil.Parse(url)
-	if orig != nil && newURL != nil && orig.Host != newURL.Host {
+	if orig != nil && newURL != nil && (orig.Host != newURL.Host || (orig.Scheme != "" && newURL.Scheme != "" && !strings.EqualFold(orig.Scheme, newURL.Scheme))) {
 		newCtx := ctx.Clone()
-		newCtx.MetaInput.Input = newURL.Host
+		if newURL.Scheme != "" {
+			newCtx.MetaInput.Input = newURL.Scheme + "://" + newURL.Host
+		} else {
+			newCtx.MetaInput.Input = newURL.Host
+		}
 		return newCtx
 	}
 	return ctx

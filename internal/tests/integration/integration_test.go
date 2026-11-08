@@ -73,17 +73,27 @@ func TestMain(m *testing.M) {
 	templatesDir := filepath.Join(homeDir, config.NucleiTemplatesDirName)
 	config.DefaultConfig.SetTemplatesDir(templatesDir)
 
+	baseEnv := []string{
+		"NUCLEI_TEMPLATES_DIR=" + templatesDir,
+		"XDG_CONFIG_HOME=" + filepath.Join(tempDir, "config"),
+		"XDG_STATE_HOME=" + filepath.Join(tempDir, "state"),
+		"XDG_CACHE_HOME=" + filepath.Join(tempDir, "cache"),
+	}
+	// cases run nuclei with -duc, so the official templates some of them read
+	// are installed once here rather than by whichever cases start first, which
+	// queued them behind each other's downloads inside their own timeouts
+	if err := installTemplates(binaryPath, baseEnv); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		_ = os.RemoveAll(tempDir)
+		os.Exit(1)
+	}
+
 	previousRunner := testutils.DefaultRunner()
 	runner := testutils.NewRunner(
 		testutils.WithBinaryPath(binaryPath),
 		testutils.WithWorkingDir(workingFixturesDir),
 		testutils.WithExtraArgs(integrationExtraArgs...),
-		testutils.WithBaseEnv(
-			"NUCLEI_TEMPLATES_DIR="+templatesDir,
-			"XDG_CONFIG_HOME="+filepath.Join(tempDir, "config"),
-			"XDG_STATE_HOME="+filepath.Join(tempDir, "state"),
-			"XDG_CACHE_HOME="+filepath.Join(tempDir, "cache"),
-		),
+		testutils.WithBaseEnv(baseEnv...),
 	)
 	testutils.SetDefaultRunner(runner)
 
@@ -120,6 +130,16 @@ func buildNucleiBinary(repoRoot, binaryPath string) error {
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("failed to build nuclei binary: %w\n%s", err, strings.TrimSpace(string(output)))
+	}
+	return nil
+}
+
+func installTemplates(binaryPath string, env []string) error {
+	cmd := exec.Command(binaryPath, "-update-templates", "-no-color")
+	cmd.Env = append(os.Environ(), env...)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("failed to install nuclei templates: %w\n%s", err, strings.TrimSpace(string(output)))
 	}
 	return nil
 }

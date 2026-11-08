@@ -77,15 +77,17 @@ type Request struct {
 // description. Multiple definitions are separated by commas.
 // Definitions not having a name (generated on runtime) are prefixed & suffixed by <>.
 var RequestPartDefinitions = map[string]string{
-	"template-id":    "ID of the template executed",
-	"template-info":  "Info Block of the template executed",
-	"template-path":  "Path of the template executed",
-	"host":           "Host is the input to the template",
-	"matched":        "Matched is the input which was matched upon",
-	"type":           "Type is the type of request made",
-	"req":            "Headless request made from the client",
-	"duration":       "Latest measured operation duration in seconds",
-	"resp,body,data": "Headless response received from client (default)",
+	"template-id":        "ID of the template executed",
+	"template-info":      "Info Block of the template executed",
+	"template-path":      "Path of the template executed",
+	"host":               "Host is the input to the template",
+	"matched":            "Matched is the input which was matched upon",
+	"type":               "Type is the type of request made",
+	"req":                "Headless request made from the client",
+	"duration":           "Latest measured operation duration in seconds",
+	"resp,body,data":     "Headless response received from client (default)",
+	"header,all_headers": "Headless response headers",
+	"status_code":        "Status code received from the server",
 }
 
 // Step is a headless protocol request step.
@@ -147,6 +149,9 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 		if err := compiled.Compile(); err != nil {
 			return errors.Wrap(err, "could not compile operators")
 		}
+		// llm operators only evaluate once they hold the scan's client; without
+		// it every llm path returns a negative result instead of an error.
+		protocols.BindLLMOperators(compiled, options)
 		request.CompiledOperators = compiled
 	}
 
@@ -177,6 +182,15 @@ func (request *Request) Requests() int {
 
 // UpdateOptions replaces this request's options with a new copy
 func (r *Request) UpdateOptions(opts *protocols.ExecutorOptions) {
+	r.Operators = protocols.CloneOperators(r.Operators)
+	r.CompiledOperators = nil
+	if r.options == nil {
+		if opts != nil {
+			r.options = opts.Copy()
+		}
+		return
+	}
+	r.options = r.options.Copy()
 	r.options.ApplyNewEngineOptions(opts)
 }
 

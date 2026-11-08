@@ -8,6 +8,7 @@ import (
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/expressions"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/render"
+	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 )
 
 var dslStringMarkerRegex = regexp.MustCompile(`\{\{([^{}]+)\}\}`)
@@ -32,7 +33,7 @@ type stringLiteralSpan struct {
 	quote byte
 }
 
-func resolveDSLStringMarkers(expression string, data map[string]interface{}) (string, error) {
+func resolveDSLStringMarkers(expression string, data map[string]interface{}, options *types.Options) (string, error) {
 	// Resolve only marker spans already present in the compiled DSL source.
 	// Values are escaped for the surrounding string literal before recompilation.
 	stringSpans := findStringLiteralSpans(expression)
@@ -52,8 +53,9 @@ func resolveDSLStringMarkers(expression string, data map[string]interface{}) (st
 	resolved := expression
 	for _, marker := range markers {
 		result, err := render.Render(render.Input{
-			Text:   "{{" + marker.expr + "}}",
-			Values: data,
+			Text:    "{{" + marker.expr + "}}",
+			Values:  data,
+			Options: options,
 		})
 		if err != nil {
 			return "", err

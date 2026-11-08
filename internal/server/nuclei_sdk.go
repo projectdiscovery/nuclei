@@ -28,10 +28,12 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/progress"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/globalmatchers"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/hostbackoff"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/hosterrorscache"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/interactsh"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/utils/excludematchers"
 	browserEngine "github.com/projectdiscovery/nuclei/v3/pkg/protocols/headless/engine"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/catchall"
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting"
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
@@ -51,7 +53,7 @@ type NucleiExecutorOptions struct {
 	Catalog            catalog.Catalog
 	IssuesClient       reporting.Client
 	RateLimiter        *ratelimit.Limiter
-	Interactsh         *interactsh.Client
+	Interactsh         interactsh.IClient
 	ProjectFile        *projectfile.ProjectFile
 	Browser            *browserEngine.Browser
 	FuzzStatsDB        *stats.Tracker
@@ -104,6 +106,13 @@ func newNucleiExecutor(opts *NucleiExecutorOptions) (*nucleiExecutor, error) {
 		cache.SetVerbose(opts.Options.Verbose)
 
 		executorOpts.HostErrorsCache = cache
+	}
+
+	if opts.Options.HostBackoff {
+		executorOpts.HostBackoff = hostbackoff.New(hostbackoff.Config{Max: opts.Options.HostBackoffMax})
+	}
+	if opts.Options.AutoCalibrate {
+		executorOpts.CatchAll = catchall.New(0)
 	}
 
 	executorEngine := core.New(opts.Options)

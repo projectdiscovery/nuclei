@@ -94,7 +94,7 @@ test:
 # Keep this under the GitHub Actions step timeout (50m) so a hung nuclei process
 # is reported by go test instead of the runner killing the job with no test name.
 integration:
-	$(GOTEST) -tags=integration -timeout 40m ./internal/tests/integration
+	$(GOTEST) -tags=integration -timeout 40m -v ./internal/tests/integration
 
 integration-debug:
 	$(GOTEST) -tags=integration ./internal/tests/integration -v $(GO_TEST_ARGS) -args $(INTEGRATION_ARGS)
@@ -112,7 +112,7 @@ functional: build
 		exit 1; \
 	fi; \
 	RELEASE_BINARY="$$release_binary" DEV_BINARY="$(PWD)/bin/nuclei" \
-		$(GOTEST) -tags=functional -timeout 1h ./internal/tests/functional
+		$(GOTEST) -tags=functional -timeout 1h -v ./internal/tests/functional
 
 tidy:
 	$(GOMOD) tidy

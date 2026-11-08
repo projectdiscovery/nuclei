@@ -26,8 +26,9 @@ func TestGetInputPathsSMBDeniesHost(t *testing.T) {
 		},
 	}
 	// Directory target dials during enumeration so host policy applies here.
-	err := req.getInputPaths(context.Background(), `\\203.0.113.52\backup\`, func(string) {
+	err := req.getInputPaths(context.Background(), `\\203.0.113.52\backup\`, func(string) error {
 		t.Fatal("callback must not run when host is denied")
+		return nil
 	})
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "203.0.113.52")
@@ -35,7 +36,7 @@ func TestGetInputPathsSMBDeniesHost(t *testing.T) {
 
 func TestGetInputPathsSMBRequiresExecutionID(t *testing.T) {
 	req := &Request{SMBUser: "u", SMBPassword: "p"}
-	err := req.getInputPaths(context.Background(), `\\fs01\backup\`, func(string) {})
+	err := req.getInputPaths(context.Background(), `\\fs01\backup\`, func(string) error { return nil })
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "execution id")
 }
@@ -43,8 +44,9 @@ func TestGetInputPathsSMBRequiresExecutionID(t *testing.T) {
 func TestGetInputPathsSMBSingleFileNoDial(t *testing.T) {
 	req := &Request{} // no execution id / options
 	var got []string
-	err := req.getInputPaths(context.Background(), `\\fs01\backup\a.txt`, func(path string) {
+	err := req.getInputPaths(context.Background(), `\\fs01\backup\a.txt`, func(path string) error {
 		got = append(got, path)
+		return nil
 	})
 	require.NoError(t, err)
 	require.Equal(t, []string{`\\fs01\backup\a.txt`}, got)

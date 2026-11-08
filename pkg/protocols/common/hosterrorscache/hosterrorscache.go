@@ -16,6 +16,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/types/nucleierr"
 	"github.com/projectdiscovery/utils/errkit"
 	stringsutil "github.com/projectdiscovery/utils/strings"
+	"golang.org/x/net/idna"
 )
 
 // CacheInterface defines the signature of the hosterrorscache so that
@@ -325,10 +326,31 @@ func (c *Cache) GetKeyFromContext(ctx *contextargs.Context, err error) string {
 
 	if address == "" {
 		address = ctx.MetaInput.Address()
+	} else if ctx.MetaInput.CustomIP != "" {
+		address = pinnedAddress(ctx.MetaInput, address)
 	}
 
 	finalValue := c.NormalizeCacheValue(address)
 	return finalValue
+}
+
+// pinnedAddress maps the address of a failed dial to a pinned target, which
+// fastdialer reports with the hostname in ASCII form, to the pinned ip that
+// Check keys the target by. Addresses of other hosts are returned as is.
+func pinnedAddress(input *contextargs.MetaInput, address string) string {
+	host, port, err := net.SplitHostPort(address)
+	if err != nil || !strings.EqualFold(asciiHost(host), asciiHost(input.Hostname())) {
+		return address
+	}
+	return net.JoinHostPort(input.CustomIP, port)
+}
+
+// asciiHost returns the ASCII form of an internationalized hostname.
+func asciiHost(host string) string {
+	if ascii, err := idna.ToASCII(host); err == nil {
+		return ascii
+	}
+	return host
 }
 
 var reCheckError = regexp.MustCompile(`(no address found for host|could not resolve host|connection refused|connection reset by peer|could not connect to any address found for host|timeout awaiting response headers|i/o timeout)`)

@@ -3,6 +3,7 @@ package hosterrorscache
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -306,4 +307,27 @@ func TestCacheCheckConcurrent(t *testing.T) {
 func newCtxArgs(value string) *contextargs.Context {
 	ctx := contextargs.NewWithInput(context.TODO(), value)
 	return ctx
+}
+
+func TestGetKeyFromContextPinnedTarget(t *testing.T) {
+	cache := New(3, DefaultMaxHostsCount, nil)
+	pinned := contextargs.NewWithMetaInput(context.Background(), &contextargs.MetaInput{
+		Input:    "https://a.example",
+		CustomIP: "192.0.2.10",
+	})
+	// fastdialer reports the dialed hostname as the error address
+	dialErr := errkit.WithAttr(errkit.New("connection refused"), slog.String("address", "a.example:443"))
+	require.Equal(t, cache.GetKeyFromContext(pinned, nil), cache.GetKeyFromContext(pinned, dialErr))
+
+	// an error from another host keeps its own address
+	otherErr := errkit.WithAttr(errkit.New("connection refused"), slog.String("address", "b.example:443"))
+	require.Equal(t, "b.example:443", cache.GetKeyFromContext(pinned, otherErr))
+
+	// an internationalized hostname is reported in its ASCII form
+	idn := contextargs.NewWithMetaInput(context.Background(), &contextargs.MetaInput{
+		Input:    "https://bücher.example",
+		CustomIP: "192.0.2.10",
+	})
+	idnErr := errkit.WithAttr(errkit.New("connection refused"), slog.String("address", "xn--bcher-kva.example:443"))
+	require.Equal(t, "192.0.2.10:443", cache.GetKeyFromContext(idn, idnErr))
 }

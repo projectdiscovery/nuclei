@@ -1,4 +1,4 @@
-// Package secretsdump exposes Mzack9999/goimpacket's DCSync (DRSUAPI
+// Package secretsdump exposes projectdiscovery/goimpacket's DCSync (DRSUAPI
 // IDL_DRSGetNCChanges) primitive to nuclei javascript templates.
 //
 // DCSync requires Replicating Directory Changes / Replicating Directory
@@ -14,10 +14,10 @@ import (
 	"encoding/hex"
 	"fmt"
 
-	gprpc "github.com/Mzack9999/goimpacket/pkg/dcerpc"
-	gpdrs "github.com/Mzack9999/goimpacket/pkg/dcerpc/drsuapi"
-	gpsession "github.com/Mzack9999/goimpacket/pkg/session"
-	gpsmb "github.com/Mzack9999/goimpacket/pkg/smb"
+	gprpc "github.com/projectdiscovery/goimpacket/pkg/dcerpc"
+	gpdrs "github.com/projectdiscovery/goimpacket/pkg/dcerpc/drsuapi"
+	gpsession "github.com/projectdiscovery/goimpacket/pkg/session"
+	gpsmb "github.com/projectdiscovery/goimpacket/pkg/smb"
 	"github.com/projectdiscovery/goja"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/js/utils"

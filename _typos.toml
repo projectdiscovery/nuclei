@@ -20,6 +20,8 @@ extend-exclude = [
     "vendor/",
     # Go checksum file
     "go.sum",
+    # Generated history. Commit SHAs are not words.
+    "SECURITY_CONTEXT.md",
 ]
 
 [default.extend-identifiers]
@@ -32,6 +34,8 @@ AllowdTypes = "AllowdTypes"
 ExludedDastTmplStats = "ExludedDastTmplStats"
 
 [default.extend-words]
+# SMTP greeting command
+HELO = "HELO"
 # External package API (fileutil.IsWriteable)
 Writeable = "Writeable" # TODO(dwisiswant0): Fix in upstream.
 # Variable name used for flow annotations

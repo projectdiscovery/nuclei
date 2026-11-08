@@ -4,6 +4,8 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"crypto/tls"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -87,11 +89,7 @@ func NewUploadWriter(ctx context.Context, logger *gologger.Logger, creds *pdcpau
 	tmp.Update()
 	u.uploadURL = tmp.URL
 
-	// create http client
-	opts := retryablehttp.DefaultOptionsSingle
-	opts.NoAdjustTimeout = true
-	opts.Timeout = time.Duration(3) * time.Minute
-	u.client = retryablehttp.NewClient(opts)
+	u.client = newUploadClient()
 
 	// create context
 	ctx, u.cancel = context.WithCancel(ctx)
@@ -99,6 +97,32 @@ func NewUploadWriter(ctx context.Context, logger *gologger.Logger, creds *pdcpau
 	// upload every 1 minute or when buffer is full
 	go u.autoCommit(ctx, reader)
 	return u, nil
+}
+
+// newUploadClient returns the client for cloud uploads. The upload sends the
+// API key and the scan results, so the client verifies the server certificate.
+// The retryablehttp default clients skip verification.
+func newUploadClient() *retryablehttp.Client {
+	transport := retryablehttp.DefaultReusePooledTransport()
+	// fastdialer DialTLS does not verify certificates, so net/http does the
+	// TLS handshake over the fastdialer connection.
+	transport.DialTLSContext = nil
+	transport.TLSClientConfig = &tls.Config{MinVersion: tls.VersionTLS12}
+
+	opts := retryablehttp.DefaultOptionsSingle
+	opts.NoAdjustTimeout = true
+	opts.Timeout = time.Duration(3) * time.Minute
+	opts.HttpClient = &http.Client{Transport: transport}
+	// a certificate error does not go away on retry
+	defaultRetry := retryablehttp.DefaultRetryPolicy()
+	opts.CheckRetry = func(ctx context.Context, resp *http.Response, err error) (bool, error) {
+		var certErr *tls.CertificateVerificationError
+		if errors.As(err, &certErr) {
+			return false, nil
+		}
+		return defaultRetry(ctx, resp, err)
+	}
+	return retryablehttp.NewClient(opts)
 }
 
 // SetScanID sets the scan id for the upload writer

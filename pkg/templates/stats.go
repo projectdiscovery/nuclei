@@ -49,6 +49,10 @@ var templateStatEntries = []templateStatEntry{
 		description: "Excluded %d file template[s] (disabled as default), use -file option to run file templates.",
 	},
 	{
+		name:        ExcludedLLMTemplateStats,
+		description: "Excluded %d llm template[s] (disabled as default), use -llm option to run semantic matcher templates.",
+	},
+	{
 		name:        ExcludedWeakMatcherTemplateStats,
 		description: "Excluded %d template[s] with known weak matchers / tags excluded from default run using .nuclei-ignore",
 	},
@@ -63,6 +67,10 @@ var templateStatEntries = []templateStatEntry{
 	{
 		name:        SkippedRequestSignatureTemplateStats,
 		description: "Skipping %d templates, HTTP Request signatures can only be used in Signed & Verified templates.",
+	},
+	{
+		name:        SkippedWorkflowStepStats,
+		description: "Skipping %d workflow step[s] that loaded no templates, so their subtemplates will not run (use -v for details)",
 	},
 }
 

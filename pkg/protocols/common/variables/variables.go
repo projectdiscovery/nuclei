@@ -106,7 +106,7 @@ func (variables *Variable) EvaluateScope(scope *Scope) Evaluation {
 		}
 
 		valueString := types.ToString(value)
-		evaluated := evaluateVariableValueWithMap(valueString, combined.Values())
+		evaluated := evaluateVariableValueWithMap(valueString, combined.Values(), combined.options)
 		result[key] = evaluated
 		templateValues[key] = evaluated
 		combined.AddTemplateValue(key, evaluated)
@@ -159,7 +159,7 @@ func (variables *Variable) EvaluateWithInteractshScope(scope *Scope, interact re
 		}
 
 		valueString := types.ToString(value)
-		evaluated, gotURLs := renderVariableValueWithInteractsh(valueString, combined.Values(), interact, interactURLs)
+		evaluated, gotURLs := renderVariableValueWithInteractsh(valueString, combined.Values(), interact, interactURLs, combined.options)
 		result[key] = evaluated
 		templateValues[key] = evaluated
 		combined.AddTemplateValue(key, evaluated)
@@ -187,10 +187,11 @@ func evaluateVariableValue(expression string, values, processing map[string]inte
 }
 
 // evaluateVariableValueWithMap evaluates an expression with a pre-merged map.
-func evaluateVariableValueWithMap(expression string, combinedMap map[string]interface{}) string {
+func evaluateVariableValueWithMap(expression string, combinedMap map[string]interface{}, options *types.Options) string {
 	result, err := render.Render(render.Input{
-		Text:   expression,
-		Values: combinedMap,
+		Text:    expression,
+		Values:  combinedMap,
+		Options: options,
 	})
 	if err != nil {
 		return expression
@@ -199,10 +200,11 @@ func evaluateVariableValueWithMap(expression string, combinedMap map[string]inte
 	return result.Text
 }
 
-func renderVariableValueWithInteractsh(expression string, combinedMap map[string]interface{}, interact render.URLSource, interactURLs []string) (string, []string) {
+func renderVariableValueWithInteractsh(expression string, combinedMap map[string]interface{}, interact render.URLSource, interactURLs []string, options *types.Options) (string, []string) {
 	result, err := render.Render(render.Input{
 		Text:         expression,
 		Values:       combinedMap,
+		Options:      options,
 		Interactsh:   interact,
 		InteractURLs: interactURLs,
 	})

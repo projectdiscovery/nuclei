@@ -6,6 +6,7 @@ package integration_test
 import (
 	"errors"
 	"fmt"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"net/http/httputil"
@@ -83,6 +84,8 @@ var httpTestcases = []integrationCase{
 	{Path: "protocols/http/annotation-timeout.yaml", TestCase: &annotationTimeout{}},
 	{Path: "protocols/http/custom-attack-type.yaml", TestCase: &customAttackType{}},
 	{Path: "protocols/http/get-all-ips.yaml", TestCase: &scanAllIPS{}},
+	{Path: "protocols/http/target-line-ip.yaml", TestCase: &httpTargetLineIP{}},
+	{Path: "protocols/http/target-line-ip-pipeline.yaml", TestCase: &httpTargetLineIP{}},
 	{Path: "protocols/http/get-without-scheme.yaml", TestCase: &httpGetWithoutScheme{}},
 	{Path: "protocols/http/cl-body-without-header.yaml", TestCase: &httpCLBodyWithoutHeader{}},
 	{Path: "protocols/http/cl-body-with-header.yaml", TestCase: &httpCLBodyWithHeader{}},
@@ -99,6 +102,7 @@ var httpTestcases = []integrationCase{
 	{Path: "protocols/http/raw-unsafe-path-single-slash.yaml", TestCase: &httpRawUnsafePathSingleSlash{}},
 	{Path: "protocols/http/disable-http-cache.yaml", TestCase: &httpDisableCache{}},
 	{Path: "protocols/http/http-cache.yaml", TestCase: &httpCache{}},
+	{Path: "protocols/http/get.yaml", TestCase: &httpExcludeHostsFileComments{}},
 }
 
 type httpMultiVarSharing struct{}
@@ -1606,6 +1610,70 @@ func (h *scanAllIPS) Execute(filePath string) error {
 	return expectResultsCount(got, 1)
 }
 
+// target lines pin a hostname that does not resolve to the test servers
+type httpTargetLineIP struct{}
+
+// Execute executes a test case and returns an error if occurred
+func (h *httpTargetLineIP) Execute(filePath string) error {
+	serve := func(addr, name string) (*httptest.Server, error) {
+		listener, err := net.Listen("tcp", addr)
+		if err != nil {
+			return nil, err
+		}
+		ts := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			_, _ = fmt.Fprintf(w, "host=%s server=%s", r.Host, name)
+		}))
+		_ = ts.Listener.Close()
+		ts.Listener = listener
+		ts.Start()
+		return ts, nil
+	}
+
+	one, err := serve("127.0.0.1:0", "one")
+	if err != nil {
+		return err
+	}
+	defer one.Close()
+	_, port, err := net.SplitHostPort(one.Listener.Addr().String())
+	if err != nil {
+		return err
+	}
+
+	lines := []string{fmt.Sprintf(`{"target": "http://pinned.test:%s", "ip": "127.0.0.1"}`, port)}
+	want := []string{"one"}
+	// the same host pinned to a second ip, where 127.0.0.2 is available
+	if two, err := serve(net.JoinHostPort("127.0.0.2", port), "two"); err == nil {
+		defer two.Close()
+		lines = append(lines, fmt.Sprintf(`{"target": "http://pinned.test:%s", "ip": "127.0.0.2"}`, port))
+		want = append(want, "two")
+	}
+
+	targets, err := os.CreateTemp("", "target-lines-*.txt")
+	if err != nil {
+		return err
+	}
+	defer func() { _ = os.Remove(targets.Name()) }()
+	if _, err := targets.WriteString(strings.Join(lines, "\n")); err != nil {
+		return err
+	}
+	_ = targets.Close()
+
+	got, err := testutils.RunNucleiBareArgsAndGetResults(debug, nil, "-t", filePath, "-l", targets.Name())
+	if err != nil {
+		return err
+	}
+	if err := expectResultsCount(got, len(want)); err != nil {
+		return err
+	}
+	joined := strings.Join(got, "\n")
+	for _, name := range want {
+		if !strings.Contains(joined, name) {
+			return fmt.Errorf("no result from server %q: %v", name, got)
+		}
+	}
+	return nil
+}
+
 // ensure that ip|host are handled without http|https scheme
 type httpGetWithoutScheme struct{}
 
@@ -1914,5 +1982,61 @@ func (h *httpDisableCache) Execute(filePath string) error {
 		return fmt.Errorf("expected 2 requests to server, got %d", count)
 	}
 
+	return nil
+}
+
+// ensure that comments in an -exclude-hosts file are ignored
+type httpExcludeHostsFileComments struct{}
+
+// Execute executes a test case and returns an error if occurred
+func (h *httpExcludeHostsFileComments) Execute(filePath string) error {
+	router := httprouter.New()
+	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+		_, _ = fmt.Fprintf(w, "This is test matcher text")
+	})
+	ts := httptest.NewServer(router)
+	defer ts.Close()
+
+	excludeHosts := func(content string) ([]string, error) {
+		file, err := os.CreateTemp("", "exclude-hosts-*.txt")
+		if err != nil {
+			return nil, err
+		}
+		defer func() { _ = os.Remove(file.Name()) }()
+		_, err = file.WriteString(content)
+		_ = file.Close()
+		if err != nil {
+			return nil, err
+		}
+
+		return testutils.RunNucleiTemplateAndGetResults(filePath, ts.URL, debug, "-eh", file.Name())
+	}
+
+	// a comment line is not a host, even when it reads as an invalid regex
+	results, err := excludeHosts("# hosts out of scope (see ticket\n203.0.113.10\n")
+	if err != nil {
+		return fmt.Errorf("comment line: %w", err)
+	}
+	if err := expectResultsCount(results, 1); err != nil {
+		return fmt.Errorf("comment line: %w", err)
+	}
+
+	// a trailing comment does not stop the host from being excluded
+	results, err = excludeHosts("127.0.0.1 # test server\n")
+	if err != nil {
+		return fmt.Errorf("trailing comment: %w", err)
+	}
+	if err := expectResultsCount(results, 0); err != nil {
+		return fmt.Errorf("trailing comment: %w", err)
+	}
+
+	// comma separated hosts are still split when passed on the command line
+	results, err = testutils.RunNucleiTemplateAndGetResults(filePath, ts.URL, debug, "-eh", "203.0.113.10, 127.0.0.1")
+	if err != nil {
+		return fmt.Errorf("comma separated: %w", err)
+	}
+	if err := expectResultsCount(results, 0); err != nil {
+		return fmt.Errorf("comma separated: %w", err)
+	}
 	return nil
 }

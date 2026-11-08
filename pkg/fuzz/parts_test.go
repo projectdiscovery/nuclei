@@ -13,7 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func newFuzzTestInteractshClient(t *testing.T) *interactsh.Client {
+func newFuzzTestInteractshClient(t *testing.T) interactsh.IClient {
 	t.Helper()
 
 	client, err := interactsh.New(&interactsh.Options{

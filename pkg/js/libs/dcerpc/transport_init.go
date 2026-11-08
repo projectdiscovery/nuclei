@@ -1,7 +1,7 @@
 package dcerpc
 
 import (
-	gptr "github.com/Mzack9999/goimpacket/pkg/transport"
+	gptr "github.com/projectdiscovery/goimpacket/pkg/transport"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/js/libs/gptransport"
 )

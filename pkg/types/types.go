@@ -103,6 +103,8 @@ type Options struct {
 	ListDslSignatures bool
 	// List of HTTP(s)/SOCKS5 proxy to use (comma separated or file input)
 	Proxy goflags.StringSlice
+	// ReplayProxy re-sends the requests that produced a finding through this proxy
+	ReplayProxy string
 	// AliveProxy is the alive proxy to use
 	AliveHttpProxy string
 	// AliveSocksProxy is the alive socks proxy to use
@@ -209,6 +211,24 @@ type Options struct {
 	// PreflightPortScan enables a preflight resolve + TCP portscan and filters targets
 	// before running templates. Disabled by default.
 	PreflightPortScan bool
+	// HostBackoff slows a host down when it signals it is being overloaded
+	// (429, a run of 403s, or transport failures) instead of scanning it at full
+	// rate until it blocks the scanner. Opt-in, since it changes scan pacing.
+	HostBackoff bool
+	// HostBackoffMax caps the per-host backoff delay.
+	HostBackoffMax time.Duration
+	// AutoCalibrate drops HTTP matches whose response is the page the host
+	// serves for any missing path. Opt-in, since it sends a few probes per host
+	// that has a match.
+	AutoCalibrate bool
+	// MaxURLsPerPattern caps how many targets sharing one structural shape
+	// (/user/1, /user/2, ...) are scanned. Zero, the default, scans every
+	// target: dropping one means never scanning it.
+	MaxURLsPerPattern int
+	// DisableURLNormalization keeps every target exactly as supplied, instead of
+	// collapsing URLs that address the same resource (host case, fragment,
+	// default port, trailing slash, tracking parameters) before deduplication.
+	DisableURLNormalization bool
 	// PerHostRateLimit enables per-host rate limiting for HTTP requests.
 	// When enabled, each host gets its own rate limiter and global rate limit becomes unlimited.
 	// Disabled by default.
@@ -244,6 +264,8 @@ type Options struct {
 	NoColor bool
 	// UpdateTemplates updates the templates installed at startup (also used by cloud to update datasources)
 	UpdateTemplates bool
+	// UpdateTemplatesChannel is the nuclei-templates update channel (stable or latest)
+	UpdateTemplatesChannel string
 	// JSON writes json line output to files
 	JSONL bool
 	// JSONRequests writes requests/responses for matches in JSON output
@@ -265,6 +287,8 @@ type Options struct {
 	PDFExport string
 	// Redact redacts given keys in
 	Redact goflags.StringSlice
+	// NoRedact disables the built-in redaction of credential headers in output
+	NoRedact bool
 	// EnableProgressBar enables progress bar
 	EnableProgressBar bool
 	// TemplateDisplay displays the template contents
@@ -338,10 +362,18 @@ type Options struct {
 	SourceIP string
 	// AttackType overrides template level attack-type configuration
 	AttackType string
+	// PayloadRandomOrder iterates payload combinations in a random order
+	// instead of the sequential order of the payload sets
+	PayloadRandomOrder bool
 	// ResponseReadSize is the maximum size of response to read
 	ResponseReadSize int
 	// ResponseSaveSize is the maximum size of response to save
 	ResponseSaveSize int
+	// RequestSaveSize is the maximum request body kept in saved output and
+	// debug dumps. Matchers see the full request. 0 keeps the whole body.
+	RequestSaveSize int
+	// MaxRequestBodyInFlight bounds request-body bytes in flight; 0 disables it.
+	MaxRequestBodyInFlight int
 	// Health Check
 	HealthCheck bool
 	// Time to wait between each input read operation before closing the stream
@@ -436,6 +468,22 @@ type Options struct {
 	EnableGlobalMatchersTemplates bool
 	// EnableFileTemplates enables file templates
 	EnableFileTemplates bool
+	// EnableLLM enables llm matchers and extractors (semantic matching)
+	EnableLLM bool
+	// LLMProvider selects a preset endpoint for llm matching
+	LLMProvider string
+	// LLMBaseURL is any OpenAI-compatible endpoint for llm matching, local included
+	LLMBaseURL string
+	// LLMModel is the model used for llm matching
+	LLMModel string
+	// LLMTimeout bounds a single llm call, in seconds
+	LLMTimeout int
+	// LLMMaxCalls caps llm calls for the whole scan (0 = unlimited)
+	LLMMaxCalls int
+	// LLMConcurrency caps in-flight llm calls
+	LLMConcurrency int
+	// LLMCache enables caching of llm responses within a scan
+	LLMCache bool
 	// Disables cloud upload
 	EnableCloudUpload bool
 	// ScanID is the scan ID to use for cloud upload
@@ -566,6 +614,7 @@ func (options *Options) ReleaseTemplateThread() {
 	}
 }
 
+// Copy returns a copy of the options.
 func (options *Options) Copy() *Options {
 	optCopy := &Options{
 		Tags:                           options.Tags,
@@ -599,6 +648,7 @@ func (options *Options) Copy() *Options {
 		Resume:                         options.Resume,
 		Output:                         options.Output,
 		ProxyInternal:                  options.ProxyInternal,
+		ReplayProxy:                    options.ReplayProxy,
 		ListDslSignatures:              options.ListDslSignatures,
 		Proxy:                          options.Proxy,
 		AliveHttpProxy:                 options.AliveHttpProxy,
@@ -656,6 +706,7 @@ func (options *Options) Copy() *Options {
 		PerHostRateLimit:               options.PerHostRateLimit,
 		PerHostRateLimitPoolSize:       options.PerHostRateLimitPoolSize,
 		EnableHTTPCache:                options.EnableHTTPCache,
+		AutoCalibrate:                  options.AutoCalibrate,
 		LeaveDefaultPorts:              options.LeaveDefaultPorts,
 		AutomaticScan:                  options.AutomaticScan,
 		Silent:                         options.Silent,
@@ -667,6 +718,7 @@ func (options *Options) Copy() *Options {
 		VarDumpLimit:                   options.VarDumpLimit,
 		NoColor:                        options.NoColor,
 		UpdateTemplates:                options.UpdateTemplates,
+		UpdateTemplatesChannel:         options.UpdateTemplatesChannel,
 		JSONL:                          options.JSONL,
 		JSONRequests:                   options.JSONRequests,
 		OmitRawRequests:                options.OmitRawRequests,
@@ -677,6 +729,7 @@ func (options *Options) Copy() *Options {
 		CSVExport:                      options.CSVExport,
 		PDFExport:                      options.PDFExport,
 		Redact:                         options.Redact,
+		NoRedact:                       options.NoRedact,
 		EnableProgressBar:              options.EnableProgressBar,
 		TemplateDisplay:                options.TemplateDisplay,
 		TemplateList:                   options.TemplateList,
@@ -713,8 +766,11 @@ func (options *Options) Copy() *Options {
 		Interface:                      options.Interface,
 		SourceIP:                       options.SourceIP,
 		AttackType:                     options.AttackType,
+		PayloadRandomOrder:             options.PayloadRandomOrder,
 		ResponseReadSize:               options.ResponseReadSize,
 		ResponseSaveSize:               options.ResponseSaveSize,
+		RequestSaveSize:                options.RequestSaveSize,
+		MaxRequestBodyInFlight:         options.MaxRequestBodyInFlight,
 		HealthCheck:                    options.HealthCheck,
 		InputReadTimeout:               options.InputReadTimeout,
 		DisableStdin:                   options.DisableStdin,
@@ -904,6 +960,7 @@ func DefaultOptions() *Options {
 		MaxHostError:               30,
 		ResponseReadSize:           10 * unitutils.Mega,
 		ResponseSaveSize:           unitutils.Mega,
+		RequestSaveSize:            32 * unitutils.Kilo,
 		ExecutionId:                xid.New().String(),
 		Logger:                     &gologger.Logger{},
 	}

@@ -144,3 +144,26 @@ func (template *Template) IsGlobalMatchersTemplate() bool {
 		template.Options.GlobalMatchers != nil &&
 		template.Options.GlobalMatchers.HasMatchers()
 }
+
+// IsOriginScoped reports whether the template's requests depend only on the
+// target's origin. Such a template produces identical requests for every target
+// that shares an origin, so running it once per origin loses nothing.
+//
+// Only http-only templates qualify: another protocol block makes the answer
+// unclear, and answering conservatively costs a duplicate rather than a miss.
+func (template *Template) IsOriginScoped() bool {
+	if len(template.RequestsHTTP) == 0 || template.Flow != "" {
+		return false
+	}
+	if len(template.RequestsDNS)+len(template.RequestsFile)+len(template.RequestsNetwork)+
+		len(template.RequestsHeadless)+len(template.RequestsSSL)+len(template.RequestsWebsocket)+
+		len(template.RequestsWHOIS)+len(template.RequestsCode)+len(template.RequestsJavascript) > 0 {
+		return false
+	}
+	for _, request := range template.RequestsHTTP {
+		if request == nil || !request.IsOriginScoped() {
+			return false
+		}
+	}
+	return true
+}
