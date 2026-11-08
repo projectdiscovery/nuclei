@@ -367,9 +367,21 @@ func TestNeutralizeFormula(t *testing.T) {
 		{"negative float stays numeric", "-1.5", "-1.5"},
 		{"positive signed number stays numeric", "+9.8", "+9.8"},
 		{"minus leading text is neutralized", "-cmd|'/C calc'!A0", "'-cmd|'/C calc'!A0"},
-		{"leading space is not a trigger", " =1+1", " =1+1"},
+		{"leading space before trigger", " =1+1", "' =1+1"},
+		{"leading spaces and control before trigger", " \x01 @SUM(1)", "' \x01 @SUM(1)"},
+		{"leading newline before trigger", "\n=1+1", "'\n=1+1"},
+		{"space only", "   ", "   "},
+		{"inner trigger is not a trigger", "a=1+1", "a=1+1"},
 		{"already neutralized is left alone", "'=1+1", "'=1+1"},
 		{"non-ascii leading rune", "é=1+1", "é=1+1"},
+		{"exponent number stays numeric", "-1e5", "-1e5"},
+		{"leading dot number stays numeric", "-.5", "-.5"},
+		{"infinity is not a plain number", "-Inf", "'-Inf"},
+		{"nan is not a plain number", "+NaN", "'+NaN"},
+		{"hex float is not a plain number", "-0x1p-2", "'-0x1p-2"},
+		{"number with trailing text", "-1+cmd", "'-1+cmd"},
+		{"number with trailing newline", "-1\n", "'-1\n"},
+		{"lone sign", "-", "'-"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			require.Equal(t, tc.want, neutralizeFormula(tc.input))

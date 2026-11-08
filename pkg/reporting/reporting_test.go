@@ -3,6 +3,7 @@ package reporting
 import (
 	"bufio"
 	"bytes"
+	encodingcsv "encoding/csv"
 	"encoding/json"
 	"os"
 	"path/filepath"
@@ -11,6 +12,7 @@ import (
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/model/types/severity"
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
+	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/exporters/csv"
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/exporters/jsonexporter"
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/exporters/jsonl"
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/exporters/markdown"
@@ -105,6 +107,49 @@ func TestReportingDedupeRedirectedInputs(t *testing.T) {
 			require.Len(t, files, 3, "two finding reports and the index must be written")
 		})
 	}
+}
+
+func TestReportingCSVExporter(t *testing.T) {
+	t.Run("empty block does not fail client creation", func(t *testing.T) {
+		t.Chdir(t.TempDir())
+		client, err := New(&Options{CSVExporter: &csv.Options{}}, "", true)
+		require.NoError(t, err)
+		client.Close()
+		require.FileExists(t, "nuclei-results.csv")
+	})
+
+	t.Run("export through the client", func(t *testing.T) {
+		csvPath := filepath.Join(t.TempDir(), "report.csv")
+		client, err := New(&Options{CSVExporter: &csv.Options{File: csvPath}}, "", false)
+		require.NoError(t, err)
+
+		event := &output.ResultEvent{
+			TemplateID:       "extract",
+			Type:             "http",
+			Host:             "example.com",
+			URL:              "http://example.com",
+			Matched:          "http://example.com",
+			ExtractedResults: []string{"=cmd|'/C calc'!A0"},
+		}
+		event.Info.SeverityHolder.Severity = severity.Info
+		require.NoError(t, client.CreateIssue(event))
+		// the same finding again is deduplicated like for every other exporter
+		require.NoError(t, client.CreateIssue(event))
+		client.Close()
+
+		f, err := os.Open(csvPath)
+		require.NoError(t, err)
+		defer func() { _ = f.Close() }()
+		records, err := encodingcsv.NewReader(f).ReadAll()
+		require.NoError(t, err)
+		require.Len(t, records, 2)
+		require.Contains(t, records[1], "'=cmd|'/C calc'!A0")
+	})
+
+	t.Run("unwritable path fails client creation", func(t *testing.T) {
+		_, err := New(&Options{CSVExporter: &csv.Options{File: filepath.Join(t.TempDir(), "missing", "r.csv")}}, "", true)
+		require.Error(t, err)
+	})
 }
 
 type recordingTracker struct {

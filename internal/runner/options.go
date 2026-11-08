@@ -372,9 +372,11 @@ func createReportingOptions(options *types.Options) (*reporting.Options, error) 
 		// Combine the CLI options with the config file options with the CLI options taking precedence
 		if reportingOptions.CSVExporter != nil {
 			reportingOptions.CSVExporter.File = options.CSVExport
+			reportingOptions.CSVExporter.OmitRaw = options.OmitRawRequests
 		} else {
 			reportingOptions.CSVExporter = &csv.Options{
-				File: options.CSVExport,
+				File:    options.CSVExport,
+				OmitRaw: options.OmitRawRequests,
 			}
 		}
 	}
