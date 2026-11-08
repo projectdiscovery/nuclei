@@ -30,8 +30,12 @@ func (d *mssqlCustomDialer) DialContext(ctx context.Context, network, addr strin
 	if dialers == nil {
 		return nil, fmt.Errorf("dialers not initialized for %s", d.executionId)
 	}
-	if !protocolstate.IsHostAllowed(d.executionId, addr) {
-		return nil, protocolstate.ErrHostDenied.Msgf(addr)
+	targetHost, _, err := net.SplitHostPort(addr)
+	if err != nil {
+		targetHost = addr
+	}
+	if !protocolstate.IsHostAllowed(d.executionId, targetHost) {
+		return nil, protocolstate.ErrHostDenied.Msgf(targetHost)
 	}
 	return dialers.Fastdialer.Dial(ctx, network, addr)
 }
