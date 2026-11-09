@@ -301,6 +301,15 @@ func (e *ClusterExecuter) TemplateIDs(selection protocols.TemplateSelection) []s
 	return ids
 }
 
+// TemplatePaths returns the paths of every member.
+func (e *ClusterExecuter) TemplatePaths() []string {
+	paths := make([]string, 0, len(e.operators))
+	for _, operator := range e.operators {
+		paths = append(paths, operator.templatePath)
+	}
+	return paths
+}
+
 // operatorsFor returns the members selected for input by per-target profiles.
 func (e *ClusterExecuter) operatorsFor(input *contextargs.MetaInput) []*clusteredOperator {
 	if e.options.TargetScope == nil {

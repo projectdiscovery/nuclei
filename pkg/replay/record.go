@@ -35,11 +35,10 @@ type requestRef struct {
 
 // Recorder appends the events of a scan to a corpus file.
 type Recorder struct {
-	mu        sync.Mutex
-	file      *os.File
-	requests  map[protocols.Request]requestRef
-	singleIDs map[string]bool
-	err       error
+	mu       sync.Mutex
+	file     *os.File
+	requests map[protocols.Request]requestRef
+	err      error
 }
 
 // clusterKeyed is a request the scan can cluster. The key leaves out what
@@ -58,41 +57,22 @@ func clusterKey(request protocols.Request) (string, bool) {
 	return strconv.FormatUint(keyed.TmplClusterKey(), 10), true
 }
 
-type requestLister interface {
-	ProtocolRequests() []protocols.Request
-}
-
-// NewRecorder creates the corpus at path for a scan of templatesList.
+// NewRecorder creates the corpus at path for a scan of templatesList. The
+// corpus holds raw traffic, credentials included, so only its owner can read
+// it.
 func NewRecorder(path string, templatesList []*templates.Template) (*Recorder, error) {
-	file, err := os.Create(path)
+	file, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o600)
 	if err != nil {
 		return nil, err
 	}
-	recorder := &Recorder{file: file, requests: make(map[protocols.Request]requestRef), singleIDs: make(map[string]bool)}
-	for _, template := range templatesList {
-		requests := templateRequests(template)
-		single := len(requests) == 1 && sharesEvents(template)
-		for i, request := range requests {
-			recorder.requests[request] = requestRef{templateID: template.ID, index: i, single: single}
-		}
-		if single {
-			recorder.singleIDs[template.ID] = true
+	recorder := &Recorder{file: file, requests: make(map[protocols.Request]requestRef)}
+	for _, source := range sources(templatesList) {
+		single := len(source.requests) == 1 && source.clustered
+		for i, request := range source.requests {
+			recorder.requests[request] = requestRef{templateID: source.id, index: i, single: single}
 		}
 	}
 	return recorder, nil
-}
-
-// sharesEvents mirrors templates.Cluster: a template the scan never
-// clusters does not take another template's event either.
-func sharesEvents(template *templates.Template) bool {
-	return template.Flow == "" && (template.Options == nil || !template.Options.IsMultiProtocol) && !template.Info.HasPlaceholders()
-}
-
-func templateRequests(template *templates.Template) []protocols.Request {
-	if lister, ok := template.Executer.(requestLister); ok {
-		return lister.ProtocolRequests()
-	}
-	return nil
 }
 
 // Record stores event, which request produced. It runs before the operators,
@@ -100,18 +80,24 @@ func templateRequests(template *templates.Template) []protocols.Request {
 func (r *Recorder) Record(request protocols.Request, event output.InternalEvent) {
 	ref, known := r.requests[request]
 	if !known {
-		// a cluster runs the first member's request, which the scan compiled
-		// apart from the template list
-		templateID, _ := event["template-id"].(string)
-		if !r.singleIDs[templateID] {
+		// a cluster runs one request for all its members and was compiled
+		// apart from them; its members replay it by the cluster key
+		key, ok := clusterKey(request)
+		if !ok {
 			return
 		}
-		ref = requestRef{templateID: templateID, single: true}
+		templateID, _ := event["template-id"].(string)
+		r.write(record[map[string]any]{TemplateID: templateID, ClusterKey: key, Event: encodeEvent(event)})
+		return
 	}
 	line := record[map[string]any]{TemplateID: ref.templateID, Request: ref.index, Event: encodeEvent(event)}
 	if key, ok := clusterKey(request); ok && ref.single {
 		line.ClusterKey = key
 	}
+	r.write(line)
+}
+
+func (r *Recorder) write(line record[map[string]any]) {
 	data, err := json.Marshal(line)
 	if err != nil {
 		return

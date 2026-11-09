@@ -356,7 +356,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.StringVarP(&options.Output, "output", "o", "", "output file to write found issues/vulnerabilities"),
 		flagSet.BoolVarP(&options.StoreResponse, "store-resp", "sresp", false, "store all request/response passed through nuclei to output directory"),
 		flagSet.StringVarP(&options.StoreResponseDir, "store-resp-dir", "srd", runner.DefaultDumpTrafficOutputFolder, "store all request/response passed through nuclei to custom directory"),
-		flagSet.StringVar(&options.StoreEvents, "store-events", "", "store what the matchers of every request see, for any protocol, to a jsonl file for -replay"),
+		flagSet.StringVar(&options.StoreEvents, "store-events", "", "store what the matchers of every request see, for any protocol, to a jsonl file for -replay (holds raw traffic, credentials included)"),
 		flagSet.BoolVar(&options.Silent, "silent", false, "display findings only"),
 		flagSet.BoolVarP(&options.NoColor, "no-color", "nc", false, "disable output content coloring (ANSI escape codes)"),
 		flagSet.BoolVarP(&options.JSONL, "jsonl", "j", false, "write output in JSONL(ines) format"),

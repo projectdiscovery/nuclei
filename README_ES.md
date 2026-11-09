@@ -204,7 +204,7 @@ OUTPUT:
    -o, -output string            output file to write found issues/vulnerabilities
    -sresp, -store-resp           store all request/response passed through nuclei to output directory
    -srd, -store-resp-dir string  store all request/response passed through nuclei to custom directory (default "output")
-   -store-events string          store what the matchers of every request see, for any protocol, to a jsonl file for -replay
+   -store-events string          store what the matchers of every request see, for any protocol, to a jsonl file for -replay (holds raw traffic, credentials included)
    -silent                       display findings only
    -nc, -no-color                disable output content coloring (ANSI escape codes)
    -j, -jsonl                    write output in JSONL(ines) format

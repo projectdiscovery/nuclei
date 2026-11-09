@@ -847,9 +847,9 @@ func (r *Runner) RunEnumeration() error {
 		if err != nil {
 			return errors.Wrap(err, "could not create events file")
 		}
-		eventcreator.Record = recorder.Record
+		previous := eventcreator.SetRecord(recorder.Record)
 		defer func() {
-			eventcreator.Record = nil
+			eventcreator.SetRecord(previous)
 			if err := recorder.Close(); err != nil {
 				r.Logger.Error().Msgf("Could not write %s: %s", r.options.StoreEvents, err)
 			}

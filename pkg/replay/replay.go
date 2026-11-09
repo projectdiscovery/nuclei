@@ -20,8 +20,8 @@ import (
 )
 
 type target struct {
-	template *templates.Template
-	request  protocols.Request
+	source  source
+	request protocols.Request
 }
 
 // Replay runs the matchers and extractors of templatesList over every event
@@ -32,14 +32,13 @@ type target struct {
 func Replay(path string, templatesList []*templates.Template) ([]*output.ResultEvent, error) {
 	byRequest := make(map[string][]target)
 	byCluster := make(map[string][]target)
-	for _, template := range templatesList {
-		requests := templateRequests(template)
-		for i, request := range requests {
-			byRequest[template.ID+"\x00"+strconv.Itoa(i)] = []target{{template: template, request: request}}
+	for _, source := range sources(templatesList) {
+		for i, request := range source.requests {
+			byRequest[source.id+"\x00"+strconv.Itoa(i)] = []target{{source: source, request: request}}
 		}
-		if len(requests) == 1 && sharesEvents(template) {
-			if key, ok := clusterKey(requests[0]); ok {
-				byCluster[key] = append(byCluster[key], target{template: template, request: requests[0]})
+		if len(source.requests) == 1 && source.clustered {
+			if key, ok := clusterKey(source.requests[0]); ok {
+				byCluster[key] = append(byCluster[key], target{source: source, request: source.requests[0]})
 			}
 		}
 	}
@@ -77,6 +76,10 @@ func Replay(path string, templatesList []*templates.Template) ([]*output.ResultE
 			return nil, readErr
 		}
 	}
+	// extractors keep values in a map, so their order changes between runs
+	for _, result := range results {
+		slices.Sort(result.ExtractedResults)
+	}
 	slices.SortStableFunc(results, compareResults)
 	return results, nil
 }
@@ -85,9 +88,9 @@ func replayEvent(target target, event output.InternalEvent) []*output.ResultEven
 	// operators add their values to the event, and a cluster event carries
 	// the first member's identity
 	event = maps.Clone(event)
-	event["template-id"] = target.template.ID
-	event["template-path"] = target.template.Path
-	event["template-info"] = target.template.Info
+	event["template-id"] = target.source.id
+	event["template-path"] = target.source.path
+	event["template-info"] = target.source.info
 	return eventcreator.CreateEvent(target.request, event, false).Results
 }
 
