@@ -155,7 +155,6 @@ func isNetworkError(err error) bool {
 		"connection reset",
 		"i/o timeout",
 		"connection timed out",
-		"timed out",
 		"context canceled",
 		"deadline exceeded",
 		"dialers not initialized",

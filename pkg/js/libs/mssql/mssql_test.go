@@ -10,6 +10,7 @@ import (
 
 	gomssql "github.com/microsoft/go-mssqldb"
 	"github.com/microsoft/go-mssqldb/msdsn"
+	"github.com/projectdiscovery/goflags"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	"github.com/stretchr/testify/require"
@@ -55,24 +56,28 @@ func TestOpenDBUsesCustomFastdialer(t *testing.T) {
 
 func TestMssqlDialerEnforcesNetworkPolicy(t *testing.T) {
 	execID := "mssql-policy-test"
-	require.NoError(t, protocolstate.Init(&types.Options{ExecutionId: execID}))
+	require.NoError(t, protocolstate.Init(&types.Options{
+		ExecutionId:    execID,
+		ExcludeTargets: goflags.StringSlice{"denied.host"},
+	}))
 	t.Cleanup(func() { protocolstate.Close(execID) })
 
 	dialer := &mssqlCustomDialer{
 		executionId: execID,
-		host:        "127.0.0.1",
+		host:        "denied.host",
 	}
-	require.Equal(t, "127.0.0.1", dialer.HostName())
-
-	// Verify HostDialer interface implementation
+	require.Equal(t, "denied.host", dialer.HostName())
 	var _ gomssql.HostDialer = dialer
 
-	// Test uninitialized dialers returns error
+	_, err := dialer.DialContext(context.Background(), "tcp", "denied.host:1433")
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "network policy")
+
 	uninitDialer := &mssqlCustomDialer{
 		executionId: "nonexistent-exec-id",
 		host:        "example.com",
 	}
-	_, err := uninitDialer.DialContext(context.Background(), "tcp", "example.com:1433")
+	_, err = uninitDialer.DialContext(context.Background(), "tcp", "example.com:1433")
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "dialers not initialized")
 }
@@ -129,6 +134,7 @@ func TestIsNetworkError(t *testing.T) {
 	require.False(t, isNetworkError(errors.New("mssql: Password has expired")))
 	require.False(t, isNetworkError(errors.New("mssql: Permission denied to database")))
 	require.False(t, isNetworkError(errors.New("mssql: Password must be reset")))
+	require.False(t, isNetworkError(errors.New("mssql: The query timed out")))
 }
 
 func TestExecuteQueryUsesFastdialer(t *testing.T) {
