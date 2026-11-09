@@ -23,6 +23,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/helpers/eventcreator"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/helpers/responsehighlighter"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/render"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/utils/vardump"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/network/networkclientpool"
@@ -34,6 +35,7 @@ import (
 	"github.com/projectdiscovery/tlsx/pkg/tlsx/clients"
 	"github.com/projectdiscovery/tlsx/pkg/tlsx/openssl"
 	"github.com/projectdiscovery/utils/errkit"
+	iputil "github.com/projectdiscovery/utils/ip"
 	stringsutil "github.com/projectdiscovery/utils/strings"
 )
 
@@ -202,6 +204,21 @@ func (request *Request) GetID() string {
 	return request.ID
 }
 
+// allowedAddress returns the first address of host that the network policy allows.
+func (request *Request) allowedAddress(host string) (string, error) {
+	dnsData, err := request.dialer.GetDNSData(host)
+	if err != nil {
+		return "", err
+	}
+	addresses := append(append([]string{}, dnsData.A...), dnsData.AAAA...)
+	for _, address := range addresses {
+		if protocolstate.IsHostAllowed(request.options.Options.ExecutionId, address) {
+			return address, nil
+		}
+	}
+	return "", protocolstate.ErrHostDenied.Msgf(host)
+}
+
 // ExecuteWithResults executes the protocol requests and returns results instead of writing them.
 func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicValues, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
 	hostPort := input.MetaInput.Input
@@ -254,6 +271,23 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 		hostIp = input.MetaInput.CustomIP
 	} else {
 		hostIp = host
+	}
+	if !iputil.IsIP(hostIp) {
+		// The openssl scan mode runs the openssl binary, which resolves a host
+		// name again by itself, so it gets an address the policy allows.
+		address, err := request.allowedAddress(hostIp)
+		if err != nil {
+			requestOptions.Output.Request(requestOptions.TemplateID, input.MetaInput.Input, request.Type().String(), err)
+			requestOptions.Progress.IncrementFailedRequestsBy(1)
+			return errkit.Wrap(err, "could not resolve host")
+		}
+		hostIp = address
+	} else if !protocolstate.IsHostAllowed(request.options.Options.ExecutionId, hostIp) {
+		// A custom dialer can allow an address that the execution policy denies.
+		err := protocolstate.ErrHostDenied.Msgf(hostIp)
+		requestOptions.Output.Request(requestOptions.TemplateID, input.MetaInput.Input, request.Type().String(), err)
+		requestOptions.Progress.IncrementFailedRequestsBy(1)
+		return err
 	}
 
 	if err := request.options.HostBackoffWait(input.Context(), addressToDial); err != nil {
