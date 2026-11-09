@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math"
 	"net/http"
+	"slices"
 	"strings"
 	"time"
 
@@ -148,6 +149,9 @@ type Request struct {
 	replayClient      *http.Client // set when -replay-proxy is given
 	dialer            *fastdialer.Dialer
 	bodySize          *bodySizeEstimate
+	// sharesResponse lets other templates reuse a response this request gets,
+	// and this request reuse theirs (see httpclientpool.WithSharedResponse)
+	sharesResponse bool
 
 	// description: |
 	//   SelfContained specifies if the request is self-contained.
@@ -587,7 +591,35 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 	if shouldDisableKeepAliveForHTTPProxy(request, options) {
 		request.connConfiguration.Connection.DisableKeepAlive = true
 	}
+	request.sharesResponse = canShareResponse(request, options.Flow)
 	return nil
+}
+
+// canShareResponse reports whether a response another template got for the
+// same request is as good as sending it again. A shared response arrives at
+// once, so nothing that measures time may take one: race requests, timing
+// analyzers, and a request whose matchers, extractors or flow read the
+// duration.
+func canShareResponse(request *Request, flow string) bool {
+	if request.Race || request.Analyzer != nil || strings.Contains(flow, "duration") {
+		return false
+	}
+	readsDuration := func(part string, dsl []string) bool {
+		return strings.Contains(part, "duration") || slices.ContainsFunc(dsl, func(expression string) bool {
+			return strings.Contains(expression, "duration")
+		})
+	}
+	for _, matcher := range request.Matchers {
+		if readsDuration(matcher.Part, matcher.DSL) {
+			return false
+		}
+	}
+	for _, extractor := range request.Extractors {
+		if readsDuration(extractor.Part, extractor.DSL) {
+			return false
+		}
+	}
+	return true
 }
 
 // RebuildGenerator rebuilds the generator for the request
