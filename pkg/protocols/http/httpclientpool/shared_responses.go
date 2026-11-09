@@ -73,6 +73,20 @@ func getSharedResponses(options *types.Options) *sharedResponses {
 	return shared
 }
 
+// ResetSharedResponses forgets the responses of earlier scans, so a scan
+// that reuses the execution, as an SDK engine does, sends its requests again.
+func ResetSharedResponses(options *types.Options) {
+	shared := getSharedResponses(options)
+	if shared == nil {
+		return
+	}
+	shared.mu.Lock()
+	defer shared.mu.Unlock()
+	clear(shared.entries)
+	shared.order.Init()
+	shared.bytes = 0
+}
+
 type sharingTransport struct {
 	base   http.RoundTripper
 	shared *sharedResponses
@@ -170,12 +184,18 @@ func (t *sharingTransport) forget(entry *sharedEntry) {
 func (t *sharingTransport) store(entry *sharedEntry) {
 	t.shared.mu.Lock()
 	defer t.shared.mu.Unlock()
+	// a reset while it was in flight dropped it
+	if t.shared.entries[entry.key] != entry {
+		return
+	}
 	t.shared.order.PushBack(entry)
 	t.shared.bytes += len(entry.response.body)
 	for t.shared.bytes > sharedResponsesMaxBytes && t.shared.order.Len() > 1 {
 		oldest := t.shared.order.Remove(t.shared.order.Front()).(*sharedEntry)
 		t.shared.bytes -= len(oldest.response.body)
-		delete(t.shared.entries, oldest.key)
+		if t.shared.entries[oldest.key] == oldest {
+			delete(t.shared.entries, oldest.key)
+		}
 	}
 }
 

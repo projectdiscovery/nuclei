@@ -155,3 +155,23 @@ func TestSharedResponsesDoNotKeepFailures(t *testing.T) {
 	require.Error(t, err)
 	require.Equal(t, "ok", sharedGet(t, transport, http.MethodGet, server.URL, "two", nil), "the next template sends it again")
 }
+
+func TestSharedResponsesStartEmptyEachScan(t *testing.T) {
+	var hits atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		hits.Add(1)
+		_, _ = io.WriteString(w, "ok")
+	}))
+	defer server.Close()
+	opts := newTestOptions(t, "test-shared-responses-reset")
+	transport := &sharingTransport{base: http.DefaultTransport, shared: getSharedResponses(opts)}
+
+	sharedGet(t, transport, http.MethodGet, server.URL, "one", nil)
+	sharedGet(t, transport, http.MethodGet, server.URL, "two", nil)
+	require.EqualValues(t, 1, hits.Load())
+
+	// an SDK engine runs its next scan on the same execution
+	ResetSharedResponses(opts)
+	sharedGet(t, transport, http.MethodGet, server.URL, "two", nil)
+	require.EqualValues(t, 2, hits.Load(), "a new scan does not see the responses of the last one")
+}
