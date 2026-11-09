@@ -43,8 +43,9 @@ type sharedResponses struct {
 	mu      sync.Mutex
 	entries map[string]*sharedEntry
 	// order holds stored entries oldest first, for eviction
-	order *list.List
-	bytes int
+	order    *list.List
+	bytes    int
+	maxBytes int
 }
 
 type sharedEntry struct {
@@ -67,7 +68,7 @@ func getSharedResponses(options *types.Options) *sharedResponses {
 	dialers.Lock()
 	defer dialers.Unlock()
 	if dialers.SharedResponses == nil {
-		dialers.SharedResponses = &sharedResponses{entries: make(map[string]*sharedEntry), order: list.New()}
+		dialers.SharedResponses = &sharedResponses{entries: make(map[string]*sharedEntry), order: list.New(), maxBytes: sharedResponsesMaxBytes}
 	}
 	shared, _ := dialers.SharedResponses.(*sharedResponses)
 	return shared
@@ -189,14 +190,29 @@ func (t *sharingTransport) store(entry *sharedEntry) {
 		return
 	}
 	t.shared.order.PushBack(entry)
-	t.shared.bytes += len(entry.response.body)
-	for t.shared.bytes > sharedResponsesMaxBytes && t.shared.order.Len() > 1 {
+	t.shared.bytes += entry.size()
+	for t.shared.bytes > t.shared.maxBytes && t.shared.order.Len() > 1 {
 		oldest := t.shared.order.Remove(t.shared.order.Front()).(*sharedEntry)
-		t.shared.bytes -= len(oldest.response.body)
+		t.shared.bytes -= oldest.size()
 		if t.shared.entries[oldest.key] == oldest {
 			delete(t.shared.entries, oldest.key)
 		}
 	}
+}
+
+// sharedEntryOverhead stands for the response struct and bookkeeping, so
+// bodyless responses, as every HEAD gets, still count toward the cap.
+const sharedEntryOverhead = 512
+
+func (e *sharedEntry) size() int {
+	size := sharedEntryOverhead + len(e.key) + len(e.response.body)
+	for name, values := range e.response.response.Header {
+		size += len(name)
+		for _, value := range values {
+			size += len(value)
+		}
+	}
+	return size
 }
 
 func (s *storedResponse) copyFor(req *http.Request) *http.Response {

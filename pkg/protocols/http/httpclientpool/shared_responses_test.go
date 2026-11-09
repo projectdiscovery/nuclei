@@ -4,6 +4,7 @@ import (
 	"container/list"
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -19,7 +20,7 @@ import (
 )
 
 func newSharingTransport(base http.RoundTripper) *sharingTransport {
-	return &sharingTransport{base: base, shared: &sharedResponses{entries: make(map[string]*sharedEntry), order: list.New()}}
+	return &sharingTransport{base: base, shared: &sharedResponses{entries: make(map[string]*sharedEntry), order: list.New(), maxBytes: sharedResponsesMaxBytes}}
 }
 
 func sharedGet(t *testing.T, transport http.RoundTripper, method, url, templateID string, header http.Header) string {
@@ -174,4 +175,17 @@ func TestSharedResponsesStartEmptyEachScan(t *testing.T) {
 	ResetSharedResponses(opts)
 	sharedGet(t, transport, http.MethodGet, server.URL, "two", nil)
 	require.EqualValues(t, 2, hits.Load(), "a new scan does not see the responses of the last one")
+}
+
+func TestSharedResponsesCapCountsBodylessResponses(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
+	defer server.Close()
+	transport := newSharingTransport(http.DefaultTransport)
+	transport.shared.maxBytes = 20 * sharedEntryOverhead
+
+	for i := range 40 {
+		sharedGet(t, transport, http.MethodHead, fmt.Sprintf("%s/%d", server.URL, i), "one", nil)
+	}
+	require.LessOrEqual(t, transport.shared.bytes, transport.shared.maxBytes)
+	require.Less(t, len(transport.shared.entries), 20, "HEAD responses are evicted too")
 }

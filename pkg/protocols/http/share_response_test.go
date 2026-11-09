@@ -14,6 +14,7 @@ func TestCanShareResponseKeepsTimingChecksOnTheirOwnRequest(t *testing.T) {
 	require.False(t, canShareResponse(&Request{Operators: operators.Operators{Matchers: []*matchers.Matcher{{DSL: []string{"duration>=5"}}}}}, ""))
 	require.False(t, canShareResponse(&Request{Operators: operators.Operators{Matchers: []*matchers.Matcher{{Part: "duration"}}}}, ""))
 	require.False(t, canShareResponse(&Request{Operators: operators.Operators{Extractors: []*extractors.Extractor{{DSL: []string{"duration_2"}}}}}, ""))
+	require.False(t, canShareResponse(&Request{Operators: operators.Operators{Matchers: []*matchers.Matcher{{Type: matchers.MatcherTypeHolder{MatcherType: matchers.LLMMatcher}, Inputs: []string{"{{duration_1}}"}}}}}, ""), "llm inputs read the event too")
 	require.False(t, canShareResponse(&Request{}, "http(1) && template.duration > 5"))
 	require.False(t, canShareResponse(&Request{Race: true}, ""))
 }

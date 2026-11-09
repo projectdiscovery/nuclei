@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"math"
 	"net/http"
-	"slices"
 	"strings"
 	"time"
 
@@ -598,28 +597,15 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 // canShareResponse reports whether a response another template got for the
 // same request is as good as sending it again. A shared response arrives at
 // once, so nothing that measures time may take one: race requests, timing
-// analyzers, and a request whose matchers, extractors or flow read the
-// duration.
+// analyzers, and a request whose operators or flow read the duration. The
+// operators are searched whole, so a new field that can read it, as LLM
+// matcher inputs do, is covered without being listed.
 func canShareResponse(request *Request, flow string) bool {
 	if request.Race || request.Analyzer != nil || strings.Contains(flow, "duration") {
 		return false
 	}
-	readsDuration := func(part string, dsl []string) bool {
-		return strings.Contains(part, "duration") || slices.ContainsFunc(dsl, func(expression string) bool {
-			return strings.Contains(expression, "duration")
-		})
-	}
-	for _, matcher := range request.Matchers {
-		if readsDuration(matcher.Part, matcher.DSL) {
-			return false
-		}
-	}
-	for _, extractor := range request.Extractors {
-		if readsDuration(extractor.Part, extractor.DSL) {
-			return false
-		}
-	}
-	return true
+	operators, err := json.Marshal(request.Operators)
+	return err == nil && !bytes.Contains(operators, []byte("duration"))
 }
 
 // RebuildGenerator rebuilds the generator for the request
