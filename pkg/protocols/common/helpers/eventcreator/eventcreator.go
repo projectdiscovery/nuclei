@@ -10,6 +10,11 @@ import (
 	"golang.org/x/text/language"
 )
 
+// Record, when set, receives the event of every request before its operators
+// run, which is what a replay needs to run them again. Every protocol builds
+// its result here, so setting it covers all of them.
+var Record func(request protocols.Request, event output.InternalEvent)
+
 // CreateEvent wraps the outputEvent with the result of the operators defined on the request
 func CreateEvent(request protocols.Request, outputEvent output.InternalEvent, isResponseDebug bool) *output.InternalWrappedEvent {
 	return CreateEventWithAdditionalOptions(request, outputEvent, isResponseDebug, nil)
@@ -19,6 +24,9 @@ func CreateEvent(request protocols.Request, outputEvent output.InternalEvent, is
 // and enables extending the resulting event with additional attributes or values.
 func CreateEventWithAdditionalOptions(request protocols.Request, outputEvent output.InternalEvent, isResponseDebug bool,
 	addAdditionalOptions func(internalWrappedEvent *output.InternalWrappedEvent)) *output.InternalWrappedEvent {
+	if Record != nil {
+		Record(request, outputEvent)
+	}
 	event := &output.InternalWrappedEvent{InternalEvent: outputEvent}
 
 	// Dump response variables if ran in debug mode

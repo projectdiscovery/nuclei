@@ -57,6 +57,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/automaticscan"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/globalmatchers"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/helpers/eventcreator"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/honeypotdetector"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/hostbackoff"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/hosterrorscache"
@@ -69,6 +70,7 @@ import (
 	httpProtocol "github.com/projectdiscovery/nuclei/v3/pkg/protocols/http"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/catchall"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/httpclientpool"
+	"github.com/projectdiscovery/nuclei/v3/pkg/replay"
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting"
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
@@ -836,6 +838,22 @@ func (r *Runner) RunEnumeration() error {
 	// reach the network
 	if r.options.PlanFile != "" {
 		return r.writePlan(store, executorEngine)
+	}
+	if r.options.ReplayFile != "" {
+		return r.replay(store)
+	}
+	if r.options.StoreEvents != "" {
+		recorder, err := replay.NewRecorder(r.options.StoreEvents, slices.Concat(store.Templates(), store.Workflows()))
+		if err != nil {
+			return errors.Wrap(err, "could not create events file")
+		}
+		eventcreator.Record = recorder.Record
+		defer func() {
+			eventcreator.Record = nil
+			if err := recorder.Close(); err != nil {
+				r.Logger.Error().Msgf("Could not write %s: %s", r.options.StoreEvents, err)
+			}
+		}()
 	}
 	// TODO: remove below functions after v3 or update warning messages
 	templates.PrintDeprecatedProtocolNameMsgIfApplicable(r.options.Silent, r.options.Verbose)

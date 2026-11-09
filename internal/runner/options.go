@@ -64,7 +64,8 @@ func ConfigureOptions() error {
 // would hold the scan until it does.
 func readsTargetsFromStdin(options *types.Options, stdinIsPipe bool) bool {
 	hasOtherTargets := len(options.Targets) > 0 || options.TargetsFilePath != "" || options.Uncover || len(options.UncoverQuery) > 0
-	return stdinIsPipe && !options.DisableStdin && !hasOtherTargets
+	// a replay runs over stored events and has no targets to wait for
+	return stdinIsPipe && !options.DisableStdin && !hasOtherTargets && options.ReplayFile == ""
 }
 
 // ParseOptions parses the command line flags provided by a user
