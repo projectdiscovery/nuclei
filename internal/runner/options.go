@@ -557,26 +557,31 @@ func getBoolEnvValue(key string) bool {
 // validatePlanOptions rejects options that change the templates or targets
 // only once scanning starts, which a plan written beforehand cannot show.
 func validatePlanOptions(options *types.Options) error {
-	if options.RunPlanFile != "" {
-		switch {
-		case options.PlanFile != "":
-			return errors.New("-plan cannot be used with -run-plan")
-		case options.Resume != "":
-			return errors.New("-run-plan cannot be used with -resume, the plan's done log resumes it")
-		}
+	if options.RunPlanFile != "" && options.PlanFile != "" {
+		return errors.New("-plan cannot be used with -run-plan")
 	}
-	if options.PlanFile == "" {
+	if options.RunPlanFile != "" && options.Resume != "" {
+		return errors.New("-run-plan cannot be used with -resume, the plan's done log resumes it")
+	}
+	if options.PlanFile == "" && options.RunPlanFile == "" {
 		return nil
+	}
+	// -automatic-scan builds its own engine, so a plan set on the main engine
+	// would never be consulted. The other flags change the targets only after
+	// a plan has been written.
+	flag := "-plan"
+	if options.PlanFile == "" {
+		flag = "-run-plan"
 	}
 	switch {
 	case options.AutomaticScan:
-		return errors.New("-plan cannot be used with -automatic-scan, which picks templates while scanning")
+		return fmt.Errorf("%s cannot be used with -automatic-scan, which picks templates while scanning", flag)
 	case options.Uncover || len(options.UncoverQuery) > 0:
-		return errors.New("-plan cannot be used with -uncover, which finds targets over the network")
+		return fmt.Errorf("%s cannot be used with -uncover, which finds targets over the network", flag)
 	case options.PreflightPortScan:
-		return errors.New("-plan cannot be used with -preflight-portscan, which drops targets after scanning their ports")
+		return fmt.Errorf("%s cannot be used with -preflight-portscan, which drops targets after scanning their ports", flag)
 	case options.DASTServer || options.DASTProxy:
-		return errors.New("-plan cannot be used with -dast-server or -dast-proxy, which start a server instead of writing a plan")
+		return fmt.Errorf("%s cannot be used with -dast-server or -dast-proxy, which start a server instead of writing a plan", flag)
 	}
 	return nil
 }

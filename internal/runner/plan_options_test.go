@@ -27,4 +27,15 @@ func TestPlanRejectsOptionsThatChangeTargetsLater(t *testing.T) {
 	require.Error(t, validatePlanOptions(&types.Options{RunPlanFile: "p", PlanFile: "q"}))
 	require.Error(t, validatePlanOptions(&types.Options{RunPlanFile: "p", Resume: "r"}))
 	require.NoError(t, validatePlanOptions(&types.Options{RunPlanFile: "p"}))
+
+	for name, options := range map[string]*types.Options{
+		"run automatic scan": {RunPlanFile: "p", AutomaticScan: true},
+		"run uncover":        {RunPlanFile: "p", Uncover: true},
+		"run uncover query":  {RunPlanFile: "p", UncoverQuery: goflags.StringSlice{"example"}},
+		"run preflight":      {RunPlanFile: "p", PreflightPortScan: true},
+		"run dast server":    {RunPlanFile: "p", DASTServer: true},
+		"run dast proxy":     {RunPlanFile: "p", DASTProxy: true},
+	} {
+		require.Error(t, validatePlanOptions(options), name)
+	}
 }
