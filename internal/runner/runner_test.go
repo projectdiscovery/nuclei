@@ -38,6 +38,35 @@ func TestCreateReportingOptions(t *testing.T) {
 	require.Equal(t, resultOptions2.DenyList.Severities, resultOptions.DenyList.Severities)
 }
 
+func TestCreateReportingOptionsCSVExport(t *testing.T) {
+	t.Run("flag only", func(t *testing.T) {
+		resultOptions, err := createReportingOptions(&types.Options{CSVExport: "out.csv", OmitRawRequests: true})
+		require.NoError(t, err)
+		require.NotNil(t, resultOptions.CSVExporter)
+		require.Equal(t, "out.csv", resultOptions.CSVExporter.File)
+		require.True(t, resultOptions.CSVExporter.OmitRaw)
+	})
+
+	t.Run("flag is not set", func(t *testing.T) {
+		resultOptions, err := createReportingOptions(&types.Options{})
+		require.NoError(t, err)
+		require.Nil(t, resultOptions.CSVExporter)
+	})
+
+	t.Run("flag takes precedence over config file", func(t *testing.T) {
+		config := filepath.Join(t.TempDir(), "report.yaml")
+		require.NoError(t, os.WriteFile(config, []byte("csv:\n  file: from-config.csv\n"), 0o600))
+
+		resultOptions, err := createReportingOptions(&types.Options{ReportingConfig: config})
+		require.NoError(t, err)
+		require.Equal(t, "from-config.csv", resultOptions.CSVExporter.File)
+
+		resultOptions, err = createReportingOptions(&types.Options{ReportingConfig: config, CSVExport: "from-flag.csv"})
+		require.NoError(t, err)
+		require.Equal(t, "from-flag.csv", resultOptions.CSVExporter.File)
+	})
+}
+
 type TestStruct1 struct {
 	A      string       `yaml:"a"`
 	Struct *TestStruct2 `yaml:"b"`
