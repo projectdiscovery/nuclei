@@ -38,14 +38,11 @@ func NewEntityParser(dir string) (*EntityParser, error) {
 			return parser.ParseFile(fset, filename, src, parser.ParseComments)
 		},
 	}
-	pkgs, err := packages.Load(cfg, ".")
+
+	pkg, err := loadPackage(cfg, ".")
 	if err != nil {
 		return nil, err
 	}
-	if len(pkgs) == 0 {
-		return nil, errors.New("no packages found")
-	}
-	pkg := pkgs[0]
 
 	return &EntityParser{
 		syntax:      pkg.Syntax,
@@ -523,6 +520,7 @@ func (p *EntityParser) extractVarsNConstants() {
 
 // loadImportedPackages loads all imported packages
 func (p *EntityParser) loadImportedPackages() error {
+	cfg := &packages.Config{Mode: packages.NeedTypes | packages.NeedSyntax | packages.NeedTypesInfo}
 	// get all import statements
 	// iterate over all imports
 	for _, file := range p.syntax {
@@ -532,7 +530,7 @@ func (p *EntityParser) loadImportedPackages() error {
 			// remove the quotes from the path
 			path = path[1 : len(path)-1]
 			// load the package
-			pkg, err := loadPackage(path)
+			pkg, err := loadPackage(cfg, path)
 			if err != nil {
 				return err
 			}
@@ -553,18 +551,31 @@ func (p *EntityParser) loadImportedPackages() error {
 	return nil
 }
 
-// Load the package containing the type definition
-// TODO: we don't support named imports yet
-func loadPackage(pkgPath string) (*packages.Package, error) {
-	cfg := &packages.Config{Mode: packages.NeedTypes | packages.NeedSyntax | packages.NeedTypesInfo}
-	pkgs, err := packages.Load(cfg, pkgPath)
+// loadPackage loads the package that pattern names.
+//
+// packages.Load reports parse, type, and list errors in Package.Errors
+// rather than in its returned error, so loadPackage converts them into an
+// error. The parser assumes a complete syntax tree and type information.
+func loadPackage(cfg *packages.Config, pattern string) (*packages.Package, error) {
+	pkgs, err := packages.Load(cfg, pattern)
 	if err != nil {
 		return nil, err
 	}
 	if len(pkgs) == 0 {
 		return nil, errors.New("no packages found")
 	}
-	return pkgs[0], nil
+
+	pkg := pkgs[0]
+	if len(pkg.Errors) > 0 {
+		errs := make([]error, len(pkg.Errors))
+		for i, e := range pkg.Errors {
+			errs[i] = e
+		}
+
+		return nil, fmt.Errorf("package %s: %w", pkg.ID, errors.Join(errs...))
+	}
+
+	return pkg, nil
 }
 
 // exprToString converts an expression to a string
