@@ -18,9 +18,12 @@ const httpRequestSeconds = 0.015
 // planSummary is the last line of a plan file, written once every entry is
 // known.
 type planSummary struct {
-	Entries  int `json:"entries"`
-	Requests int `json:"requests"`
-	Cost     int `json:"cost"`
+	Entries int `json:"entries"`
+	// Alternatives are entries that run only when another of their origin
+	// fails, so they are left out of every other total.
+	Alternatives int `json:"alternatives,omitempty"`
+	Requests     int `json:"requests"`
+	Cost         int `json:"cost"`
 	// EstimatedSeconds is the largest of the time the rate limit allows, the
 	// cost spread over every concurrent slot, and the longest entry, whose
 	// requests run one after another. Hosts slower than the measured request
@@ -52,6 +55,10 @@ func (r *Runner) writePlan(store *loader.Store, engine *core.Engine) error {
 			return
 		}
 		encodeErr = encoder.Encode(entry)
+		if entry.AlternativeTo != "" {
+			summary.Alternatives++
+			return
+		}
 		summary.Entries++
 		summary.Requests += entry.Requests
 		summary.Cost += entry.Cost

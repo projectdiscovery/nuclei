@@ -104,7 +104,7 @@ func TestPlanListsThePairsTheScanRuns(t *testing.T) {
 	require.ElementsMatch(t, []string{"thinkphp.yaml@php", "thinkphp.yaml@plain", "generic.yaml@plain"}, planned)
 }
 
-func TestPlanKeepsOriginFallbacks(t *testing.T) {
+func TestPlanListsOriginAlternatives(t *testing.T) {
 	options := &types.Options{BulkSize: 1, TemplateThreads: 1, HeadlessBulkSize: 1, HeadlessTemplateThreads: 1}
 	engine := New(options)
 	engine.SetExecuterOptions(&protocols.ExecutorOptions{
@@ -141,11 +141,12 @@ func TestPlanKeepsOriginFallbacks(t *testing.T) {
 		}
 	}
 	require.Equal(t, []PlanEntry{
-		{ID: roots[0].ID, Target: "https://example.com/a", Templates: []string{"root.yaml"}, Protocol: "http", Requests: 1, Cost: 1, Fallbacks: []string{"https://example.com/b"}},
-		{ID: roots[1].ID, Target: "https://other.example/a", Templates: []string{"root.yaml"}, Protocol: "http", Requests: 1, Cost: 1},
-		{ID: roots[2].ID, Target: "https://example.com/a", IP: "203.0.113.5", Templates: []string{"root.yaml"}, Protocol: "http", Requests: 1, Cost: 1},
+		{ID: roots[0].ID, Target: "https://example.com/a", Templates: []string{"root.yaml"}, Protocol: "http", Requests: 1, Cost: 1},
+		{ID: roots[1].ID, Target: "https://example.com/b", Templates: []string{"root.yaml"}, Protocol: "http", Requests: 1, Cost: 1, AlternativeTo: roots[0].ID},
+		{ID: roots[2].ID, Target: "https://other.example/a", Templates: []string{"root.yaml"}, Protocol: "http", Requests: 1, Cost: 1},
+		{ID: roots[3].ID, Target: "https://example.com/a", IP: "203.0.113.5", Templates: []string{"root.yaml"}, Protocol: "http", Requests: 1, Cost: 1},
 	}, roots)
-	require.NotEqual(t, roots[0].ID, roots[2].ID, "a pinned address is its own attempt")
+	require.NotEqual(t, roots[0].ID, roots[3].ID, "a pinned address is its own attempt")
 
 	var again []PlanEntry
 	engine.Plan([]*templates.Template{generic, root}, targets, true, func(entry PlanEntry) {
