@@ -93,7 +93,7 @@ func Get(options *types.Options, configuration *Configuration) (*Client, error) 
 	if (configuration.Retries <= 1) && len(configuration.Resolvers) == 0 {
 		return cachedClient(resolversFor(options))
 	}
-	if len(options.InternalResolversList) == 0 && hasDohResolver(configuration.Resolvers) {
+	if len(options.InternalResolversList) == 0 && hasPolicyResolver(configuration.Resolvers) {
 		return getPolicyClient(options, configuration)
 	}
 	hash := configuration.Hash()

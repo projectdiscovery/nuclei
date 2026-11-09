@@ -289,6 +289,18 @@ func (template *Template) SelectedBy(selection protocols.TemplateSelection) bool
 	return selection.Allows(template.Path)
 }
 
+// TemplateIDs returns the IDs of the members selection selects; a nil
+// selection selects every member.
+func (e *ClusterExecuter) TemplateIDs(selection protocols.TemplateSelection) []string {
+	ids := make([]string, 0, len(e.operators))
+	for _, operator := range e.operators {
+		if selection == nil || selection.Allows(operator.templatePath) {
+			ids = append(ids, operator.templateID)
+		}
+	}
+	return ids
+}
+
 // operatorsFor returns the members selected for input by per-target profiles.
 func (e *ClusterExecuter) operatorsFor(input *contextargs.MetaInput) []*clusteredOperator {
 	if e.options.TargetScope == nil {
