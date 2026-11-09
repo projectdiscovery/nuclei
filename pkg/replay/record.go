@@ -42,8 +42,20 @@ type Recorder struct {
 	err       error
 }
 
+// clusterKeyed is a request the scan can cluster. The key leaves out what
+// makes a request unclusterable, such as a raw request or a body, so only a
+// clusterable request may share events by it.
 type clusterKeyed interface {
 	TmplClusterKey() uint64
+	IsClusterable() bool
+}
+
+func clusterKey(request protocols.Request) (string, bool) {
+	keyed, ok := request.(clusterKeyed)
+	if !ok || !keyed.IsClusterable() {
+		return "", false
+	}
+	return strconv.FormatUint(keyed.TmplClusterKey(), 10), true
 }
 
 type requestLister interface {
@@ -59,14 +71,21 @@ func NewRecorder(path string, templatesList []*templates.Template) (*Recorder, e
 	recorder := &Recorder{file: file, requests: make(map[protocols.Request]requestRef), singleIDs: make(map[string]bool)}
 	for _, template := range templatesList {
 		requests := templateRequests(template)
+		single := len(requests) == 1 && sharesEvents(template)
 		for i, request := range requests {
-			recorder.requests[request] = requestRef{templateID: template.ID, index: i, single: len(requests) == 1}
+			recorder.requests[request] = requestRef{templateID: template.ID, index: i, single: single}
 		}
-		if len(requests) == 1 {
+		if single {
 			recorder.singleIDs[template.ID] = true
 		}
 	}
 	return recorder, nil
+}
+
+// sharesEvents mirrors templates.Cluster: a template the scan never
+// clusters does not take another template's event either.
+func sharesEvents(template *templates.Template) bool {
+	return template.Flow == "" && (template.Options == nil || !template.Options.IsMultiProtocol) && !template.Info.HasPlaceholders()
 }
 
 func templateRequests(template *templates.Template) []protocols.Request {
@@ -90,8 +109,8 @@ func (r *Recorder) Record(request protocols.Request, event output.InternalEvent)
 		ref = requestRef{templateID: templateID, single: true}
 	}
 	line := record[map[string]any]{TemplateID: ref.templateID, Request: ref.index, Event: encodeEvent(event)}
-	if keyed, ok := request.(clusterKeyed); ok && ref.single {
-		line.ClusterKey = strconv.FormatUint(keyed.TmplClusterKey(), 10)
+	if key, ok := clusterKey(request); ok && ref.single {
+		line.ClusterKey = key
 	}
 	data, err := json.Marshal(line)
 	if err != nil {

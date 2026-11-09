@@ -37,9 +37,10 @@ func Replay(path string, templatesList []*templates.Template) ([]*output.ResultE
 		for i, request := range requests {
 			byRequest[template.ID+"\x00"+strconv.Itoa(i)] = []target{{template: template, request: request}}
 		}
-		if keyed, ok := singleKeyed(requests); ok {
-			key := strconv.FormatUint(keyed.TmplClusterKey(), 10)
-			byCluster[key] = append(byCluster[key], target{template: template, request: requests[0]})
+		if len(requests) == 1 && sharesEvents(template) {
+			if key, ok := clusterKey(requests[0]); ok {
+				byCluster[key] = append(byCluster[key], target{template: template, request: requests[0]})
+			}
 		}
 	}
 
@@ -78,14 +79,6 @@ func Replay(path string, templatesList []*templates.Template) ([]*output.ResultE
 	}
 	slices.SortStableFunc(results, compareResults)
 	return results, nil
-}
-
-func singleKeyed(requests []protocols.Request) (clusterKeyed, bool) {
-	if len(requests) != 1 {
-		return nil, false
-	}
-	keyed, ok := requests[0].(clusterKeyed)
-	return keyed, ok
 }
 
 func replayEvent(target target, event output.InternalEvent) []*output.ResultEvent {
