@@ -22,12 +22,12 @@ func TestParseExternalTypes(t *testing.T) {
 	}
 
 	// net.Conn is an interface, so it has no fields to describe.
-	require.Equal(t, "any | null | null", entities["Dial"].Function.Returns)
+	require.Equal(t, "any | null", entities["Dial"].Function.Returns)
 	require.Equal(t, []tsgen.Property{{Name: "Conn", Type: "any", Description: ""}}, entities["Session"].Object.Properties)
 	require.NotContains(t, entities, "Conn")
 
 	// url.URL is a struct, so its fields become an interface.
-	require.Equal(t, "URL | null | null", entities["Parse"].Function.Returns)
+	require.Equal(t, "URL | null", entities["Parse"].Function.Returns)
 	require.Equal(t, "interface", entities["URL"].Type)
 	require.NotEmpty(t, entities["URL"].Object.Properties)
 }

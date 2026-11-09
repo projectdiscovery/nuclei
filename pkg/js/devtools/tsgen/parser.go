@@ -377,8 +377,10 @@ func (p *EntityParser) extractReturnType(fn *ast.FuncDecl) (out string) {
 			}
 		}
 		if sliceutil.Contains(returns, "error") {
-			// add | null to the return type
-			out = out + " | null"
+			// external types already record that they can be null
+			if !strings.HasSuffix(out, "| null") {
+				out += " | null"
+			}
 			return
 		}
 	}
