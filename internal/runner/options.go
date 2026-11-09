@@ -557,6 +557,14 @@ func getBoolEnvValue(key string) bool {
 // validatePlanOptions rejects options that change the templates or targets
 // only once scanning starts, which a plan written beforehand cannot show.
 func validatePlanOptions(options *types.Options) error {
+	if options.RunPlanFile != "" {
+		switch {
+		case options.PlanFile != "":
+			return errors.New("-plan cannot be used with -run-plan")
+		case options.Resume != "":
+			return errors.New("-run-plan cannot be used with -resume, the plan's done log resumes it")
+		}
+	}
 	if options.PlanFile == "" {
 		return nil
 	}

@@ -254,6 +254,9 @@ type Options struct {
 	// PlanFile is where the work a scan would do is written as JSON lines;
 	// nuclei exits after writing it, without sending requests.
 	PlanFile string
+	// RunPlanFile is a plan whose entries the scan runs, skipping those its
+	// done log lists as finished.
+	RunPlanFile string
 	// NoStrictSyntax disables strict syntax check on nuclei templates (allows custom key-value pairs).
 	NoStrictSyntax bool
 	// Verbose flag indicates whether to show verbose output or not
@@ -715,6 +718,7 @@ func (options *Options) Copy() *Options {
 		Silent:                         options.Silent,
 		Validate:                       options.Validate,
 		PlanFile:                       options.PlanFile,
+		RunPlanFile:                    options.RunPlanFile,
 		NoStrictSyntax:                 options.NoStrictSyntax,
 		Verbose:                        options.Verbose,
 		VerboseVerbose:                 options.VerboseVerbose,

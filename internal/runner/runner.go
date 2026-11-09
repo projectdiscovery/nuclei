@@ -837,6 +837,15 @@ func (r *Runner) RunEnumeration() error {
 	if r.options.PlanFile != "" {
 		return r.writePlan(store, executorEngine)
 	}
+	if r.options.RunPlanFile != "" {
+		run, err := openPlanRun(r.options.RunPlanFile)
+		if err != nil {
+			return errors.Wrap(err, "could not read plan")
+		}
+		r.Logger.Info().Msgf("Running %d plan entries from %s, %d already finished", len(run.entries), r.options.RunPlanFile, run.resumed)
+		executorEngine.SetPlanRun(run)
+		defer r.finishPlanRun(run)
+	}
 	// TODO: remove below functions after v3 or update warning messages
 	templates.PrintDeprecatedProtocolNameMsgIfApplicable(r.options.Silent, r.options.Verbose)
 

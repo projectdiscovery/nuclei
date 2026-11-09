@@ -23,4 +23,8 @@ func TestPlanRejectsOptionsThatChangeTargetsLater(t *testing.T) {
 	require.NoError(t, validatePlanOptions(&types.Options{Uncover: true}), "only -plan restricts them")
 	require.NoError(t, validatePlanOptions(&types.Options{UncoverQuery: goflags.StringSlice{"example"}}))
 	require.NoError(t, validatePlanOptions(&types.Options{DASTServer: true}))
+
+	require.Error(t, validatePlanOptions(&types.Options{RunPlanFile: "p", PlanFile: "q"}))
+	require.Error(t, validatePlanOptions(&types.Options{RunPlanFile: "p", Resume: "r"}))
+	require.NoError(t, validatePlanOptions(&types.Options{RunPlanFile: "p"}))
 }
