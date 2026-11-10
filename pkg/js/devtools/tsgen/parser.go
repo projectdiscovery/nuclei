@@ -284,8 +284,8 @@ func (p *EntityParser) extractClassProperties(node *ast.StructType) []Property {
 					Description: field.Doc.Text(),
 				}
 				if strings.Contains(property.Type, ".") {
-					// external struct found
-					property.Type = p.handleExternalStruct(property.Type)
+					// external type found
+					property.Type = p.handleExternalType(property.Type)
 				}
 				properties = append(properties, property)
 			}
@@ -349,7 +349,7 @@ func (p *EntityParser) extractReturnType(fn *ast.FuncDecl) (out string) {
 		for _, result := range fn.Type.Results.List {
 			tmp := exprToString(result.Type)
 			if strings.Contains(tmp, ".") && !strings.HasPrefix(tmp, "goja.") {
-				tmp = p.handleExternalStruct(tmp) + " | null" // external object interfaces can always return null
+				tmp = p.handleExternalType(tmp) + " | null" // external object interfaces can always return null
 			}
 			returns = append(returns, tmp)
 		}
@@ -374,8 +374,10 @@ func (p *EntityParser) extractReturnType(fn *ast.FuncDecl) (out string) {
 			}
 		}
 		if sliceutil.Contains(returns, "error") {
-			// add | null to the return type
-			out = out + " | null"
+			// external types already record that they can be null
+			if !strings.HasSuffix(out, "| null") {
+				out += " | null"
+			}
 			return
 		}
 	}
@@ -413,10 +415,18 @@ func (p *EntityParser) extractParameters(fn *ast.FuncDecl) []Parameter {
 	return parameters
 }
 
-// typeName is in format ssh.ClientConfig
-// it first fetches all fields from the struct and creates a new object
-// with that name and returns name of that object as type
-func (p *EntityParser) handleExternalStruct(typeName string) string {
+// handleExternalType returns the TypeScript type for typeName, a type from
+// another package such as ssh.ClientConfig. A struct is queued for
+// scrapeAndCreate, which describes its fields in an interface of the same name.
+// Any other type, such as the net.Conn interface, has no fields to describe,
+// so it becomes any. A typeName that does not resolve is queued too, so that
+// scrapeAndCreate reports it.
+func (p *EntityParser) handleExternalType(typeName string) string {
+	obj, err := p.lookupType(typeName)
+	if err == nil && !isStruct(obj.Type()) {
+		return "any"
+	}
+
 	baseType := typeName[strings.LastIndex(typeName, ".")+1:]
 	p.newObjects[typeName] = &Entity{
 		Name:        baseType,
