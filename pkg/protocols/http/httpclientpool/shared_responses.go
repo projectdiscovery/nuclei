@@ -124,6 +124,12 @@ func (t *sharingTransport) RoundTrip(req *http.Request) (*http.Response, error) 
 	return entry.response.copyFor(req), nil
 }
 
+// Unwrap returns the underlying transport, so reporting clients that need TLS
+// verification reach the scan transport and never share responses.
+func (t *sharingTransport) Unwrap() http.RoundTripper {
+	return t.base
+}
+
 func (t *sharingTransport) CloseIdleConnections() {
 	type closeIdler interface{ CloseIdleConnections() }
 	if ci, ok := t.base.(closeIdler); ok {
