@@ -140,7 +140,12 @@ func (t *sharingTransport) send(req *http.Request, entry *sharedEntry) (*http.Re
 		return resp, err
 	}
 	body, err := io.ReadAll(io.LimitReader(resp.Body, sharedResponseMaxBody+1))
-	if err != nil || len(body) > sharedResponseMaxBody {
+	if err != nil {
+		t.forget(entry)
+		_ = resp.Body.Close()
+		return nil, err
+	}
+	if len(body) > sharedResponseMaxBody {
 		t.forget(entry)
 		// hand back what was read followed by the rest
 		resp.Body = struct {
@@ -149,10 +154,33 @@ func (t *sharingTransport) send(req *http.Request, entry *sharedEntry) (*http.Re
 		}{io.MultiReader(bytes.NewReader(body), resp.Body), resp.Body}
 		return resp, nil
 	}
+	// A refusal is the server's, for this moment. Storing it would hand the
+	// same 429 or gateway error to every later template, and none of them
+	// would send.
+	if !shareableStatus(resp.StatusCode) {
+		t.forget(entry)
+		resp.Body = io.NopCloser(bytes.NewReader(body))
+		if req.Method != http.MethodHead {
+			resp.ContentLength = int64(len(body))
+		}
+		return resp, nil
+	}
 	_ = resp.Body.Close()
 	entry.response = &storedResponse{response: resp, body: body}
 	t.store(entry)
 	return entry.response.copyFor(req), nil
+}
+
+// shareableStatus reports whether code is an answer a later template can
+// reuse. 404 and 500 are answers templates match on. 429 and the gateway
+// errors mean the server did not answer, so the next template must send.
+func shareableStatus(code int) bool {
+	switch code {
+	case http.StatusTooManyRequests, http.StatusBadGateway, http.StatusServiceUnavailable, http.StatusGatewayTimeout:
+		return false
+	default:
+		return true
+	}
 }
 
 // hasBody reports whether req sends a body. retryablehttp gives every
@@ -220,7 +248,11 @@ func (s *storedResponse) copyFor(req *http.Request) *http.Response {
 	resp.Header = s.response.Header.Clone()
 	resp.Trailer = s.response.Trailer.Clone()
 	resp.Body = io.NopCloser(bytes.NewReader(s.body))
-	resp.ContentLength = int64(len(s.body))
+	// A HEAD response has an empty body and a Content-Length for the body it
+	// did not send. Matchers read that length, so a reused HEAD keeps it.
+	if req.Method != http.MethodHead {
+		resp.ContentLength = int64(len(s.body))
+	}
 	resp.Request = req
 	return &resp
 }

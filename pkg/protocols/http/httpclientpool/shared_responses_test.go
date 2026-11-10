@@ -189,3 +189,89 @@ func TestSharedResponsesCapCountsBodylessResponses(t *testing.T) {
 	require.LessOrEqual(t, transport.shared.bytes, transport.shared.maxBytes)
 	require.Less(t, len(transport.shared.entries), 20, "HEAD responses are evicted too")
 }
+
+func TestSharedResponsesKeepHeadContentLength(t *testing.T) {
+	var hits atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		hits.Add(1)
+		w.Header().Set("Content-Length", "1234")
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+	transport := newSharingTransport(http.DefaultTransport)
+
+	length := func(templateID string) int64 {
+		t.Helper()
+		req, err := http.NewRequestWithContext(WithSharedResponse(context.Background(), templateID), http.MethodHead, server.URL, nil)
+		require.NoError(t, err)
+		resp, err := transport.RoundTrip(req)
+		require.NoError(t, err)
+		t.Cleanup(func() { _ = resp.Body.Close() })
+		return resp.ContentLength
+	}
+
+	require.Equal(t, int64(1234), length("one"))
+	require.Equal(t, int64(1234), length("two"), "a reused HEAD keeps the length the server advertised")
+	require.EqualValues(t, 1, hits.Load())
+}
+
+func TestSharedResponsesDoNotKeepRefusals(t *testing.T) {
+	for _, status := range []int{http.StatusTooManyRequests, http.StatusBadGateway, http.StatusServiceUnavailable, http.StatusGatewayTimeout} {
+		t.Run(http.StatusText(status), func(t *testing.T) {
+			var hits atomic.Int32
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				hits.Add(1)
+				http.Error(w, "no", status)
+			}))
+			defer server.Close()
+			transport := newSharingTransport(http.DefaultTransport)
+
+			sharedGet(t, transport, http.MethodGet, server.URL, "one", nil)
+			sharedGet(t, transport, http.MethodGet, server.URL, "two", nil)
+			require.EqualValues(t, 2, hits.Load())
+		})
+	}
+}
+
+func TestSharedResponsesKeepNotFound(t *testing.T) {
+	var hits atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		hits.Add(1)
+		http.NotFound(w, r)
+	}))
+	defer server.Close()
+	transport := newSharingTransport(http.DefaultTransport)
+
+	sharedGet(t, transport, http.MethodGet, server.URL, "one", nil)
+	sharedGet(t, transport, http.MethodGet, server.URL, "two", nil)
+	require.EqualValues(t, 1, hits.Load())
+}
+
+type errReadBody struct{}
+
+func (errReadBody) Read([]byte) (int, error) { return 0, errors.New("short read") }
+func (errReadBody) Close() error             { return nil }
+
+type errBodyTransport struct{}
+
+func (errBodyTransport) RoundTrip(*http.Request) (*http.Response, error) {
+	return &http.Response{StatusCode: http.StatusOK, Header: make(http.Header), Body: errReadBody{}}, nil
+}
+
+func TestSharedResponsesReturnBodyReadErrors(t *testing.T) {
+	transport := newSharingTransport(errBodyTransport{})
+
+	send := func(templateID string) (*http.Response, error) {
+		req, err := http.NewRequestWithContext(WithSharedResponse(context.Background(), templateID), http.MethodGet, "http://example.com", nil)
+		require.NoError(t, err)
+		return transport.RoundTrip(req)
+	}
+
+	resp, err := send("one")
+	require.Error(t, err)
+	require.Nil(t, resp)
+
+	resp, err = send("two")
+	require.Error(t, err, "a failed read is not reused")
+	require.Nil(t, resp)
+}
