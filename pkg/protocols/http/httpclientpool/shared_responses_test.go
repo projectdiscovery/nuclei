@@ -79,10 +79,12 @@ func TestSharedResponsesSendEachRequestOncePerScan(t *testing.T) {
 	sharedGet(t, transport, http.MethodGet, server.URL+"/b", "three", http.Header{"User-Agent": {"custom-scanner"}})
 	require.EqualValues(t, 6, hits.Load(), "one a template sets is")
 
-	req, err := http.NewRequestWithContext(WithSharedResponse(context.Background(), "one"), http.MethodPost, server.URL+"/a", strings.NewReader("x"))
-	require.NoError(t, err)
 	for range 2 {
-		resp, err := transport.RoundTrip(req.Clone(req.Context()))
+		// A new request each time. Clone shares the body, so a second clone
+		// of one request can send ContentLength with an already-read body.
+		req, err := http.NewRequestWithContext(WithSharedResponse(context.Background(), "one"), http.MethodPost, server.URL+"/a", strings.NewReader("x"))
+		require.NoError(t, err)
+		resp, err := transport.RoundTrip(req)
 		require.NoError(t, err)
 		_ = resp.Body.Close()
 	}
