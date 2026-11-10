@@ -85,7 +85,7 @@ require (
 	github.com/projectdiscovery/gcache v0.0.0-20241015120333-12546c6e3f4c
 	github.com/projectdiscovery/goflags v0.2.1
 	github.com/projectdiscovery/goimpacket v0.1.1-0.20261007205806-6042a8213eeb
-	github.com/projectdiscovery/goja v0.0.0-20261012075649-9b78f2e05b9c
+	github.com/projectdiscovery/goja v0.0.0-20261105204359-4285f3c977ed
 	github.com/projectdiscovery/goja_nodejs v0.0.0-20260618132410-8519f75f703d
 	github.com/projectdiscovery/gologger v1.1.73
 	github.com/projectdiscovery/gostruct v0.0.2
@@ -237,7 +237,7 @@ require (
 	github.com/dimchansky/utfbom v1.1.1 // indirect
 	github.com/distribution/reference v0.6.0 // indirect
 	github.com/djherbis/times v1.6.0 // indirect
-	github.com/dlclark/regexp2/v2 v2.2.1 // indirect
+	github.com/dlclark/regexp2/v2 v2.11.0 // indirect
 	github.com/docker/cli v29.2.0+incompatible // indirect
 	github.com/docker/go-connections v0.7.0 // indirect
 	github.com/dop251/goja v0.0.0-20260311135729-065cd970411c // indirect
