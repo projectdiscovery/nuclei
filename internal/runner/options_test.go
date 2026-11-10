@@ -84,6 +84,7 @@ func TestReadsTargetsFromStdin(t *testing.T) {
 		{"targets given with -l", &types.Options{TargetsFilePath: "targets.txt"}, true, false},
 		{"uncover query", &types.Options{UncoverQuery: goflags.StringSlice{"example"}}, true, false},
 		{"uncover enabled", &types.Options{Uncover: true}, true, false},
+		{"replay", &types.Options{ReplayFile: "events.jsonl"}, true, false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			require.Equal(t, tc.want, readsTargetsFromStdin(tc.options, tc.stdinIsPipe))
