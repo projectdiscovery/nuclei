@@ -140,29 +140,16 @@ func (t *sharingTransport) send(req *http.Request, entry *sharedEntry) (*http.Re
 		return resp, err
 	}
 	body, err := io.ReadAll(io.LimitReader(resp.Body, sharedResponseMaxBody+1))
-	if err != nil {
+	if err != nil || len(body) > sharedResponseMaxBody || !shareableStatus(resp.StatusCode) {
 		t.forget(entry)
-		_ = resp.Body.Close()
-		return nil, err
-	}
-	if len(body) > sharedResponseMaxBody {
-		t.forget(entry)
-		// hand back what was read followed by the rest
+		// The bytes already taken off the body have to go back in front of it.
+		// A short read is still this caller's response: a Content-Length that
+		// is longer than the body is what some matchers look for. It is not
+		// stored, and neither is a body too large to keep or a refusal.
 		resp.Body = struct {
 			io.Reader
 			io.Closer
 		}{io.MultiReader(bytes.NewReader(body), resp.Body), resp.Body}
-		return resp, nil
-	}
-	// A refusal is the server's, for this moment. Storing it would hand the
-	// same 429 or gateway error to every later template, and none of them
-	// would send.
-	if !shareableStatus(resp.StatusCode) {
-		t.forget(entry)
-		resp.Body = io.NopCloser(bytes.NewReader(body))
-		if req.Method != http.MethodHead {
-			resp.ContentLength = int64(len(body))
-		}
 		return resp, nil
 	}
 	_ = resp.Body.Close()

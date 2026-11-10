@@ -247,31 +247,60 @@ func TestSharedResponsesKeepNotFound(t *testing.T) {
 	require.EqualValues(t, 1, hits.Load())
 }
 
-type errReadBody struct{}
-
-func (errReadBody) Read([]byte) (int, error) { return 0, errors.New("short read") }
-func (errReadBody) Close() error             { return nil }
-
-type errBodyTransport struct{}
-
-func (errBodyTransport) RoundTrip(*http.Request) (*http.Response, error) {
-	return &http.Response{StatusCode: http.StatusOK, Header: make(http.Header), Body: errReadBody{}}, nil
+// shortBody yields a prefix and then ErrUnexpectedEOF, which is what a
+// response with a Content-Length longer than its body looks like.
+type shortBody struct {
+	prefix []byte
+	sent   bool
 }
 
-func TestSharedResponsesReturnBodyReadErrors(t *testing.T) {
-	transport := newSharingTransport(errBodyTransport{})
+func (s *shortBody) Read(p []byte) (int, error) {
+	if !s.sent {
+		s.sent = true
+		n := copy(p, s.prefix)
+		return n, io.ErrUnexpectedEOF
+	}
+	return 0, io.ErrUnexpectedEOF
+}
 
-	send := func(templateID string) (*http.Response, error) {
+func (s *shortBody) Close() error { return nil }
+
+type countingTransport struct {
+	hits atomic.Int32
+}
+
+func (c *countingTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	c.hits.Add(1)
+	return &http.Response{
+		StatusCode:    http.StatusOK,
+		Header:        http.Header{"Content-Length": {"50000"}},
+		ContentLength: 50000,
+		Body:          &shortBody{prefix: []byte("fourteen bytes")},
+		Request:       req,
+	}, nil
+}
+
+func TestSharedResponsesDoNotKeepShortReads(t *testing.T) {
+	base := &countingTransport{}
+	transport := newSharingTransport(base)
+
+	send := func(templateID string) *http.Response {
+		t.Helper()
 		req, err := http.NewRequestWithContext(WithSharedResponse(context.Background(), templateID), http.MethodGet, "http://example.com", nil)
 		require.NoError(t, err)
-		return transport.RoundTrip(req)
+		resp, err := transport.RoundTrip(req)
+		require.NoError(t, err)
+		return resp
 	}
 
-	resp, err := send("one")
-	require.Error(t, err)
-	require.Nil(t, resp)
+	first := send("one")
+	body, err := io.ReadAll(first.Body)
+	require.ErrorIs(t, err, io.ErrUnexpectedEOF)
+	require.Equal(t, "fourteen bytes", string(body))
+	require.Equal(t, int64(50000), first.ContentLength)
+	_ = first.Body.Close()
 
-	resp, err = send("two")
-	require.Error(t, err, "a failed read is not reused")
-	require.Nil(t, resp)
+	second := send("two")
+	_ = second.Body.Close()
+	require.EqualValues(t, 2, base.hits.Load(), "a short read is not reused")
 }
