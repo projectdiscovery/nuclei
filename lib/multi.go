@@ -39,12 +39,14 @@ func createEphemeralObjects(ctx context.Context, base *NucleiEngine, opts *types
 		Catalog:      base.catalog,
 		IssuesClient: base.rc,
 		RateLimiter:  base.rateLimiter,
-		Interactsh:   base.interactshClient,
-		Colorizer:    aurora.New(aurora.WithColors(true)),
-		ResumeCfg:    types.NewResumeCfg(),
-		Parser:       base.parser,
-		Browser:      base.browserInstance,
-		DoNotCache:   opts.DoNotCacheTemplates,
+
+		RequestBodyBudget: base.executerOpts.RequestBodyBudget,
+		Interactsh:        base.interactshClient,
+		Colorizer:         aurora.New(aurora.WithColors(true)),
+		ResumeCfg:         types.NewResumeCfg(),
+		Parser:            base.parser,
+		Browser:           base.browserInstance,
+		DoNotCache:        opts.DoNotCacheTemplates,
 	}
 	if base.interactshClient != nil {
 		u.executerOpts.InteractshScope = base.interactshClient.NewRequestScope()

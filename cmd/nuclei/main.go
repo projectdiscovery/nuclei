@@ -55,6 +55,17 @@ var (
 	inlineSecretsTempMu  sync.Mutex
 )
 
+// normalizeHeaderValue trims a -H value and drops it when the whole line is a
+// "#" comment. The goflags default strips inline comments, which cut values
+// such as "Cookie: color=#fff" at the "#".
+func normalizeHeaderValue(s string) string {
+	s = strings.TrimSpace(s)
+	if strings.HasPrefix(s, "#") {
+		return ""
+	}
+	return s
+}
+
 func main() {
 	options.Logger = gologger.DefaultLogger
 
@@ -255,6 +266,11 @@ func readConfig() *goflags.FlagSet {
 	var pdcpAuth string
 	var fuzzFlag bool
 
+	// FileStringSliceOptions as set up by runner.ConfigureOptions, but keeping
+	// "#" inside -H values
+	headerSliceOptions := goflags.FileStringSliceOptions
+	headerSliceOptions.Normalize = normalizeHeaderValue
+
 	flagSet := goflags.NewFlagSet()
 	flagSet.CaseSensitive = true
 	flagSet.SetDescription(`Nuclei is a fast, template based vulnerability scanner focusing
@@ -297,6 +313,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.StringSliceVarP(&options.Workflows, "workflows", "w", nil, "list of workflow or workflow directory to run (comma-separated, file)", goflags.FileCommaSeparatedStringSliceOptions),
 		flagSet.StringSliceVarP(&options.WorkflowURLs, "workflow-url", "wurl", nil, "workflow url or list containing workflow urls to run (comma-separated, file)", goflags.FileCommaSeparatedStringSliceOptions),
 		flagSet.BoolVar(&options.Validate, "validate", false, "validate the passed templates to nuclei"),
+		flagSet.StringVar(&options.PlanFile, "plan", "", "write the work a scan would do with its estimated cost to a jsonl file, then exit without sending requests to any target"),
 		flagSet.BoolVarP(&options.NoStrictSyntax, "no-strict-syntax", "nss", false, "disable strict syntax check on templates"),
 		flagSet.BoolVarP(&options.TemplateDisplay, "template-display", "td", false, "displays the templates content"),
 		flagSet.BoolVar(&options.TemplateList, "tl", false, "list all templates matching current filters"),
@@ -339,6 +356,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.StringVarP(&options.Output, "output", "o", "", "output file to write found issues/vulnerabilities"),
 		flagSet.BoolVarP(&options.StoreResponse, "store-resp", "sresp", false, "store all request/response passed through nuclei to output directory"),
 		flagSet.StringVarP(&options.StoreResponseDir, "store-resp-dir", "srd", runner.DefaultDumpTrafficOutputFolder, "store all request/response passed through nuclei to custom directory"),
+		flagSet.StringVar(&options.StoreEvents, "store-events", "", "store what the matchers of every request see, for any protocol, to a jsonl file for -replay (holds raw traffic, credentials included)"),
 		flagSet.BoolVar(&options.Silent, "silent", false, "display findings only"),
 		flagSet.BoolVarP(&options.NoColor, "no-color", "nc", false, "disable output content coloring (ANSI escape codes)"),
 		flagSet.BoolVarP(&options.JSONL, "jsonl", "j", false, "write output in JSONL(ines) format"),
@@ -353,6 +371,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.StringVarP(&options.SarifExport, "sarif-export", "se", "", "file to export results in SARIF format"),
 		flagSet.StringVarP(&options.JSONExport, "json-export", "je", "", "file to export results in JSON format"),
 		flagSet.StringVarP(&options.JSONLExport, "jsonl-export", "jle", "", "file to export results in JSONL(ine) format"),
+		flagSet.StringVarP(&options.CSVExport, "csv-export", "ce", "", "file to export results in CSV format"),
 		flagSet.StringVarP(&options.PDFExport, "pdf-export", "pe", "", "file to export results in PDF format"),
 		flagSet.StringSliceVarP(&options.Redact, "redact", "rd", nil, "redact given list of keys from query parameter, request header and body", goflags.CommaSeparatedStringSliceOptions),
 		flagSet.BoolVarP(&options.NoRedact, "no-redact", "nrd", false, "disable the built-in redaction of credential headers (Authorization, Cookie, Set-Cookie, ...) in output; keys given with -redact are still redacted"),
@@ -367,12 +386,13 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.IntVarP(&options.MaxRedirects, "max-redirects", "mr", 10, "max number of redirects to follow for http templates"),
 		flagSet.BoolVarP(&options.DisableRedirects, "disable-redirects", "dr", false, "disable redirects for http templates"),
 		flagSet.StringVarP(&options.ReportingConfig, "report-config", "rc", "", "nuclei reporting module configuration file"), // TODO merge into the config file or rename to issue-tracking
-		flagSet.StringSliceVarP(&options.CustomHeaders, "header", "H", nil, "custom header/cookie to include in all http request in header:value format (cli, file)", goflags.FileStringSliceOptions),
+		flagSet.StringSliceVarP(&options.CustomHeaders, "header", "H", nil, "custom header/cookie to include in all http request in header:value format (cli, file)", headerSliceOptions),
 		flagSet.RuntimeMapVarP(&options.Vars, "var", "V", nil, "custom vars in key=value format"),
 		flagSet.StringVarP(&options.ResolversFile, "resolvers", "r", "", "file containing resolver list for nuclei"),
 		flagSet.BoolVarP(&options.SystemResolvers, "system-resolvers", "sr", false, "use system DNS resolving as error fallback"),
 		flagSet.BoolVarP(&options.DisableClustering, "disable-clustering", "dc", false, "disable clustering of requests"),
 		flagSet.BoolVar(&options.OfflineHTTP, "passive", false, "enable passive HTTP response processing mode"),
+		flagSet.StringVar(&options.ReplayFile, "replay", "", "run the templates' matchers and extractors over a -store-events file and print the findings sorted, without sending requests"),
 		flagSet.BoolVarP(&options.ForceAttemptHTTP2, "force-http2", "fh2", false, "force http2 connection on requests"),
 		flagSet.BoolVarP(&options.EnvironmentVariables, "env-vars", "ev", false, "enable environment variables to be used in template"),
 		flagSet.StringVarP(&options.ClientCertFile, "client-cert", "cc", "", "client certificate file (PEM-encoded) used for authenticating against scanned hosts"),
@@ -391,6 +411,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.IntVarP(&options.ResponseReadSize, "response-size-read", "rsr", 0, "max response size to read in bytes"),
 		flagSet.IntVarP(&options.ResponseSaveSize, "response-size-save", "rss", unitutils.Mega, "max response size to read in bytes"),
 		flagSet.IntVarP(&options.RequestSaveSize, "request-size-save", "rqss", 32*unitutils.Kilo, "max request body size to save in bytes (0 to save the whole body)"),
+		flagSet.IntVarP(&options.MaxRequestBodyInFlight, "max-request-body-inflight", "mrbi", 0, "max request body bytes held by in-flight http requests; requests with bodies of 1MB or more queue past it (0 disables)"),
 		flagSet.CallbackVar(func() { resetRequested = true }, "reset", "reset removes all nuclei configuration and data files (including nuclei-templates)"),
 		flagSet.BoolVarP(&options.TlsImpersonate, "tls-impersonate", "tlsi", false, "enable experimental client hello (ja3) tls randomization"),
 		flagSet.StringVarP(&options.HttpApiEndpoint, "http-api-endpoint", "hae", "", "experimental http api endpoint"),

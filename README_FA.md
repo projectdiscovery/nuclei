@@ -181,6 +181,7 @@ TEMPLATES:
    -w, -workflows string[]                list of workflow or workflow directory to run (comma-separated, file)
    -wurl, -workflow-url string[]          workflow url or list containing workflow urls to run (comma-separated, file)
    -validate                              validate the passed templates to nuclei
+   -plan string                           write the work a scan would do with its estimated cost to a jsonl file, then exit without sending requests to any target
    -nss, -no-strict-syntax                disable strict syntax check on templates
    -td, -template-display                 displays the templates content
    -tl                                    list all templates matching current filters
@@ -220,6 +221,7 @@ OUTPUT:
    -o, -output string            output file to write found issues/vulnerabilities
    -sresp, -store-resp           store all request/response passed through nuclei to output directory
    -srd, -store-resp-dir string  store all request/response passed through nuclei to custom directory (default "output")
+   -store-events string          store what the matchers of every request see, for any protocol, to a jsonl file for -replay (holds raw traffic, credentials included)
    -silent                       display findings only
    -nc, -no-color                disable output content coloring (ANSI escape codes)
    -j, -jsonl                    write output in JSONL(ines) format
@@ -253,6 +255,7 @@ CONFIGURATIONS:
    -sr, -system-resolvers                use system DNS resolving as error fallback
    -dc, -disable-clustering              disable clustering of requests
    -passive                              enable passive HTTP response processing mode
+   -replay string                        run the templates' matchers and extractors over a -store-events file and print the findings sorted, without sending requests
    -fh2, -force-http2                    force http2 connection on requests
    -ev, -env-vars                        enable environment variables to be used in template
    -cc, -client-cert string              client certificate file (PEM-encoded) used for authenticating against scanned hosts

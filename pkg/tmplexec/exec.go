@@ -88,6 +88,17 @@ func (e *TemplateExecuter) Compile() error {
 	return e.engine.Compile()
 }
 
+// TemplateOptions returns the options of the template the requests belong
+// to, which name it.
+func (e *TemplateExecuter) TemplateOptions() *protocols.ExecutorOptions {
+	return e.options
+}
+
+// ProtocolRequests returns the compiled requests in execution order.
+func (e *TemplateExecuter) ProtocolRequests() []protocols.Request {
+	return e.requests
+}
+
 // Requests returns the total number of requests the rule will perform
 func (e *TemplateExecuter) Requests() int {
 	var count int

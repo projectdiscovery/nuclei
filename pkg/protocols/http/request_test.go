@@ -1,6 +1,7 @@
 package http
 
 import (
+	"cmp"
 	"context"
 	"crypto/tls"
 	"fmt"
@@ -1861,6 +1862,84 @@ func TestHTTPResponseReadSizeHonoursTemplateMaxSize(t *testing.T) {
 			)
 			require.NoError(t, err)
 			require.Equal(t, tc.expectedLen, receivedBodyLen)
+		})
+	}
+}
+
+// storedResponseWriter keeps the stored response dumps.
+type storedResponseWriter struct {
+	*testutils.MockOutputWriter
+
+	responses []string
+}
+
+func (w *storedResponseWriter) WriteStoreDebugData(_, _, _, data string) {
+	if strings.Contains(data, "Dumped HTTP response") {
+		w.responses = append(w.responses, data)
+	}
+}
+
+// TestHTTPResponseTruncatedUsesEffectiveReadLimit checks that a stored response
+// is marked truncated exactly when its body reached the limit it was read with.
+func TestHTTPResponseTruncatedUsesEffectiveReadLimit(t *testing.T) {
+	previous := MaxBodyRead
+
+	t.Cleanup(func() { MaxBodyRead = previous })
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "text/plain")
+		_, _ = w.Write([]byte(strings.Repeat("A", 2000)))
+	}))
+	defer server.Close()
+
+	tests := []struct {
+		name             string
+		defaultLimit     int // replaces MaxBodyRead when set
+		templateMaxSize  int
+		responseReadSize int
+		wantTruncated    bool
+	}{
+		{name: "default limit", defaultLimit: 1000, wantTruncated: true},
+		{name: "default limit, negative response-size-read", defaultLimit: 1000, responseReadSize: -1, wantTruncated: true},
+		{name: "body under default limit", wantTruncated: false},
+		{name: "template max-size", templateMaxSize: 500, wantTruncated: true},
+		{name: "response-size-read", responseReadSize: 800, wantTruncated: true},
+		{name: "max-size below response-size-read", templateMaxSize: 500, responseReadSize: 3000, wantTruncated: true},
+		{name: "limits above body length", templateMaxSize: 4000, responseReadSize: 3000, wantTruncated: false},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			MaxBodyRead = cmp.Or(tc.defaultLimit, previous)
+
+			opts := testutils.DefaultOptions.Copy()
+			opts.StoreResponse = true
+			opts.ResponseReadSize = tc.responseReadSize
+			testutils.Init(opts)
+			t.Cleanup(func() { testutils.Cleanup(opts) })
+
+			request := &Request{
+				ID:      "test-truncated",
+				MaxSize: tc.templateMaxSize,
+				Raw:     []string{"GET / HTTP/1.1\nHost: {{Hostname}}\n\n"},
+			}
+			executerOptions := testutils.NewMockExecuterOptions(opts, &testutils.TemplateInfo{
+				ID:   request.ID,
+				Info: model.Info{SeverityHolder: severity.Holder{Severity: severity.Low}, Name: "test"},
+			})
+			writer := &storedResponseWriter{MockOutputWriter: testutils.NewMockOutputWriter(opts.OmitTemplate)}
+			executerOptions.Output = writer
+			require.NoError(t, request.Compile(executerOptions))
+
+			err := request.ExecuteWithResults(
+				contextargs.NewWithInput(context.Background(), server.URL),
+				make(output.InternalEvent),
+				make(output.InternalEvent),
+				func(*output.InternalWrappedEvent) {},
+			)
+			require.NoError(t, err)
+			require.Len(t, writer.responses, 1)
+			require.Equal(t, tc.wantTruncated, strings.Contains(writer.responses[0], "(Truncated)"))
 		})
 	}
 }

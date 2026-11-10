@@ -9,10 +9,57 @@ import (
 	"net/url"
 	"strings"
 
-	_ "github.com/microsoft/go-mssqldb"
+	gomssql "github.com/microsoft/go-mssqldb"
 	"github.com/projectdiscovery/nuclei/v3/pkg/js/utils"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 )
+
+// mssqlCustomDialer routes connection dialing through Nuclei's fastdialer.
+// Implementing HostDialer ensures the driver delegates hostname resolution to the dialer
+// rather than using the local OS net.LookupIP, keeping DNS resolution, scan proxies,
+// and dial-time network policies strictly enforced.
+type mssqlCustomDialer struct {
+	executionId string
+	host        string
+}
+
+var _ gomssql.HostDialer = (*mssqlCustomDialer)(nil)
+
+func (d *mssqlCustomDialer) DialContext(ctx context.Context, network, addr string) (net.Conn, error) {
+	dialers := protocolstate.GetDialersWithId(d.executionId)
+	if dialers == nil {
+		return nil, fmt.Errorf("dialers not initialized for %s", d.executionId)
+	}
+	targetHost, _, err := net.SplitHostPort(addr)
+	if err != nil {
+		targetHost = addr
+	}
+	if !protocolstate.IsHostAllowed(d.executionId, targetHost) {
+		return nil, protocolstate.ErrHostDenied.Msgf(targetHost)
+	}
+	return dialers.Fastdialer.Dial(ctx, network, addr)
+}
+
+func (d *mssqlCustomDialer) HostName() string {
+	return d.host
+}
+
+func openDB(executionId, target, username, password, dbName string) (*sql.DB, error) {
+	host, _, err := net.SplitHostPort(target)
+	if err != nil {
+		host = target
+	}
+	connString := mssqlConnString(target, username, password, dbName)
+	connector, err := gomssql.NewConnector(connString)
+	if err != nil {
+		return nil, err
+	}
+	connector.Dialer = &mssqlCustomDialer{
+		executionId: executionId,
+		host:        host,
+	}
+	return sql.OpenDB(connector), nil
+}
 
 type (
 	// Client is a client for MS SQL database.
@@ -67,9 +114,7 @@ func connect(ctx context.Context, executionId string, host string, port int, use
 
 	target := net.JoinHostPort(host, fmt.Sprintf("%d", port))
 
-	connString := mssqlConnString(target, username, password, dbName)
-
-	db, err := sql.Open("sqlserver", connString)
+	db, err := openDB(executionId, target, username, password, dbName)
 	if err != nil {
 		return false, err
 	}
@@ -79,21 +124,48 @@ func connect(ctx context.Context, executionId string, host string, port int, use
 
 	_, err = db.ExecContext(ctx, "select 1")
 	if err != nil {
-		switch {
-		case strings.Contains(err.Error(), "connect: connection refused"):
-			fallthrough
-		case strings.Contains(err.Error(), "no pg_hba.conf entry for host"):
-			fallthrough
-		case strings.Contains(err.Error(), "network unreachable"):
-			fallthrough
-		case strings.Contains(err.Error(), "reset"):
-			fallthrough
-		case strings.Contains(err.Error(), "i/o timeout"):
+		if isNetworkError(err) {
 			return false, err
 		}
 		return false, nil
 	}
 	return true, nil
+}
+
+// isNetworkError reports whether an error indicates a network, dialer,
+// timeout, or policy failure as opposed to a server-side authentication rejection.
+func isNetworkError(err error) bool {
+	if err == nil {
+		return false
+	}
+	if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+		return true
+	}
+	var netErr net.Error
+	if errors.As(err, &netErr) {
+		return true
+	}
+	errStr := strings.ToLower(err.Error())
+	for _, marker := range []string{
+		"connection refused",
+		"actively refused",
+		"port closed",
+		"unable to open tcp connection",
+		"network unreachable",
+		"connection reset",
+		"i/o timeout",
+		"connection timed out",
+		"context canceled",
+		"deadline exceeded",
+		"dialers not initialized",
+		"network policy",
+		"host denied",
+	} {
+		if strings.Contains(errStr, marker) {
+			return true
+		}
+	}
+	return false
 }
 
 // IsMssql checks if the given host is running MS SQL database.
@@ -156,9 +228,8 @@ func (c *MSSQLClient) ExecuteQuery(ctx context.Context, host string, port int, u
 	}
 
 	target := net.JoinHostPort(host, fmt.Sprintf("%d", port))
-	connString := mssqlConnString(target, username, password, dbName)
 
-	db, err := sql.Open("sqlserver", connString)
+	db, err := openDB(executionId, target, username, password, dbName)
 	if err != nil {
 		return nil, err
 	}

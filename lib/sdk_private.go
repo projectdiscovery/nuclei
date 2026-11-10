@@ -36,6 +36,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	nucleiUtils "github.com/projectdiscovery/nuclei/v3/pkg/utils"
+	"github.com/projectdiscovery/nuclei/v3/pkg/utils/httpbody"
 	"github.com/projectdiscovery/ratelimit"
 	pdcpauth "github.com/projectdiscovery/utils/auth/pdcp"
 )
@@ -279,6 +280,7 @@ func (e *NucleiEngine) init(ctx context.Context) error {
 		Catalog:            e.catalog,
 		IssuesClient:       e.rc,
 		RateLimiter:        e.rateLimiter,
+		RequestBodyBudget:  httpbody.NewBudget(int64(e.opts.MaxRequestBodyInFlight)),
 		Interactsh:         e.interactshClient,
 		Colorizer:          aurora.New(aurora.WithColors(true)),
 		ResumeCfg:          types.NewResumeCfg(),

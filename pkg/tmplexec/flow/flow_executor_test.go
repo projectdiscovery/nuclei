@@ -19,6 +19,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/progress"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/httpclientpool"
 	"github.com/projectdiscovery/nuclei/v3/pkg/scan"
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates"
 	"github.com/projectdiscovery/nuclei/v3/internal/tests/testutils"
@@ -377,6 +378,8 @@ func TestFlowProgressEndsComplete(t *testing.T) {
 	for i, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			hits.Store(0)
+			// each case is its own scan, which the engine starts this way
+			httpclientpool.ResetSharedResponses(executerOpts.Options)
 			p := &countingProgress{}
 			opts := *executerOpts
 			opts.Progress = p

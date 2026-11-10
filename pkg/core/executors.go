@@ -382,6 +382,19 @@ func newOriginAttempt() *originAttempt {
 	return attempt
 }
 
+// originScopeKey returns the key an origin-scoped template runs once per, and
+// false when the template runs on every target.
+func originScopeKey(template *templates.Template, value *contextargs.MetaInput) (string, bool) {
+	if template == nil || value == nil || !template.IsOriginScoped() {
+		return "", false
+	}
+	origin := normalize.Origin(value.Input)
+	if origin == "" {
+		return "", false
+	}
+	return template.ID + "\x00" + origin + "\x00" + value.CustomIP, true
+}
+
 // claimOriginScoped reports whether this caller should execute an origin-scoped
 // template. finish(true) records a successful run. finish(false) releases the
 // claim so a later target, including one that waited, can try again. Templates
@@ -389,14 +402,10 @@ func newOriginAttempt() *originAttempt {
 // key so each address selected for one URL is tested on its own.
 func (e *Engine) claimOriginScoped(template *templates.Template, value *contextargs.MetaInput) (finish func(bool), run bool) {
 	noop := func(bool) {}
-	if template == nil || value == nil || !template.IsOriginScoped() {
+	key, scoped := originScopeKey(template, value)
+	if !scoped {
 		return noop, true
 	}
-	origin := normalize.Origin(value.Input)
-	if origin == "" {
-		return noop, true
-	}
-	key := template.ID + "\x00" + origin + "\x00" + value.CustomIP
 	actual, _ := e.originScoped.LoadOrStore(key, newOriginAttempt())
 	slot := actual.(*originAttempt)
 

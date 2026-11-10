@@ -251,6 +251,15 @@ type Options struct {
 	Silent bool
 	// Validate validates the templates passed to nuclei.
 	Validate bool
+	// PlanFile is where the work a scan would do is written as JSON lines;
+	// nuclei exits after writing it, without sending requests.
+	PlanFile string
+	// StoreEvents is where the scan writes the event of every request, as
+	// JSON lines, for -replay.
+	StoreEvents string
+	// ReplayFile is a corpus written by -store-events whose events the
+	// templates are run over, without sending requests.
+	ReplayFile string
 	// NoStrictSyntax disables strict syntax check on nuclei templates (allows custom key-value pairs).
 	NoStrictSyntax bool
 	// Verbose flag indicates whether to show verbose output or not
@@ -281,6 +290,8 @@ type Options struct {
 	JSONExport string
 	// JSONLExport is the file to export JSONL output format to
 	JSONLExport string
+	// CSVExport is the file to export CSV output format to
+	CSVExport string
 	// PDFExport is the file to export PDF output format to
 	PDFExport string
 	// Redact redacts given keys in
@@ -370,6 +381,8 @@ type Options struct {
 	// RequestSaveSize is the maximum request body kept in saved output and
 	// debug dumps. Matchers see the full request. 0 keeps the whole body.
 	RequestSaveSize int
+	// MaxRequestBodyInFlight bounds request-body bytes in flight; 0 disables it.
+	MaxRequestBodyInFlight int
 	// Health Check
 	HealthCheck bool
 	// Time to wait between each input read operation before closing the stream
@@ -707,6 +720,9 @@ func (options *Options) Copy() *Options {
 		AutomaticScan:                  options.AutomaticScan,
 		Silent:                         options.Silent,
 		Validate:                       options.Validate,
+		PlanFile:                       options.PlanFile,
+		StoreEvents:                    options.StoreEvents,
+		ReplayFile:                     options.ReplayFile,
 		NoStrictSyntax:                 options.NoStrictSyntax,
 		Verbose:                        options.Verbose,
 		VerboseVerbose:                 options.VerboseVerbose,
@@ -722,6 +738,7 @@ func (options *Options) Copy() *Options {
 		OmitTemplate:                   options.OmitTemplate,
 		JSONExport:                     options.JSONExport,
 		JSONLExport:                    options.JSONLExport,
+		CSVExport:                      options.CSVExport,
 		PDFExport:                      options.PDFExport,
 		Redact:                         options.Redact,
 		NoRedact:                       options.NoRedact,
@@ -765,6 +782,7 @@ func (options *Options) Copy() *Options {
 		ResponseReadSize:               options.ResponseReadSize,
 		ResponseSaveSize:               options.ResponseSaveSize,
 		RequestSaveSize:                options.RequestSaveSize,
+		MaxRequestBodyInFlight:         options.MaxRequestBodyInFlight,
 		HealthCheck:                    options.HealthCheck,
 		InputReadTimeout:               options.InputReadTimeout,
 		DisableStdin:                   options.DisableStdin,

@@ -25,6 +25,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/utils/vardump"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/headless/engine"
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting"
+	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/exporters/csv"
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/exporters/jsonexporter"
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/exporters/jsonl"
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/exporters/markdown"
@@ -63,7 +64,8 @@ func ConfigureOptions() error {
 // would hold the scan until it does.
 func readsTargetsFromStdin(options *types.Options, stdinIsPipe bool) bool {
 	hasOtherTargets := len(options.Targets) > 0 || options.TargetsFilePath != "" || options.Uncover || len(options.UncoverQuery) > 0
-	return stdinIsPipe && !options.DisableStdin && !hasOtherTargets
+	// a replay runs over stored events and has no targets to wait for
+	return stdinIsPipe && !options.DisableStdin && !hasOtherTargets && options.ReplayFile == ""
 }
 
 // ParseOptions parses the command line flags provided by a user
@@ -119,6 +121,14 @@ func ParseOptions(options *types.Options) {
 		options.Logger.Debug().Msgf("Store response directory specified, enabling \"store-resp\" flag automatically\n")
 		options.StoreResponse = true
 	}
+	// Derived before validation: -uncover-query turns uncover on, and -plan
+	// has to reject that before any target lookup starts.
+	if options.UncoverQuery != nil {
+		options.Uncover = true
+		if len(options.UncoverEngine) == 0 {
+			options.UncoverEngine = append(options.UncoverEngine, "shodan")
+		}
+	}
 	// Validate the options passed by the user and if any
 	// invalid options have been used, exit.
 	if err := ValidateOptions(options); err != nil {
@@ -138,13 +148,6 @@ func ParseOptions(options *types.Options) {
 		_ = os.Setenv("GITHUB_TOKEN", options.GitHubToken)
 	}
 
-	if options.UncoverQuery != nil {
-		options.Uncover = true
-		if len(options.UncoverEngine) == 0 {
-			options.UncoverEngine = append(options.UncoverEngine, "shodan")
-		}
-	}
-
 	if options.OfflineHTTP {
 		options.DisableHTTPProbe = true
 	}
@@ -161,6 +164,9 @@ func ValidateOptions(options *types.Options) error {
 			errs = append(errs, err.Namespace()+": "+err.Tag())
 		}
 		return errors.Wrap(errors.New(strings.Join(errs, ", ")), "validation failed for these fields")
+	}
+	if err := validatePlanOptions(options); err != nil {
+		return err
 	}
 	if options.Verbose && options.Silent {
 		return errors.New("both verbose and silent mode specified")
@@ -367,6 +373,18 @@ func createReportingOptions(options *types.Options) (*reporting.Options, error) 
 			}
 		}
 	}
+	if options.CSVExport != "" {
+		// Combine the CLI options with the config file options with the CLI options taking precedence
+		if reportingOptions.CSVExporter != nil {
+			reportingOptions.CSVExporter.File = options.CSVExport
+			reportingOptions.CSVExporter.OmitRaw = options.OmitRawRequests
+		} else {
+			reportingOptions.CSVExporter = &csv.Options{
+				File:    options.CSVExport,
+				OmitRaw: options.OmitRawRequests,
+			}
+		}
+	}
 	if options.PDFExport != "" {
 		if reportingOptions.PDFExporter != nil {
 			reportingOptions.PDFExporter.File = options.PDFExport
@@ -535,4 +553,23 @@ func readEnvInputVars(options *types.Options) {
 func getBoolEnvValue(key string) bool {
 	value := os.Getenv(key)
 	return strings.EqualFold(value, "true")
+}
+
+// validatePlanOptions rejects options that change the templates or targets
+// only once scanning starts, which a plan written beforehand cannot show.
+func validatePlanOptions(options *types.Options) error {
+	if options.PlanFile == "" {
+		return nil
+	}
+	switch {
+	case options.AutomaticScan:
+		return errors.New("-plan cannot be used with -automatic-scan, which picks templates while scanning")
+	case options.Uncover || len(options.UncoverQuery) > 0:
+		return errors.New("-plan cannot be used with -uncover, which finds targets over the network")
+	case options.PreflightPortScan:
+		return errors.New("-plan cannot be used with -preflight-portscan, which drops targets after scanning their ports")
+	case options.DASTServer || options.DASTProxy:
+		return errors.New("-plan cannot be used with -dast-server or -dast-proxy, which start a server instead of writing a plan")
+	}
+	return nil
 }

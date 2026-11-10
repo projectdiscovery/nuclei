@@ -6,6 +6,7 @@ import (
 	"crypto/tls"
 	"encoding/base64"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"net"
 	"net/http"
@@ -20,6 +21,8 @@ import (
 
 var (
 	defaultTimeout = time.Duration(5) * time.Second
+
+	errNoConnection = errors.New("no connection: open one with net.Open or net.OpenTLS")
 )
 
 // getTimeoutFromContext returns the configured TCP timeout or defaultTimeout.
@@ -271,12 +274,14 @@ type (
 	// const conn = net.Open('tcp', 'acme.com:80');
 	// ```
 	NetConn struct {
+		// conn is nil when no connection is open.
 		conn    net.Conn
 		timeout time.Duration
 	}
 )
 
 // Close closes the connection.
+// Close does nothing if no connection is open.
 // @example
 // ```javascript
 // const net = require('nuclei/net');
@@ -284,7 +289,13 @@ type (
 // conn.Close();
 // ```
 func (c *NetConn) Close() error {
+	if c.conn == nil {
+		return nil
+	}
+
 	err := c.conn.Close()
+	c.conn = nil
+
 	return err
 }
 
@@ -321,6 +332,10 @@ func (c *NetConn) unsetDeadLine() {
 // conn.SendArray(['hello', 'world']);
 // ```
 func (c *NetConn) SendArray(data []interface{}) error {
+	if c.conn == nil {
+		return errNoConnection
+	}
+
 	c.setDeadLine()
 	defer c.unsetDeadLine()
 	input := types.ToByteSlice(data)
@@ -342,6 +357,10 @@ func (c *NetConn) SendArray(data []interface{}) error {
 // conn.SendHex('68656c6c6f');
 // ```
 func (c *NetConn) SendHex(data string) error {
+	if c.conn == nil {
+		return errNoConnection
+	}
+
 	c.setDeadLine()
 	defer c.unsetDeadLine()
 	bin, err := hex.DecodeString(data)
@@ -366,6 +385,10 @@ func (c *NetConn) SendHex(data string) error {
 // conn.Send('hello');
 // ```
 func (c *NetConn) Send(data string) error {
+	if c.conn == nil {
+		return errNoConnection
+	}
+
 	c.setDeadLine()
 	defer c.unsetDeadLine()
 	bin := []byte(data)
@@ -389,6 +412,10 @@ func (c *NetConn) Send(data string) error {
 // const data = conn.RecvFull(1024);
 // ```
 func (c *NetConn) RecvFull(N int) ([]byte, error) {
+	if c.conn == nil {
+		return []byte{}, errNoConnection
+	}
+
 	c.setDeadLine()
 	defer c.unsetDeadLine()
 	if N == 0 {
@@ -414,6 +441,10 @@ func (c *NetConn) RecvFull(N int) ([]byte, error) {
 // log(`Received ${data.length} bytes from the server`)
 // ```
 func (c *NetConn) Recv(N int) ([]byte, error) {
+	if c.conn == nil {
+		return []byte{}, errNoConnection
+	}
+
 	c.setDeadLine()
 	defer c.unsetDeadLine()
 	if N == 0 {

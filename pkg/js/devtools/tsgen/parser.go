@@ -38,14 +38,11 @@ func NewEntityParser(dir string) (*EntityParser, error) {
 			return parser.ParseFile(fset, filename, src, parser.ParseComments)
 		},
 	}
-	pkgs, err := packages.Load(cfg, ".")
+
+	pkg, err := loadPackage(cfg, ".")
 	if err != nil {
 		return nil, err
 	}
-	if len(pkgs) == 0 {
-		return nil, errors.New("no packages found")
-	}
-	pkg := pkgs[0]
 
 	return &EntityParser{
 		syntax:      pkg.Syntax,
@@ -287,8 +284,8 @@ func (p *EntityParser) extractClassProperties(node *ast.StructType) []Property {
 					Description: field.Doc.Text(),
 				}
 				if strings.Contains(property.Type, ".") {
-					// external struct found
-					property.Type = p.handleExternalStruct(property.Type)
+					// external type found
+					property.Type = p.handleExternalType(property.Type)
 				}
 				properties = append(properties, property)
 			}
@@ -352,7 +349,7 @@ func (p *EntityParser) extractReturnType(fn *ast.FuncDecl) (out string) {
 		for _, result := range fn.Type.Results.List {
 			tmp := exprToString(result.Type)
 			if strings.Contains(tmp, ".") && !strings.HasPrefix(tmp, "goja.") {
-				tmp = p.handleExternalStruct(tmp) + " | null" // external object interfaces can always return null
+				tmp = p.handleExternalType(tmp) + " | null" // external object interfaces can always return null
 			}
 			returns = append(returns, tmp)
 		}
@@ -377,8 +374,10 @@ func (p *EntityParser) extractReturnType(fn *ast.FuncDecl) (out string) {
 			}
 		}
 		if sliceutil.Contains(returns, "error") {
-			// add | null to the return type
-			out = out + " | null"
+			// external types already record that they can be null
+			if !strings.HasSuffix(out, "| null") {
+				out += " | null"
+			}
 			return
 		}
 	}
@@ -416,10 +415,18 @@ func (p *EntityParser) extractParameters(fn *ast.FuncDecl) []Parameter {
 	return parameters
 }
 
-// typeName is in format ssh.ClientConfig
-// it first fetches all fields from the struct and creates a new object
-// with that name and returns name of that object as type
-func (p *EntityParser) handleExternalStruct(typeName string) string {
+// handleExternalType returns the TypeScript type for typeName, a type from
+// another package such as ssh.ClientConfig. A struct is queued for
+// scrapeAndCreate, which describes its fields in an interface of the same name.
+// Any other type, such as the net.Conn interface, has no fields to describe,
+// so it becomes any. A typeName that does not resolve is queued too, so that
+// scrapeAndCreate reports it.
+func (p *EntityParser) handleExternalType(typeName string) string {
+	obj, err := p.lookupType(typeName)
+	if err == nil && !isStruct(obj.Type()) {
+		return "any"
+	}
+
 	baseType := typeName[strings.LastIndex(typeName, ".")+1:]
 	p.newObjects[typeName] = &Entity{
 		Name:        baseType,
@@ -513,6 +520,7 @@ func (p *EntityParser) extractVarsNConstants() {
 
 // loadImportedPackages loads all imported packages
 func (p *EntityParser) loadImportedPackages() error {
+	cfg := &packages.Config{Mode: packages.NeedTypes | packages.NeedSyntax | packages.NeedTypesInfo}
 	// get all import statements
 	// iterate over all imports
 	for _, file := range p.syntax {
@@ -522,7 +530,7 @@ func (p *EntityParser) loadImportedPackages() error {
 			// remove the quotes from the path
 			path = path[1 : len(path)-1]
 			// load the package
-			pkg, err := loadPackage(path)
+			pkg, err := loadPackage(cfg, path)
 			if err != nil {
 				return err
 			}
@@ -543,18 +551,31 @@ func (p *EntityParser) loadImportedPackages() error {
 	return nil
 }
 
-// Load the package containing the type definition
-// TODO: we don't support named imports yet
-func loadPackage(pkgPath string) (*packages.Package, error) {
-	cfg := &packages.Config{Mode: packages.NeedTypes | packages.NeedSyntax | packages.NeedTypesInfo}
-	pkgs, err := packages.Load(cfg, pkgPath)
+// loadPackage loads the package that pattern names.
+//
+// packages.Load reports parse, type, and list errors in Package.Errors
+// rather than in its returned error, so loadPackage converts them into an
+// error. The parser assumes a complete syntax tree and type information.
+func loadPackage(cfg *packages.Config, pattern string) (*packages.Package, error) {
+	pkgs, err := packages.Load(cfg, pattern)
 	if err != nil {
 		return nil, err
 	}
 	if len(pkgs) == 0 {
 		return nil, errors.New("no packages found")
 	}
-	return pkgs[0], nil
+
+	pkg := pkgs[0]
+	if len(pkg.Errors) > 0 {
+		errs := make([]error, len(pkg.Errors))
+		for i, e := range pkg.Errors {
+			errs[i] = e
+		}
+
+		return nil, fmt.Errorf("package %s: %w", pkg.ID, errors.Join(errs...))
+	}
+
+	return pkg, nil
 }
 
 // exprToString converts an expression to a string

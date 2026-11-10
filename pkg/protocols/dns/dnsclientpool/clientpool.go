@@ -12,9 +12,9 @@ import (
 )
 
 var (
-	clientPool *mapsutil.SyncLockMap[string, *retryabledns.Client]
+	clientPool *mapsutil.SyncLockMap[string, *Client]
 
-	normalClient *retryabledns.Client
+	normalClient *Client
 	m            sync.Mutex
 )
 
@@ -46,20 +46,21 @@ func resolversFor(options *types.Options) []string {
 	return defaultResolvers
 }
 
-func cachedClient(resolvers []string) (*retryabledns.Client, error) {
+func cachedClient(resolvers []string) (*Client, error) {
 	m.Lock()
 	defer m.Unlock()
 	if clientPool == nil {
-		clientPool = mapsutil.NewSyncLockMap[string, *retryabledns.Client]()
+		clientPool = mapsutil.NewSyncLockMap[string, *Client]()
 	}
 	key := strings.Join(resolvers, ",")
 	if client, ok := clientPool.Get(key); ok {
 		return client, nil
 	}
-	client, err := retryabledns.New(resolvers, 1)
+	dnsClient, err := retryabledns.New(resolvers, 1)
 	if err != nil {
 		return nil, err
 	}
+	client := &Client{Client: dnsClient}
 	_ = clientPool.Set(key, client)
 	return client, nil
 }
@@ -88,9 +89,12 @@ func (c *Configuration) Hash() string {
 }
 
 // Get creates or gets a client for the protocol based on custom configuration
-func Get(options *types.Options, configuration *Configuration) (*retryabledns.Client, error) {
+func Get(options *types.Options, configuration *Configuration) (*Client, error) {
 	if (configuration.Retries <= 1) && len(configuration.Resolvers) == 0 {
 		return cachedClient(resolversFor(options))
+	}
+	if len(options.InternalResolversList) == 0 && hasPolicyResolver(configuration.Resolvers) {
+		return getPolicyClient(options, configuration)
 	}
 	hash := configuration.Hash()
 	if client, ok := clientPool.Get(hash); ok {
@@ -103,7 +107,7 @@ func Get(options *types.Options, configuration *Configuration) (*retryabledns.Cl
 	} else if len(configuration.Resolvers) > 0 {
 		resolvers = configuration.Resolvers
 	}
-	client, err := retryabledns.NewWithOptions(retryabledns.Options{
+	dnsClient, err := retryabledns.NewWithOptions(retryabledns.Options{
 		BaseResolvers: resolvers,
 		MaxRetries:    configuration.Retries,
 		Proxy:         options.AliveSocksProxy,
@@ -111,6 +115,7 @@ func Get(options *types.Options, configuration *Configuration) (*retryabledns.Cl
 	if err != nil {
 		return nil, errors.Wrap(err, "could not create dns client")
 	}
+	client := &Client{Client: dnsClient}
 	_ = clientPool.Set(hash, client)
 
 	return client, nil

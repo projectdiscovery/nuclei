@@ -44,6 +44,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/scan"
 	templateTypes "github.com/projectdiscovery/nuclei/v3/pkg/templates/types"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
+	"github.com/projectdiscovery/nuclei/v3/pkg/utils/httpbody"
 	unitutils "github.com/projectdiscovery/utils/unit"
 )
 
@@ -106,6 +107,8 @@ type ExecutorOptions struct {
 	Progress progress.Progress
 	// RateLimiter is a rate-limiter for limiting sent number of requests.
 	RateLimiter *ratelimit.Limiter
+	// RequestBodyBudget bounds request-body bytes in flight; nil is no limit.
+	RequestBodyBudget *httpbody.Budget
 	// Catalog is a template catalog implementation for nuclei
 	Catalog catalog.Catalog
 	// ProjectFile is the project file for nuclei
@@ -395,6 +398,7 @@ func (e *ExecutorOptions) Copy() *ExecutorOptions {
 		IssuesClient:                 e.IssuesClient,
 		Progress:                     e.Progress,
 		RateLimiter:                  e.RateLimiter,
+		RequestBodyBudget:            e.RequestBodyBudget,
 		Catalog:                      e.Catalog,
 		ProjectFile:                  e.ProjectFile,
 		Browser:                      e.Browser,
@@ -706,6 +710,7 @@ func (e *ExecutorOptions) ApplyNewEngineOptions(n *ExecutorOptions) {
 	e.IssuesClient = n.IssuesClient
 	e.Progress = n.Progress
 	e.RateLimiter = n.RateLimiter
+	e.RequestBodyBudget = n.RequestBodyBudget
 	e.Catalog = n.Catalog
 	e.ProjectFile = n.ProjectFile
 	e.Browser = n.Browser

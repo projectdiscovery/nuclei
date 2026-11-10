@@ -166,6 +166,7 @@ TEMPLATES:
    -w, -workflows string[]                list of workflow or workflow directory to run (comma-separated, file)
    -wurl, -workflow-url string[]          workflow url or list containing workflow urls to run (comma-separated, file)
    -validate                              validate the passed templates to nuclei
+   -plan string                           write the work a scan would do with its estimated cost to a jsonl file, then exit without sending requests to any target
    -nss, -no-strict-syntax                disable strict syntax check on templates
    -td, -template-display                 displays the templates content
    -tl                                    list all templates matching current filters
@@ -205,6 +206,7 @@ OUTPUT:
    -o, -output string            output file to write found issues/vulnerabilities
    -sresp, -store-resp           store all request/response passed through nuclei to output directory
    -srd, -store-resp-dir string  store all request/response passed through nuclei to custom directory (default "output")
+   -store-events string          store what the matchers of every request see, for any protocol, to a jsonl file for -replay (holds raw traffic, credentials included)
    -silent                       display findings only
    -nc, -no-color                disable output content coloring (ANSI escape codes)
    -j, -jsonl                    write output in JSONL(ines) format
@@ -219,6 +221,7 @@ OUTPUT:
    -se, -sarif-export string     file to export results in SARIF format
    -je, -json-export string      file to export results in JSON format
    -jle, -jsonl-export string    file to export results in JSONL(ine) format
+   -ce, -csv-export string       file to export results in CSV format
    -pe, -pdf-export string       file to export results in PDF format
    -rd, -redact string[]         redact given list of keys from query parameter, request header and body
    -nrd, -no-redact              disable the built-in redaction of credential headers (Authorization, Cookie, Set-Cookie, ...) in output; keys given with -redact are still redacted
@@ -238,6 +241,7 @@ CONFIGURATIONS:
    -sr, -system-resolvers                use system DNS resolving as error fallback
    -dc, -disable-clustering              disable clustering of requests
    -passive                              enable passive HTTP response processing mode
+   -replay string                        run the templates' matchers and extractors over a -store-events file and print the findings sorted, without sending requests
    -fh2, -force-http2                    force http2 connection on requests
    -ev, -env-vars                        enable environment variables to be used in template
    -cc, -client-cert string              client certificate file (PEM-encoded) used for authenticating against scanned hosts
@@ -256,6 +260,7 @@ CONFIGURATIONS:
    -rsr, -response-size-read int         max response size to read in bytes
    -rss, -response-size-save int         max response size to read in bytes (default 1048576)
    -rqss, -request-size-save int         max request body size to save in bytes (0 to save the whole body) (default 32768)
+   -mrbi, -max-request-body-inflight int max request body bytes held by in-flight http requests; requests with bodies of 1MB or more queue past it (0 disables)
    -reset                                reset removes all nuclei configuration and data files (including nuclei-templates)
    -tlsi, -tls-impersonate               enable experimental client hello (ja3) tls randomization
    -hae, -http-api-endpoint string       experimental http api endpoint

@@ -248,6 +248,26 @@ func TestNeedsFullResponse(t *testing.T) {
 		require.NoError(t, req.Compile(execOpts))
 		require.True(t, req.needsFullResponse(nil))
 	})
+
+	t.Run("matcher status option requires full response", func(t *testing.T) {
+		msOpts := testutils.DefaultOptions.Copy()
+		msOpts.MatcherStatus = true
+
+		req := &Request{
+			ID:     "matcher-status-flag",
+			Method: HTTPMethodTypeHolder{MethodType: HTTPGet},
+			Operators: operators.Operators{
+				Matchers: []*matchers.Matcher{{
+					Part:  "body",
+					Type:  matchers.MatcherTypeHolder{MatcherType: matchers.WordsMatcher},
+					Words: []string{"test"},
+				}},
+			},
+		}
+		execOpts := testutils.NewMockExecuterOptions(msOpts, &testutils.TemplateInfo{ID: "matcher-status-flag"})
+		require.NoError(t, req.Compile(execOpts))
+		require.True(t, req.needsFullResponse(nil))
+	})
 }
 
 func TestExecuteRequestDeferredResponse_NoMatch(t *testing.T) {
@@ -293,6 +313,49 @@ func TestExecuteRequestDeferredResponse_NoMatch(t *testing.T) {
 	// Body and headers are still fully populated
 	require.Contains(t, types.ToString(capturedEvent.InternalEvent["body"]), "response body content")
 	require.Contains(t, types.ToString(capturedEvent.InternalEvent["all_headers"]), "X-Custom-Header")
+}
+
+// With -ms a failed match is written out too, so its event must carry the
+// response even though no result is created.
+func TestExecuteRequestDeferredResponse_NoMatchWithMatcherStatus(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = fmt.Fprintf(w, "response body content")
+	}))
+	defer ts.Close()
+
+	options := testutils.DefaultOptions.Copy()
+	options.MatcherStatus = true
+	testutils.Init(options)
+
+	req := &Request{
+		ID:     "defer-no-match-ms",
+		Method: HTTPMethodTypeHolder{MethodType: HTTPGet},
+		Path:   []string{"{{BaseURL}}"},
+		Operators: operators.Operators{
+			Matchers: []*matchers.Matcher{{
+				Part:  "body",
+				Type:  matchers.MatcherTypeHolder{MatcherType: matchers.WordsMatcher},
+				Words: []string{"nonexistent-needle"},
+			}},
+		},
+	}
+
+	execOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
+		ID:   "defer-no-match-ms",
+		Info: model.Info{SeverityHolder: severity.Holder{Severity: severity.Info}, Name: "test"},
+	})
+	require.NoError(t, req.Compile(execOpts))
+
+	var capturedEvent *output.InternalWrappedEvent
+	ctxArgs := contextargs.NewWithInput(context.Background(), ts.URL)
+	err := req.ExecuteWithResults(ctxArgs, make(output.InternalEvent), make(output.InternalEvent), func(event *output.InternalWrappedEvent) {
+		capturedEvent = event
+	})
+	require.NoError(t, err)
+	require.NotNil(t, capturedEvent)
+	require.False(t, capturedEvent.HasResults())
+	require.Contains(t, types.ToString(capturedEvent.InternalEvent["response"]), "HTTP/1.1 200")
+	require.Contains(t, types.ToString(capturedEvent.InternalEvent["response"]), "response body content")
 }
 
 func TestExecuteRequestDeferredResponse_WithMatch(t *testing.T) {

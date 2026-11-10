@@ -1,13 +1,15 @@
 package tsgen
 
 import (
+	"errors"
 	"fmt"
 	"go/types"
 	"regexp"
 	"strings"
-
-	"github.com/projectdiscovery/utils/errkit"
 )
+
+// errUnresolvedType is returned by lookupType for a name it cannot resolve.
+var errUnresolvedType = errors.New("unresolved type")
 
 // scrape.go scrapes all information of exported type from different package
 
@@ -15,24 +17,13 @@ func (p *EntityParser) scrapeAndCreate(typeName string) error {
 	if p.newObjects[typeName] == nil {
 		return nil
 	}
-	// get package name
-	pkgName := strings.Split(typeName, ".")[0]
-	baseTypeName := strings.Split(typeName, ".")[1]
-	// get package
-	pkg, ok := p.imports[pkgName]
-	if !ok {
-		return errkit.Newf("package %v for type %v not found", pkgName, typeName)
+
+	typeNameObj, err := p.lookupType(typeName)
+	if err != nil {
+		return err
 	}
-	// get type
-	obj := pkg.Types.Scope().Lookup(baseTypeName)
-	if obj == nil {
-		return errkit.Newf("type %v not found in package %+v", typeName, pkg)
-	}
-	// Ensure the object is a type name
-	typeNameObj, ok := obj.(*types.TypeName)
-	if !ok {
-		return errkit.Newf("%v is not a type name", typeName)
-	}
+
+	baseTypeName := typeNameObj.Name()
 	// Ensure the type is a named struct type
 	namedStruct, ok := typeNameObj.Type().Underlying().(*types.Struct)
 	if !ok {
@@ -70,6 +61,36 @@ func (p *EntityParser) scrapeAndCreate(typeName string) error {
 	}
 
 	return nil
+}
+
+// lookupType resolves typeName, such as net.Conn, in the packages imported by
+// the parsed files.
+func (p *EntityParser) lookupType(typeName string) (*types.TypeName, error) {
+	pkgName, baseTypeName, _ := strings.Cut(typeName, ".")
+
+	pkg := p.imports[pkgName]
+	if pkg == nil {
+		return nil, fmt.Errorf("%w: package %v for type %v not found", errUnresolvedType, pkgName, typeName)
+	}
+
+	obj := pkg.Types.Scope().Lookup(baseTypeName)
+	if obj == nil {
+		return nil, fmt.Errorf("%w: type %v not found in package %+v", errUnresolvedType, typeName, pkg)
+	}
+
+	typeNameObj, ok := obj.(*types.TypeName)
+	if !ok {
+		return nil, fmt.Errorf("%w: %v is not a type name", errUnresolvedType, typeName)
+	}
+
+	return typeNameObj, nil
+}
+
+// isStruct reports whether t is a struct type.
+func isStruct(t types.Type) bool {
+	_, ok := t.Underlying().(*types.Struct)
+
+	return ok
 }
 
 type ExtObject struct {
