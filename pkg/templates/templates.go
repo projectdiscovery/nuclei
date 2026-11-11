@@ -132,6 +132,14 @@ type Template struct {
 	StopAtFirstMatch bool `yaml:"stop-at-first-match,omitempty" json:"stop-at-first-match,omitempty" jsonschema:"title=stop at first match,description=Stop at first match for the template"`
 
 	// description: |
+	//   InteractshEviction is the number of seconds to keep this template's
+	//   Interactsh request pending for OAST callbacks before eviction.
+	//   When unset, the global -interactions-eviction value is used.
+	// examples:
+	//   - value: "300"
+	InteractshEviction int `yaml:"interactsh-eviction,omitempty" json:"interactsh-eviction,omitempty" jsonschema:"title=interactsh eviction seconds,description=Per-template Interactsh request eviction timeout in seconds,minimum=1"`
+
+	// description: |
 	//   Signature is the request signature method
 	//   WARNING: 'signature' will be deprecated and will be removed in a future release. Prefer using 'code' protocol for writing cloud checks
 	// values:
