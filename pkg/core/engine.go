@@ -51,6 +51,7 @@ type Engine struct {
 	executerOpts              *protocols.ExecutorOptions
 	Callback                  func(*output.ResultEvent) // Executed on results
 	templateExecutionCallback TemplateExecutionCallback
+	planRun                   PlanRun
 	Logger                    *gologger.Logger
 }
 

@@ -182,6 +182,7 @@ TEMPLATES:
    -wurl, -workflow-url string[]          workflow url or list containing workflow urls to run (comma-separated, file)
    -validate                              validate the passed templates to nuclei
    -plan string                           write the work a scan would do with its estimated cost to a jsonl file, then exit without sending requests to any target
+   -run-plan string                       run only the entries of a -plan file, logging finished ones to <file>.done so running it again resumes
    -nss, -no-strict-syntax                disable strict syntax check on templates
    -td, -template-display                 displays the templates content
    -tl                                    list all templates matching current filters
