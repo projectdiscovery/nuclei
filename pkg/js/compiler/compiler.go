@@ -123,9 +123,6 @@ func (c *Compiler) ExecuteWithOptions(ctx context.Context, program *goja.Program
 	// merge all args into templatectx
 	args.TemplateCtx = generators.MergeMaps(args.TemplateCtx, args.Args)
 
-	// execute with context and timeout
-	ctx, cancel := context.WithTimeoutCause(ctx, opts.TimeoutVariants.JsCompilerExecutionTimeout, ErrJSExecDeadline)
-	defer cancel()
 	// execute the script
 	results, err := ExecuteProgram(ctx, program, args, opts)
 	if err != nil {
@@ -180,4 +177,13 @@ func SourceAutoMode(script string, strict bool) (*goja.Program, error) {
 		})()
 	`, script)
 	return goja.Compile("", val, strict)
+}
+
+// executionTimeout also bounds admission, with a fresh budget after a slot is acquired.
+// A caller deadline remains the overall limit across both phases.
+func executionTimeout(ctx context.Context, opts *ExecuteOptions) (context.Context, context.CancelFunc) {
+	if opts == nil || opts.TimeoutVariants == nil {
+		return ctx, func() {}
+	}
+	return context.WithTimeoutCause(ctx, opts.TimeoutVariants.JsCompilerExecutionTimeout, ErrJSExecDeadline)
 }

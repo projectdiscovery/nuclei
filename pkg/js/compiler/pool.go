@@ -29,9 +29,9 @@ import (
 	_ "github.com/projectdiscovery/nuclei/v3/pkg/js/generated/go/libkrbforge"
 	_ "github.com/projectdiscovery/nuclei/v3/pkg/js/generated/go/libkrbroast"
 	_ "github.com/projectdiscovery/nuclei/v3/pkg/js/generated/go/libldap"
+	_ "github.com/projectdiscovery/nuclei/v3/pkg/js/generated/go/libmqtt"
 	_ "github.com/projectdiscovery/nuclei/v3/pkg/js/generated/go/libmssql"
 	_ "github.com/projectdiscovery/nuclei/v3/pkg/js/generated/go/libmysql"
-	_ "github.com/projectdiscovery/nuclei/v3/pkg/js/generated/go/libmqtt"
 	_ "github.com/projectdiscovery/nuclei/v3/pkg/js/generated/go/libnet"
 	_ "github.com/projectdiscovery/nuclei/v3/pkg/js/generated/go/liboracle"
 	_ "github.com/projectdiscovery/nuclei/v3/pkg/js/generated/go/libpop3"
@@ -123,13 +123,17 @@ func executeWithPoolingProgram(ctx context.Context, p *goja.Program, args *Execu
 	// its unknown (most likely cannot be done) to limit max js runtimes at a moment without making it static
 	// unlike sync.Pool which reacts to GC and its purposes is to reuse objects rather than creating new ones
 	lazySgInit()
-	sgResizeCheck(ctx)
-
-	// Acquire a pool slot, respecting the execution deadline. Returns
-	// immediately if the context has already expired.
-	if err := pooljsc.AddWithContext(ctx); err != nil {
+	// Bound admission separately so queue time does not consume execution time.
+	queueCtx, cancelQueue := executionTimeout(ctx, opts)
+	defer cancelQueue()
+	sgResizeCheck(queueCtx)
+	if err := pooljsc.AddWithContext(queueCtx); err != nil {
 		return nil, err
 	}
+
+	cancelQueue()
+	ctx, cancel := executionTimeout(ctx, opts)
+	defer cancel()
 
 	runtime := gojapool.Get().(*goja.Runtime)
 
