@@ -152,14 +152,14 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 
 	// By default, use default max size if not defined
 	switch {
+	case strings.EqualFold(request.MaxSize, "no"):
+		request.maxSize = -1
 	case request.MaxSize != "":
 		maxSize, err := units.FromHumanSize(request.MaxSize)
 		if err != nil {
-			return errors.Wrap(err, "could not compile operators")
+			return errors.Wrap(err, "could not parse max-size")
 		}
 		request.maxSize = maxSize
-	case request.MaxSize == "no":
-		request.maxSize = -1
 	default:
 		request.maxSize = defaultMaxReadSize
 	}
