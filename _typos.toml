@@ -22,6 +22,8 @@ extend-exclude = [
     "go.sum",
     # Generated history. Commit SHAs are not words.
     "SECURITY_CONTEXT.md",
+    # Generated technology graph. Entries are third-party product identifiers.
+    "pkg/protocols/common/automaticscan/techgraph/tech-graph.json",
 ]
 
 [default.extend-identifiers]
