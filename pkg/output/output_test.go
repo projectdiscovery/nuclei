@@ -202,6 +202,46 @@ args:
 	require.Equal(t, map[string]interface{}{"Nested": map[string]interface{}{"en": "Hello"}}, decoded.Meta)
 }
 
+// -ms writes failed matches too; an http failure's response follows -rss like
+// an http match's. 0 means no limit, and other protocols don't cut matches.
+func TestWriteFailureTruncatesResponse(t *testing.T) {
+	const response = "HTTP/1.1 200 OK\r\n\r\nresponse body content"
+	tests := []struct {
+		name         string
+		protocol     string
+		saveSize     int
+		wantResponse string
+	}{
+		{"http with -rss", "http", 8, "HTTP/1.1"},
+		{"http without limit", "http", 0, response},
+		{"other protocol", "ssl", 8, response},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			w, err := NewStandardWriter(&types.Options{JSONL: true, MatcherStatus: true, ResponseSaveSize: tt.saveSize})
+			require.NoError(t, err)
+			outputFile := &testWriteCloser{}
+			w.outputFile = outputFile
+			w.DisableStdout = true
+
+			require.NoError(t, w.WriteFailure(&InternalWrappedEvent{InternalEvent: InternalEvent{
+				"template-id": "no-match",
+				"type":        tt.protocol,
+				"host":        "http://example.com",
+				"response":    response,
+			}}))
+
+			var event struct {
+				Response      string `json:"response"`
+				MatcherStatus bool   `json:"matcher-status"`
+			}
+			require.NoError(t, json.Unmarshal([]byte(strings.TrimSpace(outputFile.String())), &event))
+			require.False(t, event.MatcherStatus)
+			require.Equal(t, tt.wantResponse, event.Response)
+		})
+	}
+}
+
 type testWriteCloser struct {
 	strings.Builder
 }

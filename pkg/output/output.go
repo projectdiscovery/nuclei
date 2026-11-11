@@ -72,6 +72,7 @@ type StandardWriter struct {
 	timestamp             bool
 	noMetadata            bool
 	matcherStatus         bool
+	responseSaveSize      int
 	honeypotDetector      *honeypotdetector.Detector
 	suppressHoneypot      bool
 	honeypotThreshold     int
@@ -314,6 +315,7 @@ func NewStandardWriter(options *types.Options) (*StandardWriter, error) {
 		jsonReqResp:       !options.OmitRawRequests,
 		noMetadata:        options.NoMeta,
 		matcherStatus:     options.MatcherStatus,
+		responseSaveSize:  options.ResponseSaveSize,
 		timestamp:         options.Timestamp,
 		suppressHoneypot:  options.SuppressHoneypotResults,
 		honeypotThreshold: options.HoneypotThreshold,
@@ -669,6 +671,12 @@ func (w *StandardWriter) WriteFailure(wrappedEvent *InternalWrappedEvent) error 
 		templateInfo = event["template-info"].(model.Info)
 	}
 	fields := protocolUtils.GetJsonFieldsFromURL(types.ToString(event["host"]))
+	// -rss limits the saved response of an http failure, as truncateResponse
+	// does for an http match
+	response := types.ToString(event["response"])
+	if w.responseSaveSize > 0 && len(response) > w.responseSaveSize && types.ToString(event["type"]) == "http" {
+		response = response[:w.responseSaveSize]
+	}
 	if types.ToString(event["ip"]) != "" {
 		fields.Ip = types.ToString(event["ip"])
 	}
@@ -690,7 +698,7 @@ func (w *StandardWriter) WriteFailure(wrappedEvent *InternalWrappedEvent) error 
 		URL:           fields.URL,
 		IP:            fields.Ip,
 		Request:       types.ToString(event["request"]),
-		Response:      types.ToString(event["response"]),
+		Response:      response,
 		MatcherStatus: false,
 		Timestamp:     time.Now(),
 		//FIXME: this is workaround to encode the template when no results were found
