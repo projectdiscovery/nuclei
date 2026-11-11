@@ -242,6 +242,42 @@ func TestWriteFailureTruncatesResponse(t *testing.T) {
 	}
 }
 
+func TestTruncateResponseUTF8AndBinary(t *testing.T) {
+	// "HTTP/1.1 " is 9 bytes; € is 3 bytes (E2 82 AC). Total: 12 bytes.
+	utf8Resp := "HTTP/1.1 €"
+	// Slicing at 10 or 11 cuts €; should back off to 9 bytes.
+	require.Equal(t, "HTTP/1.1 ", truncateResponse(utf8Resp, 10))
+	require.Equal(t, "HTTP/1.1 ", truncateResponse(utf8Resp, 11))
+	require.Equal(t, "HTTP/1.1 €", truncateResponse(utf8Resp, 12))
+
+	// Binary data: non-UTF-8 bytes retain byte-based limit
+	binaryResp := "HTTP/1.1 \x80\x81\x82\x83"
+	require.Equal(t, "HTTP/1.1 \x80\x81", truncateResponse(binaryResp, 11))
+}
+
+func TestWriteTruncatesAfterRedaction(t *testing.T) {
+	// "X-Api-Key: a" (12 bytes) redacts to "X-Api-Key: ***" (14 bytes).
+	// With ResponseSaveSize: 13, the output must not exceed 13 bytes.
+	w, err := NewStandardWriter(&types.Options{JSONL: true, ResponseSaveSize: 13})
+	require.NoError(t, err)
+	outputFile := &testWriteCloser{}
+	w.outputFile = outputFile
+	w.DisableStdout = true
+
+	require.NoError(t, w.Write(&ResultEvent{
+		TemplateID: "test",
+		Type:       "http",
+		Response:   "X-Api-Key: a",
+	}))
+
+	var event struct {
+		Response string `json:"response"`
+	}
+	require.NoError(t, json.Unmarshal([]byte(strings.TrimSpace(outputFile.String())), &event))
+	require.LessOrEqual(t, len(event.Response), 13)
+	require.Equal(t, "X-Api-Key: **", event.Response)
+}
+
 type testWriteCloser struct {
 	strings.Builder
 }
