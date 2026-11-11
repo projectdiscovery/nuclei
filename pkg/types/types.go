@@ -257,6 +257,12 @@ type Options struct {
 	// RunPlanFile is a plan whose entries the scan runs, skipping those its
 	// done log lists as finished.
 	RunPlanFile string
+	// StoreEvents is where the scan writes the event of every request, as
+	// JSON lines, for -replay.
+	StoreEvents string
+	// ReplayFile is a corpus written by -store-events whose events the
+	// templates are run over, without sending requests.
+	ReplayFile string
 	// NoStrictSyntax disables strict syntax check on nuclei templates (allows custom key-value pairs).
 	NoStrictSyntax bool
 	// Verbose flag indicates whether to show verbose output or not
@@ -719,6 +725,8 @@ func (options *Options) Copy() *Options {
 		Validate:                       options.Validate,
 		PlanFile:                       options.PlanFile,
 		RunPlanFile:                    options.RunPlanFile,
+		StoreEvents:                    options.StoreEvents,
+		ReplayFile:                     options.ReplayFile,
 		NoStrictSyntax:                 options.NoStrictSyntax,
 		Verbose:                        options.Verbose,
 		VerboseVerbose:                 options.VerboseVerbose,

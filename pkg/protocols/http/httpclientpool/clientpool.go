@@ -514,7 +514,11 @@ func wrappedGet(options *types.Options, configuration *Configuration, host strin
 			}
 		}
 
-		return &connTrackingTransport{base: transport}, nil
+		tracking := &connTrackingTransport{base: transport}
+		if shared := getSharedResponses(options); shared != nil {
+			return &sharingTransport{base: tracking, shared: shared}, nil
+		}
+		return tracking, nil
 	}
 	redirectFlow := configuration.RedirectFlow
 	maxRedirects := configuration.MaxRedirects
