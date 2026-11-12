@@ -409,6 +409,7 @@ func (i *Integration) CloseIssue(event *output.ResultEvent) error {
 	return i.CloseIssueByID(issue.ID)
 }
 
+// CloseIssueByID transitions a known Jira issue to the configured target status.
 func (i *Integration) CloseIssueByID(issueID string) error {
 	if i.options.StatusNot == "" {
 		return nil
