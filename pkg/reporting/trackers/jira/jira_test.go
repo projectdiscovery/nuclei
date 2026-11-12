@@ -48,6 +48,8 @@ func TestCloseIssueSearchesConfiguredProjectWhenEventHasAnotherJiraID(t *testing
 	searchJQL := ""
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch {
+		case r.Method == http.MethodGet && strings.HasSuffix(r.URL.Path, "/issue/18866"):
+			_, _ = w.Write([]byte(`{"fields":{"project":{"id":"2","key":"OTHER"}}}`))
 		case r.Method == http.MethodGet && strings.HasSuffix(r.URL.Path, "/search"):
 			searchCalls++
 			searchJQL = r.URL.Query().Get("jql")
@@ -71,12 +73,42 @@ func TestCloseIssueSearchesConfiguredProjectWhenEventHasAnotherJiraID(t *testing
 		TemplateID: "pdcp-verify",
 		Host:       "example.test",
 		IssueTrackers: map[string]output.IssueTrackerMetadata{
-			"jira": {IssueID: "18866"},
+			"jira": {IssueID: "18866", IssueURL: server.URL + "/browse/OTHER-1"},
 		},
 	})
 	require.NoError(t, err)
 	require.Equal(t, 1, searchCalls)
 	require.Contains(t, searchJQL, `project = "TEST"`)
+	require.Equal(t, 1, transitionCalls)
+}
+
+func TestCloseIssueUsesLinkedIDForMatchingSiteAndProject(t *testing.T) {
+	searchCalls, transitionCalls := 0, 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.Method == http.MethodGet && strings.Contains(r.URL.Path, "/search"):
+			searchCalls++
+			http.Error(w, "", http.StatusForbidden)
+		case r.Method == http.MethodGet && strings.HasSuffix(r.URL.Path, "/issue/18866"):
+			_, _ = w.Write([]byte(`{"fields":{"project":{"id":"1","key":"TEST"}}}`))
+		case r.Method == http.MethodGet && strings.HasSuffix(r.URL.Path, "/issue/18866/transitions"):
+			_, _ = w.Write([]byte(`{"transitions":[{"id":"5","to":{"name":"Done"}}]}`))
+		case r.Method == http.MethodPost && strings.HasSuffix(r.URL.Path, "/issue/18866/transitions"):
+			transitionCalls++
+			w.WriteHeader(http.StatusNoContent)
+		default:
+			http.Error(w, "unexpected endpoint", http.StatusNotFound)
+		}
+	}))
+	defer server.Close()
+
+	integration, err := New(&Options{URL: server.URL, AccountID: "test", Token: "test", ProjectName: "TEST", StatusNot: "Done"})
+	require.NoError(t, err)
+	err = integration.CloseIssue(&output.ResultEvent{IssueTrackers: map[string]output.IssueTrackerMetadata{
+		"jira": {IssueID: "18866", IssueURL: server.URL + "/browse/TEST-1"},
+	}})
+	require.NoError(t, err)
+	require.Zero(t, searchCalls)
 	require.Equal(t, 1, transitionCalls)
 }
 

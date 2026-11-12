@@ -399,14 +399,20 @@ func (i *Integration) CloseIssue(event *output.ResultEvent) error {
 		return nil
 	}
 
-	issue, err := i.FindExistingIssue(event, false)
+	issueID, err := i.linkedIssueID(event)
 	if err != nil {
 		return err
 	}
-	if issue.ID == "" {
-		return nil
+	if issueID == "" {
+		issue, err := i.FindExistingIssue(event, false)
+		if err != nil {
+			return err
+		}
+		if issue.ID == "" {
+			return nil
+		}
+		issueID = issue.ID
 	}
-	issueID := issue.ID
 
 	transitions, _, err := i.jira.Issue.GetTransitions(issueID)
 	if err != nil {
@@ -433,6 +439,41 @@ func (i *Integration) CloseIssue(event *output.ResultEvent) error {
 		return nil
 	}
 	return fmt.Errorf("Jira issue %s has no transition to %q", issueID, i.options.StatusNot)
+}
+
+func (i *Integration) linkedIssueID(event *output.ResultEvent) (string, error) {
+	linked := event.IssueTrackers[i.Name()]
+	if linked.IssueID == "" || linked.IssueURL == "" {
+		return "", nil
+	}
+	configuredURL := i.options.URL
+	if i.options.SiteURL != "" {
+		configuredURL = i.options.SiteURL
+	}
+	linkedURL, linkedErr := url.Parse(linked.IssueURL)
+	configured, configErr := url.Parse(configuredURL)
+	if linkedErr != nil || configErr != nil || linkedURL.Scheme != configured.Scheme || linkedURL.Host != configured.Host {
+		return "", nil
+	}
+
+	issue, _, err := i.jira.Issue.Get(linked.IssueID, nil)
+	if err != nil {
+		return "", fmt.Errorf("get linked Jira issue %s: %w", linked.IssueID, err)
+	}
+	if issue.Fields == nil || issue.Fields.Project.ID == "" && issue.Fields.Project.Key == "" && issue.Fields.Project.Name == "" {
+		return "", nil
+	}
+	project := issue.Fields.Project
+	if i.options.ProjectID != "" {
+		if project.ID == i.options.ProjectID {
+			return linked.IssueID, nil
+		}
+		return "", nil
+	}
+	if i.options.ProjectName != "" && (project.Key == i.options.ProjectName || project.Name == i.options.ProjectName) {
+		return linked.IssueID, nil
+	}
+	return "", nil
 }
 
 // FindExistingIssue checks if the issue already exists and returns its ID
