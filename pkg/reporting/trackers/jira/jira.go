@@ -415,7 +415,7 @@ func (i *Integration) CloseIssueByID(issueID string) error {
 		return nil
 	}
 	if issueID == "" {
-		return fmt.Errorf("Jira issue ID is required")
+		return fmt.Errorf("jira issue ID is required")
 	}
 
 	transitions, _, err := i.jira.Issue.GetTransitions(issueID)
@@ -442,7 +442,7 @@ func (i *Integration) CloseIssueByID(issueID string) error {
 	if currentIssue.Fields != nil && currentIssue.Fields.Status != nil && currentIssue.Fields.Status.Name == i.options.StatusNot {
 		return nil
 	}
-	return fmt.Errorf("Jira issue %s has no transition to %q", issueID, i.options.StatusNot)
+	return fmt.Errorf("jira issue %s has no transition to %q", issueID, i.options.StatusNot)
 }
 
 // FindExistingIssue checks if the issue already exists and returns its ID
