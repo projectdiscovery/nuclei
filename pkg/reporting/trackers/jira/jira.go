@@ -399,7 +399,7 @@ func (i *Integration) CloseIssue(event *output.ResultEvent) error {
 		return nil
 	}
 
-	issue, err := i.FindExistingIssue(event, false)
+	issue, err := i.FindExistingIssue(event, true)
 	if err != nil {
 		return err
 	}
