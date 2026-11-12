@@ -12,6 +12,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/input/formats/burp"
 	"github.com/projectdiscovery/nuclei/v3/pkg/input/formats/har"
 	"github.com/projectdiscovery/nuclei/v3/pkg/input/formats/json"
+	"github.com/projectdiscovery/nuclei/v3/pkg/input/formats/katana"
 	"github.com/projectdiscovery/nuclei/v3/pkg/input/formats/openapi"
 	"github.com/projectdiscovery/nuclei/v3/pkg/input/formats/raw"
 	"github.com/projectdiscovery/nuclei/v3/pkg/input/formats/swagger"
@@ -89,7 +90,7 @@ func NewHttpInputProvider(opts *HttpMultiFormatOptions) (*HttpInputProvider, err
 
 	parseErr := format.Parse(bytes.NewReader(data), func(request *types.RequestResponse) bool {
 		count++
-		return false
+		return true
 	}, opts.InputFile)
 	if parseErr != nil {
 		return nil, errors.Wrap(parseErr, "could not parse input file")
@@ -149,6 +150,7 @@ var providersList = []formats.Format{
 	openapi.New(),
 	swagger.New(),
 	raw.New(),
+	katana.New(),
 }
 
 // SupportedFormats returns the list of supported formats in comma-separated
