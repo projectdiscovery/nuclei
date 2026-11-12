@@ -399,17 +399,14 @@ func (i *Integration) CloseIssue(event *output.ResultEvent) error {
 		return nil
 	}
 
-	issueID := event.IssueTrackers[i.Name()].IssueID
-	if issueID == "" {
-		issue, err := i.FindExistingIssue(event, false)
-		if err != nil {
-			return err
-		}
-		if issue.ID == "" {
-			return nil
-		}
-		issueID = issue.ID
+	issue, err := i.FindExistingIssue(event, false)
+	if err != nil {
+		return err
 	}
+	if issue.ID == "" {
+		return nil
+	}
+	issueID := issue.ID
 
 	transitions, _, err := i.jira.Issue.GetTransitions(issueID)
 	if err != nil {
@@ -428,11 +425,11 @@ func (i *Integration) CloseIssue(event *output.ResultEvent) error {
 		return nil
 	}
 
-	issue, _, err := i.jira.Issue.Get(issueID, nil)
+	currentIssue, _, err := i.jira.Issue.Get(issueID, nil)
 	if err != nil {
 		return fmt.Errorf("get Jira issue %s status: %w", issueID, err)
 	}
-	if issue.Fields != nil && issue.Fields.Status != nil && issue.Fields.Status.Name == i.options.StatusNot {
+	if currentIssue.Fields != nil && currentIssue.Fields.Status != nil && currentIssue.Fields.Status.Name == i.options.StatusNot {
 		return nil
 	}
 	return fmt.Errorf("Jira issue %s has no transition to %q", issueID, i.options.StatusNot)

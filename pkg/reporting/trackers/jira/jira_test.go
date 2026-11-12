@@ -43,16 +43,20 @@ func TestCloseIssueUsesServerSearchResult(t *testing.T) {
 	require.Equal(t, 1, transitionCalls)
 }
 
-func TestCloseIssueUsesLinkedIssueIDWithoutSearching(t *testing.T) {
+func TestCloseIssueSearchesConfiguredProjectWhenEventHasAnotherJiraID(t *testing.T) {
 	searchCalls, transitionCalls := 0, 0
+	searchJQL := ""
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch {
-		case r.Method == http.MethodGet && strings.Contains(r.URL.Path, "/search"):
+		case r.Method == http.MethodGet && strings.HasSuffix(r.URL.Path, "/search"):
 			searchCalls++
+			searchJQL = r.URL.Query().Get("jql")
+			_, _ = w.Write([]byte(`{"issues":[{"id":"123","key":"TEST-1","fields":{"status":{"name":"Open"}}}]}`))
+		case r.Method == http.MethodGet && strings.HasSuffix(r.URL.Path, "/search/jql"):
 			http.Error(w, "", http.StatusForbidden)
-		case r.Method == http.MethodGet && strings.HasSuffix(r.URL.Path, "/transitions"):
+		case r.Method == http.MethodGet && strings.HasSuffix(r.URL.Path, "/issue/123/transitions"):
 			_, _ = w.Write([]byte(`{"transitions":[{"id":"5","to":{"name":"Done"}}]}`))
-		case r.Method == http.MethodPost && strings.HasSuffix(r.URL.Path, "/transitions"):
+		case r.Method == http.MethodPost && strings.HasSuffix(r.URL.Path, "/issue/123/transitions"):
 			transitionCalls++
 			w.WriteHeader(http.StatusNoContent)
 		default:
@@ -71,7 +75,8 @@ func TestCloseIssueUsesLinkedIssueIDWithoutSearching(t *testing.T) {
 		},
 	})
 	require.NoError(t, err)
-	require.Zero(t, searchCalls)
+	require.Equal(t, 1, searchCalls)
+	require.Contains(t, searchJQL, `project = "TEST"`)
 	require.Equal(t, 1, transitionCalls)
 }
 
@@ -110,6 +115,8 @@ func TestCloseIssueWithoutTargetTransition(t *testing.T) {
 		t.Run(tc.status, func(t *testing.T) {
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				switch {
+				case r.Method == http.MethodGet && strings.HasSuffix(r.URL.Path, "/search"):
+					_, _ = w.Write([]byte(`{"issues":[{"id":"18866","key":"TEST-1","fields":{"status":{"name":"Open"}}}]}`))
 				case r.Method == http.MethodGet && strings.HasSuffix(r.URL.Path, "/transitions"):
 					_, _ = w.Write([]byte(`{"transitions":[]}`))
 				case r.Method == http.MethodGet && strings.HasSuffix(r.URL.Path, "/issue/18866"):
