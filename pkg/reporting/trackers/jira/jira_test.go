@@ -48,8 +48,6 @@ func TestCloseIssueSearchesConfiguredProjectWhenEventHasAnotherJiraID(t *testing
 	searchJQL := ""
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch {
-		case r.Method == http.MethodGet && strings.HasSuffix(r.URL.Path, "/issue/18866"):
-			_, _ = w.Write([]byte(`{"fields":{"project":{"id":"2","key":"OTHER"}}}`))
 		case r.Method == http.MethodGet && strings.HasSuffix(r.URL.Path, "/search"):
 			searchCalls++
 			searchJQL = r.URL.Query().Get("jql")
@@ -82,15 +80,13 @@ func TestCloseIssueSearchesConfiguredProjectWhenEventHasAnotherJiraID(t *testing
 	require.Equal(t, 1, transitionCalls)
 }
 
-func TestCloseIssueUsesLinkedIDForMatchingSiteAndProject(t *testing.T) {
+func TestCloseIssueByIDTargetsOnlyCreatedTicket(t *testing.T) {
 	searchCalls, transitionCalls := 0, 0
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch {
 		case r.Method == http.MethodGet && strings.Contains(r.URL.Path, "/search"):
 			searchCalls++
 			http.Error(w, "", http.StatusForbidden)
-		case r.Method == http.MethodGet && strings.HasSuffix(r.URL.Path, "/issue/18866"):
-			_, _ = w.Write([]byte(`{"fields":{"project":{"id":"1","key":"TEST"}}}`))
 		case r.Method == http.MethodGet && strings.HasSuffix(r.URL.Path, "/issue/18866/transitions"):
 			_, _ = w.Write([]byte(`{"transitions":[{"id":"5","to":{"name":"Done"}}]}`))
 		case r.Method == http.MethodPost && strings.HasSuffix(r.URL.Path, "/issue/18866/transitions"):
@@ -104,9 +100,7 @@ func TestCloseIssueUsesLinkedIDForMatchingSiteAndProject(t *testing.T) {
 
 	integration, err := New(&Options{URL: server.URL, AccountID: "test", Token: "test", ProjectName: "TEST", StatusNot: "Done"})
 	require.NoError(t, err)
-	err = integration.CloseIssue(&output.ResultEvent{IssueTrackers: map[string]output.IssueTrackerMetadata{
-		"jira": {IssueID: "18866", IssueURL: server.URL + "/browse/TEST-1"},
-	}})
+	err = integration.CloseIssueByID("18866")
 	require.NoError(t, err)
 	require.Zero(t, searchCalls)
 	require.Equal(t, 1, transitionCalls)
