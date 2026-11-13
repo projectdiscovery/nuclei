@@ -101,7 +101,7 @@ require (
 	github.com/projectdiscovery/rdap v0.9.0
 	github.com/projectdiscovery/retryabledns v1.0.116
 	github.com/projectdiscovery/retryablehttp-go v1.3.31
-	github.com/projectdiscovery/rod v0.116.3-0.20261113131459-cf8f6e3b8a54
+	github.com/projectdiscovery/rod v0.116.3-0.20261113150229-d775599ff53d
 	github.com/projectdiscovery/sarif v0.1.0
 	github.com/projectdiscovery/tlsx v1.4.3-0.20261020052910-acb80c2c7c75
 	github.com/projectdiscovery/uncover v1.2.1
