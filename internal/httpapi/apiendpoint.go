@@ -1,7 +1,10 @@
 package httpapi
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/js/compiler"
@@ -23,20 +26,55 @@ type Concurrency struct {
 type Server struct {
 	addr   string
 	config *types.Options
+	// token is a random Bearer token that must be presented by callers.
+	token string
 }
 
-// New creates a new instance of Server.
+// New creates a new instance of Server.  A random 32-byte hex Bearer token is
+// generated and stored; the caller should log it so operators can authenticate.
 func New(addr string, config *types.Options) *Server {
 	return &Server{
 		addr:   addr,
 		config: config,
+		token:  randomToken(),
 	}
+}
+
+// Token returns the Bearer token that callers must supply in an
+// "Authorization: Bearer <token>" header.
+func (s *Server) Token() string {
+	return s.token
+}
+
+// randomToken generates a 32-byte (64 hex char) cryptographically random token.
+func randomToken() string {
+	b := make([]byte, 32)
+	if _, err := rand.Read(b); err != nil {
+		panic("httpapi: could not generate random token: " + err.Error())
+	}
+	return hex.EncodeToString(b)
+}
+
+// authenticate rejects requests whose Authorization header does not carry the
+// server's Bearer token.  Returns true when the request is authorized.
+func (s *Server) authenticate(w http.ResponseWriter, r *http.Request) bool {
+	if s.token == "" {
+		return true // token-less mode: explicitly disabled
+	}
+	auth := r.Header.Get("Authorization")
+	want := "Bearer " + s.token
+	if !strings.EqualFold(auth, want) {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return false
+	}
+	return true
 }
 
 // Start initializes the server and its routes, then starts listening on the specified address.
 func (s *Server) Start() error {
-	http.HandleFunc("/api/concurrency", s.handleConcurrency)
-	if err := http.ListenAndServe(s.addr, nil); err != nil {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/api/concurrency", s.handleConcurrency)
+	if err := http.ListenAndServe(s.addr, mux); err != nil {
 		return err
 	}
 	return nil
@@ -44,6 +82,9 @@ func (s *Server) Start() error {
 
 // handleConcurrency routes the request based on its method to the appropriate handler.
 func (s *Server) handleConcurrency(w http.ResponseWriter, r *http.Request) {
+	if !s.authenticate(w, r) {
+		return
+	}
 	switch r.Method {
 	case http.MethodGet:
 		s.getSettings(w, r)
@@ -54,7 +95,7 @@ func (s *Server) handleConcurrency(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// GetSettings handles GET requests and returns the current concurrency settings
+// getSettings handles GET requests and returns the current concurrency settings.
 func (s *Server) getSettings(w http.ResponseWriter, _ *http.Request) {
 	concurrencySettings := Concurrency{
 		BulkSize:              s.config.BulkSize,
@@ -72,7 +113,7 @@ func (s *Server) getSettings(w http.ResponseWriter, _ *http.Request) {
 	}
 }
 
-// UpdateSettings handles PUT requests to update the concurrency settings
+// updateSettings handles PUT requests to update the concurrency settings.
 func (s *Server) updateSettings(w http.ResponseWriter, r *http.Request) {
 	var newSettings Concurrency
 	if err := json.NewDecoder(r.Body).Decode(&newSettings); err != nil {
@@ -105,7 +146,7 @@ func (s *Server) updateSettings(w http.ResponseWriter, r *http.Request) {
 	}
 	if newSettings.JavascriptConcurrency > 0 {
 		compiler.PoolingJsVmConcurrency = newSettings.JavascriptConcurrency
-		s.config.JsConcurrency = newSettings.JavascriptConcurrency // no-op on speed change
+		s.config.JsConcurrency = newSettings.JavascriptConcurrency
 	}
 
 	w.WriteHeader(http.StatusOK)

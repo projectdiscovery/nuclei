@@ -43,6 +43,10 @@ func IsPOP3(ctx context.Context, host string, port int) (IsPOP3Response, error) 
 func isPoP3(ctx context.Context, executionId string, host string, port int) (IsPOP3Response, error) {
 	resp := IsPOP3Response{}
 
+	if !protocolstate.IsHostAllowed(executionId, host) {
+		return resp, protocolstate.ErrHostDenied.Msgf(host)
+	}
+
 	dialer := protocolstate.GetDialersWithId(executionId)
 	if dialer == nil {
 		return IsPOP3Response{}, fmt.Errorf("dialers not initialized for %s", executionId)
