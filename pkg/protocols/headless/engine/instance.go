@@ -5,11 +5,11 @@ import (
 	"errors"
 	"time"
 
-	"github.com/go-rod/rod"
-	"github.com/go-rod/rod/lib/utils"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/interactsh"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/render"
+	"github.com/projectdiscovery/rod"
+	"github.com/projectdiscovery/rod/lib/utils"
 )
 
 // Instance is an isolated browser instance opened for doing operations with it.

@@ -1,6 +1,6 @@
 module github.com/projectdiscovery/nuclei/v3
 
-go 1.27.3
+go 1.27.4
 
 require (
 	carvel.dev/ytt v0.52.0
@@ -46,7 +46,6 @@ require (
 	github.com/go-pdf/fpdf v0.9.0
 	github.com/go-pg/pg/v10 v10.15.0
 	github.com/go-playground/validator/v10 v10.26.0
-	github.com/go-rod/rod v0.116.2
 	github.com/go-sql-driver/mysql v1.10.0
 	github.com/gobwas/ws v1.4.0
 	github.com/goccy/go-json v0.10.5
@@ -102,6 +101,7 @@ require (
 	github.com/projectdiscovery/rdap v0.9.0
 	github.com/projectdiscovery/retryabledns v1.0.116
 	github.com/projectdiscovery/retryablehttp-go v1.3.31
+	github.com/projectdiscovery/rod v0.116.3-0.20261113131459-cf8f6e3b8a54
 	github.com/projectdiscovery/sarif v0.1.0
 	github.com/projectdiscovery/tlsx v1.4.3-0.20261020052910-acb80c2c7c75
 	github.com/projectdiscovery/uncover v1.2.1
@@ -427,11 +427,7 @@ require (
 	github.com/xeipuuv/gojsonschema v1.2.0 // indirect
 	github.com/xo/terminfo v0.0.0-20220910002029-abceb7e1c41e // indirect
 	github.com/youmark/pkcs8 v0.0.0-20240726163527-a2c0da244d78 // indirect
-	github.com/ysmood/fetchup v0.2.3 // indirect
-	github.com/ysmood/goob v0.4.0 // indirect
-	github.com/ysmood/got v0.40.0 // indirect
 	github.com/ysmood/gson v0.7.3 // indirect
-	github.com/ysmood/leakless v0.9.0 // indirect
 	github.com/yuin/goldmark v1.7.17 // indirect
 	github.com/yuin/goldmark-emoji v1.0.6 // indirect
 	github.com/yusufpapurcu/wmi v1.2.4 // indirect
