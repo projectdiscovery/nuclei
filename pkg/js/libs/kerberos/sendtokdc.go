@@ -167,6 +167,11 @@ func sendUDP(conn *net.UDPConn, b []byte) ([]byte, error) {
 	return r, nil
 }
 
+// maxKDCResponseSize caps the per-response allocation for a KDC TCP reply.
+// RFC 4120 §7.2.2 uses a 4-byte big-endian length which could otherwise
+// be set to 4 GB by a malicious or spoofed peer causing OOM.
+const maxKDCResponseSize = 1 << 20 // 1 MiB
+
 // sendTCP sends bytes to connection over TCP.
 func sendTCP(conn *net.TCPConn, b []byte) ([]byte, error) {
 	defer func() {
@@ -184,11 +189,17 @@ func sendTCP(conn *net.TCPConn, b []byte) ([]byte, error) {
 	}
 
 	sh := make([]byte, 4)
-	_, err = conn.Read(sh)
+	// Use io.ReadFull to guarantee all 4 header bytes are read.
+	_, err = io.ReadFull(conn, sh)
 	if err != nil {
 		return r, fmt.Errorf("error reading response size header: %v", err)
 	}
 	s := binary.BigEndian.Uint32(sh)
+
+	// Reject unreasonably large responses before allocating.
+	if s > maxKDCResponseSize {
+		return r, fmt.Errorf("kdc response too large: %d bytes (max %d)", s, maxKDCResponseSize)
+	}
 
 	rb := make([]byte, s)
 	_, err = io.ReadFull(conn, rb)
@@ -211,7 +222,13 @@ func CheckKrbError(b []byte) ([]byte, error) {
 }
 
 // TGStoHashcat converts a TGS to a hashcat format.
+// The hashcat $krb5tgs$ format splits EncPart.Cipher into a 16-byte HMAC
+// prefix and the remaining ciphertext.  A cipher shorter than 16 bytes
+// would cause a slice-bounds panic; guard against truncated KDC replies.
 func TGStoHashcat(tgs messages.Ticket, username string) (string, error) {
+	if len(tgs.EncPart.Cipher) < 16 {
+		return "", fmt.Errorf("tgs cipher too short: need at least 16 bytes, got %d", len(tgs.EncPart.Cipher))
+	}
 	return fmt.Sprintf("$krb5tgs$%d$*%s$%s$%s*$%s$%s",
 		tgs.EncPart.EType,
 		username,
@@ -222,8 +239,13 @@ func TGStoHashcat(tgs messages.Ticket, username string) (string, error) {
 	), nil
 }
 
-// ASRepToHashcat converts an AS-REP message to a hashcat format
+// ASRepToHashcat converts an AS-REP message to a hashcat format.
+// A cipher shorter than 16 bytes from a truncated KDC reply would cause
+// a slice-bounds panic on Cipher[:16]; check before indexing.
 func ASRepToHashcat(asrep messages.ASRep) (string, error) {
+	if len(asrep.EncPart.Cipher) < 16 {
+		return "", fmt.Errorf("as-rep cipher too short: need at least 16 bytes, got %d", len(asrep.EncPart.Cipher))
+	}
 	return fmt.Sprintf("$krb5asrep$%d$%s@%s:%s$%s",
 		asrep.EncPart.EType,
 		asrep.CName.PrincipalNameString(),
