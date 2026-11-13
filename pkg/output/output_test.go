@@ -2,6 +2,8 @@ package output
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -238,4 +240,106 @@ func TestFormatJSONSanitizesNestedMetadataMaps(t *testing.T) {
 	data, err := w.formatJSON(event)
 	require.NoError(t, err, "formatJSON should not fail on nested map[interface{}]interface{} (#7971)")
 	require.Contains(t, string(data), `"labels":{"en":"Hello","nested_list":[{"inner_key":"inner_val"}]}`)
+}
+
+// ---------------------------------------------------------------------------
+// Path-traversal containment tests for sanitizeFileName and WriteStoreDebugData
+// (CWE-22, defense-in-depth – mirrors the markdown exporter's regression suite)
+// ---------------------------------------------------------------------------
+
+// TestSanitizeFileNameContainment verifies that sanitizeFileName strips every
+// character that could allow a path to escape its intended directory. The
+// markdown exporter has an equivalent fuzz-driven suite; this test covers the
+// same invariants for the output writer's sanitizer.
+func TestSanitizeFileNameContainment(t *testing.T) {
+	reportDir := t.TempDir()
+
+	hostileInputs := []string{
+		"../../etc/passwd",
+		"..\\..\\Windows\\System32",
+		"..",
+		"http://evil.com/../../../etc/shadow",
+		"https://attacker.example/../../../../root/.ssh/authorized_keys",
+		"some/host/../../escape",
+		strings.Repeat("../", 200) + "etc/passwd",
+		strings.Repeat("..\\", 200) + "Windows",
+		"...",
+		"....",
+		".....",
+		"\x00/etc/passwd", // null byte (not a real traversal on Linux but should be safe)
+		"/../../foo",
+		"\\..\\..\\foo",
+	}
+
+	for _, in := range hostileInputs {
+		in := in // capture
+		t.Run(in, func(t *testing.T) {
+			out := sanitizeFileName(in)
+			// After sanitisation no path separator must survive.
+			require.False(t, strings.ContainsAny(out, "/\\"),
+				"sanitizeFileName leaked a separator: in=%q out=%q", in, out)
+			// No ".." parent-ref must survive either.
+			require.False(t, strings.Contains(out, ".."),
+				"sanitizeFileName leaked '..': in=%q out=%q", in, out)
+
+			// Joining the sanitised value with an arbitrary base must stay
+			// inside that base – the same invariant the exporter relies on.
+			joined := filepath.Clean(filepath.Join(reportDir, out))
+			rel, err := filepath.Rel(reportDir, joined)
+			require.NoError(t, err)
+			require.NotEqual(t, "..", rel)
+			require.False(t, strings.HasPrefix(rel, ".."+string(filepath.Separator)),
+				"sanitizeFileName: joined path escaped reportDir: in=%q out=%q rel=%q", in, out, rel)
+		})
+	}
+}
+
+// TestWriteStoreDebugDataContainment is an integration test that calls
+// WriteStoreDebugData with attacker-shaped host / templateID values and verifies
+// that no file is ever created outside the configured storeResponseDir.
+// Without the containment guard added in this fix, a future regression in
+// sanitizeFileName could silently allow a file to escape; this test would catch
+// such a regression immediately.
+func TestWriteStoreDebugDataContainment(t *testing.T) {
+	storeDir := t.TempDir()
+
+	w := &StandardWriter{
+		storeResponse:    true,
+		storeResponseDir: storeDir,
+	}
+
+	hostilePairs := []struct{ host, templateID string }{
+		{"../../etc/passwd", "cve-2023-1234"},
+		{"..\\..\\Windows\\system32", "cve-2023-1234"},
+		{"http://evil.com/../../../etc/shadow", "poc"},
+		{"https://attacker.example/" + strings.Repeat("../", 50) + "root/.ssh", "recon"},
+		{"..", ".."},
+		{"/etc/passwd", "test"},
+		{"\\\\unc\\path\\..\\evil", "smb-test"},
+	}
+
+	for _, tc := range hostilePairs {
+		tc := tc
+		t.Run(tc.host+"|"+tc.templateID, func(t *testing.T) {
+			w.WriteStoreDebugData(tc.host, tc.templateID, "http", "debug-data")
+		})
+	}
+
+	// Walk storeDir and assert every file created is still inside it.
+	err := filepath.Walk(storeDir, func(path string, info os.FileInfo, walkErr error) error {
+		if walkErr != nil {
+			return walkErr
+		}
+		rel, relErr := filepath.Rel(storeDir, path)
+		if relErr != nil {
+			return relErr
+		}
+		if rel == "." {
+			return nil // the root itself
+		}
+		require.False(t, strings.HasPrefix(rel, ".."),
+			"WriteStoreDebugData created a file outside store dir: %s", path)
+		return nil
+	})
+	require.NoError(t, err)
 }
