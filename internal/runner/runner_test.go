@@ -283,7 +283,7 @@ func TestInitializeTemplatesHTTPInputUsesResolvers(t *testing.T) {
 		Logger:        &gologger.Logger{},
 	}
 
-	hm, err := r.initializeTemplatesHTTPInput()
+	hm, err := r.initializeTemplatesHTTPInput(1)
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = hm.Close() })
 

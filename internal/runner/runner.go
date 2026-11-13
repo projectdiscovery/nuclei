@@ -905,7 +905,7 @@ func (r *Runner) RunEnumeration() error {
 	// are used, and if inputs are non-http to pre-perform probing
 	// of urls and storing them for execution.
 	if !r.options.DisableHTTPProbe && loader.IsHTTPBasedProtocolUsed(store) && r.isInputNonHTTP() {
-		inputHelpers, err := r.initializeTemplatesHTTPInput()
+		inputHelpers, err := r.initializeTemplatesHTTPInput(int64(len(store.Templates()) + len(store.Workflows())))
 		if err != nil {
 			return errors.Wrap(err, "could not probe http input")
 		}

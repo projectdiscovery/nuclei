@@ -46,9 +46,25 @@ type TaskTracker interface {
 	IncrementTasksBy(count int64)
 }
 
+// ProbeTracker is implemented by a Progress that can also report progress
+// of the pre-scan HTTP input probing phase. Input probing can take a long
+// time on large target lists, and previously no stats were printed until
+// the scan execution started, because the stats ticker only begins ticking
+// on Init.
+type ProbeTracker interface {
+	// InitProbe initializes the stats for the input probing phase. All
+	// counters and fields are registered here, before the ticker starts,
+	// so the later Init call only updates values and never registers new
+	// fields while the ticker is running.
+	InitProbe(hostCount, templateCount, probeTotal int64)
+	// IncrementProbes increments the probed-hosts counter by 1.
+	IncrementProbes()
+}
+
 var (
-	_ Progress    = &StatsTicker{}
-	_ TaskTracker = &StatsTicker{}
+	_ Progress     = &StatsTicker{}
+	_ TaskTracker  = &StatsTicker{}
+	_ ProbeTracker = &StatsTicker{}
 )
 
 // StatsTicker is a progress instance for showing program stats
@@ -58,6 +74,10 @@ type StatsTicker struct {
 	outputJSON   bool
 	stats        clistats.StatisticsClient
 	tickDuration time.Duration
+	// started is set once the stats event loop has been started (by
+	// InitProbe or Init), so Init after InitProbe does not register fields
+	// or start the ticker a second time.
+	started bool
 }
 
 // NewStatsTicker creates and returns a new progress tracking object.
@@ -91,8 +111,41 @@ func NewStatsTicker(duration int, active, outputJSON, cloud bool, port int) (Pro
 	return progress, nil
 }
 
+// InitProbe initializes the progress display before the HTTP input probing
+// phase, so -stats prints probe progress instead of staying silent until
+// scan execution starts. probeTotal is the number of input hosts that will
+// be probed. Every field Init would register is registered here too, before
+// the ticker starts, so Init never mutates the field set while it is served.
+func (p *StatsTicker) InitProbe(hostCount, templateCount, probeTotal int64) {
+	if p.started {
+		return
+	}
+	p.register(hostCount, int(templateCount), 0)
+	p.stats.AddCounter("probed", uint64(0))
+	p.stats.AddCounter("probeTotal", uint64(probeTotal))
+	p.start()
+}
+
+// IncrementProbes increments the probed-hosts counter by 1.
+func (p *StatsTicker) IncrementProbes() {
+	p.stats.IncrementCounter("probed", 1)
+}
+
 // Init initializes the progress display mechanism by setting counters, etc.
 func (p *StatsTicker) Init(hostCount int64, rulesCount int, requestCount int64) {
+	if p.started {
+		// The ticker was already started by InitProbe: every field is
+		// registered, so only the estimated request total still needs its
+		// value. Registering new fields here would race the metrics server.
+		p.stats.IncrementCounter("total", int(requestCount))
+		return
+	}
+	p.register(hostCount, rulesCount, requestCount)
+	p.start()
+}
+
+// register adds all counters and fields used by the progress display.
+func (p *StatsTicker) register(hostCount int64, rulesCount int, requestCount int64) {
 	p.stats.AddStatic("templates", rulesCount)
 	p.stats.AddStatic("hosts", hostCount)
 	p.stats.AddStatic("startedAt", time.Now())
@@ -107,7 +160,10 @@ func (p *StatsTicker) Init(hostCount int64, rulesCount int, requestCount int64) 
 	p.stats.AddDynamic("percent", func(stats clistats.StatisticsClient) interface{} {
 		return clistats.String(scanPercent(stats))
 	})
+}
 
+// start starts the stats event loop and the periodic stats printing.
+func (p *StatsTicker) start() {
 	if p.active {
 		var printCallbackFunc clistats.DynamicCallback
 		if p.outputJSON {
@@ -130,6 +186,7 @@ func (p *StatsTicker) Init(hostCount int64, rulesCount int, requestCount int64) 
 			})
 		}
 	}
+	p.started = true
 }
 
 // AddToTotal adds a value to the total request count
@@ -194,6 +251,22 @@ func (p *StatsTicker) makePrintCallback() func(stats clistats.StatisticsClient) 
 		if hosts, ok := stats.GetStatic("hosts"); ok {
 			builder.WriteString(" | Hosts: ")
 			builder.WriteString(clistats.String(hosts))
+		}
+
+		probed, _ := stats.GetCounter("probed")
+		probeTotal, _ := stats.GetCounter("probeTotal")
+		if probeTotal > 0 && probed < probeTotal {
+			// the scan is still probing non-HTTP input hosts; scan requests
+			// have not started yet, so report probe progress instead
+			builder.WriteString(" | Probing: ")
+			builder.WriteString(clistats.String(probed))
+			builder.WriteRune('/')
+			builder.WriteString(clistats.String(probeTotal))
+			builder.WriteString(" (")
+			builder.WriteString(clistats.String(percentComplete(probed, probeTotal)))
+			builder.WriteString("%)\n")
+			_, _ = fmt.Fprintf(os.Stderr, "%s", builder.String())
+			return builder.String()
 		}
 
 		requests, okRequests := stats.GetCounter("requests")
@@ -289,6 +362,10 @@ func metricsMap(stats clistats.StatisticsClient) map[string]interface{} {
 	results["tasks"] = clistats.String(tasks)
 	totalTasks, _ := stats.GetCounter("totalTasks")
 	results["totalTasks"] = clistats.String(totalTasks)
+	probed, _ := stats.GetCounter("probed")
+	results["probed"] = clistats.String(probed)
+	probeTotal, _ := stats.GetCounter("probeTotal")
+	results["probeTotal"] = clistats.String(probeTotal)
 
 	results["percent"] = clistats.String(scanPercent(stats))
 	return results

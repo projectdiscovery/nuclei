@@ -168,14 +168,24 @@ func (s *statsClientSpy) Stop() error {
 	return nil
 }
 
-func (s *statsClientSpy) AddCounter(string, uint64) {}
+func (s *statsClientSpy) AddCounter(key string, value uint64) {
+	if s.counters == nil {
+		s.counters = map[string]uint64{}
+	}
+	s.counters[key] = value
+}
 
 func (s *statsClientSpy) GetCounter(key string) (uint64, bool) {
 	value, ok := s.counters[key]
 	return value, ok
 }
 
-func (s *statsClientSpy) IncrementCounter(string, int) {}
+func (s *statsClientSpy) IncrementCounter(key string, count int) {
+	if s.counters == nil {
+		s.counters = map[string]uint64{}
+	}
+	s.counters[key] += uint64(count)
+}
 
 func (s *statsClientSpy) AddStatic(string, interface{}) {}
 
@@ -192,4 +202,106 @@ func (s *statsClientSpy) GetDynamic(string) (clistats.DynamicCallback, bool) {
 
 func (s *statsClientSpy) GetStatResponse(time.Duration, func(string, error) error) {
 	s.periodicStatsRequested = true
+}
+
+func TestInitProbeStartsTickerOnce(t *testing.T) {
+	// Given
+	stats := &statsClientSpy{}
+	ticker := &StatsTicker{
+		active:       true,
+		stats:        stats,
+		tickDuration: time.Second,
+	}
+
+	// When
+	ticker.InitProbe(60, 1, 60)
+	ticker.IncrementProbes()
+	ticker.IncrementProbes()
+	ticker.Init(60, 1, 120)
+
+	// Then
+	require.True(t, stats.started)
+	require.True(t, stats.periodicStatsRequested)
+
+	// the probe fields are registered and incremented
+	probed, ok := stats.GetCounter("probed")
+	require.True(t, ok)
+	require.Equal(t, uint64(2), probed)
+	probeTotal, ok := stats.GetCounter("probeTotal")
+	require.True(t, ok)
+	require.Equal(t, uint64(60), probeTotal)
+
+	// Init after InitProbe only updates the estimated request total and
+	// does not re-register or reset the probe counters
+	total, ok := stats.GetCounter("total")
+	require.True(t, ok)
+	require.Equal(t, uint64(120), total)
+	probed, _ = stats.GetCounter("probed")
+	require.Equal(t, uint64(2), probed)
+}
+
+func TestInitWithoutProbeBehavesAsBefore(t *testing.T) {
+	// Given
+	stats := &statsClientSpy{}
+	ticker := &StatsTicker{
+		active:       true,
+		stats:        stats,
+		tickDuration: time.Second,
+	}
+
+	// When
+	ticker.Init(60, 1, 120)
+
+	// Then
+	require.True(t, stats.started)
+	total, ok := stats.GetCounter("total")
+	require.True(t, ok)
+	require.Equal(t, uint64(120), total)
+	_, ok = stats.GetCounter("probed")
+	require.False(t, ok)
+}
+
+func TestPrintCallbackProbing(t *testing.T) {
+	tests := []struct {
+		name       string
+		probed     uint64
+		probeTotal uint64
+		want       string
+		notWant    string
+	}{
+		{
+			name:       "probing in progress",
+			probed:     3,
+			probeTotal: 10,
+			want:       "| Probing: 3/10 (30%)",
+			notWant:    "| Requests:",
+		},
+		{
+			name:       "probing finished",
+			probed:     10,
+			probeTotal: 10,
+			want:       "| Requests: 10/40 (25%)",
+			notWant:    "| Probing:",
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			ticker := &StatsTicker{}
+			stats := &statsClientSpy{
+				counters: map[string]uint64{
+					"requests":   10,
+					"total":      40,
+					"probed":     test.probed,
+					"probeTotal": test.probeTotal,
+				},
+				statics: map[string]interface{}{"startedAt": time.Now()},
+			}
+
+			out, ok := ticker.makePrintCallback()(stats).(string)
+			require.True(t, ok)
+			require.Contains(t, out, test.want)
+			require.NotContains(t, out, test.notWant)
+		})
+	}
 }
