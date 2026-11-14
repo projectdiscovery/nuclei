@@ -27,6 +27,8 @@ const (
 	DSLMatcher
 	// name:xpath
 	XPathMatcher
+	// name:error
+	ErrorMatcher
 	// name:llm
 	LLMMatcher
 	limit
@@ -41,6 +43,7 @@ var MatcherTypes = map[MatcherType]string{
 	BinaryMatcher: "binary",
 	DSLMatcher:    "dsl",
 	XPathMatcher:  "xpath",
+	ErrorMatcher:  "error",
 	LLMMatcher:    "llm",
 }
 

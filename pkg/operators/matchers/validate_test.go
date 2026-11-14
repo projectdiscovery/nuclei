@@ -34,6 +34,10 @@ func TestValidateRequiresValues(t *testing.T) {
 	for _, matcherType := range GetSupportedMatcherTypes() {
 		t.Run(matcherType.String(), func(t *testing.T) {
 			m := &Matcher{matcherType: matcherType}
+			if matcherType == ErrorMatcher {
+				require.NoError(t, m.Validate(), "an empty error matcher matches any request error")
+				return
+			}
 			require.ErrorContains(t, m.Validate(), "requires at least one")
 		})
 	}
