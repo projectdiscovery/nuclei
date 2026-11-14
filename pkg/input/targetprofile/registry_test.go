@@ -261,3 +261,15 @@ func TestTechTokens(t *testing.T) {
 		require.Equal(t, want, techTokens(tech), tech)
 	}
 }
+
+func TestBindTechNarrowsOnlyTargetsWithoutASelection(t *testing.T) {
+	r := NewRegistry(templatesDir)
+	profiled := bindLine(t, r, `{"target": "https://a.example", "tags": ["thinkphp"]}`)
+	require.NoError(t, r.BindTech(input(profiled), []string{"tomcat"}))
+	require.NoError(t, r.BindTech(input("https://b.example"), []string{"tomcat-detect", "Apache Tomcat"}))
+	r.Prepare(allTemplates)
+
+	require.Equal(t, []string{"thinkphp-rce"}, selected(t, r, profiled), "its own selection is kept")
+	require.Equal(t, []string{"tomcat-panel", "CVE-2020-1938", "git-config"}, selected(t, r, "https://b.example"))
+	require.Len(t, selected(t, r, "https://c.example"), len(allTemplates), "nothing detected, nothing skipped")
+}

@@ -247,6 +247,9 @@ type Options struct {
 	LeaveDefaultPorts bool
 	// AutomaticScan enables automatic tech based template execution
 	AutomaticScan bool
+	// AutoTech runs the tech templates first and skips, on each target, the
+	// templates bound to products they did not detect there.
+	AutoTech bool
 	// Silent suppresses any extra text and only writes found URLs on screen.
 	Silent bool
 	// Validate validates the templates passed to nuclei.
@@ -721,6 +724,7 @@ func (options *Options) Copy() *Options {
 		AutoCalibrate:                  options.AutoCalibrate,
 		LeaveDefaultPorts:              options.LeaveDefaultPorts,
 		AutomaticScan:                  options.AutomaticScan,
+		AutoTech:                       options.AutoTech,
 		Silent:                         options.Silent,
 		Validate:                       options.Validate,
 		PlanFile:                       options.PlanFile,

@@ -6,6 +6,7 @@ import (
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 )
@@ -52,7 +53,17 @@ type Engine struct {
 	Callback                  func(*output.ResultEvent) // Executed on results
 	templateExecutionCallback TemplateExecutionCallback
 	planRun                   PlanRun
+	resultHook                ResultHook
 	Logger                    *gologger.Logger
+}
+
+// ResultHook observes the results of a template run on a target.
+type ResultHook func(input *contextargs.MetaInput, results []*output.ResultEvent)
+
+// SetResultHook makes the engine pass the results of every template run on a
+// target to hook, in addition to writing them; nil removes it.
+func (e *Engine) SetResultHook(hook ResultHook) {
+	e.resultHook = hook
 }
 
 // New returns a new Engine instance
