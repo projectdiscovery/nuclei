@@ -252,6 +252,9 @@ func (run *planRun) readDoneLog(path string) error {
 		if entry, planned := run.entries[id]; planned {
 			run.done[entry.group] = struct{}{}
 		} else {
+			// the id may be a group the plan has only alternatives of, or an
+			// entry appended later
+			run.done[id] = struct{}{}
 			run.finished[id] = struct{}{}
 		}
 	}

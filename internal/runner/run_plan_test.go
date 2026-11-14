@@ -110,3 +110,15 @@ func TestPlanRunKeepsFinishedIDsForAppendedEntries(t *testing.T) {
 	require.True(t, run.Skip("00000000000000a1"), "finished in the previous run")
 	require.Equal(t, 1, run.unreached(), "b1 was appended after the last tick")
 }
+
+func TestPlanRunCoversAlternativesOfAFinishedOriginThePlanLacks(t *testing.T) {
+	planFile := filepath.Join(t.TempDir(), "plan.jsonl")
+	require.NoError(t, os.WriteFile(planFile, []byte(`{"id":"00000000000000a2","target":"https://a.example/y","templates":["root"],"alternative-to":"00000000000000a1"}
+`), 0o644))
+	require.NoError(t, os.WriteFile(planDoneLog(planFile), []byte("00000000000000a1\n"), 0o644))
+	run, err := openPlanRun(planFile)
+	require.NoError(t, err)
+	require.Equal(t, 1, run.resumed)
+	require.True(t, run.Skip("00000000000000a2"), "its origin is covered")
+	require.NoError(t, run.close())
+}
