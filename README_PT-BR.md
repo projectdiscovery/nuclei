@@ -406,11 +406,11 @@ Run nuclei with a JSON output:
 Run nuclei with sorted Markdown outputs (with environment variables):
 	$ MARKDOWN_EXPORT_SORT_MODE=template nuclei -target example.com -markdown-export nuclei_report/
 
-Additional documentation is available at: https://docs.projectdiscovery.io/getting-started/running
+Additional documentation is available at: https://docs.projectdiscovery.io/tools/nuclei/running
 
 ```
 
-Documentação adicional disponível em: [**`docs.projectdiscovery.io/getting-started/running`**](https://docs.projectdiscovery.io/getting-started/running?utm_source=github&utm_medium=web&utm_campaign=nuclei_readme)
+Documentação adicional disponível em: [**`docs.projectdiscovery.io/tools/nuclei/running`**](https://docs.projectdiscovery.io/tools/nuclei/running?utm_source=github&utm_medium=web&utm_campaign=nuclei_readme)
 
 </details>
 
@@ -455,7 +455,7 @@ nuclei -target https://example.com -dashboard
 ```
 
 > [!NOTE]
-> Este recurso é totalmente gratuito e não requer assinatura. Para um guia detalhado, consulte a [**`documentação`**](https://docs.projectdiscovery.io/cloud/scanning/nuclei-scan?utm_source=github&utm_medium=web&utm_campaign=nuclei_readme).
+> Este recurso é totalmente gratuito e não requer assinatura. Para um guia detalhado, consulte a [**`documentação`**](https://docs.projectdiscovery.io/cloud/scanning?utm_source=github&utm_medium=web&utm_campaign=nuclei_readme).
 
 <br>
 <br>
