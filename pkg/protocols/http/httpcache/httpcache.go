@@ -94,8 +94,19 @@ func NewTransportWrapper() func(http.RoundTripper) http.RoundTripper {
 			},
 			DisableWarningHeader: true,
 		}
-		return transport
+		return &unwrappingTransport{Transport: transport}
 	}
+}
+
+// unwrappingTransport lets code that must not use the cache, such as reporting
+// clients that need TLS verification, reach the wrapped transport.
+type unwrappingTransport struct {
+	*httpcache.Transport
+}
+
+// Unwrap returns the transport the cache wraps.
+func (t *unwrappingTransport) Unwrap() http.RoundTripper {
+	return t.Transport.Transport
 }
 
 func openDiskCache(dir string, maxBytes int64) (httpcache.Cache, *leveldb.DB, error) {

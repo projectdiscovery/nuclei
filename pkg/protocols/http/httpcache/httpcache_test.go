@@ -1,6 +1,7 @@
 package httpcache
 
 import (
+	"crypto/tls"
 	"fmt"
 	"io"
 	"net/http"
@@ -10,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/tlsverify"
 	libcache "github.com/sandrolain/httpcache"
 )
 
@@ -176,5 +178,31 @@ func TestDiskCacheRespectsSizeCap(t *testing.T) {
 	c.Set("a", dumpedResponse(t, http.StatusOK))
 	if _, ok := c.Get("a"); ok {
 		t.Fatal("stored a response over a 1-byte directory cap")
+	}
+}
+
+// Reporting clients send tokens, so tlsverify must reach the scan transport
+// under the cache wrapper and turn certificate verification on.
+func TestTransportWrapperUnwrapsForTLSVerification(t *testing.T) {
+	cacheMu.Lock()
+	saved := cache
+	cache = libcache.NewMemoryCache()
+	cacheMu.Unlock()
+	t.Cleanup(func() {
+		cacheMu.Lock()
+		cache = saved
+		cacheMu.Unlock()
+	})
+
+	base := &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}}
+	wrapped := NewTransportWrapper()(base)
+	u, ok := wrapped.(interface{ Unwrap() http.RoundTripper })
+	if !ok || u.Unwrap() != base {
+		t.Fatal("the cache wrapper does not unwrap to the scan transport")
+	}
+
+	got, ok := tlsverify.Client(&http.Client{Transport: wrapped}).Transport.(*http.Transport)
+	if !ok || got.TLSClientConfig.InsecureSkipVerify {
+		t.Fatal("tlsverify did not turn verification on under the cache wrapper")
 	}
 }

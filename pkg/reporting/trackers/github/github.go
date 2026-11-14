@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"net/http"
 	"strconv"
 
 	"github.com/google/go-github/v92/github"
@@ -12,6 +11,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/exporters/markdown/util"
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/format"
+	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/tlsverify"
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/trackers/filters"
 	"github.com/projectdiscovery/retryablehttp-go"
 	"golang.org/x/oauth2"
@@ -55,16 +55,15 @@ type Options struct {
 // New creates a new issue tracker integration client based on options.
 func New(options *Options) (*Integration, error) {
 	ctx := context.Background()
+	// Build the oauth2 client on top of the caller's client, so its transport
+	// (proxy, address policy) and redirect rules apply to every request.
+	if options.HttpClient != nil && options.HttpClient.HTTPClient != nil {
+		ctx = context.WithValue(ctx, oauth2.HTTPClient, tlsverify.Client(options.HttpClient.HTTPClient))
+	}
 	ts := oauth2.StaticTokenSource(
 		&oauth2.Token{AccessToken: options.Token},
 	)
 	tc := oauth2.NewClient(ctx, ts)
-
-	if options.HttpClient != nil && options.HttpClient.HTTPClient != nil {
-		if tcTransport, ok := tc.Transport.(*http.Transport); ok {
-			tcTransport.Proxy = options.HttpClient.HTTPClient.Transport.(*http.Transport).Proxy
-		}
-	}
 
 	clientOptions := []github.ClientOptionsFunc{github.WithHTTPClient(tc)}
 	if options.BaseURL != "" {
