@@ -862,7 +862,7 @@ func (r *Runner) RunEnumeration() error {
 		}
 		r.Logger.Info().Msgf("Running %d plan entries from %s, %d already finished", len(run.entries), r.options.RunPlanFile, run.resumed)
 		run.follow(planFollowInterval, func(err error) {
-			r.Logger.Warning().Msgf("Could not follow plan: %s", err)
+			r.Logger.Error().Msgf("Could not follow plan: %s", err)
 		})
 		executorEngine.SetPlanRun(run)
 		defer r.finishPlanRun(run)
