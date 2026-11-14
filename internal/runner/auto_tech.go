@@ -27,7 +27,7 @@ func (r *Runner) executeWithDetectedTech(executorOpts *protocols.ExecutorOptions
 	provider, ok := r.inputProvider.(interface {
 		TargetProfiles() *targetprofile.Registry
 	})
-	if !ok {
+	if !ok || provider.TargetProfiles() == nil {
 		return nil, errors.New("-auto-tech needs a target list")
 	}
 	var fingerprints, rest []*templates.Template
