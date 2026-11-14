@@ -136,14 +136,15 @@ func (r *Registry) Merge(input *contextargs.MetaInput, selection *Selection) {
 }
 
 // BindTech narrows input to the templates tech selects, as a `tech` target
-// line would. An input with a selection of its own keeps it: a union with tech
-// would widen it.
+// line would. An input bound by a target line keeps its selection, also when a
+// plain duplicate widened it to every template: a union with tech would widen
+// a selection, replacing it would drop what the line asked for.
 func (r *Registry) BindTech(input *contextargs.MetaInput, tech []string) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
 	key := keyOf(input)
-	if current := r.targets[key]; current != nil {
+	if _, bound := r.targets[key]; bound {
 		return nil
 	}
 	compiled, err := r.internRule(selector{keyTech: tech})

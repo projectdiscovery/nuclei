@@ -171,6 +171,9 @@ func ValidateOptions(options *types.Options) error {
 	if options.AutoTech && options.AutomaticScan {
 		return errors.New("-auto-tech cannot be used with -automatic-scan, which runs only the templates its tags select")
 	}
+	if options.AutoTech && options.Resume != "" {
+		return errors.New("-auto-tech cannot be used with -resume, which does not keep what the tech templates detected")
+	}
 	if options.Verbose && options.Silent {
 		return errors.New("both verbose and silent mode specified")
 	}

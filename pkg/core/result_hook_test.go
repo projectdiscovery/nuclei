@@ -57,3 +57,37 @@ func TestResultHookSeesTheResultsOfEachTarget(t *testing.T) {
 
 	require.Equal(t, map[string][]string{"a": {"nginx-detect"}, "b": {"nginx-detect"}}, seen)
 }
+
+func TestResultHookSeesEveryTargetOfAnOrigin(t *testing.T) {
+	e := newTestEngine()
+	exec := &scriptedExecuter{}
+	tpl := originScopedTemplate("{{RootURL}}/health")
+	tpl.Executer = exec
+	var seen []string
+	e.SetResultHook(func(input *contextargs.MetaInput, _ []*output.ResultEvent) { seen = append(seen, input.Input) })
+
+	for _, target := range []string{"https://example.com/a", "https://example.com/b"} {
+		_, err := e.executeTemplateOnInput(context.Background(), tpl, &contextargs.MetaInput{Input: target})
+		require.NoError(t, err)
+	}
+	require.Equal(t, 2, exec.calls, "a sibling does not settle the origin")
+	require.Equal(t, []string{"https://example.com/a", "https://example.com/b"}, seen)
+}
+
+func TestResultHookSeesResultsOnTheCallbackPath(t *testing.T) {
+	e := newTestEngine()
+	e.Callback = func(*output.ResultEvent) {}
+	var seen []*output.ResultEvent
+	e.SetResultHook(func(_ *contextargs.MetaInput, results []*output.ResultEvent) { seen = append(seen, results...) })
+	tpl := &templates.Template{ID: "nginx-detect", Executer: resultsExecuter{}}
+
+	_, err := e.executeTemplateOnInput(context.Background(), tpl, &contextargs.MetaInput{Input: "a"})
+	require.NoError(t, err)
+	require.Len(t, seen, 1)
+}
+
+type resultsExecuter struct{ matchingExecuter }
+
+func (resultsExecuter) ExecuteWithResults(*scan.ScanContext) ([]*output.ResultEvent, error) {
+	return []*output.ResultEvent{{TemplateID: "nginx-detect", MatcherStatus: true}}, nil
+}

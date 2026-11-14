@@ -273,3 +273,13 @@ func TestBindTechNarrowsOnlyTargetsWithoutASelection(t *testing.T) {
 	require.Equal(t, []string{"tomcat-panel", "CVE-2020-1938", "git-config"}, selected(t, r, "https://b.example"))
 	require.Len(t, selected(t, r, "https://c.example"), len(allTemplates), "nothing detected, nothing skipped")
 }
+
+func TestBindTechKeepsALineWidenedByAPlainDuplicate(t *testing.T) {
+	r := NewRegistry(templatesDir)
+	target := bindLine(t, r, `{"target": "https://a.example", "tags": ["thinkphp"]}`)
+	r.Merge(input(target), nil)
+	require.NoError(t, r.BindTech(input(target), []string{"tomcat"}))
+	r.Prepare(allTemplates)
+
+	require.Len(t, selected(t, r, target), len(allTemplates), "the union runs everything, thinkphp-rce included")
+}

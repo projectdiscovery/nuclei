@@ -350,12 +350,15 @@ func (e *Engine) executeTemplateOnInput(ctx context.Context, template *templates
 	// target that shares one, which a crawled list produces by the hundred.
 	// Running it once per origin sends exactly the same traffic, minus the
 	// repeats. The reservation is kept only when execution succeeds, so a
-	// failed attempt leaves the origin free for a later target.
-	finish, run := e.claimOriginScoped(template, value)
-	if !run {
-		return false, nil
+	// failed attempt leaves the origin free for a later target. A result hook must
+	// see every target, so while one is set no sibling settles another.
+	if e.resultHook == nil {
+		finish, run := e.claimOriginScoped(template, value)
+		if !run {
+			return false, nil
+		}
+		defer func() { finish(err == nil) }()
 	}
-	defer func() { finish(err == nil) }()
 	finished := e.templateExecutionStarted(template, value.Input)
 	defer func() { finished(ctx.Err()) }()
 	// every protocol dials the target's host through its pinned ip, if any
@@ -375,6 +378,9 @@ func (e *Engine) executeTemplateOnInput(ctx context.Context, template *templates
 			}
 			for _, result := range results {
 				e.Callback(result)
+			}
+			if e.resultHook != nil {
+				e.resultHook(value, results)
 			}
 			return len(results) > 0, nil
 		}
