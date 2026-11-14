@@ -3,11 +3,13 @@ package list
 import (
 	"net"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/miekg/dns"
+	"github.com/projectdiscovery/hmap/filekv"
 	"github.com/projectdiscovery/hmap/store/hybrid"
 	"github.com/projectdiscovery/nuclei/v3/pkg/input/normalize"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
@@ -312,4 +314,43 @@ func Test_expandASNInputValue(t *testing.T) {
 
 		require.ElementsMatch(t, items, got, "could not get correct ips")
 	}
+}
+
+func TestStreamModeAppliesExcludedHosts(t *testing.T) {
+	hm, err := hybrid.New(hybrid.DefaultDiskOptions)
+	require.NoError(t, err)
+
+	fkvOptions := filekv.DefaultOptions
+	fkvOptions.MaxItems = DefaultMaxDedupeItemsCount
+	fkvOptions.Path = filepath.Join(t.TempDir(), "input-stream")
+	stream, err := filekv.Open(fkvOptions)
+	require.NoError(t, err)
+
+	input := &ListInputProvider{
+		hostMap:       hm,
+		normalizeURLs: true,
+		patterns:      normalize.NewFingerprinter(0),
+		excludedHosts: make(map[string]struct{}),
+		hostMapStream: stream,
+	}
+	t.Cleanup(input.Close)
+
+	add := func(raw string) {
+		meta := contextargs.NewMetaInput()
+		meta.Input = raw
+		input.setItem(meta, nil)
+	}
+	add("http://192.0.2.10/")
+	add("http://192.0.2.20/")
+
+	input.Del("", "192.0.2.10")
+	require.Equal(t, int64(1), input.excludedCount)
+	require.Equal(t, int64(1), input.Count())
+
+	var got []string
+	input.Iterate(func(value *contextargs.MetaInput) bool {
+		got = append(got, value.Input)
+		return true
+	})
+	require.Equal(t, []string{"http://192.0.2.20/"}, got)
 }
