@@ -35,10 +35,13 @@ type planRun struct {
 	// cancelled holds ids from the cancel log; the id of a group's first entry
 	// cancels the group
 	cancelled map[uint64]struct{}
-	plan      tailedFile
-	cancel    tailedFile
-	log       *os.File
-	logErr    error
+	// finished holds done log ids the plan does not have yet, for entries
+	// appended later
+	finished map[uint64]struct{}
+	plan     tailedFile
+	cancel   tailedFile
+	log      *os.File
+	logErr   error
 	// resumed counts the entries finished before this run
 	resumed int
 	stop    func()
@@ -62,8 +65,13 @@ func openPlanRun(planFile string) (*planRun, error) {
 		entries:   make(map[uint64]plannedEntry),
 		done:      make(map[uint64]struct{}),
 		cancelled: make(map[uint64]struct{}),
+		finished:  make(map[uint64]struct{}),
 		plan:      tailedFile{path: planFile},
 		cancel:    tailedFile{path: planCancelLog(planFile)},
+	}
+	// the plan is followed like its cancel log, but must exist up front
+	if _, err := os.Stat(planFile); err != nil {
+		return nil, err
 	}
 	var lineErr error
 	firstErr := func(err error) {
@@ -171,6 +179,10 @@ func (run *planRun) addEntry(line []byte) error {
 	defer run.mu.Unlock()
 	if _, planned := run.entries[id]; !planned {
 		run.entries[id] = plannedEntry{group: group}
+		if _, finished := run.finished[id]; finished {
+			delete(run.finished, id)
+			run.done[group] = struct{}{}
+		}
 	}
 	return nil
 }
@@ -206,6 +218,8 @@ func (run *planRun) follow(interval time.Duration, onErr func(error)) {
 	run.stop = func() {
 		close(stop)
 		<-stopped
+		// what was appended since the last tick still counts as unreached
+		run.poll(onErr)
 	}
 }
 
@@ -237,6 +251,8 @@ func (run *planRun) readDoneLog(path string) error {
 		}
 		if entry, planned := run.entries[id]; planned {
 			run.done[entry.group] = struct{}{}
+		} else {
+			run.finished[id] = struct{}{}
 		}
 	}
 	if err := scanner.Err(); err != nil {

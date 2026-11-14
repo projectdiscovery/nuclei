@@ -90,3 +90,23 @@ func TestPlanRunFollowsAppendsAndCancels(t *testing.T) {
 	require.Equal(t, 0, run.unreached(), "cancelled entries are not unreached")
 	require.Len(t, errs, 1)
 }
+
+func TestPlanRunRejectsAMissingPlan(t *testing.T) {
+	_, err := openPlanRun(filepath.Join(t.TempDir(), "missing.jsonl"))
+	require.ErrorIs(t, err, os.ErrNotExist)
+}
+
+func TestPlanRunKeepsFinishedIDsForAppendedEntries(t *testing.T) {
+	planFile := filepath.Join(t.TempDir(), "plan.jsonl")
+	require.NoError(t, os.WriteFile(planFile, nil, 0o644))
+	require.NoError(t, os.WriteFile(planDoneLog(planFile), []byte("00000000000000a1\n"), 0o644))
+	run, err := openPlanRun(planFile)
+	require.NoError(t, err)
+	require.NoError(t, os.WriteFile(planFile, []byte(`{"id":"00000000000000a1","target":"https://a.example","templates":["generic"]}
+{"id":"00000000000000b1","target":"https://b.example","templates":["generic"]}
+`), 0o644))
+	run.follow(time.Hour, func(err error) { t.Error(err) })
+	require.NoError(t, run.close(), "closing reads what the last tick missed")
+	require.True(t, run.Skip("00000000000000a1"), "finished in the previous run")
+	require.Equal(t, 1, run.unreached(), "b1 was appended after the last tick")
+}
