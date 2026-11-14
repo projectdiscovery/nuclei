@@ -158,6 +158,7 @@ TEMPLATES:
    -nt, -new-templates                    run only new templates added in latest nuclei-templates release
    -ntv, -new-templates-version string[]  run new templates added in specific version
    -as, -automatic-scan                   automatic web scan using wappalyzer technology detection to tags mapping
+   -auto-tech                             run the tech templates first, then skip templates bound to products they did not detect on the target
    -t, -templates string[]                list of template or template directory to run (comma-separated, file)
    -turl, -template-url string[]          template url or list containing template urls to run (comma-separated, file)
    -ai, -prompt string                    generate and run template using ai prompt

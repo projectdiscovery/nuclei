@@ -11,6 +11,7 @@ import (
 func TestPlanRejectsOptionsThatChangeTargetsLater(t *testing.T) {
 	for name, options := range map[string]*types.Options{
 		"automatic scan": {PlanFile: "p", AutomaticScan: true},
+		"auto tech":      {PlanFile: "p", AutoTech: true},
 		"uncover":        {PlanFile: "p", Uncover: true},
 		"uncover query":  {PlanFile: "p", UncoverQuery: goflags.StringSlice{"example"}},
 		"preflight":      {PlanFile: "p", PreflightPortScan: true},
@@ -30,6 +31,7 @@ func TestPlanRejectsOptionsThatChangeTargetsLater(t *testing.T) {
 
 	for name, options := range map[string]*types.Options{
 		"run automatic scan": {RunPlanFile: "p", AutomaticScan: true},
+		"run auto tech":      {RunPlanFile: "p", AutoTech: true},
 		"run uncover":        {RunPlanFile: "p", Uncover: true},
 		"run uncover query":  {RunPlanFile: "p", UncoverQuery: goflags.StringSlice{"example"}},
 		"run preflight":      {RunPlanFile: "p", PreflightPortScan: true},
