@@ -58,7 +58,7 @@ func TestResultHookSeesTheResultsOfEachTarget(t *testing.T) {
 	require.Equal(t, map[string][]string{"a": {"nginx-detect"}, "b": {"nginx-detect"}}, seen)
 }
 
-func TestResultHookSeesEveryTargetOfAnOrigin(t *testing.T) {
+func TestResultHookKeepsOriginScopedTemplatesOncePerOrigin(t *testing.T) {
 	e := newTestEngine()
 	exec := &scriptedExecuter{}
 	tpl := originScopedTemplate("{{RootURL}}/health")
@@ -70,8 +70,8 @@ func TestResultHookSeesEveryTargetOfAnOrigin(t *testing.T) {
 		_, err := e.executeTemplateOnInput(context.Background(), tpl, &contextargs.MetaInput{Input: target})
 		require.NoError(t, err)
 	}
-	require.Equal(t, 2, exec.calls, "a sibling does not settle the origin")
-	require.Equal(t, []string{"https://example.com/a", "https://example.com/b"}, seen)
+	require.Equal(t, 1, exec.calls, "the hook does not repeat the origin's requests")
+	require.Equal(t, []string{"https://example.com/a"}, seen)
 }
 
 func TestResultHookSeesResultsOnTheCallbackPath(t *testing.T) {

@@ -10,6 +10,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/loader"
 	"github.com/projectdiscovery/nuclei/v3/pkg/core"
+	"github.com/projectdiscovery/nuclei/v3/pkg/input/normalize"
 	"github.com/projectdiscovery/nuclei/v3/pkg/input/targetprofile"
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	"github.com/projectdiscovery/nuclei/v3/pkg/progress"
@@ -50,7 +51,7 @@ func (r *Runner) executeWithDetectedTech(executorOpts *protocols.ExecutorOptions
 		defer func() { executorOpts.Progress = scanProgress }()
 	}
 
-	detected := newDetectedTech()
+	detected := newDetectedTech(fingerprints)
 	engine.SetResultHook(detected.add)
 	// unclustered, as a cluster writes its results without passing them to the
 	// hook; requests clustering would merge are identical, so the shared
@@ -59,12 +60,21 @@ func (r *Runner) executeWithDetectedTech(executorOpts *protocols.ExecutorOptions
 	engine.SetResultHook(nil)
 
 	profiles := provider.TargetProfiles()
-	for _, target := range detected.targets() {
-		if err := profiles.BindTech(target.input, target.tech); err != nil {
-			return nil, err
+	var bound int
+	var bindErr error
+	r.inputProvider.Iterate(func(input *contextargs.MetaInput) bool {
+		tech := detected.of(input)
+		if len(tech) == 0 {
+			return true
 		}
+		bound++
+		bindErr = profiles.BindTech(input, tech)
+		return bindErr == nil
+	})
+	if bindErr != nil {
+		return nil, bindErr
 	}
-	r.Logger.Info().Msgf("Detected tech on %d targets, skipping templates bound to other products there", len(detected.byTarget))
+	r.Logger.Info().Msgf("Detected tech on %d targets, skipping templates bound to other products there", bound)
 	if len(rest) == 0 {
 		return results, nil
 	}
@@ -78,9 +88,14 @@ func (r *Runner) executeWithDetectedTech(executorOpts *protocols.ExecutorOptions
 // detectedTech collects, per target, the names the tech templates matched:
 // matcher names (tech-detect reports products that way), declared products,
 // and template ids without -detect. Extra names only select more templates.
+//
+// An origin-scoped template runs once per origin, so what it detects is kept
+// for the origin and applies to every target there.
 type detectedTech struct {
-	mu       sync.Mutex
-	byTarget map[detectedKey]*detectedTarget
+	originScoped map[string]struct{}
+	mu           sync.Mutex
+	byTarget     map[detectedKey][]string
+	byOrigin     map[detectedKey][]string
 }
 
 type detectedKey struct {
@@ -88,53 +103,57 @@ type detectedKey struct {
 	ip    string
 }
 
-type detectedTarget struct {
-	input *contextargs.MetaInput
-	tech  []string
+func newDetectedTech(fingerprints []*templates.Template) *detectedTech {
+	originScoped := make(map[string]struct{})
+	for _, template := range fingerprints {
+		if template.IsOriginScoped() {
+			originScoped[template.ID] = struct{}{}
+		}
+	}
+	return &detectedTech{
+		originScoped: originScoped,
+		byTarget:     make(map[detectedKey][]string),
+		byOrigin:     make(map[detectedKey][]string),
+	}
 }
 
-func newDetectedTech() *detectedTech {
-	return &detectedTech{byTarget: make(map[detectedKey]*detectedTarget)}
+func targetKey(input *contextargs.MetaInput) detectedKey {
+	return detectedKey{input: input.Input, ip: input.CustomIP}
+}
+
+func originKey(input *contextargs.MetaInput) detectedKey {
+	return detectedKey{input: normalize.Origin(input.Input), ip: input.CustomIP}
 }
 
 func (d *detectedTech) add(input *contextargs.MetaInput, results []*output.ResultEvent) {
-	var tech []string
+	d.mu.Lock()
+	defer d.mu.Unlock()
 	for _, result := range results {
 		if !result.MatcherStatus {
 			continue
 		}
-		tech = append(tech, strings.TrimSuffix(result.TemplateID, "-detect"))
+		tech := []string{strings.TrimSuffix(result.TemplateID, "-detect")}
 		if result.MatcherName != "" {
 			tech = append(tech, result.MatcherName)
 		}
 		if product, ok := result.Info.Metadata["product"].(string); ok && product != "" {
 			tech = append(tech, product)
 		}
+		if _, ok := d.originScoped[result.TemplateID]; ok {
+			d.byOrigin[originKey(input)] = append(d.byOrigin[originKey(input)], tech...)
+		} else {
+			d.byTarget[targetKey(input)] = append(d.byTarget[targetKey(input)], tech...)
+		}
 	}
-	if len(tech) == 0 {
-		return
-	}
-	d.mu.Lock()
-	defer d.mu.Unlock()
-	key := detectedKey{input: input.Input, ip: input.CustomIP}
-	target, ok := d.byTarget[key]
-	if !ok {
-		target = &detectedTarget{input: input}
-		d.byTarget[key] = target
-	}
-	target.tech = append(target.tech, tech...)
 }
 
-func (d *detectedTech) targets() []*detectedTarget {
+// of returns what was detected on input and on its origin.
+func (d *detectedTech) of(input *contextargs.MetaInput) []string {
 	d.mu.Lock()
 	defer d.mu.Unlock()
-	targets := make([]*detectedTarget, 0, len(d.byTarget))
-	for _, target := range d.byTarget {
-		slices.Sort(target.tech)
-		target.tech = slices.Compact(target.tech)
-		targets = append(targets, target)
-	}
-	return targets
+	tech := slices.Concat(d.byTarget[targetKey(input)], d.byOrigin[originKey(input)])
+	slices.Sort(tech)
+	return slices.Compact(tech)
 }
 
 // sharedRunProgress is started by the first run with the templates of all
