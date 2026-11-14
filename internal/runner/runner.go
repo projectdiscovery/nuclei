@@ -483,6 +483,9 @@ func (r *Runner) runStandardEnumeration(executerOpts *protocols.ExecutorOptions,
 	if r.options.AutomaticScan {
 		return r.executeSmartWorkflowInput(executerOpts, store, engine)
 	}
+	if r.options.AutoTech {
+		return r.executeWithDetectedTech(executerOpts, store, engine)
+	}
 
 	return r.executeTemplatesInput(store, engine)
 }

@@ -168,6 +168,9 @@ func ValidateOptions(options *types.Options) error {
 	if err := validatePlanOptions(options); err != nil {
 		return err
 	}
+	if options.AutoTech && options.AutomaticScan {
+		return errors.New("-auto-tech cannot be used with -automatic-scan, which runs only the templates its tags select")
+	}
 	if options.Verbose && options.Silent {
 		return errors.New("both verbose and silent mode specified")
 	}
@@ -577,6 +580,8 @@ func validatePlanOptions(options *types.Options) error {
 	switch {
 	case options.AutomaticScan:
 		return fmt.Errorf("%s cannot be used with -automatic-scan, which picks templates while scanning", flag)
+	case options.AutoTech:
+		return fmt.Errorf("%s cannot be used with -auto-tech, which picks templates while scanning", flag)
 	case options.Uncover || len(options.UncoverQuery) > 0:
 		return fmt.Errorf("%s cannot be used with -uncover, which finds targets over the network", flag)
 	case options.PreflightPortScan:
