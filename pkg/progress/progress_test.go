@@ -187,7 +187,12 @@ func (s *statsClientSpy) IncrementCounter(key string, count int) {
 	s.counters[key] += uint64(count)
 }
 
-func (s *statsClientSpy) AddStatic(string, interface{}) {}
+func (s *statsClientSpy) AddStatic(key string, value interface{}) {
+	if s.statics == nil {
+		s.statics = map[string]interface{}{}
+	}
+	s.statics[key] = value
+}
 
 func (s *statsClientSpy) GetStatic(key string) (interface{}, bool) {
 	value, ok := s.statics[key]
@@ -217,7 +222,7 @@ func TestInitProbeStartsTickerOnce(t *testing.T) {
 	ticker.InitProbe(60, 1, 60)
 	ticker.IncrementProbes()
 	ticker.IncrementProbes()
-	ticker.Init(60, 1, 120)
+	ticker.Init(40, 7, 120)
 
 	// Then
 	require.True(t, stats.started)
@@ -231,13 +236,19 @@ func TestInitProbeStartsTickerOnce(t *testing.T) {
 	require.True(t, ok)
 	require.Equal(t, uint64(60), probeTotal)
 
-	// Init after InitProbe only updates the estimated request total and
-	// does not re-register or reset the probe counters
+	// Init after InitProbe updates the request total and the host and
+	// template counts, and does not reset the probe counters.
 	total, ok := stats.GetCounter("total")
 	require.True(t, ok)
 	require.Equal(t, uint64(120), total)
 	probed, _ = stats.GetCounter("probed")
 	require.Equal(t, uint64(2), probed)
+	hosts, ok := stats.GetStatic("hosts")
+	require.True(t, ok)
+	require.Equal(t, int64(40), hosts)
+	templates, ok := stats.GetStatic("templates")
+	require.True(t, ok)
+	require.Equal(t, 7, templates)
 }
 
 func TestInitWithoutProbeBehavesAsBefore(t *testing.T) {

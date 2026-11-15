@@ -134,9 +134,12 @@ func (p *StatsTicker) IncrementProbes() {
 // Init initializes the progress display mechanism by setting counters, etc.
 func (p *StatsTicker) Init(hostCount int64, rulesCount int, requestCount int64) {
 	if p.started {
-		// The ticker was already started by InitProbe: every field is
-		// registered, so only the estimated request total still needs its
-		// value. Registering new fields here would race the metrics server.
+		// The ticker was already started by InitProbe. Every field exists,
+		// so refresh the host and template counts the scan will actually use
+		// and add the request total. Registering new fields here would race
+		// the metrics server.
+		p.stats.AddStatic("hosts", hostCount)
+		p.stats.AddStatic("templates", rulesCount)
 		p.stats.IncrementCounter("total", int(requestCount))
 		return
 	}
