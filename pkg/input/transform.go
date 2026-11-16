@@ -150,9 +150,18 @@ func (h *Helper) convertInputToType(input string, inputType inputType, defaultPo
 			return net.JoinHostPort(host, port)
 		}
 		if uri != nil && !hasPort && uri.Scheme == "https" {
-			return net.JoinHostPort(uri.Host, "443")
+			// uri.Host keeps the brackets of an IPv6 literal, while
+			// JoinHostPort adds them again, yielding "[[::1]]:443".
+			return net.JoinHostPort(uri.Hostname(), "443")
 		}
 		if hasDefaultPort {
+			// For a URL input the host is the parsed hostname, not the raw
+			// input: JoinHostPort(input, defaultPort) brackets the raw string
+			// (a scheme carries a colon), producing e.g. "[http://example.com]:443",
+			// which is not a usable host:port.
+			if isURL && uri != nil && !hasPort && uri.Hostname() != "" {
+				return net.JoinHostPort(uri.Hostname(), defaultPort)
+			}
 			return net.JoinHostPort(input, defaultPort)
 		}
 		if inputType == typeHostWithOptionalPort {

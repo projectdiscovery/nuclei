@@ -49,6 +49,9 @@ func TestConvertInputToType(t *testing.T) {
 		{"google.com:443", typeHostOnly, "google.com", ""},
 		{"https://google.com", typeHostOnly, "google.com", ""},
 		{"https://google.com:443", typeHostOnly, "google.com", ""},
+		{"http://[::1]", typeHostOnly, "::1", ""},
+		{"https://[::1]:8443", typeHostOnly, "::1", ""},
+		{"http://192.0.2.10", typeHostOnly, "192.0.2.10", ""},
 
 		// url
 		{"test.com", typeURL, "test.com", ""},
@@ -70,6 +73,21 @@ func TestConvertInputToType(t *testing.T) {
 		{"https://google.com:443", typeHostWithPort, "google.com:443", ""},
 		// host-port with default port
 		{"google.com", typeHostWithPort, "google.com:443", "443"},
+		// host-port with default port and a URL input: the host must come from
+		// the parsed URL, never from the raw input string
+		{"http://google.com", typeHostWithPort, "google.com:443", "443"},
+		{"http://google.com/path", typeHostWithPort, "google.com:443", "443"},
+		{"http://192.0.2.10", typeHostWithPort, "192.0.2.10:443", "443"},
+		{"http://localhost", typeHostWithPort, "localhost:443", "443"},
+		{"http://[::1]", typeHostWithPort, "[::1]:443", "443"},
+		// an explicit port always wins over the default port
+		{"http://google.com:8443", typeHostWithPort, "google.com:8443", "443"},
+		{"http://google.com:443", typeHostWithPort, "google.com:443", "443"},
+		// without a default port the URL input is left alone
+		{"http://google.com", typeHostWithPort, "http://google.com", ""},
+		{"https://google.com/path", typeHostWithPort, "google.com:443", ""},
+		// an IPv6 literal in a https URL must not be double bracketed
+		{"https://[::1]", typeHostWithPort, "[::1]:443", ""},
 
 		// host with optional port
 		{"google.com", typeHostWithOptionalPort, "google.com", ""},
@@ -78,6 +96,7 @@ func TestConvertInputToType(t *testing.T) {
 		{"https://google.com:443", typeHostWithOptionalPort, "google.com:443", ""},
 		// host with optional port and default port
 		{"google.com", typeHostWithOptionalPort, "google.com:443", "443"},
+		{"http://google.com", typeHostWithOptionalPort, "google.com:443", "443"},
 
 		// websocket
 		{"google.com", typeWebsocket, "", ""},
