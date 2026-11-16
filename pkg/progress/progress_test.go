@@ -157,6 +157,7 @@ type statsClientSpy struct {
 	started                bool
 	counters               map[string]uint64
 	statics                map[string]interface{}
+	staticsAfterStart      int
 }
 
 func (s *statsClientSpy) Start() error {
@@ -188,6 +189,9 @@ func (s *statsClientSpy) IncrementCounter(key string, count int) {
 }
 
 func (s *statsClientSpy) AddStatic(key string, value interface{}) {
+	if s.started {
+		s.staticsAfterStart++
+	}
 	if s.statics == nil {
 		s.statics = map[string]interface{}{}
 	}
@@ -245,10 +249,31 @@ func TestInitProbeStartsTickerOnce(t *testing.T) {
 	require.Equal(t, uint64(2), probed)
 	hosts, ok := stats.GetStatic("hosts")
 	require.True(t, ok)
-	require.Equal(t, int64(40), hosts)
+	require.Equal(t, "40", clistats.String(hosts))
 	templates, ok := stats.GetStatic("templates")
 	require.True(t, ok)
-	require.Equal(t, 7, templates)
+	require.Equal(t, "7", clistats.String(templates))
+	require.Zero(t, stats.staticsAfterStart, "statics must not be written while the ticker runs")
+}
+
+func TestScanRPSExcludesProbing(t *testing.T) {
+	// Given
+	stats := &statsClientSpy{}
+	ticker := &StatsTicker{active: true, stats: stats, tickDuration: -1}
+	ticker.InitProbe(1, 1, 1)
+	ticker.IncrementProbes()
+	ticker.Init(1, 1, 100)
+
+	// When probing took 300s and the scan sent 100 requests in 9.5s
+	stats.statics["startedAt"] = time.Now().Add(-300 * time.Second)
+	ticker.scanStartedAt.set(time.Now().Add(-9500 * time.Millisecond))
+	stats.counters["requests"] = 100
+
+	// Then
+	require.Equal(t, "10", metricsMap(stats)["rps"])
+	out, ok := ticker.makePrintCallback()(stats).(string)
+	require.True(t, ok)
+	require.Contains(t, out, "| RPS: 10 ")
 }
 
 func TestInitWithoutProbeBehavesAsBefore(t *testing.T) {

@@ -4,7 +4,9 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/projectdiscovery/clistats"
@@ -78,7 +80,31 @@ type StatsTicker struct {
 	// InitProbe or Init), so Init after InitProbe does not register fields
 	// or start the ticker a second time.
 	started bool
+	// hosts, templates and scanStartedAt are registered as statics once and
+	// updated in place, because clistats reads its static map without a lock
+	// while the ticker and the metrics server run.
+	hosts         liveInt
+	templates     liveInt
+	scanStartedAt liveTime
 }
+
+// liveInt is an int64 static field that can be updated after the ticker starts.
+type liveInt struct{ v atomic.Int64 }
+
+func (l *liveInt) String() string { return strconv.FormatInt(l.v.Load(), 10) }
+
+func (l *liveInt) MarshalJSON() ([]byte, error) { return []byte(l.String()), nil }
+
+// liveTime is a time static field that can be updated after the ticker starts.
+type liveTime struct{ v atomic.Int64 }
+
+func (l *liveTime) set(t time.Time) { l.v.Store(t.UnixNano()) }
+
+func (l *liveTime) get() time.Time { return time.Unix(0, l.v.Load()) }
+
+func (l *liveTime) String() string { return l.get().Format(time.RFC3339) }
+
+func (l *liveTime) MarshalJSON() ([]byte, error) { return json.Marshal(l.get()) }
 
 // NewStatsTicker creates and returns a new progress tracking object.
 func NewStatsTicker(duration int, active, outputJSON, cloud bool, port int) (Progress, error) {
@@ -135,11 +161,11 @@ func (p *StatsTicker) IncrementProbes() {
 func (p *StatsTicker) Init(hostCount int64, rulesCount int, requestCount int64) {
 	if p.started {
 		// The ticker was already started by InitProbe. Every field exists,
-		// so refresh the host and template counts the scan will actually use
-		// and add the request total. Registering new fields here would race
-		// the metrics server.
-		p.stats.AddStatic("hosts", hostCount)
-		p.stats.AddStatic("templates", rulesCount)
+		// so only store the counts the scan will actually use, restart the
+		// scan clock so RPS excludes probing, and add the request total.
+		p.hosts.v.Store(hostCount)
+		p.templates.v.Store(int64(rulesCount))
+		p.scanStartedAt.set(time.Now())
 		p.stats.IncrementCounter("total", int(requestCount))
 		return
 	}
@@ -149,9 +175,14 @@ func (p *StatsTicker) Init(hostCount int64, rulesCount int, requestCount int64) 
 
 // register adds all counters and fields used by the progress display.
 func (p *StatsTicker) register(hostCount int64, rulesCount int, requestCount int64) {
-	p.stats.AddStatic("templates", rulesCount)
-	p.stats.AddStatic("hosts", hostCount)
-	p.stats.AddStatic("startedAt", time.Now())
+	now := time.Now()
+	p.templates.v.Store(int64(rulesCount))
+	p.hosts.v.Store(hostCount)
+	p.scanStartedAt.set(now)
+	p.stats.AddStatic("templates", &p.templates)
+	p.stats.AddStatic("hosts", &p.hosts)
+	p.stats.AddStatic("startedAt", now)
+	p.stats.AddStatic("scanStartedAt", &p.scanStartedAt)
 	p.stats.AddCounter("requests", uint64(0))
 	p.stats.AddCounter("errors", uint64(0))
 	p.stats.AddCounter("matched", uint64(0))
@@ -280,9 +311,9 @@ func (p *StatsTicker) makePrintCallback() func(stats clistats.StatisticsClient) 
 			total = requests
 		}
 
-		if okRequests && okTotal && duration > 0 && !p.cloud {
+		if scanDuration := scanElapsed(stats, duration); okRequests && okTotal && scanDuration > 0 && !p.cloud {
 			builder.WriteString(" | RPS: ")
-			builder.WriteString(clistats.String(uint64(float64(requests) / duration.Seconds())))
+			builder.WriteString(clistats.String(uint64(float64(requests) / scanDuration.Seconds())))
 		}
 
 		if matched, ok := stats.GetCounter("matched"); ok {
@@ -358,7 +389,7 @@ func metricsMap(stats clistats.StatisticsClient) map[string]interface{} {
 	results["requests"] = clistats.String(requests)
 	total, _ := stats.GetCounter("total")
 	results["total"] = clistats.String(total)
-	results["rps"] = clistats.String(uint64(float64(requests) / duration.Seconds()))
+	results["rps"] = clistats.String(uint64(float64(requests) / scanElapsed(stats, duration).Seconds()))
 	errors, _ := stats.GetCounter("errors")
 	results["errors"] = clistats.String(errors)
 	tasks, _ := stats.GetCounter("tasks")
@@ -372,6 +403,17 @@ func metricsMap(stats clistats.StatisticsClient) map[string]interface{} {
 
 	results["percent"] = clistats.String(scanPercent(stats))
 	return results
+}
+
+// scanElapsed returns the time since scan execution started, which excludes
+// input probing, falling back to the overall elapsed time.
+func scanElapsed(stats clistats.StatisticsClient, elapsed time.Duration) time.Duration {
+	if value, ok := stats.GetStatic("scanStartedAt"); ok {
+		if scanStart, ok := value.(*liveTime); ok {
+			return time.Since(scanStart.get())
+		}
+	}
+	return elapsed
 }
 
 // taskCounts returns the done and total tasks when the scan counts tasks.
