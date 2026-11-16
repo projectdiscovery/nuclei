@@ -1340,6 +1340,9 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 				}
 			}
 
+			if request.sharesResponse {
+				generatedRequest.request.WithContext(httpclientpool.WithSharedResponse(generatedRequest.request.Context(), request.options.TemplateID))
+			}
 			resp, err = executingClient.Do(generatedRequest.request)
 			sent = true
 

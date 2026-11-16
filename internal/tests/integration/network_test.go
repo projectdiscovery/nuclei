@@ -46,6 +46,35 @@ func TestNetwork(t *testing.T) {
 		}
 	})
 
+	t.Run("ReplayStoredEvents", func(t *testing.T) {
+		server := testutils.NewTCPServer(nil, 0, func(conn net.Conn) {
+			defer func() { _ = conn.Close() }()
+
+			data, err := reader.ConnReadNWithTimeout(conn, 4, 5*time.Second)
+			if err == nil && string(data) == "PING" {
+				_, _ = conn.Write([]byte("PONG"))
+			}
+		})
+		events := filepath.Join(t.TempDir(), "events.jsonl")
+		results, err := testutils.RunNucleiTemplateAndGetResults("protocols/network/basic.yaml", server.URL, suite.debug, "-store-events", events)
+		server.Close()
+		if err != nil {
+			t.Fatalf("recording network events failed: %v", err)
+		}
+		if err := expectResultsCount(results, 1); err != nil {
+			t.Fatal(err)
+		}
+
+		// the server is gone, so the finding can only come from the stored event
+		results, err = testutils.RunNucleiBareArgsAndGetResults(suite.debug, nil, "-t", "protocols/network/basic.yaml", "-replay", events)
+		if err != nil {
+			t.Fatalf("replaying network events failed: %v", err)
+		}
+		if err := expectResultsCount(results, 1); err != nil {
+			t.Fatal(err)
+		}
+	})
+
 	t.Run("PinnedTargetLine", func(t *testing.T) {
 		server := testutils.NewTCPServer(nil, 0, func(conn net.Conn) {
 			defer func() { _ = conn.Close() }()

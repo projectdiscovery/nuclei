@@ -1839,6 +1839,7 @@
     "userAgent.UserAgentHolder": {
       "type": "string",
       "enum": [
+        "random",
         "off",
         "default",
         "custom"

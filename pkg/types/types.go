@@ -247,6 +247,9 @@ type Options struct {
 	LeaveDefaultPorts bool
 	// AutomaticScan enables automatic tech based template execution
 	AutomaticScan bool
+	// AutoTech runs the tech templates first and skips, on each target, the
+	// templates bound to products they did not detect there.
+	AutoTech bool
 	// Silent suppresses any extra text and only writes found URLs on screen.
 	Silent bool
 	// Validate validates the templates passed to nuclei.
@@ -254,6 +257,15 @@ type Options struct {
 	// PlanFile is where the work a scan would do is written as JSON lines;
 	// nuclei exits after writing it, without sending requests.
 	PlanFile string
+	// RunPlanFile is a plan whose entries the scan runs, skipping those its
+	// done log lists as finished.
+	RunPlanFile string
+	// StoreEvents is where the scan writes the event of every request, as
+	// JSON lines, for -replay.
+	StoreEvents string
+	// ReplayFile is a corpus written by -store-events whose events the
+	// templates are run over, without sending requests.
+	ReplayFile string
 	// NoStrictSyntax disables strict syntax check on nuclei templates (allows custom key-value pairs).
 	NoStrictSyntax bool
 	// Verbose flag indicates whether to show verbose output or not
@@ -284,6 +296,8 @@ type Options struct {
 	JSONExport string
 	// JSONLExport is the file to export JSONL output format to
 	JSONLExport string
+	// CSVExport is the file to export CSV output format to
+	CSVExport string
 	// PDFExport is the file to export PDF output format to
 	PDFExport string
 	// Redact redacts given keys in
@@ -710,9 +724,13 @@ func (options *Options) Copy() *Options {
 		AutoCalibrate:                  options.AutoCalibrate,
 		LeaveDefaultPorts:              options.LeaveDefaultPorts,
 		AutomaticScan:                  options.AutomaticScan,
+		AutoTech:                       options.AutoTech,
 		Silent:                         options.Silent,
 		Validate:                       options.Validate,
 		PlanFile:                       options.PlanFile,
+		RunPlanFile:                    options.RunPlanFile,
+		StoreEvents:                    options.StoreEvents,
+		ReplayFile:                     options.ReplayFile,
 		NoStrictSyntax:                 options.NoStrictSyntax,
 		Verbose:                        options.Verbose,
 		VerboseVerbose:                 options.VerboseVerbose,
@@ -728,6 +746,7 @@ func (options *Options) Copy() *Options {
 		OmitTemplate:                   options.OmitTemplate,
 		JSONExport:                     options.JSONExport,
 		JSONLExport:                    options.JSONLExport,
+		CSVExport:                      options.CSVExport,
 		PDFExport:                      options.PDFExport,
 		Redact:                         options.Redact,
 		NoRedact:                       options.NoRedact,

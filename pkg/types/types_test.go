@@ -18,9 +18,12 @@ func TestCopyPreservesPayloadRandomOrder(t *testing.T) {
 }
 
 func TestCopyPreservesPlanFile(t *testing.T) {
-	options := &Options{PlanFile: "plan.jsonl"}
+	options := &Options{PlanFile: "plan.jsonl", RunPlanFile: "run.jsonl"}
 	if options.Copy().PlanFile != "plan.jsonl" {
 		t.Fatal("Copy must preserve PlanFile, or an embedded caller loses plan mode")
+	}
+	if options.Copy().RunPlanFile != "run.jsonl" {
+		t.Fatal("Copy must preserve RunPlanFile, or an embedded caller runs the whole scan")
 	}
 }
 

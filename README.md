@@ -160,6 +160,7 @@ TEMPLATES:
    -nt, -new-templates                    run only new templates added in latest nuclei-templates release
    -ntv, -new-templates-version string[]  run new templates added in specific version
    -as, -automatic-scan                   automatic web scan using wappalyzer technology detection to tags mapping
+   -auto-tech                             run the tech templates first, then skip templates bound to products they did not detect on the target
    -t, -templates string[]                list of template or template directory to run (comma-separated, file)
    -turl, -template-url string[]          template url or list containing template urls to run (comma-separated, file)
    -ai, -prompt string                    generate and run template using ai prompt
@@ -167,6 +168,7 @@ TEMPLATES:
    -wurl, -workflow-url string[]          workflow url or list containing workflow urls to run (comma-separated, file)
    -validate                              validate the passed templates to nuclei
    -plan string                           write the work a scan would do with its estimated cost to a jsonl file, then exit without sending requests to any target
+   -run-plan string                       run only the entries of a -plan file, logging finished ones to <file>.done so running it again resumes, and following entries appended to it and ids appended to <file>.cancel
    -nss, -no-strict-syntax                disable strict syntax check on templates
    -td, -template-display                 displays the templates content
    -tl                                    list all templates matching current filters
@@ -206,6 +208,7 @@ OUTPUT:
    -o, -output string            output file to write found issues/vulnerabilities
    -sresp, -store-resp           store all request/response passed through nuclei to output directory
    -srd, -store-resp-dir string  store all request/response passed through nuclei to custom directory (default "output")
+   -store-events string          store what the matchers of every request see, for any protocol, to a jsonl file for -replay (holds raw traffic, credentials included)
    -silent                       display findings only
    -nc, -no-color                disable output content coloring (ANSI escape codes)
    -j, -jsonl                    write output in JSONL(ines) format
@@ -220,6 +223,7 @@ OUTPUT:
    -se, -sarif-export string     file to export results in SARIF format
    -je, -json-export string      file to export results in JSON format
    -jle, -jsonl-export string    file to export results in JSONL(ine) format
+   -ce, -csv-export string       file to export results in CSV format
    -pe, -pdf-export string       file to export results in PDF format
    -rd, -redact string[]         redact given list of keys from query parameter, request header and body
    -nrd, -no-redact              disable the built-in redaction of credential headers (Authorization, Cookie, Set-Cookie, ...) in output; keys given with -redact are still redacted
@@ -239,6 +243,7 @@ CONFIGURATIONS:
    -sr, -system-resolvers                use system DNS resolving as error fallback
    -dc, -disable-clustering              disable clustering of requests
    -passive                              enable passive HTTP response processing mode
+   -replay string                        run the templates' matchers and extractors over a -store-events file and print the findings sorted, without sending requests
    -fh2, -force-http2                    force http2 connection on requests
    -ev, -env-vars                        enable environment variables to be used in template
    -cc, -client-cert string              client certificate file (PEM-encoded) used for authenticating against scanned hosts
@@ -411,11 +416,11 @@ Run nuclei with a JSON output:
 Run nuclei with sorted Markdown outputs (with environment variables):
 	$ MARKDOWN_EXPORT_SORT_MODE=template nuclei -target example.com -markdown-export nuclei_report/
 
-Additional documentation is available at: https://docs.projectdiscovery.io/getting-started/running
+Additional documentation is available at: https://docs.projectdiscovery.io/tools/nuclei/running
 
 ```
 
-Additional documentation is available at: [**`docs.projectdiscovery.io/getting-started/running`**](https://docs.projectdiscovery.io/getting-started/running?utm_source=github&utm_medium=web&utm_campaign=nuclei_readme)
+Additional documentation is available at: [**`docs.projectdiscovery.io/tools/nuclei/running`**](https://docs.projectdiscovery.io/tools/nuclei/running?utm_source=github&utm_medium=web&utm_campaign=nuclei_readme)
 
 </details>
 

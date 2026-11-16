@@ -58,6 +58,8 @@ type Client struct {
 	// determines if wait the cooldown period in case of generated URL
 	generated atomic.Bool
 	matched   atomic.Bool
+	// lastExpirySweep is when dropExpiredRequests last ran, in Unix nanoseconds.
+	lastExpirySweep atomic.Int64
 
 	onInteractionMu sync.RWMutex
 	onInteraction   func(i *server.Interaction, foundRequest *RequestData)
@@ -524,6 +526,7 @@ func (c *Client) RequestEvent(interactshURLs []string, data *RequestData) {
 		return
 	}
 	c.initializeCaches()
+	c.dropExpiredRequests()
 	for _, interactshURL := range interactshURLs {
 		id := strings.TrimRight(strings.TrimSuffix(interactshURL, c.getHostname()), ".")
 
@@ -553,6 +556,34 @@ func (c *Client) RequestEvent(interactshURLs []string, data *RequestData) {
 				_ = c.requests.SetWithExpire(id, data, c.eviction)
 			}
 			c.requestLifecycleMu.RUnlock()
+		}
+	}
+}
+
+// dropExpiredRequests removes the registrations past their eviction deadline,
+// at most once per poll interval.
+//
+// The cache drops an expired entry only when its key is read again or the LRU
+// needs room, and the key of a target that never calls back is never read. So
+// without this, a scan keeps the event of every OOB request, response body and
+// full response included, until the cache is full: CacheSize times the response
+// read size. An expired entry can no longer match anyway, since the poller's
+// lookup drops it unprocessed.
+func (c *Client) dropExpiredRequests() {
+	now := time.Now().UnixNano()
+	last := c.lastExpirySweep.Load()
+	if now-last < int64(c.pollDuration) || !c.lastExpirySweep.CompareAndSwap(last, now) {
+		return
+	}
+
+	// The write lock keeps a registration from being replaced between its
+	// expiry check and its removal.
+	c.requestLifecycleMu.Lock()
+	defer c.requestLifecycleMu.Unlock()
+
+	for _, id := range c.requests.Keys(false) {
+		if !c.requests.Has(id) {
+			c.requests.Remove(id)
 		}
 	}
 }

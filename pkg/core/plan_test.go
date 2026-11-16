@@ -154,3 +154,62 @@ func TestPlanListsOriginAlternatives(t *testing.T) {
 	})
 	require.Equal(t, plan, again)
 }
+
+// fixedPlanRun is a plan run over fixed ids that records the finished ones.
+type fixedPlanRun struct {
+	mu       sync.Mutex
+	allowed  map[string]bool
+	finished []string
+}
+
+func (a *fixedPlanRun) Skip(id string) bool { return !a.allowed[id] }
+
+func (a *fixedPlanRun) Finished(id string) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	a.finished = append(a.finished, id)
+}
+
+func TestPlanRunRunsOnlyThePlannedPairs(t *testing.T) {
+	options := &types.Options{BulkSize: 2, TemplateThreads: 2, HeadlessBulkSize: 1, HeadlessTemplateThreads: 1}
+	engine := New(options)
+	engine.SetExecuterOptions(&protocols.ExecutorOptions{
+		Logger:       engine.Logger,
+		Options:      options,
+		ResumeCfg:    types.NewResumeCfg(),
+		ProtocolType: tmpltypes.HTTPProtocol,
+		Progress:     &progressRecorder{},
+		TargetScope:  scopeByInput{"php": {paths: []string{"thinkphp.yaml"}}},
+	})
+
+	var (
+		mu   sync.Mutex
+		runs []string
+	)
+	var templatesList []*templates.Template
+	for _, path := range []string{"thinkphp.yaml", "generic.yaml"} {
+		templatesList = append(templatesList, &templates.Template{
+			ID:            path,
+			Path:          path,
+			TotalRequests: 1,
+			Executer:      &recordingExecuter{path: path, mu: &mu, runs: &runs},
+		})
+	}
+	targets := &fakeTargetProvider{values: []*contextargs.MetaInput{{Input: "php"}, {Input: "plain"}}}
+
+	var plan []PlanEntry
+	engine.Plan(templatesList, targets, true, func(entry PlanEntry) { plan = append(plan, entry) })
+	require.Len(t, plan, 3)
+
+	// the first entry is left out of the plan, as if an agent removed it
+	run := &fixedPlanRun{allowed: map[string]bool{plan[1].ID: true, plan[2].ID: true}}
+	engine.SetPlanRun(run)
+	engine.ExecuteScanWithOpts(context.Background(), templatesList, targets, true)
+
+	var want []string
+	for _, entry := range plan[1:] {
+		want = append(want, entry.Templates[0]+"@"+entry.Target)
+	}
+	require.ElementsMatch(t, want, runs, "only the planned pairs run")
+	require.ElementsMatch(t, []string{plan[1].ID, plan[2].ID}, run.finished, "the scan derives the ids the plan wrote")
+}
