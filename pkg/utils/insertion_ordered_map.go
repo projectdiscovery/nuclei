@@ -38,12 +38,19 @@ func (insertionOrderedStringMap *InsertionOrderedStringMap) UnmarshalYAML(unmars
 	if err := unmarshal(&data); err != nil {
 		return err
 	}
-	insertionOrderedStringMap.values = make(map[string]interface{})
+	insertionOrderedStringMap.keys = make([]string, 0, len(data))
+	insertionOrderedStringMap.values = make(map[string]interface{}, len(data))
 	for _, v := range data {
 		if v.Key == nil {
 			continue
 		}
-		insertionOrderedStringMap.Set(v.Key.(string), toString(v.Value))
+		// YAML decodes unquoted keys such as 200 or true as numbers and
+		// booleans, so read them back as the text that was written.
+		key, ok := toString(v.Key).(string)
+		if !ok {
+			return fmt.Errorf("unsupported map key %v", v.Key)
+		}
+		insertionOrderedStringMap.Set(key, toString(v.Value))
 	}
 	return nil
 }
@@ -53,7 +60,8 @@ func (insertionOrderedStringMap *InsertionOrderedStringMap) UnmarshalJSON(data [
 	if err := json.Unmarshal(data, &dataMap); err != nil {
 		return err
 	}
-	insertionOrderedStringMap.values = make(map[string]interface{})
+	insertionOrderedStringMap.keys = make([]string, 0, len(dataMap))
+	insertionOrderedStringMap.values = make(map[string]interface{}, len(dataMap))
 	for k, v := range dataMap {
 		insertionOrderedStringMap.Set(k, toString(v))
 	}
