@@ -103,7 +103,7 @@ require (
 	github.com/projectdiscovery/retryabledns v1.0.118
 	github.com/projectdiscovery/retryablehttp-go v1.3.34
 	github.com/projectdiscovery/sarif v0.1.0
-	github.com/projectdiscovery/tlsx v1.4.5
+	github.com/projectdiscovery/tlsx v1.4.3-0.20261020052910-acb80c2c7c75
 	github.com/projectdiscovery/uncover v1.2.1
 	github.com/projectdiscovery/useragent v0.0.110
 	github.com/projectdiscovery/utils v0.11.13

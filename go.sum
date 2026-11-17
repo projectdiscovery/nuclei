@@ -987,8 +987,8 @@ github.com/projectdiscovery/sarif v0.1.0 h1:O541T+a448nSJsmIMnXXSOeDQEzpnCAYvRfe
 github.com/projectdiscovery/sarif v0.1.0/go.mod h1:LBC+reM3bkI3qIIhE0rZaINaYX6VG+En6u2hHa5mA7E=
 github.com/projectdiscovery/stringsutil v0.0.2 h1:uzmw3IVLJSMW1kEg8eCStG/cGbYYZAja8BH3LqqJXMA=
 github.com/projectdiscovery/stringsutil v0.0.2/go.mod h1:EJ3w6bC5fBYjVou6ryzodQq37D5c6qbAYQpGmAy+DC0=
-github.com/projectdiscovery/tlsx v1.4.5 h1:jJImXalHpq+gtXEnrsQjHKFcFgWpYlLYWMS26GPXus0=
-github.com/projectdiscovery/tlsx v1.4.5/go.mod h1:T26MvekV2O9keTvCKvij5pLEBb1OtC5LKYjAs/xgs1A=
+github.com/projectdiscovery/tlsx v1.4.3-0.20261020052910-acb80c2c7c75 h1:3qJgfWzzwtFXc/vdUIurSzPzyjBH9NQe0wATkZMoQGI=
+github.com/projectdiscovery/tlsx v1.4.3-0.20261020052910-acb80c2c7c75/go.mod h1:8jqB9aHT6U8NkUsENvaSjD/iBEGB4Ta+CbJBMcvzP9c=
 github.com/projectdiscovery/uncover v1.2.1 h1:8U46T/96CLT7BPoXBgkTvWqB06lOyeTSLvh5+UjzATE=
 github.com/projectdiscovery/uncover v1.2.1/go.mod h1:0p8onrWxfpXQEYs90ZDzTSpu1107gWmodX1NWqu/+z4=
 github.com/projectdiscovery/useragent v0.0.110 h1:hoKpQssbFLSSmK/Vxf/fG/a+PToEYdzLafG7HHbvCAc=
