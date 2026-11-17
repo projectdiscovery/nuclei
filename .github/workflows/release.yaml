@@ -6,31 +6,40 @@ on:
       - '*'
   workflow_dispatch: {}
 
+permissions: {}
+
 jobs:
   pgo:
     name: "Generate PGO"
     uses: ./.github/workflows/generate-pgo.yaml
+    permissions:
+      contents: read
 
   release:
     name: "Release"
     needs: ["pgo"]
     runs-on: ubuntu-latest-16-cores
+    permissions:
+      contents: write # create the GitHub release and upload assets
+      id-token: write # mint the OIDC token for the Sigstore signing certificate
+      attestations: write # persist the build provenance attestations
     steps: 
-      - uses: actions/checkout@v7.0.1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with: 
           fetch-depth: 0
-      - uses: actions/download-artifact@v8
+          persist-credentials: false
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: "pgo"
           path: "cmd/nuclei/"
-      - uses: projectdiscovery/actions/setup/go@v1
+      - uses: projectdiscovery/actions/setup/go@3037fcdc8e8ea0807b5bce596eabc6f919d9e3c5 # v1
         with:
           go-version: "stable"
-      - uses: docker/login-action@v4 
+      - uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4.8.0
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_TOKEN }}
-      - uses: projectdiscovery/actions/goreleaser@v1
+      - uses: projectdiscovery/actions/goreleaser@3037fcdc8e8ea0807b5bce596eabc6f919d9e3c5 # v1
         with: 
           release: true
         env: 
@@ -38,3 +47,11 @@ jobs:
           SLACK_WEBHOOK: "${{ secrets.RELEASE_SLACK_WEBHOOK }}"
           DISCORD_WEBHOOK_ID: "${{ secrets.DISCORD_WEBHOOK_ID }}"
           DISCORD_WEBHOOK_TOKEN: "${{ secrets.DISCORD_WEBHOOK_TOKEN }}"
+      # The goreleaser composite action runs in this job's workspace, so its
+      # dist/ directory is available here. Attest every released archive (and
+      # the checksums file itself) so users can run `gh attestation verify`.
+      - uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: |
+            dist/nuclei_*.zip
+            dist/nuclei_*_checksums.txt
