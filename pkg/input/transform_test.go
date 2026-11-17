@@ -52,6 +52,7 @@ func TestConvertInputToType(t *testing.T) {
 		{"http://[::1]", typeHostOnly, "::1", ""},
 		{"https://[::1]:8443", typeHostOnly, "::1", ""},
 		{"http://192.0.2.10", typeHostOnly, "192.0.2.10", ""},
+		{"http://intranet", typeHostOnly, "intranet", ""},
 
 		// url
 		{"test.com", typeURL, "test.com", ""},
@@ -80,11 +81,15 @@ func TestConvertInputToType(t *testing.T) {
 		{"http://192.0.2.10", typeHostWithPort, "192.0.2.10:443", "443"},
 		{"http://localhost", typeHostWithPort, "localhost:443", "443"},
 		{"http://[::1]", typeHostWithPort, "[::1]:443", "443"},
+		{"http://intranet", typeHostWithPort, "intranet:443", "443"},
+		{"http://intranet/path", typeHostWithPort, "intranet:443", "443"},
+		{"http://intranet:8080", typeHostWithPort, "intranet:8080", "443"},
 		// an explicit port always wins over the default port
 		{"http://google.com:8443", typeHostWithPort, "google.com:8443", "443"},
 		{"http://google.com:443", typeHostWithPort, "google.com:443", "443"},
 		// without a default port the URL input is left alone
 		{"http://google.com", typeHostWithPort, "http://google.com", ""},
+		{"http://intranet", typeHostWithPort, "http://intranet", ""},
 		{"https://google.com/path", typeHostWithPort, "google.com:443", ""},
 		// an IPv6 literal in a https URL must not be double bracketed
 		{"https://[::1]", typeHostWithPort, "[::1]:443", ""},

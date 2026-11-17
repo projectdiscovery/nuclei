@@ -95,6 +95,13 @@ const (
 func (h *Helper) convertInputToType(input string, inputType inputType, defaultPort string) string {
 	isURL := strings.Contains(input, "://")
 	uri, _ := urlutil.Parse(input)
+	// Parse treats a single-label host such as "intranet" as a relative path
+	// and clears Host. The input is already absolute, so parse it as one.
+	if isURL {
+		if abs, err := urlutil.ParseAbsoluteURL(input, false); err == nil {
+			uri = abs
+		}
+	}
 
 	var host, port string
 	if isURL && uri != nil {
