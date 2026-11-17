@@ -1,7 +1,6 @@
 package jsonl
 
 import (
-	"errors"
 	"os"
 	"path/filepath"
 	"testing"
@@ -36,8 +35,8 @@ func TestCloseReleasesFileAfterFlushFailure(t *testing.T) {
 			require.NoError(t, exporter.Export(&tc.event))
 			err = exporter.Close()
 			require.ErrorContains(t, err, tc.wantError)
-			_, err = file.Stat()
-			require.True(t, errors.Is(err, os.ErrClosed), "Close must release the file even when flushing fails: %v", err)
+			_, err = file.Read(make([]byte, 1))
+			require.ErrorIs(t, err, os.ErrClosed, "Close must release the file even when flushing fails")
 		})
 	}
 }
@@ -57,7 +56,7 @@ func TestCloseFlushesPendingRows(t *testing.T) {
 	file := exporter.outputFile
 	require.NoError(t, exporter.Export(&output.ResultEvent{TemplateID: "pending"}))
 	require.NoError(t, exporter.Close())
-	_, err = file.Stat()
+	_, err = file.Read(make([]byte, 1))
 	require.ErrorIs(t, err, os.ErrClosed)
 	data, err := os.ReadFile(path)
 	require.NoError(t, err)
