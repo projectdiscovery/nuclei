@@ -163,3 +163,44 @@ func TestExtractor_ExtractDSL(t *testing.T) {
 	got = e.ExtractDSL(map[string]interface{}{"hi": "hello"})
 	require.Equal(t, map[string]struct{}{}, got)
 }
+
+// TestExtractor_ExtractXPath_XMLPrologHTMLFallback mirrors the matcher case for
+// extractors: an XHTML document that declares itself as XML must still be
+// extracted from instead of yielding no values.
+func TestExtractor_ExtractXPath_XMLPrologHTMLFallback(t *testing.T) {
+	body := `<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head><title>a&nbsp;b</title></head>
+<body><h1 id="h">Admin</h1><br></body>
+</html>`
+
+	e := &Extractor{Type: ExtractorTypeHolder{ExtractorType: XPathExtractor}, XPath: []string{"//h1"}}
+	err := e.CompileExtractors()
+	require.Nil(t, err)
+
+	got := e.ExtractXPath(body)
+	require.Equal(t, map[string]struct{}{"Admin": {}}, got)
+
+	// The XML-only entry point is unchanged: a document that is not well-formed
+	// XML yields no results.
+	require.Equal(t, map[string]struct{}{}, e.ExtractXML(body))
+}
+
+// TestExtractor_ExtractXPath_XMLPrologNoFallbackOnMiss guards the extractor
+// fallback the same way as the matcher one.
+func TestExtractor_ExtractXPath_XMLPrologNoFallbackOnMiss(t *testing.T) {
+	body := `<?xml version="1.0" encoding="utf-8"?><Root><Item>x</Item></Root>`
+
+	e := &Extractor{Type: ExtractorTypeHolder{ExtractorType: XPathExtractor}, XPath: []string{"//item"}}
+	err := e.CompileExtractors()
+	require.Nil(t, err)
+
+	require.Equal(t, map[string]struct{}{}, e.ExtractXPath(body), "Well-formed XML must be matched case-sensitively")
+
+	e = &Extractor{Type: ExtractorTypeHolder{ExtractorType: XPathExtractor}, XPath: []string{"//Item"}}
+	err = e.CompileExtractors()
+	require.Nil(t, err)
+
+	require.Equal(t, map[string]struct{}{"x": {}}, e.ExtractXPath(body))
+}
