@@ -32,6 +32,13 @@ type Tracker struct {
 	wafSkips    atomic.Uint64
 	wafDuration atomic.Uint64
 
+	// counterMu serializes get-or-create of the counters above. Each map is
+	// concurrency safe on its own, but the read-then-write pair across a map
+	// is not: when two goroutines race on the first hit for the same key they
+	// each install their own counter, the later Set discards the earlier one,
+	// and every increment already made on the discarded counter is lost.
+	counterMu sync.Mutex
+
 	// internal stuff
 	wafDetector *waf.WafDetector
 }
@@ -99,13 +106,29 @@ func (t *Tracker) GetWAFMetrics() WAFMetrics {
 }
 
 func (t *Tracker) incrementCounter(m *mapsutil.SyncLockMap[string, *atomic.Int32], key string) {
-	if counter, ok := m.Get(key); ok {
-		counter.Add(1)
-	} else {
-		newCounter := new(atomic.Int32)
-		newCounter.Store(1)
-		_ = m.Set(key, newCounter)
+	counter, ok := m.Get(key)
+	if !ok {
+		counter = t.getOrCreateCounter(m, key)
 	}
+	counter.Add(1)
+}
+
+// getOrCreateCounter returns the counter stored for key, creating and storing
+// it when it is still absent. Only creation is serialized, so concurrent first
+// hits for the same key all end up incrementing one counter; the Add itself
+// stays outside the lock.
+func (t *Tracker) getOrCreateCounter(m *mapsutil.SyncLockMap[string, *atomic.Int32], key string) *atomic.Int32 {
+	t.counterMu.Lock()
+	defer t.counterMu.Unlock()
+
+	// Re-check under the lock: another goroutine may have created the counter
+	// between the caller's first Get and this point.
+	if counter, ok := m.Get(key); ok {
+		return counter
+	}
+	counter := new(atomic.Int32)
+	_ = m.Set(key, counter)
+	return counter
 }
 
 type StatsOutput struct {
