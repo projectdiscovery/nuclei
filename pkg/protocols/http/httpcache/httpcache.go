@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 
 	"github.com/projectdiscovery/gologger"
@@ -90,7 +91,8 @@ type transport struct {
 // A pure cache hit leaves origin false. The cache clones the request and
 // keeps this pointer in the context, including on revalidation.
 type originContact struct {
-	origin bool
+	origin    bool
+	setCookie []string
 }
 
 type originContactKey struct{}
@@ -101,10 +103,19 @@ type originMarker struct {
 }
 
 func (m originMarker) RoundTrip(req *http.Request) (*http.Response, error) {
-	if contact, ok := req.Context().Value(originContactKey{}).(*originContact); ok && contact != nil {
+	contact, _ := req.Context().Value(originContactKey{}).(*originContact)
+	if contact != nil {
 		contact.origin = true
 	}
-	return m.next.RoundTrip(req)
+	resp, err := m.next.RoundTrip(req)
+	if err != nil || resp == nil || contact == nil {
+		return resp, err
+	}
+	// The cache stores the header map it is given. Drop Set-Cookie before that
+	// copy so one client's jar is not installed into another's. The caller gets
+	// the values back on a header map the cache does not retain.
+	contact.setCookie = takeSetCookies(resp.Header)
+	return resp, nil
 }
 
 func newCachingTransport(base *cache.Transport, next http.RoundTripper) *transport {
@@ -112,9 +123,39 @@ func newCachingTransport(base *cache.Transport, next http.RoundTripper) *transpo
 }
 
 // carriesIdentity reports whether req has a credential or browser-origin
-// field the cache key does not include.
+// field the cache key does not include. Header keys are compared
+// case-insensitively because a builder can store a non-canonical key.
 func carriesIdentity(req *http.Request) bool {
-	return len(req.Header["Authorization"]) > 0 || len(req.Header["Cookie"]) > 0 || len(req.Header["Origin"]) > 0
+	return headerHas(req.Header, "Authorization") || headerHas(req.Header, "Cookie") || headerHas(req.Header, "Origin")
+}
+
+func headerHas(h http.Header, name string) bool {
+	for key, values := range h {
+		if len(values) > 0 && strings.EqualFold(key, name) {
+			return true
+		}
+	}
+	return false
+}
+
+func nonCanonicalHeader(h http.Header) bool {
+	for key := range h {
+		if key != http.CanonicalHeaderKey(key) {
+			return true
+		}
+	}
+	return false
+}
+
+func takeSetCookies(h http.Header) []string {
+	var cookies []string
+	for key, values := range h {
+		if strings.EqualFold(key, "Set-Cookie") {
+			cookies = append(cookies, values...)
+			delete(h, key)
+		}
+	}
+	return cookies
 }
 
 // ServedFromCache reports whether resp was answered from stored data without
@@ -136,7 +177,10 @@ func ContactedOrigin(sent bool, resp *http.Response) bool {
 }
 
 func (t *transport) RoundTrip(req *http.Request) (*http.Response, error) {
-	if carriesIdentity(req) {
+	getOrHead := req.Method == "" || req.Method == http.MethodGet || req.Method == http.MethodHead
+	// Credentialed and non-canonical GET/HEAD requests skip the cache. Unsafe
+	// methods still go through it so a successful write invalidates the URI.
+	if getOrHead && (carriesIdentity(req) || nonCanonicalHeader(req.Header)) {
 		return t.next.RoundTrip(req)
 	}
 
@@ -156,7 +200,14 @@ func (t *transport) RoundTrip(req *http.Request) (*http.Response, error) {
 
 	contact := &originContact{}
 	req = req.Clone(context.WithValue(req.Context(), originContactKey{}, contact))
-	return t.cache.RoundTrip(req)
+	resp, err := t.cache.RoundTrip(req)
+	if err != nil || resp == nil || len(contact.setCookie) == 0 {
+		return resp, err
+	}
+	restored := resp.Header.Clone()
+	restored["Set-Cookie"] = contact.setCookie
+	resp.Header = restored
+	return resp, nil
 }
 
 func snapshotPath() string {

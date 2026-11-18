@@ -264,6 +264,97 @@ func TestIdentityHeadersSkipCache(t *testing.T) {
 	}
 }
 
+func TestNonCanonicalIdentitySkipsCache(t *testing.T) {
+	var hits atomic.Int32
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		n := hits.Add(1)
+		w.Header().Set("Cache-Control", "max-age=60")
+		_, _ = fmt.Fprintf(w, "%d", n)
+	}))
+	t.Cleanup(ts.Close)
+
+	rt := newCachingTransport(openCache(filepath.Join(t.TempDir(), "snapshot")), ts.Client().Transport)
+	if body := bodyOf(t, roundTrip(t, rt, ts.URL, nil)); body != "1" {
+		t.Fatalf("anonymous body = %q", body)
+	}
+
+	req, err := http.NewRequestWithContext(t.Context(), http.MethodGet, ts.URL, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	req.Header["authorization"] = []string{"secret"}
+	resp, err := rt.RoundTrip(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = resp.Body.Close() })
+	if body := bodyOf(t, resp); body == "1" {
+		t.Fatal("lowercase authorization reused the anonymous response")
+	}
+	if got := hits.Load(); got != 2 {
+		t.Fatalf("server hits = %d, want 2", got)
+	}
+}
+
+func TestSetCookieIsNotReplayed(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Cache-Control", "max-age=60")
+		w.Header().Add("Set-Cookie", "session=one")
+		_, _ = io.WriteString(w, "page")
+	}))
+	t.Cleanup(ts.Close)
+
+	rt := newCachingTransport(openCache(filepath.Join(t.TempDir(), "snapshot")), ts.Client().Transport)
+	first := roundTrip(t, rt, ts.URL, nil)
+	if body := bodyOf(t, first); body != "page" {
+		t.Fatalf("body = %q", body)
+	}
+	if got := first.Header.Get("Set-Cookie"); got != "session=one" {
+		t.Fatalf("caller Set-Cookie = %q", got)
+	}
+
+	second := roundTrip(t, rt, ts.URL, nil)
+	if !ServedFromCache(second) {
+		t.Fatal("response without relying on the cookie was not cached")
+	}
+	if got := second.Header.Values("Set-Cookie"); len(got) != 0 {
+		t.Fatalf("cached response replayed Set-Cookie %q", got)
+	}
+}
+
+func TestCredentialedPostInvalidatesCache(t *testing.T) {
+	var hits atomic.Int32
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		n := hits.Add(1)
+		if r.Method == http.MethodGet {
+			w.Header().Set("Cache-Control", "max-age=60")
+		}
+		_, _ = fmt.Fprintf(w, "%s %d", r.Method, n)
+	}))
+	t.Cleanup(ts.Close)
+
+	rt := newCachingTransport(openCache(filepath.Join(t.TempDir(), "snapshot")), ts.Client().Transport)
+	if body := bodyOf(t, roundTrip(t, rt, ts.URL, nil)); body != "GET 1" {
+		t.Fatalf("first body = %q", body)
+	}
+
+	req, err := http.NewRequestWithContext(t.Context(), http.MethodPost, ts.URL, http.NoBody)
+	if err != nil {
+		t.Fatal(err)
+	}
+	req.Header.Set("Authorization", "secret")
+	resp, err := rt.RoundTrip(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = resp.Body.Close() })
+	_ = bodyOf(t, resp)
+
+	if body := bodyOf(t, roundTrip(t, rt, ts.URL, nil)); body != "GET 3" {
+		t.Fatalf("body after credentialed POST = %q, want a fresh GET", body)
+	}
+}
+
 func roundTrip(t *testing.T, rt http.RoundTripper, url string, header http.Header) *http.Response {
 	t.Helper()
 	req, err := http.NewRequestWithContext(t.Context(), http.MethodGet, url, nil)
