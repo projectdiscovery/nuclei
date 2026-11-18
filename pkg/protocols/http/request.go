@@ -1341,6 +1341,13 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 				}
 			}
 
+			if request.keepsRawResponse() && generatedRequest.request.Header.Get("Accept-Encoding") == "" &&
+				generatedRequest.request.Header.Get("Range") == "" && generatedRequest.request.Method != http.MethodHead {
+				// the transport decodes a response to the gzip header it adds
+				// itself, leaving nothing raw; sending the same header keeps the
+				// request on the wire unchanged
+				generatedRequest.request.Header.Set("Accept-Encoding", "gzip")
+			}
 			if request.sharesResponse {
 				generatedRequest.request.WithContext(httpclientpool.WithSharedResponse(generatedRequest.request.Context(), request.options.TemplateID))
 			}
@@ -1510,7 +1517,11 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 
 	// respChain is http response chain that reads response body
 	// efficiently by reusing buffers and does all decoding and optimizations
-	respChain := httpUtils.NewResponseChain(resp, int64(maxBodylimit))
+	newResponseChain := httpUtils.NewResponseChain
+	if request.keepsRawResponse() {
+		newResponseChain = httpUtils.NewResponseChainWithRaw
+	}
+	respChain := newResponseChain(resp, int64(maxBodylimit))
 	defer respChain.Close() // reuse buffers
 
 	// we only intend to log/save the final redirected response
@@ -1532,7 +1543,7 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 	onceFunc := sync.OnceFunc(func() {
 		// if nuclei-project is enabled store the response if not previously done
 		if request.options.ProjectFile != nil && !fromCache {
-			if err := request.options.ProjectFile.Set(projectCacheKey, resp, respChain.BodyBytes()); err != nil {
+			if err := request.options.ProjectFile.Set(projectCacheKey, resp, respChain.RawBodyBytes()); err != nil {
 				errx = errors.Wrap(err, "could not store in project file")
 			}
 		}
@@ -1639,6 +1650,10 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 		}
 
 		outputEvent := request.responseToDSLMap(respChain.Response(), input.MetaInput.Input, matchedURL, convUtil.String(dumpedRequest.data), fullResponseStr, bodyStr, headersStr, duration, generatedRequest.meta)
+		if request.readsRawResponse {
+			outputEvent["raw_body"] = respChain.RawBodyString()
+			outputEvent["raw_response"] = respChain.RawFullResponseString()
+		}
 		// add response fields to template context and merge templatectx variables to output event
 		request.options.AddTemplateVars(input.MetaInput, request.Type(), request.ID, outputEvent)
 		if request.options.HasTemplateCtx(input.MetaInput) {

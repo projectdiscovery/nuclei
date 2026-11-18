@@ -438,6 +438,14 @@ func init() {
 			Value: "HTTP response body received from server (default)",
 		},
 		{
+			Key:   "raw_body",
+			Value: "HTTP response body as received, before content decoding",
+		},
+		{
+			Key:   "raw_response",
+			Value: "HTTP response headers followed by raw_body",
+		},
+		{
 			Key:   "content_length",
 			Value: "HTTP Response content length",
 		},
