@@ -41,6 +41,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/utils/vardump"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/catchall"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/httpcache"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/httpclientpool"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/httputils"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/signer"
@@ -1391,9 +1392,10 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 			}
 		}
 	}
-	// A project-file hit never sets sent, so a stored response cannot move the delay.
-	// Record before dump or the dialer lookup can return and drop the outcome.
-	if sent {
+	// A project-file hit never sets sent, and a pure HTTP cache hit did not
+	// contact the origin, so neither can move the delay. Record before dump
+	// or the dialer lookup can return and drop the outcome.
+	if httpcache.ContactedOrigin(sent, resp) {
 		request.observeHostBackoff(backoffKey, resp, err)
 	}
 	// use request url as matched url if empty
