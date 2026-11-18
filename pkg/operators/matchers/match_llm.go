@@ -65,24 +65,19 @@ func (matcher *Matcher) MatchLLMWithAudit(corpus string, inputs []string, values
 		return false, nil, nil
 	}
 
-	prompt := matcher.buildLLMPrompt(matcher.truncate(corpus, inputs), values)
-	answer, err := client.Complete(context.Background(), prompt, true)
-	if err != nil {
+	responses := matcher.truncate(corpus, inputs)
+	var (
+		verdict llmVerdict
+		audit   *LLMAudit
+		ok      bool
+	)
+	if judge, isJudge := client.(llmclient.Judge); isJudge {
+		verdict, audit, ok = matcher.judgeLLM(judge, responses, values)
+	} else {
+		verdict, audit, ok = matcher.completeLLM(client, responses, values)
+	}
+	if !ok {
 		return false, nil, nil
-	}
-
-	var verdict llmVerdict
-	if err := json.Unmarshal([]byte(answer), &verdict); err != nil {
-		return false, nil, nil
-	}
-
-	audit := &LLMAudit{
-		PromptHash: hashPrompt(prompt),
-		Verdict:    strings.TrimSpace(verdict.Verdict),
-		Confidence: verdict.Confidence,
-	}
-	if namer, ok := client.(modelNamer); ok {
-		audit.Model = namer.Model()
 	}
 
 	expect := matcher.Expect
@@ -107,7 +102,53 @@ func (matcher *Matcher) MatchLLMWithAudit(corpus string, inputs []string, values
 		return false, nil, audit
 	}
 
+	if verdict.Evidence == "" {
+		return true, nil, audit
+	}
 	return true, []string{verdict.Evidence}, audit
+}
+
+// completeLLM asks a chat model for the verdict as JSON.
+func (matcher *Matcher) completeLLM(client LLMClient, inputs []string, values map[string]interface{}) (llmVerdict, *LLMAudit, bool) {
+	prompt := matcher.buildLLMPrompt(inputs, values)
+	answer, err := client.Complete(context.Background(), prompt, true)
+	if err != nil {
+		return llmVerdict{}, nil, false
+	}
+
+	var verdict llmVerdict
+	if err := json.Unmarshal([]byte(answer), &verdict); err != nil {
+		return llmVerdict{}, nil, false
+	}
+
+	audit := &LLMAudit{
+		PromptHash: hashPrompt(prompt),
+		Verdict:    strings.TrimSpace(verdict.Verdict),
+		Confidence: verdict.Confidence,
+	}
+	if namer, ok := client.(modelNamer); ok {
+		audit.Model = namer.Model()
+	}
+	return verdict, audit, true
+}
+
+// judgeLLM asks a native classifier. It needs no prompt framing: the question
+// and the responses are separate fields of the request, and the answer is a
+// probability over the allowed verdicts, not text. It quotes no evidence.
+func (matcher *Matcher) judgeLLM(judge llmclient.Judge, inputs []string, values map[string]interface{}) (llmVerdict, *LLMAudit, bool) {
+	question := interpolate(matcher.Prompt, values)
+	answer, err := judge.Judge(context.Background(), question, matcher.Options, inputs)
+	if err != nil {
+		return llmVerdict{}, nil, false
+	}
+
+	audit := &LLMAudit{
+		Model:      answer.Model,
+		PromptHash: hashPrompt(strings.Join(append([]string{question, strings.Join(matcher.Options, ",")}, inputs...), "\x00")),
+		Verdict:    answer.Label,
+		Confidence: answer.Confidence,
+	}
+	return llmVerdict{Verdict: answer.Label, Confidence: answer.Confidence}, audit, true
 }
 
 // buildLLMPrompt wraps the author's question with the output contract and the

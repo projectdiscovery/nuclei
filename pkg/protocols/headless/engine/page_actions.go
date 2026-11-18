@@ -526,6 +526,13 @@ func (p *Page) RightClickElement(act *Action, out ActionData) error {
 	return nil
 }
 
+// maxScreenshotsPerPage and maxScreenshotSize bound the disk space that the
+// screenshots of one page can use when local file access is off.
+const (
+	maxScreenshotsPerPage = 10
+	maxScreenshotSize     = 10 * 1024 * 1024
+)
+
 // Screenshot executes screenshot action on a page
 func (p *Page) Screenshot(act *Action, out ActionData) error {
 	to, err := p.getActionArg(act, "to")
@@ -533,10 +540,49 @@ func (p *Page) Screenshot(act *Action, out ActionData) error {
 		return err
 	}
 
-	if to == "" {
+	generatedName := to == ""
+	if generatedName {
 		to = ksuid.New().String()
 		if act.Name != "" {
 			out[act.Name] = to
+		}
+	}
+
+	lfaAllowed := protocolstate.IsLfaAllowed(p.options.Options)
+	if !lfaAllowed {
+		if p.screenshots >= maxScreenshotsPerPage {
+			return errkit.Newf("screenshot limit of %d per page reached, use -allow-local-file-access flag to remove it", maxScreenshotsPerPage)
+		}
+		p.screenshots++
+	}
+
+	var filePath string
+	if lfaAllowed {
+		filePath, err = fileutil.CleanPath(to)
+		if err != nil {
+			return errkit.Newf("could not clean output screenshot path %s", to)
+		}
+		if !strings.HasSuffix(filePath, ".png") {
+			filePath += ".png"
+		}
+	} else {
+		if err := p.isScreenshotPathAllowed(to); err != nil {
+			return err
+		}
+		// Without local file access the template only names a file inside a
+		// directory that nuclei creates, so it cannot choose where files land.
+		baseDir, err := p.instance.browser.getScreenshotDir()
+		if err != nil {
+			return errkit.Wrap(err, "could not create screenshot directory")
+		}
+		filePath = filepath.Join(baseDir, filepath.Clean(to))
+		// Add .png before the containment check, so that a name such as "."
+		// cannot turn into a sibling of the directory.
+		if !strings.HasSuffix(filePath, ".png") {
+			filePath += ".png"
+		}
+		if !isScreenshotPathWithinDirectory(filePath, baseDir) {
+			return ErrLFAccessDenied
 		}
 	}
 
@@ -555,23 +601,8 @@ func (p *Page) Screenshot(act *Action, out ActionData) error {
 	if err != nil {
 		return errors.Wrap(err, "could not take screenshot")
 	}
-
-	to, err = fileutil.CleanPath(to)
-	if err != nil {
-		return errkit.Newf("could not clean output screenshot path %s", to)
-	}
-
-	// Build the final write path (with .png) BEFORE running any containment
-	// gate. Otherwise inputs like "." or a bare directory name pass the gate
-	// against `to` and then the .png suffix moves the actual write outside
-	// cwd (e.g. <cwd>.png is a sibling of cwd and not contained by it).
-	filePath := to
-	if !strings.HasSuffix(filePath, ".png") {
-		filePath += ".png"
-	}
-
-	if err := p.isScreenshotPathAllowed(filePath); err != nil {
-		return err
+	if !lfaAllowed && len(data) > maxScreenshotSize {
+		return errkit.Newf("screenshot of %d bytes is over the limit of %d bytes, use -allow-local-file-access flag to remove it", len(data), maxScreenshotSize)
 	}
 
 	mkdir, err := p.getActionArg(act, "mkdir")
@@ -596,25 +627,29 @@ func (p *Page) Screenshot(act *Action, out ActionData) error {
 	if err != nil {
 		return errors.Wrap(err, "could not write screenshot")
 	}
+	// The generated name alone does not locate a file inside the screenshot directory.
+	if generatedName && act.Name != "" && !lfaAllowed {
+		out[act.Name] = filePath
+	}
 	gologger.Info().Msgf("Screenshot successfully saved at %v\n", filePath)
 	return nil
 }
 
+// isScreenshotPathAllowed checks the path a template gives for a screenshot.
+// Without local file access it must be relative and must not contain "..".
 func (p *Page) isScreenshotPathAllowed(to string) error {
 	if protocolstate.IsLfaAllowed(p.options.Options) {
 		return nil
 	}
 
-	cwd, err := os.Getwd()
-	if err != nil {
-		return errkit.Wrap(err, "could not get current working directory")
-	}
-
-	if !isScreenshotPathWithinDirectory(to, cwd) {
-		// writing outside of cwd requires -lfa flag
+	if filepath.IsAbs(to) || filepath.VolumeName(to) != "" || strings.HasPrefix(to, "/") || strings.HasPrefix(to, `\`) {
 		return ErrLFAccessDenied
 	}
-
+	for _, part := range strings.FieldsFunc(to, func(r rune) bool { return r == '/' || r == '\\' }) {
+		if part == ".." {
+			return ErrLFAccessDenied
+		}
+	}
 	return nil
 }
 

@@ -14,7 +14,6 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/authprovider/authx"
 	"github.com/projectdiscovery/rawhttp/client"
 	"github.com/projectdiscovery/utils/errkit"
-	stringsutil "github.com/projectdiscovery/utils/strings"
 	urlutil "github.com/projectdiscovery/utils/url"
 )
 
@@ -193,22 +192,19 @@ func readRawRequest(request string, unsafe bool) (*Request, error) {
 		Headers: make(map[string]string),
 	}
 
+	_, request = SplitAnnotations(request)
+
 	// store body if it is unsafe request
 	if unsafe {
-		rawRequest.UnsafeRawBytes = stripLeadingAnnotations(request)
+		rawRequest.UnsafeRawBytes = []byte(request)
 	}
 
 	// parse raw request
 	source := strings.NewReader(request)
 	reader := bufio.NewReader(source)
-read_line:
 	s, err := reader.ReadString('\n')
 	if err != nil {
 		return nil, fmt.Errorf("could not read request: %w", err)
-	}
-	// ignore all annotations
-	if stringsutil.HasPrefixAny(s, "@") {
-		goto read_line
 	}
 
 	parts := strings.Fields(s)
@@ -292,34 +288,18 @@ read_line:
 
 }
 
-func stripLeadingAnnotations(request string) []byte {
-	reader := bufio.NewReader(strings.NewReader(request))
-	buffer := bufferPool.Get().(*bytes.Buffer)
-	buffer.Reset()
-	defer func() {
-		buffer.Reset()
-		bufferPool.Put(buffer)
-	}()
-
-	requestLineFound := false
-	for {
-		line, err := reader.ReadString('\n')
-		if len(line) > 0 {
-			if requestLineFound || !stringsutil.HasPrefixAny(line, "@") {
-				requestLineFound = true
-				_, _ = buffer.WriteString(line)
-			}
-		}
-
-		if err != nil {
-			if err == io.EOF {
-				break
-			}
-			return []byte(request)
-		}
+// SplitAnnotations splits a raw request into its annotations and the request
+// that follows them. Annotations are the lines starting with "@" before the
+// request line. A line starting with "@" after the request line is part of the
+// request, so text rendered into the headers or the body never becomes an
+// annotation.
+func SplitAnnotations(request string) (annotations, rest string) {
+	rest = request
+	for strings.HasPrefix(rest, "@") {
+		_, rest, _ = strings.Cut(rest, "\n")
 	}
 
-	return append([]byte(nil), buffer.Bytes()...)
+	return request[:len(request)-len(rest)], rest
 }
 
 // TryFillCustomHeaders after the Host header

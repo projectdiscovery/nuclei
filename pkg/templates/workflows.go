@@ -14,46 +14,65 @@ import (
 // compileWorkflow compiles the workflow for execution
 func compileWorkflow(path string, preprocessor Preprocessor, options *protocols.ExecutorOptions, workflow *workflows.Workflow, loader model.WorkflowLoader) {
 	for _, workflow := range workflow.Workflows {
-		if err := parseWorkflow(preprocessor, workflow, options, loader); err != nil {
+		if err := parseWorkflow(path, preprocessor, workflow, options, loader); err != nil {
 			gologger.Warning().Msgf("Could not parse workflow %s: %v\n", path, err)
 			continue
 		}
 	}
 }
 
-// parseWorkflow parses and compiles all templates in a workflow recursively
-func parseWorkflow(preprocessor Preprocessor, workflow *workflows.WorkflowTemplate, options *protocols.ExecutorOptions, loader model.WorkflowLoader) error {
-	shouldNotValidate := false
-
+// parseWorkflow parses and compiles all templates of the workflow at path
+// recursively.
+func parseWorkflow(path string, preprocessor Preprocessor, workflow *workflows.WorkflowTemplate, options *protocols.ExecutorOptions, loader model.WorkflowLoader) error {
 	if workflow.Template == "" && workflow.Tags.IsEmpty() {
 		return errors.New("invalid workflow with no templates or tags")
 	}
-	if len(workflow.Subtemplates) > 0 || len(workflow.Matchers) > 0 {
-		shouldNotValidate = true
+
+	// subtemplates are parsed first: a template that does not pass the
+	// filters is loaded only when one of its subtemplates was loaded, as
+	// subtemplates run only after it
+	shouldNotValidate := false
+	for _, subtemplates := range workflow.Subtemplates {
+		if err := parseWorkflow(path, preprocessor, subtemplates, options, loader); err != nil {
+			gologger.Warning().Msgf("Could not parse workflow: %v\n", err)
+			continue
+		}
+		shouldNotValidate = shouldNotValidate || len(subtemplates.Executers) > 0
+	}
+	var matcherErr error
+	for _, matcher := range workflow.Matchers {
+		if len(matcher.Name.ToSlice()) > 0 {
+			if err := matcher.Compile(); err != nil {
+				matcherErr = errors.Wrap(err, "could not compile workflow matcher")
+				break
+			}
+		}
+		for _, subtemplates := range matcher.Subtemplates {
+			if err := parseWorkflow(path, preprocessor, subtemplates, options, loader); err != nil {
+				gologger.Warning().Msgf("Could not parse workflow: %v\n", err)
+				continue
+			}
+			shouldNotValidate = shouldNotValidate || len(subtemplates.Executers) > 0
+		}
 	}
 	if err := parseWorkflowTemplate(workflow, preprocessor, options, loader, shouldNotValidate); err != nil {
 		return err
 	}
-	for _, subtemplates := range workflow.Subtemplates {
-		if err := parseWorkflow(preprocessor, subtemplates, options, loader); err != nil {
-			gologger.Warning().Msgf("Could not parse workflow: %v\n", err)
-			continue
-		}
+	// warnings show only with -v, so the count is shown after loading
+	if shouldNotValidate && len(workflow.Executers) == 0 {
+		stats.Increment(SkippedWorkflowStepStats)
+		gologger.Warning().Msgf("Workflow %s: step %s loaded no templates, so its subtemplates will not run",
+			path, describeWorkflowStep(workflow))
 	}
-	for _, matcher := range workflow.Matchers {
-		if len(matcher.Name.ToSlice()) > 0 {
-			if err := matcher.Compile(); err != nil {
-				return errors.Wrap(err, "could not compile workflow matcher")
-			}
-		}
-		for _, subtemplates := range matcher.Subtemplates {
-			if err := parseWorkflow(preprocessor, subtemplates, options, loader); err != nil {
-				gologger.Warning().Msgf("Could not parse workflow: %v\n", err)
-				continue
-			}
-		}
+	return matcherErr
+}
+
+// describeWorkflowStep names a workflow step by the templates it selects.
+func describeWorkflowStep(workflow *workflows.WorkflowTemplate) string {
+	if !workflow.Tags.IsEmpty() {
+		return "tags " + workflow.Tags.String()
 	}
-	return nil
+	return workflow.Template
 }
 
 // parseWorkflowTemplate parses a workflow template creating an executer
@@ -62,7 +81,7 @@ func parseWorkflowTemplate(workflow *workflows.WorkflowTemplate, preprocessor Pr
 
 	subTemplateTags := workflow.Tags
 	if !subTemplateTags.IsEmpty() {
-		paths = loader.GetTemplatePathsByTags(subTemplateTags.ToSlice())
+		paths = loader.GetTemplatePathsByTags(subTemplateTags.ToSlice(), noValidate)
 	} else {
 		paths = loader.GetTemplatePaths([]string{workflow.Template}, noValidate)
 	}

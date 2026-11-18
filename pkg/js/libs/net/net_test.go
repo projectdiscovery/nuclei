@@ -406,3 +406,41 @@ func (f *fakeConn) RemoteAddr() net.Addr             { return nil }
 func (f *fakeConn) SetDeadline(time.Time) error      { return nil }
 func (f *fakeConn) SetReadDeadline(time.Time) error  { return nil }
 func (f *fakeConn) SetWriteDeadline(time.Time) error { return nil }
+
+func TestNetConnWithoutConnection(t *testing.T) {
+	t.Parallel()
+
+	tests := map[string]func(t *testing.T) *NetConn{
+		"never opened": func(*testing.T) *NetConn { return new(NetConn) },
+		"already closed": func(t *testing.T) *NetConn {
+			t.Helper()
+
+			local, remote := net.Pipe()
+
+			t.Cleanup(func() { _ = remote.Close() })
+
+			conn := new(NetConn)
+			conn.conn = local
+			require.NoError(t, conn.Close())
+
+			return conn
+		},
+	}
+	for name, newConn := range tests {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			conn := newConn(t)
+			require.NoError(t, conn.Close())
+			require.ErrorContains(t, conn.Send("x"), "no connection")
+			require.ErrorContains(t, conn.SendHex("78"), "no connection")
+			require.ErrorContains(t, conn.SendArray([]any{120}), "no connection")
+
+			_, err := conn.Recv(1)
+			require.ErrorContains(t, err, "no connection")
+
+			_, err = conn.RecvFull(1)
+			require.ErrorContains(t, err, "no connection")
+		})
+	}
+}

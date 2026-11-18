@@ -39,10 +39,12 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/utils/excludematchers"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/variables"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/headless/engine"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/catchall"
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting"
 	"github.com/projectdiscovery/nuclei/v3/pkg/scan"
 	templateTypes "github.com/projectdiscovery/nuclei/v3/pkg/templates/types"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
+	"github.com/projectdiscovery/nuclei/v3/pkg/utils/httpbody"
 	unitutils "github.com/projectdiscovery/utils/unit"
 )
 
@@ -105,6 +107,8 @@ type ExecutorOptions struct {
 	Progress progress.Progress
 	// RateLimiter is a rate-limiter for limiting sent number of requests.
 	RateLimiter *ratelimit.Limiter
+	// RequestBodyBudget bounds request-body bytes in flight; nil is no limit.
+	RequestBodyBudget *httpbody.Budget
 	// Catalog is a template catalog implementation for nuclei
 	Catalog catalog.Catalog
 	// ProjectFile is the project file for nuclei
@@ -121,6 +125,8 @@ type ExecutorOptions struct {
 	// HostBackoff paces a host that signals it is being overloaded, so a scan
 	// slows down for it instead of being blocked outright. Nil disables it.
 	HostBackoff *hostbackoff.Governor
+	// CatchAll discounts HTTP matches on a host's catch-all page. Nil disables it.
+	CatchAll *catchall.Detector
 	// Stop execution once first match is found (Assigned while parsing templates)
 	// Note: this is different from Options.StopAtFirstMatch (Assigned from CLI option)
 	StopAtFirstMatch bool
@@ -392,6 +398,7 @@ func (e *ExecutorOptions) Copy() *ExecutorOptions {
 		IssuesClient:                 e.IssuesClient,
 		Progress:                     e.Progress,
 		RateLimiter:                  e.RateLimiter,
+		RequestBodyBudget:            e.RequestBodyBudget,
 		Catalog:                      e.Catalog,
 		ProjectFile:                  e.ProjectFile,
 		Browser:                      e.Browser,
@@ -399,6 +406,7 @@ func (e *ExecutorOptions) Copy() *ExecutorOptions {
 		HostErrorsCache:              e.HostErrorsCache,
 		InteractshScope:              e.InteractshScope,
 		HostBackoff:                  e.HostBackoff,
+		CatchAll:                     e.CatchAll,
 		StopAtFirstMatch:             e.StopAtFirstMatch,
 		Variables:                    e.Variables,
 		Constants:                    e.Constants,
@@ -573,10 +581,12 @@ func MakeDefaultResultEvent(request Request, wrapped *output.InternalWrappedEven
 		data := request.MakeResultEventItem(wrapped)
 		results = append(results, data)
 	}
-	// Every protocol builds its results here, so attaching the llm audit at this
-	// one point keeps the verdict on findings from all of them rather than only
-	// the protocol that remembers to ask. It is a no-op when no llm operator ran.
-	return AttachLLMAudits(results, wrapped.InternalEvent)
+	// Every protocol builds its results here, so attaching the llm audit and
+	// rendering the info at this one point covers findings from all of them
+	// rather than only the protocol that remembers to ask. Each is a no-op when
+	// it has nothing to do: no llm operator ran, or the info has no placeholders.
+	results = AttachLLMAudits(results, wrapped.InternalEvent)
+	return renderInfo(results, wrapped.InternalEvent)
 }
 
 // MakeDefaultExtractFunc performs extracting operation for an extractor on model and returns true or false.
@@ -700,6 +710,7 @@ func (e *ExecutorOptions) ApplyNewEngineOptions(n *ExecutorOptions) {
 	e.IssuesClient = n.IssuesClient
 	e.Progress = n.Progress
 	e.RateLimiter = n.RateLimiter
+	e.RequestBodyBudget = n.RequestBodyBudget
 	e.Catalog = n.Catalog
 	e.ProjectFile = n.ProjectFile
 	e.Browser = n.Browser
@@ -707,6 +718,7 @@ func (e *ExecutorOptions) ApplyNewEngineOptions(n *ExecutorOptions) {
 	e.InteractshScope = n.InteractshScope
 	e.HostErrorsCache = n.HostErrorsCache
 	e.HostBackoff = n.HostBackoff
+	e.CatchAll = n.CatchAll
 	e.InputHelper = n.InputHelper
 	e.FuzzParamsFrequency = n.FuzzParamsFrequency
 	e.FuzzStatsDB = n.FuzzStatsDB

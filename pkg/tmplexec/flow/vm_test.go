@@ -77,3 +77,37 @@ func TestGetJSRuntimeUnblocksCancelledAcquireWhenPoolIsFull(t *testing.T) {
 		t.Fatal("blocked acquire did not return after cancel")
 	}
 }
+func TestPutJSRuntimeReplenishesCleanRuntime(t *testing.T) {
+	opts := &types.Options{JsConcurrency: 100}
+
+	var held []*goja.Runtime
+	for len(held) < 100 {
+		ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
+		runtime, err := flow.GetJSRuntimeContext(ctx, opts)
+		cancel()
+		if err != nil {
+			break
+		}
+		_, err = runtime.RunString("globalThis.leakedGlobal = 'tainted';")
+		require.NoError(t, err)
+		held = append(held, runtime)
+	}
+	require.NotEmpty(t, held)
+
+	tainted := make(map[*goja.Runtime]struct{}, len(held))
+	for _, runtime := range held {
+		tainted[runtime] = struct{}{}
+		flow.PutJSRuntime(runtime, false)
+	}
+
+	for i := 0; i < len(held); i++ {
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+		runtime, err := flow.GetJSRuntimeContext(ctx, opts)
+		cancel()
+		require.NoError(t, err)
+		_, reused := tainted[runtime]
+		require.False(t, reused, "tainted runtime was returned to the pool")
+		require.Nil(t, runtime.Get("leakedGlobal"))
+		flow.PutJSRuntime(runtime, false)
+	}
+}

@@ -73,11 +73,71 @@ func TestReplacerReplace(t *testing.T) {
 			values:   map[string]interface{}{"var1": "first variable", "var2": "second variable"},
 			expected: "first variable and first variable and another second variable",
 		},
+		{
+			name:     "Extra braces around a placeholder",
+			template: "${{{num}}*{{{num}}",
+			values:   map[string]any{"num": "7"},
+			expected: "${7*{7",
+		},
+		{
+			name:     "Unknown general marker before a known one",
+			template: "§unknown§var1§",
+			values:   map[string]any{"var1": "variable 1"},
+			expected: "§unknownvariable 1",
+		},
+		{
+			name:     "Unclosed markers",
+			template: "{{{{ §§ {{var1}",
+			values:   map[string]any{"var1": "variable 1"},
+			expected: "{{{{ §§ {{var1}",
+		},
 	}
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			require.Equal(t, test.expected, Replace(test.template, test.values))
+		})
+	}
+}
+
+func TestReplacerReplaceDoesNotRescanValues(t *testing.T) {
+	t.Parallel()
+
+	values := map[string]any{
+		"secret":      "leaked",
+		"token":       "leaked",
+		"general":     "§secret§",
+		"parenthesis": "{{secret}}",
+		"prefix":      "§",
+	}
+
+	tests := []struct {
+		name     string
+		template string
+		expected string
+	}{
+		{
+			name:     "general marker inside a parenthesis value",
+			template: "{{general}}",
+			expected: "§secret§",
+		},
+		{
+			name:     "parenthesis marker inside a general value",
+			template: "§parenthesis§",
+			expected: "{{secret}}",
+		},
+		{
+			name:     "value completes a marker with the template text after it",
+			template: "{{prefix}}token§",
+			expected: "§token§",
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+
+			require.Equal(t, test.expected, Replace(test.template, values))
 		})
 	}
 }

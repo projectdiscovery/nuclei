@@ -20,6 +20,11 @@ const (
 	fallbackTemplateRuleID = "nuclei-template"
 )
 
+// maxInfoValueLength keeps filled info whole for every template in
+// nuclei-templates (the longest field is under 3000 characters) while a
+// placeholder such as {{body}} cannot pour a whole response into the report.
+const maxInfoValueLength = 4096
+
 // Exporter is an exporter for nuclei sarif output format.
 type Exporter struct {
 	sarif   *sarif.Report
@@ -130,6 +135,7 @@ func (exporter *Exporter) Export(event *output.ResultEvent) error {
 	}
 
 	// rule contain details of template
+	templateEvent := asWritten(event)
 	rule := sarif.ReportingDescriptor{
 		Id:      ruleID,
 		Name:    ruleName,
@@ -138,11 +144,11 @@ func (exporter *Exporter) Export(event *output.ResultEvent) error {
 			Text: ruleName,
 		},
 		FullDescription: &sarif.MultiformatMessageString{
-			Text: buildRuleDescription(event, ruleName),
+			Text: buildRuleDescription(templateEvent, ruleName),
 		},
 		Help: &sarif.MultiformatMessageString{
-			Text:     buildRuleHelpText(event),
-			Markdown: buildRuleHelpMarkdown(event, ruleName),
+			Text:     buildRuleHelpText(templateEvent),
+			Markdown: buildRuleHelpMarkdown(templateEvent, ruleName),
 		},
 		Properties: ghMeta,
 	}
@@ -201,6 +207,18 @@ func (exporter *Exporter) Close() error {
 	}
 
 	return nil
+}
+
+// asWritten returns the event with its info as the template wrote it. Every
+// finding of a template shares one rule, so the rule describes the template;
+// text filled for one finding goes on that finding's result message instead.
+func asWritten(event *output.ResultEvent) *output.ResultEvent {
+	if event.TemplateInfo == nil {
+		return event
+	}
+	written := *event
+	written.Info = *event.TemplateInfo
+	return &written
 }
 
 func buildRuleDescription(event *output.ResultEvent, ruleName string) string {
@@ -275,6 +293,13 @@ func buildRuleHelpMarkdown(event *output.ResultEvent, ruleName string) string {
 
 func buildResultMessage(event *output.ResultEvent, resultHeader, ruleID string) *sarif.Message {
 	detailLines := []string{}
+	// Filled info is all the report has of this finding's text, so it gets a
+	// longer limit than the other details.
+	for _, field := range event.Info.FilledFields(event.TemplateInfo) {
+		if value := normalizeAndTruncate(*field.Value, maxInfoValueLength); value != "" {
+			detailLines = append(detailLines, field.Label+": "+value)
+		}
+	}
 	target := getResultTarget(event)
 	addDetail(&detailLines, "Target", target)
 	if matched := normalizeAndTruncate(event.Matched, maxDetailValueLength); matched != "" && matched != target {

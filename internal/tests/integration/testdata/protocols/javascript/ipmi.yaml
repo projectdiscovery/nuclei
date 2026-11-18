@@ -1,0 +1,46 @@
+id: ipmi-checks
+
+info:
+  name: IPMI Checks
+  author: pdteam
+  severity: info
+
+javascript:
+  - code: |
+      const ipmi = require('nuclei/ipmi');
+      const caps = ipmi.GetAuthCapabilities(Host, Port);
+      const root = ipmi.GetRAKPHash(Host, Port, 'root');
+
+      // cipher suite 0 lets a wrong password in
+      const anyPassword = new ipmi.Client();
+      const cipherZero = anyPassword.Login(Host, Port, 'ADMIN', 'wrong', 0);
+      anyPassword.Close();
+
+      // an encrypted, signed session, then Get Device ID and admin privilege
+      const client = new ipmi.Client();
+      client.Login(Host, Port, 'ADMIN', 'ADMIN', 3);
+      const device = client.Command(0x06, 0x01, []);
+      const admin = client.Command(0x06, 0x3b, [0x04]);
+      client.Close();
+      const manufacturer = device.Data[6] | device.Data[7] << 8 | device.Data[8] << 16;
+
+      let wrongRejected = false;
+      try { new ipmi.Client().Login(Host, Port, 'ADMIN', 'wrong', 3); } catch (e) { wrongRejected = true; }
+
+      ipmi.Ping(Host, Port) && caps.IPMI20 && caps.AnonymousLogin &&
+        ipmi.GetCipherSuites(Host, Port).includes(0) &&
+        ipmi.GetSystemGUID(Host, Port).length == 32 &&
+        ipmi.FindRAKPPassword(root, ['admin', 'calvin']) == 'calvin' &&
+        !ipmi.CheckRAKPPassword(root, 'admin') &&
+        cipherZero && wrongRejected &&
+        device.CompletionCode == 0 && manufacturer == 4753 &&
+        admin.CompletionCode == 0;
+
+    args:
+      Host: "{{Host}}"
+      Port: "623"
+
+    matchers:
+      - type: dsl
+        dsl:
+          - "success == true"

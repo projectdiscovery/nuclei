@@ -7,18 +7,22 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 
-	"github.com/alecthomas/chroma/quick"
+	"github.com/alecthomas/chroma/v2/quick"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
-	"github.com/projectdiscovery/retryablehttp-go"
 	pdcpauth "github.com/projectdiscovery/utils/auth/pdcp"
 	"github.com/projectdiscovery/utils/errkit"
 )
 
-const (
+var (
 	aiTemplateGeneratorAPIEndpoint = "https://api.projectdiscovery.io/v1/template/ai"
+	// aiTemplateHTTPClient verifies TLS, since the request carries the PDCP API key.
+	aiTemplateHTTPClient = &http.Client{}
+	// aiTemplateIDRegex keeps the template file name inside the pdcp directory.
+	aiTemplateIDRegex = regexp.MustCompile(`^[A-Za-z0-9_-]+$`)
 )
 
 type AITemplateResponse struct {
@@ -112,7 +116,7 @@ func generateAITemplate(prompt string) (string, string, error) {
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set(pdcpauth.ApiKeyHeaderName, creds.APIKey)
 
-	resp, err := retryablehttp.DefaultClient().Do(req)
+	resp, err := aiTemplateHTTPClient.Do(req)
 	if err != nil {
 		return "", "", errkit.Newf("Failed to send HTTP request: %v", err)
 	}
@@ -136,6 +140,10 @@ func generateAITemplate(prompt string) (string, string, error) {
 
 	if result.TemplateID == "" || result.Completion == "" {
 		return "", "", errkit.Newf("Failed to generate template")
+	}
+
+	if !aiTemplateIDRegex.MatchString(result.TemplateID) {
+		return "", "", errkit.Newf("Invalid template ID in API response: %q", result.TemplateID)
 	}
 
 	return result.Completion, result.TemplateID, nil

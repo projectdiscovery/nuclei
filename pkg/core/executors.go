@@ -36,9 +36,13 @@ func (e *Engine) executeAllSelfContained(ctx context.Context, alltemplates []*te
 			if sharedBudget {
 				defer e.options.ReleaseTemplateThread()
 			}
+			defer e.tasksDone(1)
+			planned, skip := e.claimPlanned(template, &contextargs.MetaInput{})
+			if skip {
+				return
+			}
 			finished := e.templateExecutionStarted(template, "")
 			defer func() { finished(ctx.Err()) }()
-			defer e.tasksDone(1)
 			var err error
 			var match bool
 			ctx := scan.NewScanContext(ctx, contextargs.New(ctx))
@@ -55,6 +59,8 @@ func (e *Engine) executeAllSelfContained(ctx context.Context, alltemplates []*te
 			}
 			if err != nil {
 				e.options.Logger.Warning().Msgf("[%s] Could not execute step (self-contained): %s\n", e.executerOpts.Colorizer.BrightBlue(template.ID), err)
+			} else if ctx.Context().Err() == nil {
+				planned()
 			}
 			results.CompareAndSwap(false, match)
 		}(v, usesSharedTemplateBudget)
@@ -330,6 +336,16 @@ func (e *Engine) tasksDone(count int64) {
 func (e *Engine) executeTemplateOnInput(ctx context.Context, template *templates.Template, value *contextargs.MetaInput) (matched bool, err error) {
 	// a pair skipped as a repeat of its origin is done as well
 	defer e.tasksDone(1)
+	planned, skip := e.claimPlanned(template, value)
+	if skip {
+		return false, nil
+	}
+	// an origin a sibling already covered is settled too, so it is recorded
+	defer func() {
+		if err == nil && ctx.Err() == nil {
+			planned()
+		}
+	}()
 	// A template fixed to the target's origin makes the same requests for every
 	// target that shares one, which a crawled list produces by the hundred.
 	// Running it once per origin sends exactly the same traffic, minus the
@@ -360,9 +376,16 @@ func (e *Engine) executeTemplateOnInput(ctx context.Context, template *templates
 			for _, result := range results {
 				e.Callback(result)
 			}
+			if e.resultHook != nil {
+				e.resultHook(value, results)
+			}
 			return len(results) > 0, nil
 		}
-		return template.Executer.Execute(scanCtx)
+		matched, err = template.Executer.Execute(scanCtx)
+		if e.resultHook != nil {
+			e.resultHook(value, scanCtx.GenerateResult())
+		}
+		return matched, err
 	}
 }
 
@@ -382,6 +405,19 @@ func newOriginAttempt() *originAttempt {
 	return attempt
 }
 
+// originScopeKey returns the key an origin-scoped template runs once per, and
+// false when the template runs on every target.
+func originScopeKey(template *templates.Template, value *contextargs.MetaInput) (string, bool) {
+	if template == nil || value == nil || !template.IsOriginScoped() {
+		return "", false
+	}
+	origin := normalize.Origin(value.Input)
+	if origin == "" {
+		return "", false
+	}
+	return template.ID + "\x00" + origin + "\x00" + value.CustomIP, true
+}
+
 // claimOriginScoped reports whether this caller should execute an origin-scoped
 // template. finish(true) records a successful run. finish(false) releases the
 // claim so a later target, including one that waited, can try again. Templates
@@ -389,14 +425,10 @@ func newOriginAttempt() *originAttempt {
 // key so each address selected for one URL is tested on its own.
 func (e *Engine) claimOriginScoped(template *templates.Template, value *contextargs.MetaInput) (finish func(bool), run bool) {
 	noop := func(bool) {}
-	if template == nil || value == nil || !template.IsOriginScoped() {
+	key, scoped := originScopeKey(template, value)
+	if !scoped {
 		return noop, true
 	}
-	origin := normalize.Origin(value.Input)
-	if origin == "" {
-		return noop, true
-	}
-	key := template.ID + "\x00" + origin + "\x00" + value.CustomIP
 	actual, _ := e.originScoped.LoadOrStore(key, newOriginAttempt())
 	slot := actual.(*originAttempt)
 

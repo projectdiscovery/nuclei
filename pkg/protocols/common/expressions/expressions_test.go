@@ -38,6 +38,9 @@ func TestEvaluate(t *testing.T) {
 		{input: "{{base64(rawhash)}}", expected: "{{contact_id}}{{email}}", extra: map[string]any{
 			"rawhash": `{"contact_id":"{{contact_id}}","email":"{{email}}"}`,
 		}},
+		// regression: string concatenation of variables inside base64() must not
+		// stringify the parameter list (govaluate produced "[admin:]admin" here)
+		{input: "{{base64(username + ':' + password)}}", expected: "YWRtaW46YWRtaW4=", extra: map[string]interface{}{"username": "admin", "password": "admin"}},
 	}
 	for _, item := range items {
 		value, err := Evaluate(item.input, item.extra)
@@ -104,6 +107,71 @@ func TestEvaluateDoesNotReinterpretResolvedValues(t *testing.T) {
 			require.Equal(t, item.expected, value)
 		})
 	}
+}
+
+func TestEvaluateReplacesExpressionsInTheirOwnPosition(t *testing.T) {
+	t.Parallel()
+
+	// tpl and echo stand for response values that repeat an expression's text.
+	values := map[string]any{
+		"seed": "hello",
+		"tpl":  "{{to_upper(seed)}}",
+		"echo": "{{base64('127.0.0.1')}}",
+		"Host": "127.0.0.1",
+	}
+
+	items := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{
+			name:     "resolved value echoes a later expression",
+			input:    "[{{tpl}}] {{to_upper(seed)}}",
+			expected: "[{{to_upper(seed)}}] HELLO",
+		},
+		{
+			name:     "general marker value echoes a later expression",
+			input:    "[§tpl§] {{to_upper(seed)}}",
+			expected: "[{{to_upper(seed)}}] HELLO",
+		},
+		{
+			name:     "resolved value echoes an expression with substituted arguments",
+			input:    "{{echo}} {{base64('{{Host}}')}}",
+			expected: "{{base64('127.0.0.1')}} MTI3LjAuMC4x",
+		},
+		{
+			name:     "helper result echoes a later expression",
+			input:    "{{concat('{{', 'to_upper(seed)', '}}')}} {{to_upper(seed)}}",
+			expected: "{{to_upper(seed)}} HELLO",
+		},
+		{
+			name:     "repeated expression is evaluated in each position",
+			input:    "{{to_upper(seed)}}-{{to_upper(seed)}}",
+			expected: "HELLO-HELLO",
+		},
+	}
+
+	for _, item := range items {
+		t.Run(item.name, func(t *testing.T) {
+			t.Parallel()
+
+			value, err := Evaluate(item.input, values)
+			require.NoError(t, err)
+			require.Equal(t, item.expected, value)
+		})
+	}
+}
+
+func TestEvaluateDoesNotResolveGeneralMarkersFromResolvedValues(t *testing.T) {
+	t.Parallel()
+
+	value, err := Evaluate("Authorization: {{body}}", map[string]any{
+		"body":         "§secret_token§",
+		"secret_token": "top-secret-cia-mi6-kgb-mossad-classified",
+	})
+	require.NoError(t, err)
+	require.Equal(t, "Authorization: §secret_token§", value)
 }
 
 func TestEvaluateDoesNotExecuteHelpersFromResolvedValues(t *testing.T) {
@@ -201,6 +269,18 @@ func TestEvaluateReturnsErrorForInvalidTemplateExpression(t *testing.T) {
 	_, err := Evaluate("{{base64()}}", map[string]interface{}{})
 	require.Error(t, err)
 	require.ErrorContains(t, err, `failed to evaluate expression "base64()"`)
+}
+
+func TestEvaluateReturnsInputOnError(t *testing.T) {
+	t.Parallel()
+
+	input := "{{secret_token}} {{base64()}}"
+
+	value, err := Evaluate(input, map[string]any{
+		"secret_token": "top-secret-cia-mi6-kgb-mossad-classified",
+	})
+	require.Error(t, err)
+	require.Equal(t, input, value)
 }
 
 func TestEvaluateErrorDoesNotLeakResolvedValues(t *testing.T) {

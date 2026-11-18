@@ -18,12 +18,17 @@ import (
 
 var jsOnce sync.Once
 
+// createNewRuntime creates a fresh clean JS runtime with registered builtins
+func createNewRuntime() *goja.Runtime {
+	runtime := protocolstate.NewJSRuntime()
+	registerBuiltins(runtime)
+	return runtime
+}
+
 // js runtime pool using sync.Pool
 var gojapool = &sync.Pool{
 	New: func() interface{} {
-		runtime := protocolstate.NewJSRuntime()
-		registerBuiltins(runtime)
-		return runtime
+		return createNewRuntime()
 	},
 }
 
@@ -56,12 +61,13 @@ func GetJSRuntimeContext(ctx context.Context, opts *types.Options) (*goja.Runtim
 	return sizedgojapool.Get(ctx)
 }
 
-// PutJSRuntime returns a JS runtime to pool
+// PutJSRuntime returns a JS runtime to pool.
+// When reuse is false, a brand new clean runtime is replenished to avoid leaking globals.
 func PutJSRuntime(runtime *goja.Runtime, reuse bool) {
 	if reuse {
 		sizedgojapool.Put(runtime)
 	} else {
-		sizedgojapool.Put(gojapool.Get().(*goja.Runtime))
+		sizedgojapool.Put(createNewRuntime())
 	}
 }
 

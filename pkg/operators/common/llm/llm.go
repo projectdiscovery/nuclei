@@ -21,6 +21,22 @@ type Client interface {
 	Complete(ctx context.Context, prompt string, asJSON bool) (string, error)
 }
 
+// Judge is implemented by clients whose provider classifies natively. Its
+// confidence is a calibrated probability rather than a number the model
+// reports about itself, and the inputs travel apart from the question, so
+// matchers use it over Complete when it is available.
+type Judge interface {
+	Judge(ctx context.Context, question string, labels, inputs []string) (Verdict, error)
+}
+
+// Verdict is the label a Judge chose. Model is the exact model version that
+// answered, when the provider reports one.
+type Verdict struct {
+	Label      string
+	Confidence float64
+	Model      string
+}
+
 // TruncateApproxTokens trims input to roughly maxTokens using the common
 // 4-chars-per-token approximation. Exact counting is provider-specific; this
 // only needs to keep a large body from blowing the context window.

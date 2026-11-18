@@ -44,6 +44,26 @@ func TestUnresolvedVariablesCheck(t *testing.T) {
 	}
 }
 
+func TestReferencesVariables(t *testing.T) {
+	names := map[string]interface{}{"Hostname": "", "Port": ""}
+
+	tests := []struct {
+		data string
+		want bool
+	}{
+		{data: "user@{{Hostname}}", want: true},
+		{data: "{{to_lower(Hostname)}}:{{Port}}", want: true},
+		{data: "{{Hostname_suffix}}", want: false},
+		{data: "{{secret}}-{{to_upper(seed)}}", want: false},
+		{data: "{{7*7}}", want: false},
+		{data: "Hostname", want: false},
+	}
+
+	for _, test := range tests {
+		require.Equal(t, test.want, ReferencesVariables(test.data, names), test.data)
+	}
+}
+
 func TestUnresolvedVariablesCheckDoesNotExecuteHelpers(t *testing.T) {
 	var calls int
 	withTestHelperFunction(t, "test_side_effect", func(args ...interface{}) (interface{}, error) {

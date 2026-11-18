@@ -57,6 +57,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/automaticscan"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/globalmatchers"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/helpers/eventcreator"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/honeypotdetector"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/hostbackoff"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/hosterrorscache"
@@ -67,11 +68,14 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/utils/excludematchers"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/headless/engine"
 	httpProtocol "github.com/projectdiscovery/nuclei/v3/pkg/protocols/http"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/catchall"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/httpclientpool"
+	"github.com/projectdiscovery/nuclei/v3/pkg/replay"
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting"
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils"
+	"github.com/projectdiscovery/nuclei/v3/pkg/utils/httpbody"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils/stats"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils/yaml"
 	"github.com/projectdiscovery/retryablehttp-go"
@@ -145,10 +149,18 @@ func New(options *types.Options) (*Runner, error) {
 
 	//  Version check by default
 	if config.DefaultConfig.CanCheckForUpdates() {
-		latestIgnoreHash, versionCheckErr := installer.NucleiVersionCheck()
-		if versionCheckErr != nil {
-			if options.Verbose || options.Debug {
-				runner.Logger.Error().Msgf("nuclei version check failed got: %s\n", versionCheckErr)
+		// -plan sends no request it can avoid, so it skips the version and
+		// update checks; it still installs templates on a fresh setup, which
+		// would otherwise plan nothing
+		checkUpdates := options.PlanFile == ""
+		var latestIgnoreHash string
+		if checkUpdates {
+			var versionCheckErr error
+			latestIgnoreHash, versionCheckErr = installer.NucleiVersionCheck()
+			if versionCheckErr != nil {
+				if options.Verbose || options.Debug {
+					runner.Logger.Error().Msgf("nuclei version check failed got: %s\n", versionCheckErr)
+				}
 			}
 		}
 
@@ -169,17 +181,19 @@ func New(options *types.Options) (*Runner, error) {
 		if err := tm.FreshInstallIfNotExists(); err != nil {
 			runner.Logger.Warning().Msgf("Failed to install nuclei templates: %s\n", err)
 		}
-		if err := tm.UpdateIfOutdated(); err != nil {
-			runner.Logger.Warning().Msgf("Failed to update nuclei templates: %s\n", err)
+		if checkUpdates {
+			if err := tm.UpdateIfOutdated(); err != nil {
+				runner.Logger.Warning().Msgf("Failed to update nuclei templates: %s\n", err)
+			}
 		}
 
-		if config.DefaultConfig.IgnoreFileNeedsUpdate(latestIgnoreHash) {
+		if checkUpdates && config.DefaultConfig.IgnoreFileNeedsUpdate(latestIgnoreHash) {
 			if err := installer.UpdateIgnoreFile(); err != nil {
 				runner.Logger.Warning().Msgf("Failed to update .nuclei-ignore file: %s\n", err)
 			}
 		}
 
-		if options.UpdateTemplates {
+		if checkUpdates && options.UpdateTemplates {
 			// we automatically check for updates unless explicitly disabled
 			// this print statement is only to inform the user that there are no updates
 			noUpdates := !config.DefaultConfig.NeedsTemplateUpdate()
@@ -469,6 +483,9 @@ func (r *Runner) runStandardEnumeration(executerOpts *protocols.ExecutorOptions,
 	if r.options.AutomaticScan {
 		return r.executeSmartWorkflowInput(executerOpts, store, engine)
 	}
+	if r.options.AutoTech {
+		return r.executeWithDetectedTech(executerOpts, store, engine)
+	}
 
 	return r.executeTemplatesInput(store, engine)
 }
@@ -590,8 +607,13 @@ func (r *Runner) RunEnumeration() error {
 	httpclientpool.ResetConnectionStats()
 
 	// If the user has asked for DAST server mode, run the live
-	// DAST fuzzing server.
+	// DAST fuzzing server. -plan never reaches this with those flags set:
+	// validation rejects the combination, and this check covers a caller
+	// that skipped it.
 	if r.options.DASTServer || r.options.DASTProxy {
+		if err := validatePlanOptions(r.options); err != nil {
+			return err
+		}
 		execurOpts := &server.NucleiExecutorOptions{
 			Options:            r.options,
 			Output:             r.output,
@@ -675,6 +697,7 @@ func (r *Runner) RunEnumeration() error {
 		Catalog:             r.catalog,
 		IssuesClient:        r.issuesClient,
 		RateLimiter:         r.rateLimiter,
+		RequestBodyBudget:   httpbody.NewBudget(int64(r.options.MaxRequestBodyInFlight)),
 		Interactsh:          r.interactsh,
 		ProjectFile:         r.projectFile,
 		Browser:             r.browser,
@@ -733,6 +756,9 @@ func (r *Runner) RunEnumeration() error {
 
 	if r.options.HostBackoff {
 		executorOpts.HostBackoff = hostbackoff.New(hostbackoff.Config{Max: r.options.HostBackoffMax})
+	}
+	if r.options.AutoCalibrate {
+		executorOpts.CatchAll = catchall.New(0)
 	}
 
 	executorEngine := core.New(r.options)
@@ -811,6 +837,39 @@ func (r *Runner) RunEnumeration() error {
 		profiles.Prepare(slices.Concat(store.Templates(), store.Workflows()))
 		executorOpts.TargetScope = profiles
 	}
+	// before uncover, preflight, auth prefetch and probing below, all of which
+	// reach the network
+	if r.options.PlanFile != "" {
+		return r.writePlan(store, executorEngine)
+	}
+	if r.options.ReplayFile != "" {
+		return r.replay(store)
+	}
+	if r.options.StoreEvents != "" {
+		recorder, err := replay.NewRecorder(r.options.StoreEvents, slices.Concat(store.Templates(), store.Workflows()))
+		if err != nil {
+			return errors.Wrap(err, "could not create events file")
+		}
+		previous := eventcreator.SetRecord(recorder.Record)
+		defer func() {
+			eventcreator.SetRecord(previous)
+			if err := recorder.Close(); err != nil {
+				r.Logger.Error().Msgf("Could not write %s: %s", r.options.StoreEvents, err)
+			}
+		}()
+	}
+	if r.options.RunPlanFile != "" {
+		run, err := openPlanRun(r.options.RunPlanFile)
+		if err != nil {
+			return errors.Wrap(err, "could not read plan")
+		}
+		r.Logger.Info().Msgf("Running %d plan entries from %s, %d already finished", len(run.entries), r.options.RunPlanFile, run.resumed)
+		run.follow(planFollowInterval, func(err error) {
+			r.Logger.Error().Msgf("Could not follow plan: %s", err)
+		})
+		executorEngine.SetPlanRun(run)
+		defer r.finishPlanRun(run)
+	}
 	// TODO: remove below functions after v3 or update warning messages
 	templates.PrintDeprecatedProtocolNameMsgIfApplicable(r.options.Silent, r.options.Verbose)
 
@@ -852,7 +911,7 @@ func (r *Runner) RunEnumeration() error {
 	// are used, and if inputs are non-http to pre-perform probing
 	// of urls and storing them for execution.
 	if !r.options.DisableHTTPProbe && loader.IsHTTPBasedProtocolUsed(store) && r.isInputNonHTTP() {
-		inputHelpers, err := r.initializeTemplatesHTTPInput()
+		inputHelpers, err := r.initializeTemplatesHTTPInput(int64(len(store.Templates()) + len(store.Workflows())))
 		if err != nil {
 			return errors.Wrap(err, "could not probe http input")
 		}
@@ -1072,6 +1131,7 @@ func (r *Runner) displayExecutionInfo(store *loader.Store) {
 	stats.DisplayAsWarning(httpProtocol.SetThreadToCountZero)
 	stats.ForceDisplayWarning(templates.SkippedUnverifiedTemplateStats)
 	stats.ForceDisplayWarning(templates.SkippedRequestSignatureTemplateStats)
+	stats.ForceDisplayWarning(templates.SkippedWorkflowStepStats)
 
 	cfg := config.DefaultConfig
 

@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"slices"
 	"strings"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
@@ -82,6 +83,9 @@ func dumpRequest(req *retryablehttp.Request, maxBody int) (requestDump, error) {
 	}
 
 	capture := &cappedWriter{headerEnd: -1, maxBody: maxBody}
+	if maxBody <= 0 {
+		capture.buf = make([]byte, 0, len(body)+dumpHeaderRoom)
+	}
 	if err := clone.Write(capture); err != nil {
 		return requestDump{}, err
 	}
@@ -89,7 +93,7 @@ func dumpRequest(req *retryablehttp.Request, maxBody int) (requestDump, error) {
 	// http.Transport asks for gzip unless the caller set an encoding.
 	if clone.Header.Get("Accept-Encoding") == "" && clone.Header.Get("Range") == "" && clone.Method != http.MethodHead && capture.headerEnd >= 2 {
 		end := capture.headerEnd - 2
-		data = append(data[:end:end], append([]byte("Accept-Encoding: gzip\r\n"), data[end:]...)...)
+		data = slices.Insert(data, end, acceptEncodingGzip...)
 	}
 	return requestDump{data: appendTruncationMarker(data, capture.dropped), truncated: capture.dropped}, nil
 }
@@ -122,6 +126,10 @@ func capDumpBody(dump []byte, maxBody int) []byte {
 }
 
 var headerTerminator = []byte("\r\n\r\n")
+
+var acceptEncodingGzip = []byte("Accept-Encoding: gzip\r\n")
+
+const dumpHeaderRoom = 8 * 1024
 
 // cappedWriter keeps the request line and headers in full and at most
 // maxBody bytes of the body that follows, counting the rest.
@@ -175,6 +183,19 @@ func getHTTPProjectCacheScope(requestDump requestDump, body []byte, scheme, host
 		_, _ = scoped.WriteString(hex.EncodeToString(sum[:]))
 	}
 	return scoped.Bytes()
+}
+
+func (g *generatedRequest) bodyLen() int64 {
+	if g.rawRequest != nil {
+		return int64(len(g.rawRequest.Data))
+	}
+	if g.request == nil || g.request.Body == nil {
+		return 0
+	}
+	if body, ok := g.request.Body.(*httpbody.Body); ok {
+		return int64(body.Len())
+	}
+	return g.request.ContentLength
 }
 
 // body returns the request body without copying it.

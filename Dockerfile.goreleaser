@@ -1,4 +1,4 @@
-FROM alpine:latest
+FROM alpine:3.24.4@sha256:f59abe656b692d901e184be3445e084786602108599d2a51d229c0f5a48c71bf
 
 LABEL org.opencontainers.image.authors="ProjectDiscovery"
 LABEL org.opencontainers.image.description="Nuclei is a fast, customizable vulnerability scanner powered by the global security community and built on a simple YAML-based DSL, enabling collaboration to tackle trending vulnerabilities on the internet. It helps you find vulnerabilities in your applications, APIs, networks, DNS, and cloud configurations."
@@ -6,7 +6,12 @@ LABEL org.opencontainers.image.licenses="MIT"
 LABEL org.opencontainers.image.title="nuclei"
 LABEL org.opencontainers.image.url="https://github.com/projectdiscovery/nuclei"
 
-RUN apk add --no-cache bind-tools chromium ca-certificates
+RUN apk add --no-cache bind-tools chromium ca-certificates \
+    && addgroup -S nuclei \
+    && adduser -S -D -h /home/nuclei -G nuclei nuclei
 COPY nuclei /usr/local/bin/
+
+USER nuclei
+WORKDIR /home/nuclei
 
 ENTRYPOINT ["nuclei"]

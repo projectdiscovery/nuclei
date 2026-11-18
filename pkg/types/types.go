@@ -217,6 +217,10 @@ type Options struct {
 	HostBackoff bool
 	// HostBackoffMax caps the per-host backoff delay.
 	HostBackoffMax time.Duration
+	// AutoCalibrate drops HTTP matches whose response is the page the host
+	// serves for any missing path. Opt-in, since it sends a few probes per host
+	// that has a match.
+	AutoCalibrate bool
 	// MaxURLsPerPattern caps how many targets sharing one structural shape
 	// (/user/1, /user/2, ...) are scanned. Zero, the default, scans every
 	// target: dropping one means never scanning it.
@@ -243,10 +247,25 @@ type Options struct {
 	LeaveDefaultPorts bool
 	// AutomaticScan enables automatic tech based template execution
 	AutomaticScan bool
+	// AutoTech runs the tech templates first and skips, on each target, the
+	// templates bound to products they did not detect there.
+	AutoTech bool
 	// Silent suppresses any extra text and only writes found URLs on screen.
 	Silent bool
 	// Validate validates the templates passed to nuclei.
 	Validate bool
+	// PlanFile is where the work a scan would do is written as JSON lines;
+	// nuclei exits after writing it, without sending requests.
+	PlanFile string
+	// RunPlanFile is a plan whose entries the scan runs, skipping those its
+	// done log lists as finished.
+	RunPlanFile string
+	// StoreEvents is where the scan writes the event of every request, as
+	// JSON lines, for -replay.
+	StoreEvents string
+	// ReplayFile is a corpus written by -store-events whose events the
+	// templates are run over, without sending requests.
+	ReplayFile string
 	// NoStrictSyntax disables strict syntax check on nuclei templates (allows custom key-value pairs).
 	NoStrictSyntax bool
 	// Verbose flag indicates whether to show verbose output or not
@@ -277,10 +296,14 @@ type Options struct {
 	JSONExport string
 	// JSONLExport is the file to export JSONL output format to
 	JSONLExport string
+	// CSVExport is the file to export CSV output format to
+	CSVExport string
 	// PDFExport is the file to export PDF output format to
 	PDFExport string
 	// Redact redacts given keys in
 	Redact goflags.StringSlice
+	// NoRedact disables the built-in redaction of credential headers in output
+	NoRedact bool
 	// EnableProgressBar enables progress bar
 	EnableProgressBar bool
 	// TemplateDisplay displays the template contents
@@ -364,6 +387,8 @@ type Options struct {
 	// RequestSaveSize is the maximum request body kept in saved output and
 	// debug dumps. Matchers see the full request. 0 keeps the whole body.
 	RequestSaveSize int
+	// MaxRequestBodyInFlight bounds request-body bytes in flight; 0 disables it.
+	MaxRequestBodyInFlight int
 	// Health Check
 	HealthCheck bool
 	// Time to wait between each input read operation before closing the stream
@@ -696,10 +721,16 @@ func (options *Options) Copy() *Options {
 		PerHostRateLimit:               options.PerHostRateLimit,
 		PerHostRateLimitPoolSize:       options.PerHostRateLimitPoolSize,
 		EnableHTTPCache:                options.EnableHTTPCache,
+		AutoCalibrate:                  options.AutoCalibrate,
 		LeaveDefaultPorts:              options.LeaveDefaultPorts,
 		AutomaticScan:                  options.AutomaticScan,
+		AutoTech:                       options.AutoTech,
 		Silent:                         options.Silent,
 		Validate:                       options.Validate,
+		PlanFile:                       options.PlanFile,
+		RunPlanFile:                    options.RunPlanFile,
+		StoreEvents:                    options.StoreEvents,
+		ReplayFile:                     options.ReplayFile,
 		NoStrictSyntax:                 options.NoStrictSyntax,
 		Verbose:                        options.Verbose,
 		VerboseVerbose:                 options.VerboseVerbose,
@@ -715,8 +746,10 @@ func (options *Options) Copy() *Options {
 		OmitTemplate:                   options.OmitTemplate,
 		JSONExport:                     options.JSONExport,
 		JSONLExport:                    options.JSONLExport,
+		CSVExport:                      options.CSVExport,
 		PDFExport:                      options.PDFExport,
 		Redact:                         options.Redact,
+		NoRedact:                       options.NoRedact,
 		EnableProgressBar:              options.EnableProgressBar,
 		TemplateDisplay:                options.TemplateDisplay,
 		TemplateList:                   options.TemplateList,
@@ -757,6 +790,7 @@ func (options *Options) Copy() *Options {
 		ResponseReadSize:               options.ResponseReadSize,
 		ResponseSaveSize:               options.ResponseSaveSize,
 		RequestSaveSize:                options.RequestSaveSize,
+		MaxRequestBodyInFlight:         options.MaxRequestBodyInFlight,
 		HealthCheck:                    options.HealthCheck,
 		InputReadTimeout:               options.InputReadTimeout,
 		DisableStdin:                   options.DisableStdin,

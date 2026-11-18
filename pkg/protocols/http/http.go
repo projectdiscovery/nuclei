@@ -147,6 +147,10 @@ type Request struct {
 	rawhttpClient     *rawhttp.Client
 	replayClient      *http.Client // set when -replay-proxy is given
 	dialer            *fastdialer.Dialer
+	bodySize          *bodySizeEstimate
+	// sharesResponse lets other templates reuse a response this request gets,
+	// and this request reuse theirs (see httpclientpool.WithSharedResponse)
+	sharesResponse bool
 
 	// description: |
 	//   SelfContained specifies if the request is self-contained.
@@ -402,7 +406,7 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 
 	// If we have request level timeout, ignore http client timeouts
 	for _, req := range request.Raw {
-		if reTimeoutAnnotation.MatchString(req) {
+		if hasTimeoutAnnotation(req) {
 			connectionConfiguration.NoTimeout = true
 		}
 	}
@@ -416,6 +420,7 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 		return errors.Wrap(err, "could not get dialer")
 	}
 	request.dialer = dialer
+	request.bodySize = &bodySizeEstimate{}
 
 	request.options = options
 	for _, option := range request.options.Options.CustomHeaders {
@@ -585,7 +590,22 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 	if shouldDisableKeepAliveForHTTPProxy(request, options) {
 		request.connConfiguration.Connection.DisableKeepAlive = true
 	}
+	request.sharesResponse = canShareResponse(request, options.Flow)
 	return nil
+}
+
+// canShareResponse reports whether a response another template got for the
+// same request is as good as sending it again. A shared response arrives at
+// once, so nothing that measures time may take one: race requests, timing
+// analyzers, and a request whose operators or flow read the duration. The
+// operators are searched whole, so a new field that can read it, as LLM
+// matcher inputs do, is covered without being listed.
+func canShareResponse(request *Request, flow string) bool {
+	if request.Race || request.Analyzer != nil || strings.Contains(flow, "duration") {
+		return false
+	}
+	operators, err := json.Marshal(request.Operators)
+	return err == nil && !bytes.Contains(operators, []byte("duration"))
 }
 
 // RebuildGenerator rebuilds the generator for the request

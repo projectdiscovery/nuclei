@@ -1,0 +1,9 @@
+openapi: 3.0.0
+info: {title: t, version: "1"}
+servers:
+  -
+  - {url: "http://example.com"}
+paths:
+  /users:
+    get:
+      responses: {"200": {description: ok}}

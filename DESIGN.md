@@ -36,7 +36,7 @@ It also specifies a `WorkflowLoader` interface that is used during workflow load
 
 ```go
 type WorkflowLoader interface {
-	GetTemplatePathsByTags(tags []string) []string
+	GetTemplatePathsByTags(tags []string, noValidate bool) []string
 	GetTemplatePaths(templatesList []string, noValidate bool) []string
 }
 ```

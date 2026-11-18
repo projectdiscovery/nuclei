@@ -106,7 +106,8 @@ export class SSHClient {
     /**
     * Close closes the SSH connection and destroys the client
     * Returns the success state and error. If error is not nil,
-    * state will be false
+    * state will be false. Close does nothing and returns true
+    * if no connection is open.
     * @example
     * ```javascript
     * const ssh = require('nuclei/ssh');

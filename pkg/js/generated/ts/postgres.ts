@@ -2,7 +2,7 @@
 
 /**
  * PGClient is a client for Postgres database.
- * Internally client uses go-pg/pg driver.
+ * Internally client uses lib/pq driver.
  * @example
  * ```javascript
  * const postgres = require('nuclei/postgres');

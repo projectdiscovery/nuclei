@@ -56,7 +56,10 @@ func TestHeadlessProxy_BlocksExcludedHosts(t *testing.T) {
 				return
 			}
 			allowedHits.Add(1)
+			reqBuf := make([]byte, 512)
+			_, _ = conn.Read(reqBuf)
 			_, _ = conn.Write([]byte("HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nOK"))
+			time.Sleep(50 * time.Millisecond)
 			_ = conn.Close()
 		}
 	}()

@@ -185,6 +185,27 @@ func TestTagBasedFilter(t *testing.T) {
 		matched, _ = filter.Match(dummyTemplate, nil)
 		require.False(t, matched, "could not get correct match")
 	})
+	t.Run("match-exclude-id-over-include-id", func(t *testing.T) {
+		filter, err := NewTagFilter(&TagFilterConfig{
+			IncludeIds: []string{"cve-test"},
+			ExcludeIds: []string{"cve-test"},
+		})
+		require.NoError(t, err)
+		dummyTemplate := newDummyTemplate("cve-test", nil, nil, severity.Low, types.HTTPProtocol)
+		matched, _ := filter.Match(dummyTemplate, nil)
+		require.False(t, matched, "an excluded id must not match when it is also included")
+	})
+	t.Run("match-exclude-id-also-excluded-as-tag", func(t *testing.T) {
+		filter, err := NewTagFilter(&TagFilterConfig{
+			ExcludeTags: []string{"dup"},
+			ExcludeIds:  []string{"dup"},
+		})
+		require.NoError(t, err)
+
+		dummyTemplate := newDummyTemplate("dup", nil, []string{"pdteam"}, severity.Info, types.HTTPProtocol)
+		matched, _ := filter.Match(dummyTemplate, nil)
+		require.False(t, matched, "could not get correct match")
+	})
 	t.Run("match-exclude-type", func(t *testing.T) {
 		filter, err := NewTagFilter(&TagFilterConfig{
 			ExcludeProtocols: []types.ProtocolType{types.HTTPProtocol},

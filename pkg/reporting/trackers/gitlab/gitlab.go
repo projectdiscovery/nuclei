@@ -41,7 +41,8 @@ type Options struct {
 	DenyList *filters.Filter `yaml:"deny-list"`
 	// DuplicateIssueCheck is a bool to enable duplicate tracking issue check and update the newest
 	DuplicateIssueCheck bool `yaml:"duplicate-issue-check" default:"false"`
-	// DuplicateIssuePageSize controls how many issues are fetched per page when searching for duplicates.
+	// DuplicateIssuePageSize is the number of issues to request per page when searching for duplicates.
+	// GitLab returns at most 100 issues per page.
 	// If unset or <=0, a default of 100 is used.
 	DuplicateIssuePageSize int `yaml:"duplicate-issue-page-size" default:"100"`
 	// DuplicateIssueMaxPages limits how many pages are fetched when searching for duplicates.
@@ -161,23 +162,23 @@ func (i *Integration) findIssueByTitle(title string) (*gitlab.Issue, error) {
 	if pageSize <= 0 {
 		pageSize = 100
 	}
-	maxPages := i.options.DuplicateIssueMaxPages
+	maxPages := int64(i.options.DuplicateIssueMaxPages)
 
 	searchIn := "title"
 	searchState := "all"
-	page := 1
+	page := int64(1)
 
 	for {
 		if maxPages > 0 && page > maxPages {
 			return nil, nil
 		}
 
-		issues, _, err := i.client.Issues.ListProjectIssues(i.options.ProjectName, &gitlab.ListProjectIssuesOptions{
+		issues, resp, err := i.client.Issues.ListProjectIssues(i.options.ProjectName, &gitlab.ListProjectIssuesOptions{
 			In:     &searchIn,
 			State:  &searchState,
 			Search: &title,
 			ListOptions: gitlab.ListOptions{
-				Page:    int64(page),
+				Page:    page,
 				PerPage: int64(pageSize),
 			},
 		})
@@ -191,11 +192,14 @@ func (i *Integration) findIssueByTitle(title string) (*gitlab.Issue, error) {
 			}
 		}
 
-		if len(issues) < pageSize {
+		// GitLab caps per_page at 100, so a short page is not necessarily
+		// the last one. Follow X-Next-Page instead, and stop when it is
+		// empty or does not move forward.
+		if resp.NextPage <= page {
 			return nil, nil
 		}
 
-		page++
+		page = resp.NextPage
 	}
 }
 

@@ -195,7 +195,7 @@ func (request *Request) execute(input *contextargs.Context, domain string, metad
 	// perform trace if necessary (excluded from duration — only the query RTT is measured)
 	var traceData *retryabledns.TraceData
 	if request.Trace {
-		traceData, err = request.dnsClient.Trace(domain, request.question, request.TraceMaxRecursion)
+		traceData, err = trace(request.options.Options.ExecutionId, request.dnsClient, domain, request.question, request.TraceMaxRecursion)
 		if err != nil {
 			request.options.Output.Request(request.options.TemplatePath, domain, "dns", err)
 		}

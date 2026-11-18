@@ -366,83 +366,19 @@ type TagFilterConfig struct {
 // It takes into account Tags, Severities, ExcludeSeverities, Authors, IncludeTags, ExcludeTags, Conditions.
 func NewTagFilter(config *TagFilterConfig) (*TagFilter, error) {
 	filter := &TagFilter{
-		allowedTags:       make(map[string]struct{}),
-		authors:           make(map[string]struct{}),
-		severities:        make(map[severity.Severity]struct{}),
-		excludeSeverities: make(map[severity.Severity]struct{}),
-		block:             make(map[string]struct{}),
-		matchAllows:       make(map[string]struct{}),
-		types:             make(map[types.ProtocolType]struct{}),
-		excludeTypes:      make(map[types.ProtocolType]struct{}),
-		allowedIds:        make(map[string]struct{}),
-		excludeIds:        make(map[string]struct{}),
+		allowedTags:       splitCommaTrimSet(config.Tags),
+		authors:           splitCommaTrimSet(config.Authors),
+		severities:        toMap(config.Severities),
+		excludeSeverities: toMap(config.ExcludeSeverities),
+		block:             splitCommaTrimSet(config.ExcludeTags),
+		matchAllows:       splitCommaTrimSet(config.IncludeTags),
+		types:             toMap(config.Protocols),
+		excludeTypes:      toMap(config.ExcludeProtocols),
+		// an included ID does not lift its exclusion: exclusions apply
+		// however a template is selected
+		allowedIds:        splitCommaTrimSet(config.IncludeIds),
+		excludeIds:        splitCommaTrimSet(config.ExcludeIds),
 		includeConditions: make(map[string]*govaluate.EvaluableExpression),
-	}
-	for _, tag := range config.ExcludeTags {
-		for _, val := range splitCommaTrim(tag) {
-			if _, ok := filter.block[val]; !ok {
-				filter.block[val] = struct{}{}
-			}
-		}
-	}
-	for _, tag := range config.Severities {
-		if _, ok := filter.severities[tag]; !ok {
-			filter.severities[tag] = struct{}{}
-		}
-	}
-	for _, tag := range config.ExcludeSeverities {
-		if _, ok := filter.excludeSeverities[tag]; !ok {
-			filter.excludeSeverities[tag] = struct{}{}
-		}
-	}
-	for _, tag := range config.Authors {
-		for _, val := range splitCommaTrim(tag) {
-			if _, ok := filter.authors[val]; !ok {
-				filter.authors[val] = struct{}{}
-			}
-		}
-	}
-	for _, tag := range config.Tags {
-		for _, val := range splitCommaTrim(tag) {
-			if _, ok := filter.allowedTags[val]; !ok {
-				filter.allowedTags[val] = struct{}{}
-			}
-			// Note: only tags specified in IncludeTags should be removed from the block list
-			// not normal tags like config.Tags
-		}
-	}
-	for _, tag := range config.IncludeTags {
-		for _, val := range splitCommaTrim(tag) {
-			if _, ok := filter.matchAllows[val]; !ok {
-				filter.matchAllows[val] = struct{}{}
-			}
-			delete(filter.block, val)
-		}
-	}
-	for _, tag := range config.Protocols {
-		if _, ok := filter.types[tag]; !ok {
-			filter.types[tag] = struct{}{}
-		}
-	}
-	for _, tag := range config.ExcludeProtocols {
-		if _, ok := filter.excludeTypes[tag]; !ok {
-			filter.excludeTypes[tag] = struct{}{}
-		}
-	}
-	for _, id := range config.ExcludeIds {
-		for _, val := range splitCommaTrim(id) {
-			if _, ok := filter.block[val]; !ok {
-				filter.excludeIds[val] = struct{}{}
-			}
-		}
-	}
-	for _, id := range config.IncludeIds {
-		for _, val := range splitCommaTrim(id) {
-			if _, ok := filter.allowedIds[val]; !ok {
-				filter.allowedIds[val] = struct{}{}
-			}
-			delete(filter.excludeIds, val)
-		}
 	}
 	for _, includeCondition := range config.IncludeConditions {
 		compiled, err := govaluate.NewEvaluableExpressionWithFunctions(includeCondition, dsl.HelperFunctions)
@@ -471,12 +407,25 @@ func splitCommaTrim(value string) []string {
 	return final
 }
 
-func toMap(slice []string) map[string]struct{} {
-	result := make(map[string]struct{}, len(slice))
-	for _, value := range slice {
-		if _, ok := result[value]; !ok {
-			result[value] = struct{}{}
+// splitCommaTrimSet returns the set of values, each split by splitCommaTrim.
+func splitCommaTrimSet(values []string) map[string]struct{} {
+	set := make(map[string]struct{}, len(values))
+
+	for _, value := range values {
+		for _, val := range splitCommaTrim(value) {
+			set[val] = struct{}{}
 		}
 	}
+
+	return set
+}
+
+func toMap[T comparable](slice []T) map[T]struct{} {
+	result := make(map[T]struct{}, len(slice))
+
+	for _, value := range slice {
+		result[value] = struct{}{}
+	}
+
 	return result
 }

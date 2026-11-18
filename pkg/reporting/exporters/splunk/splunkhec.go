@@ -63,9 +63,10 @@ func New(option *Options) (*Exporter, error) {
 			Transport: &http.Transport{
 				MaxIdleConns:        10,
 				MaxIdleConnsPerHost: 10,
-				DialContext:         dialers.Fastdialer.Dial,
-				DialTLSContext:      dialers.Fastdialer.DialTLS,
-				TLSClientConfig:     &tls.Config{InsecureSkipVerify: option.SSLVerification},
+				// No DialTLSContext: fastdialer DialTLS ignores TLSClientConfig and
+				// skips verification; net/http does the handshake with TLSClientConfig.
+				DialContext:     dialers.Fastdialer.Dial,
+				TLSClientConfig: &tls.Config{InsecureSkipVerify: option.SSLVerification},
 			},
 		}
 	}
@@ -121,6 +122,9 @@ func (exporter *Exporter) Export(event *output.ResultEvent) error {
 	if err != nil {
 		return err
 	}
+	defer func() {
+		_ = res.Body.Close()
+	}()
 
 	b, err = io.ReadAll(res.Body)
 	if err != nil {

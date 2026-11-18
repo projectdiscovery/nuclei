@@ -16,6 +16,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/helpers/writer"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/catchall"
 	protocolUtils "github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils"
 	"github.com/projectdiscovery/nuclei/v3/pkg/scan"
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates/types"
@@ -55,8 +56,11 @@ func Cluster(list []*Template) [][]*Template {
 
 	// Split up templates that might be clusterable
 	for _, template := range list {
-		// it is not possible to cluster flow and multiprotocol due to dependent execution
-		if template.Flow != "" || template.Options.IsMultiProtocol {
+		// it is not possible to cluster flow and multiprotocol due to dependent execution.
+		// Info placeholders are filled from the event a finding came from, and a
+		// cluster shares one event that already holds the first template's variables
+		// and extracted values, so a template with them runs on its own.
+		if template.Flow != "" || template.Options.IsMultiProtocol || template.Info.HasPlaceholders() {
 			final = append(final, []*Template{template})
 			continue
 		}
@@ -285,6 +289,27 @@ func (template *Template) SelectedBy(selection protocols.TemplateSelection) bool
 	return selection.Allows(template.Path)
 }
 
+// TemplateIDs returns the IDs of the members selection selects; a nil
+// selection selects every member.
+func (e *ClusterExecuter) TemplateIDs(selection protocols.TemplateSelection) []string {
+	ids := make([]string, 0, len(e.operators))
+	for _, operator := range e.operators {
+		if selection == nil || selection.Allows(operator.templatePath) {
+			ids = append(ids, operator.templateID)
+		}
+	}
+	return ids
+}
+
+// TemplatePaths returns the paths of every member.
+func (e *ClusterExecuter) TemplatePaths() []string {
+	paths := make([]string, 0, len(e.operators))
+	for _, operator := range e.operators {
+		paths = append(paths, operator.templatePath)
+	}
+	return paths
+}
+
 // operatorsFor returns the members selected for input by per-target profiles.
 func (e *ClusterExecuter) operatorsFor(input *contextargs.MetaInput) []*clusteredOperator {
 	if e.options.TargetScope == nil {
@@ -297,6 +322,16 @@ func (e *ClusterExecuter) operatorsFor(input *contextargs.MetaInput) []*clustere
 	return slices.DeleteFunc(slices.Clone(e.operators), func(operator *clusteredOperator) bool {
 		return !selection.Allows(operator.templatePath)
 	})
+}
+
+// onCatchAllPage reports whether operator matched only because the host serves
+// this page for any missing path.
+func onCatchAllPage(event *output.InternalWrappedEvent, operator *clusteredOperator, input string) bool {
+	if event.CatchAll == nil || !catchall.Applies(operator.templateInfo, operator.operator) || !event.CatchAll() {
+		return false
+	}
+	gologger.Verbose().Msgf("[%s] Dropped match on %s: the host serves this page for any missing path", operator.templateID, input)
+	return true
 }
 
 // Execute executes the protocol group and returns true or false if results were found.
@@ -336,6 +371,9 @@ func (e *ClusterExecuter) Execute(ctx *scan.ScanContext) (bool, error) {
 			clonedEvent.InternalEvent["template-path"] = operator.templatePath
 			clonedEvent.InternalEvent["template-info"] = operator.templateInfo
 
+			if matched && result != nil && onCatchAllPage(event, operator, ctx.Input.MetaInput.Input) {
+				continue
+			}
 			if matched && result != nil {
 				clonedEvent.OperatorsResult = result
 				clonedEvent.Results = e.requests.MakeResultEvent(clonedEvent)
@@ -412,6 +450,9 @@ func (e *ClusterExecuter) ExecuteWithResults(ctx *scan.ScanContext) ([]*output.R
 			clonedEvent := event.CloneShallow()
 
 			result, matched := operator.operator.Execute(clonedEvent.InternalEvent, e.requests.Match, e.requests.Extract, e.options.Options.Debug || e.options.Options.DebugResponse)
+			if matched && result != nil && onCatchAllPage(event, operator, ctx.Input.MetaInput.Input) {
+				continue
+			}
 			if matched && result != nil {
 				clonedEvent.OperatorsResult = result
 				clonedEvent.InternalEvent["template-id"] = operator.templateID

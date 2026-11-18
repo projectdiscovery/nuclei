@@ -2,6 +2,7 @@ package loader
 
 import (
 	"bytes"
+	"crypto/sha256"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -19,6 +20,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/loader/workflow"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates"
+	templatesigner "github.com/projectdiscovery/nuclei/v3/pkg/templates/signer"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils/stats"
 	"github.com/stretchr/testify/require"
@@ -176,25 +178,8 @@ func TestLoadTemplatesOnlyMetadataLogsCachedTemplateParseErrors(t *testing.T) {
 	require.Contains(t, output.String(), "Could not load template")
 }
 
-func TestValidateTemplatesRejectsRuntimeCompilationError(t *testing.T) {
-	templatePath := filepath.Join(t.TempDir(), "invalid-regex-group.yaml")
-	require.NoError(t, os.WriteFile(templatePath, []byte(`id: invalid-regex-group
-
-info:
-  name: Invalid Regex Group
-  author: pdteam
-  severity: info
-
-http:
-  - method: GET
-    path:
-      - "{{BaseURL}}"
-    extractors:
-      - type: regex
-        group: -1
-        regex:
-          - "(a)(b)"
-`), 0o600))
+func newValidateStore(t *testing.T, executionID, templatePath string) (*Store, *bytes.Buffer) {
+	t.Helper()
 
 	options := testutils.DefaultOptions.Copy()
 	var output bytes.Buffer
@@ -203,7 +188,7 @@ http:
 	logger.SetWriter(&utils.CaptureWriter{Buffer: &output})
 	logger.SetMaxLevel(levels.LevelDebug)
 	options.Logger = logger
-	options.ExecutionId = "loader-invalid-regex-group"
+	options.ExecutionId = executionID
 	options.Templates = []string{templatePath}
 	options.Validate = true
 	options.TemplateLoadingConcurrency = 1
@@ -226,8 +211,48 @@ http:
 
 	store, err := New(NewConfig(options, catalog, executerOpts))
 	require.NoError(t, err)
+	return store, &output
+}
+
+func TestValidateTemplatesRejectsRuntimeCompilationError(t *testing.T) {
+	templatePath := filepath.Join(t.TempDir(), "invalid-regex-group.yaml")
+	require.NoError(t, os.WriteFile(templatePath, []byte(`id: invalid-regex-group
+
+info:
+  name: Invalid Regex Group
+  author: pdteam
+  severity: info
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}"
+    extractors:
+      - type: regex
+        group: -1
+        regex:
+          - "(a)(b)"
+`), 0o600))
+
+	store, output := newValidateStore(t, "loader-invalid-regex-group", templatePath)
 	require.Error(t, store.ValidateTemplates())
 	require.Contains(t, output.String(), "regex extractor group must be >= 0")
+}
+
+func TestValidateTemplatesRejectsMissingTemplatePath(t *testing.T) {
+	templatePath := filepath.Join(t.TempDir(), "no-such-templates")
+
+	store, output := newValidateStore(t, "loader-missing-template-path", templatePath)
+	require.Error(t, store.ValidateTemplates())
+	require.Contains(t, output.String(), "Could not find template")
+}
+
+func TestValidateTemplatesAcceptsMissingPathHandledByCallback(t *testing.T) {
+	templatePath := filepath.Join(t.TempDir(), "no-such-templates")
+
+	store, _ := newValidateStore(t, "loader-missing-path-callback", templatePath)
+	store.NotFoundCallback = func(string) bool { return true }
+	require.NoError(t, store.ValidateTemplates())
 }
 
 func TestRemoteTemplates(t *testing.T) {
@@ -662,7 +687,133 @@ http:
 	loaded := loadSingleTemplateForTest(t, templatePath, "loader-unsigned-flow-template")
 	require.Len(t, loaded, 1)
 	require.Equal(t, "unsigned-flow-template", loaded[0].ID)
+	require.False(t, loaded[0].Verified)
 	require.Equal(t, initialUnverifiedJavascript, stats.GetValue(templates.SkippedUnverifiedJavascriptTemplateStats))
+}
+
+func contentDigestForLoaderTest(data []byte) [32]byte {
+	dataDigest := sha256.Sum256(data)
+	return sha256.Sum256(dataDigest[:])
+}
+
+func loadTemplateWithPoisonedMetadata(t *testing.T, templatePath, executionID string, source []byte, disableUnsigned bool) []*templates.Template {
+	t.Helper()
+
+	fileInfo, err := os.Stat(templatePath)
+	require.NoError(t, err)
+
+	metadataIndex, err := metadataindex.NewIndex(t.TempDir())
+	require.NoError(t, err)
+	metadataIndex.Set(templatePath, &metadataindex.Metadata{
+		ID:                  "poisoned",
+		FilePath:            templatePath,
+		ModTime:             fileInfo.ModTime(),
+		Name:                "Poisoned",
+		Authors:             []string{"pdteam"},
+		Severity:            "info",
+		Verified:            true,
+		TemplateVerifier:    "projectdiscovery/nuclei-templates",
+		VerifierFingerprint: templatesigner.DefaultTemplateVerifiers[0].Fingerprint(),
+		ContentDigest:       contentDigestForLoaderTest(source),
+		Validation:          metadataindex.ValidationStrict,
+	})
+
+	options := testutils.DefaultOptions.Copy()
+	options.Logger = &gologger.Logger{}
+	options.ExecutionId = executionID
+	options.DisableUnsignedTemplates = disableUnsigned
+	options.TemplateLoadingConcurrency = 1
+	testutils.Init(options)
+	t.Cleanup(func() {
+		testutils.Cleanup(options)
+	})
+
+	catalog := disk.NewCatalog("")
+	executerOpts := testutils.NewMockExecuterOptions(options, nil)
+	executerOpts.Catalog = catalog
+	executerOpts.Parser = templates.NewParser()
+	executerOpts.Logger = options.Logger
+
+	workflowLoader, err := workflow.NewLoader(executerOpts)
+	require.NoError(t, err)
+	executerOpts.WorkflowLoader = workflowLoader
+
+	loaderConfig := NewConfig(options, catalog, executerOpts)
+	loaderConfig.MetadataIndex = metadataIndex
+	store, err := New(loaderConfig)
+	require.NoError(t, err)
+
+	loaded, err := store.LoadTemplates([]string{templatePath})
+	require.NoError(t, err)
+	return loaded
+}
+
+func TestLoadTemplatesIgnoresSelfConsistentCacheForJavascript(t *testing.T) {
+	templatePath := filepath.Join(t.TempDir(), "poisoned-javascript.yaml")
+	source := []byte(`id: poisoned-cached-javascript
+
+info:
+  name: Poisoned Cached Javascript
+  author: pdteam
+  severity: info
+
+javascript:
+  - init: |
+      set("init-status", "executed")
+    code: |
+      Export("poisoned-cached-javascript")
+`)
+	require.NoError(t, os.WriteFile(templatePath, source, 0o600))
+
+	loaded := loadTemplateWithPoisonedMetadata(t, templatePath, "loader-poisoned-javascript", source, false)
+	require.Empty(t, loaded)
+}
+
+func TestLoadTemplatesAllowsUnsignedFlowDespitePoisonedCache(t *testing.T) {
+	templatePath := filepath.Join(t.TempDir(), "poisoned-flow.yaml")
+	source := []byte(`id: poisoned-cached-flow
+
+info:
+  name: Poisoned Cached Flow
+  author: pdteam
+  severity: info
+
+flow: http(1)
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}"
+`)
+	require.NoError(t, os.WriteFile(templatePath, source, 0o600))
+
+	loaded := loadTemplateWithPoisonedMetadata(t, templatePath, "loader-poisoned-flow", source, false)
+	require.Len(t, loaded, 1)
+	require.Equal(t, "poisoned-cached-flow", loaded[0].ID)
+	require.False(t, loaded[0].Verified)
+	require.True(t, loaded[0].IsFlowTemplate())
+}
+
+func TestLoadTemplatesSkipsPoisonedHttpWhenUnsignedDisabled(t *testing.T) {
+	templatePath := filepath.Join(t.TempDir(), "poisoned-http.yaml")
+	source := []byte(`id: poisoned-cached-http
+
+info:
+  name: Poisoned Cached HTTP
+  author: pdteam
+  severity: info
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}"
+`)
+	require.NoError(t, os.WriteFile(templatePath, source, 0o600))
+
+	initialUnverified := stats.GetValue(templates.SkippedUnverifiedTemplateStats)
+	loaded := loadTemplateWithPoisonedMetadata(t, templatePath, "loader-poisoned-http-dut", source, true)
+	require.Empty(t, loaded)
+	require.Equal(t, initialUnverified+1, stats.GetValue(templates.SkippedUnverifiedTemplateStats))
 }
 
 func TestLoadTemplatesDoesNotRequireGlobalMatchersFlagToLoadTemplate(t *testing.T) {
