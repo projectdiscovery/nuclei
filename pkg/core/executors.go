@@ -376,9 +376,16 @@ func (e *Engine) executeTemplateOnInput(ctx context.Context, template *templates
 			for _, result := range results {
 				e.Callback(result)
 			}
+			if e.resultHook != nil {
+				e.resultHook(value, results)
+			}
 			return len(results) > 0, nil
 		}
-		return template.Executer.Execute(scanCtx)
+		matched, err = template.Executer.Execute(scanCtx)
+		if e.resultHook != nil {
+			e.resultHook(value, scanCtx.GenerateResult())
+		}
+		return matched, err
 	}
 }
 

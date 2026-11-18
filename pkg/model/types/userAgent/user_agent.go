@@ -32,7 +32,9 @@ var userAgentMappings = map[UserAgent]string{
 
 func GetSupportedUserAgentOptions() []UserAgent {
 	var result []UserAgent
-	for index := UserAgent(1); index < limit; index++ {
+	// Random is the zero value and a valid option (the headless default), so
+	// the range starts at 0; unlike severity, there is no sentinel to skip.
+	for index := UserAgent(0); index < limit; index++ {
 		result = append(result, index)
 	}
 	return result
