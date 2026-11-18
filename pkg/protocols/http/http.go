@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math"
 	"net/http"
+	"slices"
 	"strings"
 	"time"
 
@@ -151,6 +152,9 @@ type Request struct {
 	// sharesResponse lets other templates reuse a response this request gets,
 	// and this request reuse theirs (see httpclientpool.WithSharedResponse)
 	sharesResponse bool
+	// readsRawResponse keeps the response bytes as received, before content
+	// decoding, for the raw_body and raw_response parts
+	readsRawResponse bool
 
 	// description: |
 	//   SelfContained specifies if the request is self-contained.
@@ -301,6 +305,8 @@ var RequestPartDefinitions = map[string]string{
 	"response":              "HTTP response received from server",
 	"status_code":           "Status Code received from the Server",
 	"body":                  "HTTP response body received from server (default)",
+	"raw_body":              "HTTP response body as received, before content decoding",
+	"raw_response":          "HTTP response headers followed by raw_body",
 	"content_length":        "HTTP Response content length",
 	"header,all_headers":    "HTTP response headers",
 	"duration":              "HTTP request time duration",
@@ -591,21 +597,36 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 		request.connConfiguration.Connection.DisableKeepAlive = true
 	}
 	request.sharesResponse = canShareResponse(request, options.Flow)
+	request.readsRawResponse = reads(request, options.Flow, "raw_body", "raw_response")
 	return nil
 }
 
 // canShareResponse reports whether a response another template got for the
 // same request is as good as sending it again. A shared response arrives at
 // once, so nothing that measures time may take one: race requests, timing
-// analyzers, and a request whose operators or flow read the duration. The
-// operators are searched whole, so a new field that can read it, as LLM
-// matcher inputs do, is covered without being listed.
+// analyzers, and a request whose operators or flow read the duration.
 func canShareResponse(request *Request, flow string) bool {
-	if request.Race || request.Analyzer != nil || strings.Contains(flow, "duration") {
-		return false
-	}
+	return !request.Race && request.Analyzer == nil && !reads(request, flow, "duration")
+}
+
+// reads reports whether the operators or flow of request may read any of
+// parts. The operators are searched whole, so a new field that can read a
+// part, as LLM matcher inputs do, is covered without being listed.
+func reads(request *Request, flow string, parts ...string) bool {
 	operators, err := json.Marshal(request.Operators)
-	return err == nil && !bytes.Contains(operators, []byte("duration"))
+	if err != nil {
+		return true
+	}
+	return slices.ContainsFunc(parts, func(part string) bool {
+		return strings.Contains(flow, part) || bytes.Contains(operators, []byte(part))
+	})
+}
+
+// keepsRawResponse reports whether responses keep their bytes as received.
+// The project file stores those, decoded again when read back, so a cached
+// response serves templates reading raw_body and the others alike.
+func (request *Request) keepsRawResponse() bool {
+	return request.readsRawResponse || request.options.ProjectFile != nil
 }
 
 // RebuildGenerator rebuilds the generator for the request
