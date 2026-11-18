@@ -100,11 +100,6 @@ func (exporter *Exporter) Export(event *output.ResultEvent) error {
 	finding := event.TemplateID + " " + event.MatcherName
 	severity := event.Info.SeverityHolder.Severity.String()
 
-	_, err = file.WriteString(util.CreateTableRow(host, finding, severity))
-	if err != nil {
-		return err
-	}
-
 	dataBuilder := &bytes.Buffer{}
 	dataBuilder.WriteString(util.CreateHeading3(format.Summary(event)))
 	dataBuilder.WriteString("\n")
@@ -112,7 +107,12 @@ func (exporter *Exporter) Export(event *output.ResultEvent) error {
 	dataBuilder.WriteString(format.CreateReportDescription(event, util.MarkdownFormatter{}, exporter.options.OmitRaw))
 	data := dataBuilder.Bytes()
 
-	return os.WriteFile(filepath.Join(exporter.directory, subdirectory, filename), data, 0644)
+	if err := os.WriteFile(filepath.Join(exporter.directory, subdirectory, filename), data, 0644); err != nil {
+		return err
+	}
+
+	_, err = file.WriteString(util.CreateTableRow(host, finding, severity))
+	return err
 }
 
 func createFileName(event *output.ResultEvent) string {

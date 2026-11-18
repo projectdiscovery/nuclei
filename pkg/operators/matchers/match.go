@@ -264,7 +264,15 @@ func (matcher *Matcher) MatchDSLWithOptions(data map[string]interface{}, options
 // MatchXPath matches on a generic map result
 func (matcher *Matcher) MatchXPath(corpus string) bool {
 	if strings.HasPrefix(corpus, "<?xml") {
-		return matcher.MatchXML(corpus)
+		matched, err := matcher.matchXML(corpus)
+		if err == nil {
+			return matched
+		}
+		// The document claims to be XML but is not well-formed XML.
+		// XHTML pages routinely carry an XML declaration while using
+		// HTML5 void elements and named entities, which a strict XML
+		// parser rejects. Fall back to the HTML parser instead of
+		// silently reporting no match.
 	}
 	return matcher.MatchHTML(corpus)
 }
@@ -306,11 +314,20 @@ func (matcher *Matcher) MatchHTML(corpus string) bool {
 	return matches > 0
 }
 
-// MatchXML matches items from XML using XPath selectors
+// MatchXML matches items from XML using XPath selectors. Documents that
+// cannot be parsed as XML never match.
 func (matcher *Matcher) MatchXML(corpus string) bool {
+	matched, _ := matcher.matchXML(corpus)
+	return matched
+}
+
+// matchXML matches items from XML using XPath selectors and reports the
+// parse error, if any, so that callers can fall back to the HTML parser for
+// documents that only claim to be XML.
+func (matcher *Matcher) matchXML(corpus string) (bool, error) {
 	doc, err := xmlquery.Parse(strings.NewReader(corpus))
 	if err != nil {
-		return false
+		return false, err
 	}
 
 	matches := 0
@@ -327,7 +344,7 @@ func (matcher *Matcher) MatchXML(corpus string) bool {
 			// return false as the AND condition fails on any single mismatch.
 			switch matcher.condition {
 			case ANDCondition:
-				return false
+				return false, nil
 			case ORCondition:
 				continue
 			}
@@ -335,12 +352,12 @@ func (matcher *Matcher) MatchXML(corpus string) bool {
 
 		// If the condition was an OR, return on the first match.
 		if matcher.condition == ORCondition && !matcher.MatchAll {
-			return true
+			return true, nil
 		}
 		matches = matches + len(nodes)
 	}
 
-	return matches > 0
+	return matches > 0, nil
 }
 
 // ignoreErr checks if the error is to be ignored or not

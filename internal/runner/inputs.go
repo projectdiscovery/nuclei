@@ -11,6 +11,7 @@ import (
 	"github.com/projectdiscovery/httpx/common/httpx"
 	"github.com/projectdiscovery/nuclei/v3/pkg/input"
 	"github.com/projectdiscovery/nuclei/v3/pkg/input/provider"
+	"github.com/projectdiscovery/nuclei/v3/pkg/progress"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils"
@@ -20,7 +21,8 @@ import (
 
 // initializeTemplatesHTTPInput initializes the http form of input
 // for any loaded http templates if input is in non-standard format.
-func (r *Runner) initializeTemplatesHTTPInput() (*hybrid.HybridMap, error) {
+// templateCount is used for progress reporting during the probing phase.
+func (r *Runner) initializeTemplatesHTTPInput(templateCount int64) (*hybrid.HybridMap, error) {
 	hm, err := hybrid.New(hybrid.DefaultDiskOptions)
 	if err != nil {
 		return nil, errors.Wrap(err, "could not create temporary input file")
@@ -30,6 +32,23 @@ func (r *Runner) initializeTemplatesHTTPInput() (*hybrid.HybridMap, error) {
 		return hm, nil
 	}
 	r.Logger.Info().Msgf("Running httpx on input host")
+
+	// report probing progress through the stats ticker (-stats), which
+	// otherwise stays silent for the whole probing phase on large lists
+	var probeTracker progress.ProbeTracker
+	if tracker, ok := r.progress.(progress.ProbeTracker); ok {
+		var probeTotal int64
+		r.inputProvider.Iterate(func(value *contextargs.MetaInput) bool {
+			if !stringsutil.HasPrefixAny(value.Input, "http://", "https://") {
+				probeTotal++
+			}
+			return true
+		})
+		if probeTotal > 0 {
+			probeTracker = tracker
+			probeTracker.InitProbe(r.inputProvider.Count(), templateCount, probeTotal)
+		}
+	}
 
 	httpxOptions := httpx.DefaultOptions
 	if r.options.AliveHttpProxy != "" {
@@ -81,6 +100,9 @@ func (r *Runner) initializeTemplatesHTTPInput() (*hybrid.HybridMap, error) {
 			if result := utils.ProbeURLWithContext(ctx, target.Input, httpxClient); result != "" {
 				count.Add(1)
 				_ = hm.Set(input.ProbeKey(target.Input, target.CustomIP), []byte(result))
+			}
+			if probeTracker != nil {
+				probeTracker.IncrementProbes()
 			}
 		}(value)
 		return true

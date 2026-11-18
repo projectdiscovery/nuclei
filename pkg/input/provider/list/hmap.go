@@ -152,6 +152,11 @@ func (i *ListInputProvider) Iterate(callback func(value *contextargs.MetaInput) 
 		if err := metaInput.Unmarshal(raw); err != nil {
 			return err
 		}
+		// `-eh` removes entries from the hostMap, but stream mode iterates its
+		// own file, which cannot drop a single entry once written.
+		if i.isExcludedInput(metaInput) {
+			return nil
+		}
 		if !callback(metaInput) {
 			return io.EOF
 		}
@@ -455,6 +460,28 @@ func (i *ListInputProvider) isExcluded(URL string) bool {
 
 	_, exists := i.excludedHosts[key]
 	return exists
+}
+
+// isExcludedInput reports whether an input was removed by -eh. Entries are
+// recorded under their deduplication key, while stream mode stores the target
+// as supplied, so both forms are checked.
+func (i *ListInputProvider) isExcludedInput(metaInput *contextargs.MetaInput) bool {
+	if len(i.excludedHosts) == 0 {
+		return false
+	}
+	if key, err := metaInput.MarshalString(); err == nil {
+		if _, exists := i.excludedHosts[key]; exists {
+			return true
+		}
+	}
+	if i.normalizeURLs {
+		if key := i.normalizedKey(metaInput); key != "" {
+			if _, exists := i.excludedHosts[key]; exists {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 func (i *ListInputProvider) Del(executionId string, value string) {

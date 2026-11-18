@@ -26,7 +26,7 @@ var knownLeaks = []goleak.Option{
 	// expirable LRU cache creates a background goroutine for TTL expiration that persists
 	// see: https://github.com/hashicorp/golang-lru/blob/770151e9c8cdfae1797826b7b74c33d6f103fbd8/expirable/expirable_lru.go#L79
 	goleak.IgnoreAnyContainingPkg("github.com/hashicorp/golang-lru/v2/expirable"),
-	// httpcache leveldb + shared rate limiter + memguardian outlive a single SDK engine.
+	// leveldb + shared rate limiter + memguardian outlive a single SDK engine.
 	// Sleep alone is not reliable under -race or when NewNucleiEngineCtx fails before Close.
 	goleak.IgnoreAnyContainingPkg("github.com/syndtr/goleveldb"),
 	goleak.IgnoreAnyContainingPkg("github.com/projectdiscovery/ratelimit"),

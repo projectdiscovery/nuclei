@@ -92,22 +92,7 @@ func (e *Engine) runWorkflowStep(template *workflows.WorkflowTemplate, ctx *scan
 					}
 
 					if result.OperatorsResult != nil && result.OperatorsResult.Extracts != nil {
-						for k, v := range result.OperatorsResult.Extracts {
-							// normalize items:
-							switch len(v) {
-							case 0, 1:
-								// - key:[item] => key: item
-								ctx.Input.Set(k, v[0])
-							default:
-								// - key:[item_0, ..., item_n] => key0:item_0, keyn:item_n
-								for vIdx, vVal := range v {
-									normalizedKIdx := fmt.Sprintf("%s%d", k, vIdx)
-									ctx.Input.Set(normalizedKIdx, vVal)
-								}
-								// also add the original name with full slice
-								ctx.Input.Set(k, v)
-							}
-						}
+						setWorkflowExtracts(ctx.Input, result.OperatorsResult.Extracts)
 					}
 				}
 				_, err = executer.Executer.ExecuteWithResults(ctx)
@@ -145,9 +130,7 @@ func (e *Engine) runWorkflowStep(template *workflows.WorkflowTemplate, ctx *scan
 				}
 
 				if event.OperatorsResult.Extracts != nil {
-					for k, v := range event.OperatorsResult.Extracts {
-						ctx.Input.Set(k, v)
-					}
+					setWorkflowExtracts(ctx.Input, event.OperatorsResult.Extracts)
 				}
 
 				for _, matcher := range template.Matchers {
@@ -231,4 +214,33 @@ func (e *Engine) syncWorkflowInputToTemplateCtx(executer *workflows.ProtocolExec
 	}
 
 	executer.Options.GetTemplateCtx(input.MetaInput).Merge(workflowValues)
+}
+
+// setWorkflowExtracts propagates the extracts of a workflow step to the step
+// input so the subtemplates started by that step resolve them the same way
+// whether the step matched through an operator or through a workflow matcher:
+//
+//   - key: [item] => key: item
+//   - key: [item_0, ..., item_n] => key0: item_0, ..., keyn: item_n, and the
+//     original name keeps the full slice for further indexing.
+//
+// Extracts without values are skipped: a scalar cannot be rendered from them
+// and there is nothing to index.
+func setWorkflowExtracts(input *contextargs.Context, extracts map[string][]string) {
+	if input == nil {
+		return
+	}
+	for k, v := range extracts {
+		switch len(v) {
+		case 0:
+			continue
+		case 1:
+			input.Set(k, v[0])
+		default:
+			for vIdx, vVal := range v {
+				input.Set(fmt.Sprintf("%s%d", k, vIdx), vVal)
+			}
+			input.Set(k, v)
+		}
+	}
 }
