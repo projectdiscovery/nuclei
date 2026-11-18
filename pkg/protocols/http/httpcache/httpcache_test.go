@@ -56,8 +56,8 @@ func TestClientsShareCache(t *testing.T) {
 	c := openCache(filepath.Join(t.TempDir(), "snapshot"))
 	a := &countingTransport{next: ts.Client().Transport}
 	b := &countingTransport{next: ts.Client().Transport}
-	clientA := &transport{cache: c.WithNext(a)}
-	clientB := &transport{cache: c.WithNext(b)}
+	clientA := newCachingTransport(c, a)
+	clientB := newCachingTransport(c, b)
 
 	if body := get(t, clientA, ts.URL+"/x"); body != "1" {
 		t.Fatalf("first body = %q, want 1", body)
@@ -86,7 +86,7 @@ func TestEmptyRequestBodyUsesCache(t *testing.T) {
 	}))
 	t.Cleanup(ts.Close)
 
-	rt := &transport{cache: openCache(filepath.Join(t.TempDir(), "snapshot")).WithNext(ts.Client().Transport)}
+	rt := newCachingTransport(openCache(filepath.Join(t.TempDir(), "snapshot")), ts.Client().Transport)
 	for range 2 {
 		req, err := http.NewRequestWithContext(t.Context(), http.MethodGet, ts.URL, httpbody.New(nil))
 		if err != nil {
@@ -116,7 +116,7 @@ func TestEmptyPOSTBodySentUnchanged(t *testing.T) {
 	}))
 	t.Cleanup(ts.Close)
 
-	cached := &transport{cache: openCache(filepath.Join(t.TempDir(), "snapshot")).WithNext(ts.Client().Transport)}
+	cached := newCachingTransport(openCache(filepath.Join(t.TempDir(), "snapshot")), ts.Client().Transport)
 	for _, rt := range []http.RoundTripper{ts.Client().Transport, cached} {
 		req, err := http.NewRequestWithContext(t.Context(), http.MethodPost, ts.URL, httpbody.New(nil))
 		if err != nil {
@@ -152,7 +152,7 @@ func TestSnapshotSurvivesReopen(t *testing.T) {
 
 	path := filepath.Join(t.TempDir(), "httpcache", "snapshot")
 	first := openCache(path)
-	firstClient := &transport{cache: first.WithNext(ts.Client().Transport)}
+	firstClient := newCachingTransport(first, ts.Client().Transport)
 	if body := get(t, firstClient, ts.URL); body != "body" {
 		t.Fatalf("body = %q", body)
 	}
@@ -163,7 +163,7 @@ func TestSnapshotSurvivesReopen(t *testing.T) {
 	// The conditional request must go through the next RoundTripper given to
 	// WithNext.
 	client := &countingTransport{next: ts.Client().Transport}
-	reopened := &transport{cache: openCache(path).WithNext(client)}
+	reopened := newCachingTransport(openCache(path), client)
 	if body := get(t, reopened, ts.URL); body != "body" {
 		t.Fatalf("body after reopen = %q, want the snapshot's", body)
 	}
@@ -196,8 +196,98 @@ func TestCorruptSnapshotStartsEmpty(t *testing.T) {
 		t.Fatalf("loadSnapshot error = %v, want ErrInvalidSnapshot", err)
 	}
 
-	rt := &transport{cache: openCache(path).WithNext(ts.Client().Transport)}
+	rt := newCachingTransport(openCache(path), ts.Client().Transport)
 	if body := get(t, rt, ts.URL); body != "ok" {
 		t.Fatalf("body = %q", body)
 	}
+}
+
+func TestCacheHitSkipsOriginAndBackoffSignal(t *testing.T) {
+	var hits atomic.Int32
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		hits.Add(1)
+		w.Header().Set("Cache-Control", "max-age=60")
+		w.WriteHeader(http.StatusServiceUnavailable)
+		_, _ = io.WriteString(w, "busy")
+	}))
+	t.Cleanup(ts.Close)
+
+	rt := newCachingTransport(openCache(filepath.Join(t.TempDir(), "snapshot")), ts.Client().Transport)
+	first := roundTrip(t, rt, ts.URL, nil)
+	if body := bodyOf(t, first); body != "busy" {
+		t.Fatalf("body = %q", body)
+	}
+	if ServedFromCache(first) {
+		t.Fatal("miss was reported as a cache hit")
+	}
+	if !ContactedOrigin(true, first) {
+		t.Fatal("a live 503 must move host backoff")
+	}
+	second := roundTrip(t, rt, ts.URL, nil)
+	if !ServedFromCache(second) {
+		t.Fatal("second response was not served from the cache")
+	}
+	if ContactedOrigin(true, second) {
+		t.Fatal("a pure cache hit must not move host backoff")
+	}
+	if got := hits.Load(); got != 1 {
+		t.Fatalf("server hits = %d, want 1", got)
+	}
+}
+
+func TestIdentityHeadersSkipCache(t *testing.T) {
+	var hits atomic.Int32
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		n := hits.Add(1)
+		w.Header().Set("Cache-Control", "max-age=60")
+		_, _ = fmt.Fprintf(w, "%d %s", n, r.Header.Get("Authorization"))
+	}))
+	t.Cleanup(ts.Close)
+
+	rt := newCachingTransport(openCache(filepath.Join(t.TempDir(), "snapshot")), ts.Client().Transport)
+	if body := bodyOf(t, roundTrip(t, rt, ts.URL, nil)); body != "1 " {
+		t.Fatalf("anonymous body = %q, want 1", body)
+	}
+
+	for _, header := range []string{"Authorization", "Cookie", "Origin"} {
+		resp := roundTrip(t, rt, ts.URL, http.Header{header: {"secret"}})
+		if ServedFromCache(resp) {
+			t.Fatalf("%s request was served from the cache", header)
+		}
+		if body := bodyOf(t, resp); body == "1 " {
+			t.Fatalf("%s request reused the anonymous response", header)
+		}
+	}
+
+	if body := bodyOf(t, roundTrip(t, rt, ts.URL, nil)); body != "1 " {
+		t.Fatalf("anonymous body after identity requests = %q, want the cached 1", body)
+	}
+}
+
+func roundTrip(t *testing.T, rt http.RoundTripper, url string, header http.Header) *http.Response {
+	t.Helper()
+	req, err := http.NewRequestWithContext(t.Context(), http.MethodGet, url, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for name, values := range header {
+		for _, value := range values {
+			req.Header.Add(name, value)
+		}
+	}
+	resp, err := rt.RoundTrip(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = resp.Body.Close() })
+	return resp
+}
+
+func bodyOf(t *testing.T, resp *http.Response) string {
+	t.Helper()
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return string(body)
 }

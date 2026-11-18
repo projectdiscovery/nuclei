@@ -3,6 +3,7 @@
 package httpcache
 
 import (
+	"context"
 	"errors"
 	"io/fs"
 	"net/http"
@@ -68,12 +69,13 @@ func NewTransportWrapper() func(http.RoundTripper) http.RoundTripper {
 	// sharing the cache still break some of WithNext's requirements:
 	//   - Clients pinned to different IPs for one hostname reach different
 	//     servers, yet one IP's response answers the same URL for the others.
-	//   - Requests with different Cookie, Authorization, or Origin values
-	//     share responses, unless a response's Vary names those fields.
 	//   - SDK engines with different proxy or TLS options share the cache,
 	//     which is process-wide.
+	// Requests that carry Authorization, Cookie, or Origin skip the cache.
+	// Those fields are not part of the cache key, so storing one of them
+	// would let a later request without those credentials reuse the response.
 	return func(rt http.RoundTripper) http.RoundTripper {
-		return &transport{cache: c.WithNext(rt)}
+		return newCachingTransport(c, rt)
 	}
 }
 
@@ -81,9 +83,63 @@ func NewTransportWrapper() func(http.RoundTripper) http.RoundTripper {
 // cache's stored responses.
 type transport struct {
 	cache *cache.Transport
+	next  http.RoundTripper
+}
+
+// originContact records whether RoundTrip reached the next RoundTripper.
+// A pure cache hit leaves origin false. The cache clones the request and
+// keeps this pointer in the context, including on revalidation.
+type originContact struct {
+	origin bool
+}
+
+type originContactKey struct{}
+
+// originMarker sets origin before the request reaches the live transport.
+type originMarker struct {
+	next http.RoundTripper
+}
+
+func (m originMarker) RoundTrip(req *http.Request) (*http.Response, error) {
+	if contact, ok := req.Context().Value(originContactKey{}).(*originContact); ok && contact != nil {
+		contact.origin = true
+	}
+	return m.next.RoundTrip(req)
+}
+
+func newCachingTransport(base *cache.Transport, next http.RoundTripper) *transport {
+	return &transport{cache: base.WithNext(originMarker{next: next}), next: next}
+}
+
+// carriesIdentity reports whether req has a credential or browser-origin
+// field the cache key does not include.
+func carriesIdentity(req *http.Request) bool {
+	return len(req.Header["Authorization"]) > 0 || len(req.Header["Cookie"]) > 0 || len(req.Header["Origin"]) > 0
+}
+
+// ServedFromCache reports whether resp was answered from stored data without
+// a request to the origin. Revalidated responses contacted the origin and
+// report false.
+func ServedFromCache(resp *http.Response) bool {
+	if resp == nil || resp.Request == nil {
+		return false
+	}
+	contact, ok := resp.Request.Context().Value(originContactKey{}).(*originContact)
+	return ok && contact != nil && !contact.origin
+}
+
+// ContactedOrigin reports whether a completed attempt should move the
+// per-host backoff governor. Project-file hits leave sent false. A pure
+// HTTP cache hit leaves ServedFromCache true.
+func ContactedOrigin(sent bool, resp *http.Response) bool {
+	return sent && !ServedFromCache(resp)
 }
 
 func (t *transport) RoundTrip(req *http.Request) (*http.Response, error) {
+	if carriesIdentity(req) {
+		return t.next.RoundTrip(req)
+	}
+
 	switch req.Method {
 	case "", http.MethodGet, http.MethodHead:
 		// Request building installs an empty httpbody.Body on requests without
@@ -92,12 +148,14 @@ func (t *transport) RoundTrip(req *http.Request) (*http.Response, error) {
 		// send both bodies the same way: a POST with the empty httpbody.Body
 		// goes chunked, and with NoBody it gets Content-Length: 0.
 		if body, ok := req.Body.(*httpbody.Body); ok && body.Len() == 0 {
-			r := *req
-			r.Body = http.NoBody
-			req = &r
+			cloned := req.Clone(req.Context())
+			cloned.Body = http.NoBody
+			req = cloned
 		}
 	}
 
+	contact := &originContact{}
+	req = req.Clone(context.WithValue(req.Context(), originContactKey{}, contact))
 	return t.cache.RoundTrip(req)
 }
 
