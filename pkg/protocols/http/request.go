@@ -1551,7 +1551,9 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 	// respChain is http response chain that reads response body
 	// efficiently by reusing buffers and does all decoding and optimizations
 	newResponseChain := httpUtils.NewResponseChain
-	if request.readsRawResponse {
+	// The project file stores the bytes as received, because a replay decodes
+	// them again and a decoded body would be decoded twice.
+	if request.readsRawResponse || request.options.ProjectFile != nil {
 		newResponseChain = httpUtils.NewResponseChainWithRaw
 	}
 	respChain := newResponseChain(resp, int64(maxBodylimit))
@@ -1576,12 +1578,7 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 	onceFunc := sync.OnceFunc(func() {
 		// if nuclei-project is enabled store the response if not previously done
 		if request.options.ProjectFile != nil && !fromCache {
-			body := respChain.BodyBytes()
-			if request.readsRawResponse {
-				// decoded again when read back
-				body = respChain.RawBodyBytes()
-			}
-			if err := request.options.ProjectFile.Set(projectCacheKey, resp, body); err != nil {
+			if err := request.options.ProjectFile.Set(projectCacheKey, resp, respChain.RawBodyBytes()); err != nil {
 				errx = errors.Wrap(err, "could not store in project file")
 			}
 		}
