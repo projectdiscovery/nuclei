@@ -955,6 +955,45 @@ func TestTimeoutAnnotationBoundsResponse(t *testing.T) {
 	}
 }
 
+// A template with a raw @timeout turns off the client timeout for all of its
+// requests. A parallel request without an annotation must still get the HTTP
+// timeout once it is sent, as the sequential path gives it.
+//
+//nolint:paralleltest // shares the protocol state testutils.Init sets up
+func TestParallelRequestGetsDefaultTimeoutWithoutClientTimeout(t *testing.T) {
+	options := testutils.DefaultOptions.Copy()
+	timeouts := *options.GetTimeouts()
+	timeouts.HttpTimeout = 300 * time.Millisecond
+	options.SetTimeouts(&timeouts)
+	testutils.Init(options)
+	t.Cleanup(func() { testutils.Cleanup(options) })
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		time.Sleep(2 * time.Second)
+		_, _ = w.Write([]byte("late"))
+	}))
+	t.Cleanup(server.Close)
+
+	//nolint:exhaustruct,exhaustruct_v5 // zero values are the template defaults
+	request := &Request{
+		Path:     []string{"{{BaseURL}}/{{p}}"},
+		Threads:  2,
+		Payloads: map[string]any{"p": []string{"a", "b"}},
+	}
+	executerOpts := testutils.NewMockExecuterOptions(options, nil)
+	require.NoError(t, request.Compile(executerOpts))
+	request.connConfiguration.NoTimeout = true
+
+	start := time.Now()
+	_ = request.ExecuteWithResults(
+		contextargs.NewWithInput(t.Context(), server.URL),
+		make(output.InternalEvent),
+		make(output.InternalEvent),
+		func(*output.InternalWrappedEvent) {},
+	)
+	require.Less(t, time.Since(start), 1500*time.Millisecond, "requests waited out the server's 2s reply")
+}
+
 // executePacedRequests runs request with a 500ms HTTP timeout and a rate limit
 // of one token every 800ms, so the second request waits past its timeout. It
 // returns the paths the server received.
