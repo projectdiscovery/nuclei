@@ -708,8 +708,10 @@ executionLoop:
 				return false, true, nil, err
 			}
 			defer reservation.done()
-			if generatedHttpRequest.customCancelFunction == nil {
+
+			if generatedHttpRequest.sendTimeout == 0 {
 				generatedHttpRequest.sendTimeout = request.options.Options.GetTimeouts().HttpTimeout
+				generatedHttpRequest.sendTimeoutCause = ErrHttpEngineRequestDeadline
 			}
 			// ideally if http template used a custom port or hostname
 			// we would want to update it in input but currently templateCtx logic
@@ -721,10 +723,6 @@ executionLoop:
 			// Full URL, so https and an explicit port stay on the same key the observation uses.
 			if err := request.rateLimitTake(ctx, hostBackoffKey(generatedHttpRequest, input)); err != nil {
 				return false, true, nil, err
-			}
-
-			if generatedHttpRequest.customCancelFunction != nil {
-				defer generatedHttpRequest.customCancelFunction()
 			}
 
 			hasInteractMarkers := interactsh.HasMarkers(data) || len(generatedHttpRequest.interactshURLs) > 0
@@ -1094,7 +1092,8 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 		defer releaseBody()
 	}
 	if generatedRequest.sendTimeout > 0 && generatedRequest.request != nil {
-		ctx, cancel := context.WithTimeoutCause(generatedRequest.request.Context(), generatedRequest.sendTimeout, ErrHttpEngineRequestDeadline)
+		ctx, cancel := context.WithTimeoutCause(
+			generatedRequest.request.Context(), generatedRequest.sendTimeout, generatedRequest.sendTimeoutCause)
 		defer cancel()
 		generatedRequest.request = generatedRequest.request.WithContext(ctx)
 	}

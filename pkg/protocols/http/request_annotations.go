@@ -72,8 +72,11 @@ func hasTimeoutAnnotation(rawRequest string) bool {
 }
 
 type annotationOverrides struct {
-	request        *retryablehttp.Request
-	cancelFunc     context.CancelFunc
+	request *retryablehttp.Request
+	// timeout bounds the request once it is sent, and timeoutCause is the
+	// error it ends with.
+	timeout        time.Duration
+	timeoutCause   error
 	interactshURLs []string
 	err            error
 }
@@ -146,30 +149,34 @@ func (r *Request) parseAnnotations(rawRequest string, request *retryablehttp.Req
 	}
 
 	// @timeout:duration
+	// The timeout is only recorded here. executeRequest starts it after the
+	// rate-limit and body-budget waits, so those waits do not use it up (#8176).
+	// NoTimeout leaves the client without the HTTP timeout, so every request
+	// records one: the default, unless a valid annotation replaces it.
 	if r.connConfiguration.NoTimeout {
 		modified = true
-		var ctx context.Context
+		overrides.timeout, overrides.timeoutCause = r.options.Options.GetTimeouts().HttpTimeout, ErrRequestTimeoutDeadline
 
 		if duration := reTimeoutAnnotation.FindStringSubmatch(annotations); len(duration) > 0 {
 			value := strings.TrimSpace(duration[1])
-			if parsedTimeout, err := time.ParseDuration(value); err == nil {
+			parsedTimeout, err := time.ParseDuration(value)
+			// A timeout that does not parse or is not positive keeps the default.
+			if err == nil && parsedTimeout > 0 {
 				// Cap at maximum allowed timeout to prevent DoS via extremely large timeout values
 				if parsedTimeout > maxAnnotationTimeout {
 					parsedTimeout = maxAnnotationTimeout
 				}
 
-				//nolint:govet // cancelled automatically by withTimeout
-				// global timeout is overridden by annotation by replacing context
-				ctx, overrides.cancelFunc = context.WithTimeoutCause(context.TODO(), parsedTimeout, ErrTimeoutAnnotationDeadline)
+				overrides.timeout, overrides.timeoutCause = parsedTimeout, ErrTimeoutAnnotationDeadline
+				// The replaced context drops the input's cancellation (#8178).
+				ctx := context.TODO()
 				// add timeout value to context
 				ctx = context.WithValue(ctx, httpclientpool.WithCustomTimeout{}, httpclientpool.WithCustomTimeout{Timeout: parsedTimeout})
 				request = request.Clone(ctx)
 			}
 		} else {
-			//nolint:govet // cancelled automatically by withTimeout
-			// global timeout is overridden by annotation by replacing context
-			ctx, overrides.cancelFunc = context.WithTimeoutCause(context.TODO(), r.options.Options.GetTimeouts().HttpTimeout, ErrRequestTimeoutDeadline)
-			request = request.Clone(ctx)
+			// The replaced context drops the input's cancellation (#8178).
+			request = request.Clone(context.TODO())
 		}
 	}
 

@@ -74,17 +74,19 @@ var (
 
 // generatedRequest is a single generated request wrapped for a template request
 type generatedRequest struct {
-	original             *Request
-	rawRequest           *raw.Request
-	meta                 map[string]interface{}
-	pipelinedClient      *rawhttp.PipelineClient
-	request              *retryablehttp.Request
-	dynamicValues        map[string]interface{}
-	interactshURLs       []string
-	customCancelFunction context.CancelFunc
-	// sendTimeout starts after the body budget admits the request.
-	sendTimeout  time.Duration
-	bodyReserved bool
+	original        *Request
+	rawRequest      *raw.Request
+	meta            map[string]any
+	pipelinedClient *rawhttp.PipelineClient
+	request         *retryablehttp.Request
+	dynamicValues   map[string]any
+	interactshURLs  []string
+	// sendTimeout bounds the exchange with the host, and sendTimeoutCause is
+	// the error it ends with. executeRequest starts it after the rate-limit
+	// and backoff waits and the body budget, so no wait uses it up.
+	sendTimeout      time.Duration
+	sendTimeoutCause error
+	bodyReserved     bool
 	// requestURLPattern tracks unmodified request url pattern without values ( it is used for constant vuln_hash)
 	// ex: {{BaseURL}}/api/exp?param={{randstr}}
 	requestURLPattern string
@@ -608,9 +610,6 @@ func (r *requestGenerator) generateRawRequest(ctx context.Context, rawRequest st
 		}
 
 		unsafeReq := &generatedRequest{rawRequest: rawRequestData, meta: generatorValues, original: r.request, interactshURLs: r.interactshURLs}
-		if annotationOverrides.cancelFunc != nil {
-			unsafeReq.customCancelFunction = annotationOverrides.cancelFunc
-		}
 
 		if len(annotationOverrides.interactshURLs) > 0 {
 			unsafeReq.interactshURLs = append(unsafeReq.interactshURLs, annotationOverrides.interactshURLs...)
@@ -669,7 +668,8 @@ func (r *requestGenerator) generateRawRequest(ctx context.Context, rawRequest st
 			return nil, errkit.Wrap(reqWithOverrides.err, "failed to apply raw request annotations")
 		}
 		generatedRequest.request = reqWithOverrides.request
-		generatedRequest.customCancelFunction = reqWithOverrides.cancelFunc
+		generatedRequest.sendTimeout = reqWithOverrides.timeout
+		generatedRequest.sendTimeoutCause = reqWithOverrides.timeoutCause
 		generatedRequest.interactshURLs = append(generatedRequest.interactshURLs, reqWithOverrides.interactshURLs...)
 	}
 

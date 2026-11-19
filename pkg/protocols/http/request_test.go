@@ -9,6 +9,7 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"slices"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -834,6 +835,171 @@ func TestHTTPExtractMultipleReuseStopsOnceBranchesAfterCancellation(t *testing.T
 	)
 	require.ErrorIs(t, err, context.Canceled)
 	require.Less(t, time.Since(startedAt), 750*time.Millisecond)
+}
+
+// A request's timeout bounds its exchange with the host. The wait for a
+// rate-limit token comes before that, so a paced request must still be sent
+// (#8162, #8176).
+//
+//nolint:paralleltest // the cases share the protocol state testutils.Init sets up
+func TestRequestTimeoutStartsAfterRateLimitWait(t *testing.T) {
+	tests := []struct {
+		name string
+		raw  []string
+	}{
+		{
+			name: "default timeout",
+			raw: []string{
+				"GET /first HTTP/1.1\nHost: {{Hostname}}",
+				"GET /second HTTP/1.1\nHost: {{Hostname}}",
+			},
+		},
+		{
+			name: "timeout annotation",
+			raw: []string{
+				"@timeout: 500ms\nGET /first HTTP/1.1\nHost: {{Hostname}}",
+				"@timeout: 500ms\nGET /second HTTP/1.1\nHost: {{Hostname}}",
+			},
+		},
+		{
+			// An annotation on one request turns off the client timeout for
+			// all of them, so the other request takes the default timeout.
+			name: "request beside a timeout annotation",
+			raw: []string{
+				"@timeout: 500ms\nGET /first HTTP/1.1\nHost: {{Hostname}}",
+				"GET /second HTTP/1.1\nHost: {{Hostname}}",
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			request := &Request{Raw: tt.raw} //nolint:exhaustruct,exhaustruct_v5 // zero values are the template defaults
+			require.Equal(t, []string{"/first", "/second"}, executePacedRequests(t, request))
+		})
+	}
+}
+
+// The parallel path builds each request before a worker takes its rate-limit
+// token, so the timeout has to start after that wait as well (#8176).
+//
+//nolint:paralleltest // shares the protocol state testutils.Init sets up
+func TestParallelRequestTimeoutStartsAfterRateLimitWait(t *testing.T) {
+	//nolint:exhaustruct,exhaustruct_v5 // zero values are the template defaults
+	request := &Request{
+		Raw:      []string{"@timeout: 500ms\nGET /{{path}} HTTP/1.1\nHost: {{Hostname}}"},
+		Threads:  1,
+		Payloads: map[string]any{"path": []string{"first", "second"}},
+	}
+	require.Equal(t, []string{"/first", "/second"}, executePacedRequests(t, request))
+}
+
+// With @timeout the client has no overall timeout of its own, so the request's
+// deadline bounds reading the response. A valid annotation sets it on every
+// path; one that does not parse or is not positive keeps the default (#8176).
+//
+//nolint:paralleltest // the cases share the protocol state testutils.Init sets up
+func TestTimeoutAnnotationBoundsResponse(t *testing.T) {
+	const stall = 2 * time.Second
+
+	tests := []struct {
+		name        string
+		annotation  string
+		httpTimeout time.Duration
+		parallel    bool
+	}{
+		{name: "annotation, sequential", annotation: "300ms", httpTimeout: time.Minute, parallel: false},
+		{name: "annotation, parallel", annotation: "300ms", httpTimeout: time.Minute, parallel: true},
+		{name: "unparsable annotation, parallel", annotation: "soon", httpTimeout: 300 * time.Millisecond, parallel: true},
+		{name: "zero annotation, parallel", annotation: "0s", httpTimeout: 300 * time.Millisecond, parallel: true},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			options := testutils.DefaultOptions.Copy()
+			timeouts := *options.GetTimeouts()
+			timeouts.HttpTimeout = test.httpTimeout
+			options.SetTimeouts(&timeouts)
+			testutils.Init(options)
+			t.Cleanup(func() { testutils.Cleanup(options) })
+
+			// The headers arrive at once and the body stalls, so only the
+			// request's deadline can end the read before the stall does.
+			server := httptest.NewServer(http.HandlerFunc(func(resp http.ResponseWriter, req *http.Request) {
+				resp.Header().Set("Content-Length", "2")
+				resp.WriteHeader(http.StatusOK)
+				_ = http.NewResponseController(resp).Flush()
+
+				select {
+				case <-req.Context().Done():
+				case <-time.After(stall):
+					_, _ = resp.Write([]byte("ok"))
+				}
+			}))
+			t.Cleanup(server.Close)
+
+			//nolint:exhaustruct,exhaustruct_v5 // zero values are the template defaults
+			request := &Request{Raw: []string{"@timeout: " + test.annotation + "\nGET / HTTP/1.1\nHost: {{Hostname}}"}}
+			if test.parallel {
+				request.Raw = []string{"@timeout: " + test.annotation + "\nGET /?p={{p}} HTTP/1.1\nHost: {{Hostname}}"}
+				request.Threads = 1
+				request.Payloads = map[string]any{"p": []string{"a"}}
+			}
+
+			require.NoError(t, request.Compile(testutils.NewMockExecuterOptions(options, nil)))
+
+			start := time.Now()
+			err := request.ExecuteWithResults(contextargs.NewWithInput(t.Context(), server.URL),
+				make(output.InternalEvent), make(output.InternalEvent), func(*output.InternalWrappedEvent) {})
+			require.Error(t, err)
+			require.Less(t, time.Since(start), stall, "the response was read past the request's timeout")
+		})
+	}
+}
+
+// executePacedRequests runs request with a 500ms HTTP timeout and a rate limit
+// of one token every 800ms, so the second request waits past its timeout. It
+// returns the paths the server received.
+func executePacedRequests(t *testing.T, request *Request) []string {
+	t.Helper()
+
+	options := testutils.DefaultOptions.Copy()
+	timeouts := *options.GetTimeouts()
+	timeouts.HttpTimeout = 500 * time.Millisecond
+	options.SetTimeouts(&timeouts)
+	testutils.Init(options)
+	t.Cleanup(func() { testutils.Cleanup(options) })
+
+	var (
+		pathsMu sync.Mutex
+		paths   []string
+	)
+
+	server := httptest.NewServer(http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
+		pathsMu.Lock()
+		defer pathsMu.Unlock()
+
+		paths = append(paths, r.URL.Path)
+	}))
+	t.Cleanup(server.Close)
+
+	executerOpts := testutils.NewMockExecuterOptions(options, nil)
+	require.NoError(t, request.Compile(executerOpts))
+
+	executerOpts.RateLimiter.Stop()
+	executerOpts.RateLimiter = ratelimit.New(t.Context(), 1, 800*time.Millisecond)
+	t.Cleanup(executerOpts.RateLimiter.Stop)
+
+	err := request.ExecuteWithResults(
+		contextargs.NewWithInput(t.Context(), server.URL),
+		make(output.InternalEvent),
+		make(output.InternalEvent),
+		func(*output.InternalWrappedEvent) {},
+	)
+	require.NoError(t, err)
+
+	pathsMu.Lock()
+	defer pathsMu.Unlock()
+
+	return slices.Clone(paths)
 }
 
 func TestRequestMatcherSeesBodyPastSaveSize(t *testing.T) {
