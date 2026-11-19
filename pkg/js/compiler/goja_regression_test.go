@@ -22,9 +22,12 @@ func TestCompileDeepNesting(t *testing.T) {
 }
 
 // A context-first Go function called with fewer arguments used to panic in reflect.
+// The missing port must reach GetServerInfo as 0, so its dial error names 127.0.0.1:0.
 func TestContextFunctionMissingArguments(t *testing.T) {
-	result, _ := executeScript(t, t.Name(), false, `require("nuclei/redis").GetServerInfo("127.0.0.1")`)
+	result, err := executeScript(t, t.Name(), false, `require("nuclei/redis").GetServerInfo("127.0.0.1")`)
+	require.ErrorContains(t, err, "127.0.0.1:0")
 	errText, _ := result["error"].(string)
+	require.Contains(t, errText, "127.0.0.1:0")
 	require.NotContains(t, errText, "reflect")
 	require.NotContains(t, errText, "panic")
 }
