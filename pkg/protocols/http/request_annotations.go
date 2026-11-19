@@ -168,15 +168,11 @@ func (r *Request) parseAnnotations(rawRequest string, request *retryablehttp.Req
 				}
 
 				overrides.timeout, overrides.timeoutCause = parsedTimeout, ErrTimeoutAnnotationDeadline
-				// The replaced context drops the input's cancellation (#8178).
-				ctx := context.TODO()
+				ctx := request.Context()
 				// add timeout value to context
 				ctx = context.WithValue(ctx, httpclientpool.WithCustomTimeout{}, httpclientpool.WithCustomTimeout{Timeout: parsedTimeout})
 				request = request.Clone(ctx)
 			}
-		} else {
-			// The replaced context drops the input's cancellation (#8178).
-			request = request.Clone(context.TODO())
 		}
 	}
 
