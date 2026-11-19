@@ -402,6 +402,12 @@ func (request *Request) executeParallelHTTP(input *contextargs.Context, dynamicV
 						spmHandler.Release()
 						return false
 					}
+					// Same default as the sequential loop: a request that has no
+					// annotation timeout still gets the HTTP timeout once it is sent.
+					if t.req.sendTimeout == 0 {
+						t.req.sendTimeout = request.options.Options.GetTimeouts().HttpTimeout
+						t.req.sendTimeoutCause = ErrHttpEngineRequestDeadline
+					}
 					hasInteractMatchers := interactsh.HasMatchers(request.CompiledOperators)
 					needsRequestEvent := hasInteractMatchers && request.NeedsRequestCondition()
 					err = request.executeRequest(t.updatedInput, t.req, make(map[string]interface{}), hasInteractMatchers, func(event *output.InternalWrappedEvent) {
@@ -731,8 +737,10 @@ executionLoop:
 				return false, true, nil, err
 			}
 			defer reservation.done()
-			if generatedHttpRequest.customCancelFunction == nil {
+
+			if generatedHttpRequest.sendTimeout == 0 {
 				generatedHttpRequest.sendTimeout = request.options.Options.GetTimeouts().HttpTimeout
+				generatedHttpRequest.sendTimeoutCause = ErrHttpEngineRequestDeadline
 			}
 			// ideally if http template used a custom port or hostname
 			// we would want to update it in input but currently templateCtx logic
@@ -744,10 +752,6 @@ executionLoop:
 			// Full URL, so https and an explicit port stay on the same key the observation uses.
 			if err := request.rateLimitTake(ctx, hostBackoffKey(generatedHttpRequest, input)); err != nil {
 				return false, true, nil, err
-			}
-
-			if generatedHttpRequest.customCancelFunction != nil {
-				defer generatedHttpRequest.customCancelFunction()
 			}
 
 			hasInteractMarkers := interactsh.HasMarkers(data) || len(generatedHttpRequest.interactshURLs) > 0
@@ -1117,7 +1121,8 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 		defer releaseBody()
 	}
 	if generatedRequest.sendTimeout > 0 && generatedRequest.request != nil {
-		ctx, cancel := context.WithTimeoutCause(generatedRequest.request.Context(), generatedRequest.sendTimeout, ErrHttpEngineRequestDeadline)
+		ctx, cancel := context.WithTimeoutCause(
+			generatedRequest.request.Context(), generatedRequest.sendTimeout, generatedRequest.sendTimeoutCause)
 		defer cancel()
 		generatedRequest.request = generatedRequest.request.WithContext(ctx)
 	}
