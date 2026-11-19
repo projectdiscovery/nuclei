@@ -1369,7 +1369,7 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 				}
 			}
 
-			if request.keepsRawResponse() && generatedRequest.request.Header.Get("Accept-Encoding") == "" &&
+			if request.readsRawResponse && generatedRequest.request.Header.Get("Accept-Encoding") == "" &&
 				generatedRequest.request.Header.Get("Range") == "" && generatedRequest.request.Method != http.MethodHead {
 				// the transport decodes a response to the gzip header it adds
 				// itself, leaving nothing raw; sending the same header keeps the
@@ -1546,7 +1546,7 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 	// respChain is http response chain that reads response body
 	// efficiently by reusing buffers and does all decoding and optimizations
 	newResponseChain := httpUtils.NewResponseChain
-	if request.keepsRawResponse() {
+	if request.readsRawResponse {
 		newResponseChain = httpUtils.NewResponseChainWithRaw
 	}
 	respChain := newResponseChain(resp, int64(maxBodylimit))
@@ -1571,7 +1571,12 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 	onceFunc := sync.OnceFunc(func() {
 		// if nuclei-project is enabled store the response if not previously done
 		if request.options.ProjectFile != nil && !fromCache {
-			if err := request.options.ProjectFile.Set(projectCacheKey, resp, respChain.RawBodyBytes()); err != nil {
+			body := respChain.BodyBytes()
+			if request.readsRawResponse {
+				// decoded again when read back
+				body = respChain.RawBodyBytes()
+			}
+			if err := request.options.ProjectFile.Set(projectCacheKey, resp, body); err != nil {
 				errx = errors.Wrap(err, "could not store in project file")
 			}
 		}

@@ -622,13 +622,6 @@ func reads(request *Request, flow string, parts ...string) bool {
 	})
 }
 
-// keepsRawResponse reports whether responses keep their bytes as received.
-// The project file stores those, decoded again when read back, so a cached
-// response serves templates reading raw_body and the others alike.
-func (request *Request) keepsRawResponse() bool {
-	return request.readsRawResponse || request.options.ProjectFile != nil
-}
-
 // RebuildGenerator rebuilds the generator for the request
 func (request *Request) RebuildGenerator() error {
 	generator, err := generators.New(request.Payloads, request.AttackType.Value, request.options.TemplatePath, request.options.Catalog, request.options.Options.AttackType, request.options.Options)
