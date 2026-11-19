@@ -9,6 +9,7 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"slices"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -1087,6 +1088,9 @@ type addressSpyHostErrorsCache struct {
 	mu     sync.Mutex
 	checks []string
 	resets []string
+	marks  []string
+	// unresponsive is the address Check reports as unresponsive.
+	unresponsive string
 }
 
 func (s *addressSpyHostErrorsCache) SetVerbose(bool) {}
@@ -1101,14 +1105,23 @@ func (s *addressSpyHostErrorsCache) MarkFailed(string, *contextargs.Context, err
 func (s *addressSpyHostErrorsCache) MarkFailedOrRemove(_ string, ctx *contextargs.Context, err error) {
 	if err == nil {
 		s.Remove(ctx)
+
+		return
 	}
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	s.marks = append(s.marks, ctx.MetaInput.Address())
 }
 func (s *addressSpyHostErrorsCache) Check(_ string, ctx *contextargs.Context) bool {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	s.checks = append(s.checks, ctx.MetaInput.Address())
-	return false
+	address := ctx.MetaInput.Address()
+	s.checks = append(s.checks, address)
+
+	return address == s.unresponsive
 }
 func (s *addressSpyHostErrorsCache) IsPermanentErr(*contextargs.Context, error) bool {
 	return false
@@ -1244,6 +1257,164 @@ func TestParallelHTTPResetsUpdatedHostCacheKeyOnSuccess(t *testing.T) {
 	expectedAddress := contextargs.NewWithInput(context.Background(), ts.URL).MetaInput.Address()
 	require.Contains(t, spy.checks, expectedAddress, "generated request host must be checked")
 	require.Contains(t, spy.resets, expectedAddress, "success must reset the generated request host")
+}
+
+// A target without a scheme is sent to https, so the transport records its
+// failures at port 443, and the host errors cache must be checked there too
+// (#8175). The spy reports 443 as unresponsive, so nothing is sent.
+//
+//nolint:exhaustruct,exhaustruct_v5,paralleltest // fixtures keep zero-value defaults; testutils.Init state is shared
+func TestSchemelessTargetChecksHostErrorsAtRequestPort(t *testing.T) {
+	options := testutils.DefaultOptions
+	testutils.Init(options)
+
+	tests := []struct {
+		name string
+		req  *Request
+	}{
+		{
+			name: "sequential",
+			req: &Request{
+				ID:     "schemeless-sequential",
+				Method: HTTPMethodTypeHolder{MethodType: HTTPGet},
+				Path:   []string{"{{BaseURL}}/n"},
+			},
+		},
+		{
+			name: "parallel",
+			req: &Request{
+				ID:       "schemeless-parallel",
+				Method:   HTTPMethodTypeHolder{MethodType: HTTPGet},
+				Path:     []string{"{{BaseURL}}/n?x={{v}}"},
+				Threads:  2,
+				Payloads: map[string]any{"v": []string{"1", "2"}},
+			},
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
+				ID:   test.req.ID,
+				Info: model.Info{SeverityHolder: severity.Holder{Severity: severity.Low}, Name: "test"},
+			})
+			spy := &addressSpyHostErrorsCache{unresponsive: "127.0.0.1:443"}
+			executerOpts.HostErrorsCache = spy
+			require.NoError(t, test.req.Compile(executerOpts))
+
+			ctxArgs := contextargs.NewWithInput(context.Background(), "127.0.0.1")
+			err := test.req.ExecuteWithResults(ctxArgs, make(output.InternalEvent), make(output.InternalEvent),
+				func(*output.InternalWrappedEvent) {})
+
+			require.Contains(t, spy.checks, "127.0.0.1:443", "the request port must be checked")
+			// A sent request records a mark if it fails and a reset if it succeeds.
+			require.Empty(t, slices.Concat(spy.marks, spy.resets), "no request may be sent to an unresponsive port")
+			require.NoError(t, err)
+		})
+	}
+}
+
+// Each request outcome is recorded at the port the request went to, so a
+// success resets the same entry its failures count against (#8175). The
+// requests reach 127.0.0.1:443: a closed port records marks, an open one
+// resets, and both must use 443.
+//
+//nolint:exhaustruct,exhaustruct_v5,paralleltest // fixtures keep zero-value defaults; testutils.Init state is shared
+func TestSchemelessTargetRecordsHostErrorsAtRequestPort(t *testing.T) {
+	options := testutils.DefaultOptions
+	testutils.Init(options)
+
+	tests := []struct {
+		name string
+		req  *Request
+	}{
+		{
+			name: "sequential",
+			req: &Request{
+				ID:     "schemeless-record-sequential",
+				Method: HTTPMethodTypeHolder{MethodType: HTTPGet},
+				Path:   []string{"{{BaseURL}}/n"},
+			},
+		},
+		{
+			name: "parallel",
+			req: &Request{
+				ID:       "schemeless-record-parallel",
+				Method:   HTTPMethodTypeHolder{MethodType: HTTPGet},
+				Path:     []string{"{{BaseURL}}/n?x={{v}}"},
+				Threads:  2,
+				Payloads: map[string]any{"v": []string{"1", "2"}},
+			},
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
+				ID:   test.req.ID,
+				Info: model.Info{SeverityHolder: severity.Holder{Severity: severity.Low}, Name: "test"},
+			})
+			spy := &addressSpyHostErrorsCache{}
+			executerOpts.HostErrorsCache = spy
+			require.NoError(t, test.req.Compile(executerOpts))
+
+			ctxArgs := contextargs.NewWithInput(context.Background(), "127.0.0.1")
+			// The outcome depends on what listens on 443, so only the recorded keys are checked.
+			_ = test.req.ExecuteWithResults(ctxArgs, make(output.InternalEvent), make(output.InternalEvent),
+				func(*output.InternalWrappedEvent) {})
+
+			recorded := slices.Concat(spy.marks, spy.resets)
+			require.NotEmpty(t, recorded, "each request outcome must be recorded")
+
+			for _, address := range recorded {
+				require.Equal(t, "127.0.0.1:443", address)
+			}
+		})
+	}
+}
+
+// Parallel requests run with the target as given, so a target without a
+// scheme keeps it out of the event host, as in the sequential path. Result
+// fields and issue deduplication are built from that host.
+//
+//nolint:exhaustruct,exhaustruct_v5,paralleltest // fixtures keep zero-value defaults; testutils.Init state is shared
+func TestParallelSchemelessTargetKeepsEventHost(t *testing.T) {
+	options := testutils.DefaultOptions
+	testutils.Init(options)
+
+	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = fmt.Fprintf(w, "ok")
+	}))
+	defer server.Close()
+
+	req := &Request{
+		ID:       "schemeless-event-host",
+		Method:   HTTPMethodTypeHolder{MethodType: HTTPGet},
+		Path:     []string{"{{BaseURL}}/p?x={{v}}"},
+		Threads:  2,
+		Payloads: map[string]any{"v": []string{"1", "2"}},
+	}
+	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
+		ID:   req.ID,
+		Info: model.Info{SeverityHolder: severity.Holder{Severity: severity.Low}, Name: "test"},
+	})
+	require.NoError(t, req.Compile(executerOpts))
+
+	target := server.Listener.Addr().String()
+
+	var (
+		hostsMu sync.Mutex
+		hosts   []any
+	)
+
+	ctxArgs := contextargs.NewWithInput(context.Background(), target)
+	err := req.ExecuteWithResults(ctxArgs, make(output.InternalEvent), make(output.InternalEvent),
+		func(event *output.InternalWrappedEvent) {
+			hostsMu.Lock()
+			defer hostsMu.Unlock()
+
+			hosts = append(hosts, event.InternalEvent["host"])
+		})
+	require.NoError(t, err)
+	require.Equal(t, []any{target, target}, hosts)
 }
 
 func TestExecuteParallelHTTP_StopAtFirstMatch(t *testing.T) {
