@@ -288,6 +288,21 @@ func resolvePortList(ports []string) []string {
 
 // GetCopyIfHostOutdated returns a new contextargs if the host is outdated
 func GetCopyIfHostOutdated(ctx *Context, url string) *Context {
+	return copyIfOutdated(ctx, url, false)
+}
+
+// GetCopyIfAddressOutdated is GetCopyIfHostOutdated for the host errors cache.
+// It also copies an input without a scheme when url has one, so that Address
+// gives the port url goes to: a scheme-less input resolves to port 80, while an
+// https url without a port goes to 443, where the transport records failures.
+func GetCopyIfAddressOutdated(ctx *Context, url string) *Context {
+	return copyIfOutdated(ctx, url, true)
+}
+
+// copyIfOutdated returns a copy of ctx for url when ctx has no input, or when
+// url changes the host or the scheme. An input without a scheme matches any
+// scheme unless fillScheme is set.
+func copyIfOutdated(ctx *Context, url string, fillScheme bool) *Context {
 	if ctx.MetaInput.Input == "" {
 		newctx := ctx.Clone()
 		newctx.MetaInput.Input = url
@@ -295,7 +310,14 @@ func GetCopyIfHostOutdated(ctx *Context, url string) *Context {
 	}
 	orig, _ := urlutil.Parse(ctx.MetaInput.Input)
 	newURL, _ := urlutil.Parse(url)
-	if orig != nil && newURL != nil && (orig.Host != newURL.Host || (orig.Scheme != "" && newURL.Scheme != "" && !strings.EqualFold(orig.Scheme, newURL.Scheme))) {
+
+	if orig == nil || newURL == nil {
+		return ctx
+	}
+
+	schemeChanged := newURL.Scheme != "" && !strings.EqualFold(orig.Scheme, newURL.Scheme) &&
+		(orig.Scheme != "" || fillScheme)
+	if orig.Host != newURL.Host || schemeChanged {
 		newCtx := ctx.Clone()
 		if newURL.Scheme != "" {
 			newCtx.MetaInput.Input = newURL.Scheme + "://" + newURL.Host
