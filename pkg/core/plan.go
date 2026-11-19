@@ -104,7 +104,7 @@ func planEntry(template *templates.Template, value *contextargs.MetaInput, selec
 	entry := PlanEntry{
 		Target:    value.Input,
 		IP:        value.CustomIP,
-		Templates: []string{template.ID},
+		Templates: planTemplates(template, selection),
 		Protocol:  template.Type().String(),
 		Requests:  template.TotalRequests,
 		Dynamic:   template.Flow != "" || template.IsFuzzableRequest(),
@@ -126,7 +126,6 @@ func planEntry(template *templates.Template, value *contextargs.MetaInput, selec
 		entry.Dynamic = true
 	case isCluster(template):
 		cluster := template.Executer.(*templates.ClusterExecuter)
-		entry.Templates = slices.Sorted(slices.Values(cluster.TemplateIDs(selection)))
 		// TotalRequests of a cluster counts only its http and dns requests,
 		// so an ssl cluster would show none
 		entry.Requests = cluster.Requests()
@@ -143,6 +142,15 @@ func planEntry(template *templates.Template, value *contextargs.MetaInput, selec
 	return entry
 }
 
+// planTemplates lists the templates an entry runs, sorted so the entry id does
+// not depend on clustering order.
+func planTemplates(template *templates.Template, selection protocols.TemplateSelection) []string {
+	if cluster, ok := template.Executer.(*templates.ClusterExecuter); ok {
+		return slices.Sorted(slices.Values(cluster.TemplateIDs(selection)))
+	}
+	return []string{template.ID}
+}
+
 func isCluster(template *templates.Template) bool {
 	_, ok := template.Executer.(*templates.ClusterExecuter)
 	return ok
@@ -153,4 +161,37 @@ func isCluster(template *templates.Template) bool {
 func planEntryID(entry PlanEntry) string {
 	sum := sha256.Sum256([]byte(entry.Target + "\x00" + entry.IP + "\x00" + strings.Join(entry.Templates, "\x00")))
 	return hex.EncodeToString(sum[:8])
+}
+
+// PlanRun limits a scan to the entries of a plan and records the ones that
+// finish, so running the plan again resumes it.
+type PlanRun interface {
+	// Skip reports whether the entry is not in the plan or already finished.
+	Skip(id string) bool
+	// Finished records an entry that ran without error.
+	Finished(id string)
+}
+
+// SetPlanRun makes the scan run only the entries run allows.
+func (e *Engine) SetPlanRun(run PlanRun) {
+	e.planRun = run
+}
+
+// claimPlanned reports whether the pair is skipped under a plan run, and
+// otherwise returns the func that records it finished. Without a plan run
+// every pair runs.
+func (e *Engine) claimPlanned(template *templates.Template, value *contextargs.MetaInput) (finished func(), skip bool) {
+	if e.planRun == nil {
+		return func() {}, false
+	}
+	// as in Plan, a self-contained template is not narrowed by any target
+	var selection protocols.TemplateSelection
+	if !template.SelfContained {
+		selection = e.selectionFor(value)
+	}
+	id := planEntryID(PlanEntry{Target: value.Input, IP: value.CustomIP, Templates: planTemplates(template, selection)})
+	if e.planRun.Skip(id) {
+		return nil, true
+	}
+	return func() { e.planRun.Finished(id) }, false
 }

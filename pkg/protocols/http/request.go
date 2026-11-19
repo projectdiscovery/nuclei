@@ -41,6 +41,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/utils/vardump"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/catchall"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/httpcache"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/httpclientpool"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/httputils"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/signer"
@@ -240,7 +241,9 @@ func (request *Request) executeRaceRequest(input *contextargs.Context, dynamicVa
 
 	for i := 0; i < request.RaceNumberRequests; i++ {
 		updatedInput := contextargs.GetCopyIfHostOutdated(input, generatedRequests[i].URL())
-		if spmHandler.FoundFirstMatch() || request.isUnresponsiveAddress(updatedInput) {
+
+		hostErrorsInput := contextargs.GetCopyIfAddressOutdated(input, generatedRequests[i].URL())
+		if spmHandler.FoundFirstMatch() || request.isUnresponsiveAddress(hostErrorsInput) {
 			// stop sending more requests condition is met
 			break
 		}
@@ -248,9 +251,10 @@ func (request *Request) executeRaceRequest(input *contextargs.Context, dynamicVa
 			break
 		}
 		// execute http request
-		go func(httpRequest *generatedRequest, requestInput *contextargs.Context) {
+		go func(httpRequest *generatedRequest, requestInput, hostErrorsInput *contextargs.Context) {
 			defer spmHandler.Release()
-			if spmHandler.FoundFirstMatch() || request.isUnresponsiveAddress(requestInput) {
+
+			if spmHandler.FoundFirstMatch() || request.isUnresponsiveAddress(hostErrorsInput) {
 				// stop sending more requests condition is met
 				return
 			}
@@ -272,10 +276,10 @@ func (request *Request) executeRaceRequest(input *contextargs.Context, dynamicVa
 			case <-spmHandler.Done():
 				return
 			case spmHandler.ResultChan <- err:
-				request.recordHostResultAndCancelIfUnresponsive(requestInput, err, spmHandler.Cancel)
+				request.recordHostResultAndCancelIfUnresponsive(hostErrorsInput, err, spmHandler.Cancel)
 				return
 			}
-		}(generatedRequests[i], updatedInput)
+		}(generatedRequests[i], updatedInput, hostErrorsInput)
 		request.options.Progress.IncrementRequests()
 	}
 	spmHandler.Wait()
@@ -330,9 +334,11 @@ func (request *Request) executeParallelHTTP(input *contextargs.Context, dynamicV
 
 	// bounded worker-pool to avoid spawning one goroutine per payload
 	type task struct {
-		req                *generatedRequest
-		body               *bodyReservation
-		updatedInput       *contextargs.Context
+		req          *generatedRequest
+		body         *bodyReservation
+		updatedInput *contextargs.Context
+		// hostErrorsInput keys the host errors cache; updatedInput runs the request.
+		hostErrorsInput    *contextargs.Context
 		hasInteractMarkers bool
 	}
 
@@ -360,13 +366,15 @@ func (request *Request) executeParallelHTTP(input *contextargs.Context, dynamicV
 						return true
 					default:
 					}
-					if spmHandler.FoundFirstMatch() || request.isUnresponsiveAddress(t.updatedInput) || spmHandler.Cancelled() {
+
+					if spmHandler.FoundFirstMatch() || request.isUnresponsiveAddress(t.hostErrorsInput) || spmHandler.Cancelled() {
 						return false
 					}
 					if err := spmHandler.Acquire(); err != nil {
 						return false
 					}
-					if spmHandler.FoundFirstMatch() || request.isUnresponsiveAddress(t.updatedInput) || spmHandler.Cancelled() {
+
+					if spmHandler.FoundFirstMatch() || request.isUnresponsiveAddress(t.hostErrorsInput) || spmHandler.Cancelled() {
 						spmHandler.Release()
 						return false
 					}
@@ -388,9 +396,17 @@ func (request *Request) executeParallelHTTP(input *contextargs.Context, dynamicV
 							return false
 						}
 					}
-					if ctx.Err() != nil || spmHandler.FoundFirstMatch() || request.isUnresponsiveAddress(t.updatedInput) || spmHandler.Cancelled() {
+
+					if ctx.Err() != nil || spmHandler.FoundFirstMatch() ||
+						request.isUnresponsiveAddress(t.hostErrorsInput) || spmHandler.Cancelled() {
 						spmHandler.Release()
 						return false
+					}
+					// Same default as the sequential loop: a request that has no
+					// annotation timeout still gets the HTTP timeout once it is sent.
+					if t.req.sendTimeout == 0 {
+						t.req.sendTimeout = request.options.Options.GetTimeouts().HttpTimeout
+						t.req.sendTimeoutCause = ErrHttpEngineRequestDeadline
 					}
 					hasInteractMatchers := interactsh.HasMatchers(request.CompiledOperators)
 					needsRequestEvent := hasInteractMatchers && request.NeedsRequestCondition()
@@ -414,7 +430,7 @@ func (request *Request) executeParallelHTTP(input *contextargs.Context, dynamicV
 						spmHandler.Release()
 						return false
 					case spmHandler.ResultChan <- err:
-						request.recordHostResultAndCancelIfUnresponsive(t.updatedInput, err, spmHandler.Cancel)
+						request.recordHostResultAndCancelIfUnresponsive(t.hostErrorsInput, err, spmHandler.Cancel)
 						spmHandler.Release()
 					}
 					return false
@@ -486,11 +502,15 @@ func (request *Request) executeParallelHTTP(input *contextargs.Context, dynamicV
 			input.MetaInput.Input = generatedHttpRequest.URL()
 		}
 		updatedInput := contextargs.GetCopyIfHostOutdated(input, generatedHttpRequest.URL())
-		if request.isUnresponsiveAddress(updatedInput) {
+
+		hostErrorsInput := contextargs.GetCopyIfAddressOutdated(input, generatedHttpRequest.URL())
+		if request.isUnresponsiveAddress(hostErrorsInput) {
 			// skip on unresponsive host no need to continue
 			reservation.done()
 			spmHandler.Cancel()
 			stopWorkers()
+			// The handler watches context.Background(), so only Wait ends it.
+			spmHandler.Wait()
 			return nil
 		}
 		select {
@@ -509,7 +529,13 @@ func (request *Request) executeParallelHTTP(input *contextargs.Context, dynamicV
 				return nil
 			}
 			return context.Cause(workerCtx)
-		case tasks <- task{req: generatedHttpRequest, body: reservation, updatedInput: updatedInput, hasInteractMarkers: hasInteractMarkers}:
+		case tasks <- task{
+			req:                generatedHttpRequest,
+			body:               reservation,
+			updatedInput:       updatedInput,
+			hostErrorsInput:    hostErrorsInput,
+			hasInteractMarkers: hasInteractMarkers,
+		}:
 		}
 		request.options.Progress.IncrementRequests()
 	}
@@ -611,7 +637,9 @@ func (request *Request) executeTurboHTTP(input *contextargs.Context, dynamicValu
 			input.MetaInput.Input = generatedHttpRequest.URL()
 		}
 		updatedInput := contextargs.GetCopyIfHostOutdated(input, generatedHttpRequest.URL())
-		if request.isUnresponsiveAddress(updatedInput) {
+
+		hostErrorsInput := contextargs.GetCopyIfAddressOutdated(input, generatedHttpRequest.URL())
+		if request.isUnresponsiveAddress(hostErrorsInput) {
 			// skip on unresponsive host no need to continue
 			reservation.done()
 			spmHandler.Cancel()
@@ -622,10 +650,12 @@ func (request *Request) executeTurboHTTP(input *contextargs.Context, dynamicValu
 			reservation.done()
 			break
 		}
-		go func(httpRequest *generatedRequest, body *bodyReservation, requestInput *contextargs.Context) {
+
+		go func(httpRequest *generatedRequest, body *bodyReservation, requestInput, hostErrorsInput *contextargs.Context) {
 			defer spmHandler.Release()
 			defer body.done()
-			if spmHandler.FoundFirstMatch() || request.isUnresponsiveAddress(requestInput) {
+
+			if spmHandler.FoundFirstMatch() || request.isUnresponsiveAddress(hostErrorsInput) {
 				// skip if first match is found
 				return
 			}
@@ -646,10 +676,10 @@ func (request *Request) executeTurboHTTP(input *contextargs.Context, dynamicValu
 			case <-spmHandler.Done():
 				return
 			case spmHandler.ResultChan <- err:
-				request.recordHostResultAndCancelIfUnresponsive(requestInput, err, spmHandler.Cancel)
+				request.recordHostResultAndCancelIfUnresponsive(hostErrorsInput, err, spmHandler.Cancel)
 				return
 			}
-		}(generatedHttpRequest, reservation, updatedInput)
+		}(generatedHttpRequest, reservation, updatedInput, hostErrorsInput)
 		request.options.Progress.IncrementRequests()
 	}
 	spmHandler.Wait()
@@ -707,23 +737,21 @@ executionLoop:
 				return false, true, nil, err
 			}
 			defer reservation.done()
-			if generatedHttpRequest.customCancelFunction == nil {
+
+			if generatedHttpRequest.sendTimeout == 0 {
 				generatedHttpRequest.sendTimeout = request.options.Options.GetTimeouts().HttpTimeout
+				generatedHttpRequest.sendTimeoutCause = ErrHttpEngineRequestDeadline
 			}
 			// ideally if http template used a custom port or hostname
 			// we would want to update it in input but currently templateCtx logic
 			// is closely tied to contextargs.Context so we are temporarily creating
 			// a copy and using it to check for host errors etc
 			// but this should be replaced once templateCtx is refactored properly
-			updatedInput := contextargs.GetCopyIfHostOutdated(input, generatedHttpRequest.URL())
+			hostErrorsInput := contextargs.GetCopyIfAddressOutdated(input, generatedHttpRequest.URL())
 
 			// Full URL, so https and an explicit port stay on the same key the observation uses.
 			if err := request.rateLimitTake(ctx, hostBackoffKey(generatedHttpRequest, input)); err != nil {
 				return false, true, nil, err
-			}
-
-			if generatedHttpRequest.customCancelFunction != nil {
-				defer generatedHttpRequest.customCancelFunction()
 			}
 
 			hasInteractMarkers := interactsh.HasMarkers(data) || len(generatedHttpRequest.interactshURLs) > 0
@@ -731,7 +759,7 @@ executionLoop:
 				input.MetaInput.Input = generatedHttpRequest.URL()
 			}
 			// Check if hosts keep erroring
-			if request.isUnresponsiveAddress(updatedInput) {
+			if request.isUnresponsiveAddress(hostErrorsInput) {
 				return false, true, nil, nil
 			}
 			var gotMatches bool
@@ -775,7 +803,7 @@ executionLoop:
 				return true, false, nil, nil
 			}
 
-			request.recordHostResult(updatedInput, execReqErr)
+			request.recordHostResult(hostErrorsInput, execReqErr)
 			if execReqErr != nil {
 				reqKitErr := errkit.FromError(execReqErr)
 				reqKitErr.Msgf("got err while executing %v", generatedHttpRequest.URL())
@@ -1080,7 +1108,7 @@ func rewindRequestBody(req *retryablehttp.Request) {
 // executeRequest executes the actual generated request and returns error if occurred
 func (request *Request) executeRequest(input *contextargs.Context, generatedRequest *generatedRequest, previousEvent output.InternalEvent, hasInteractMatchers bool, processEvent protocols.OutputEventCallback, requestCount int) (err error) {
 	// Check if hosts keep erroring
-	if request.isUnresponsiveAddress(contextargs.GetCopyIfHostOutdated(input, generatedRequest.URL())) {
+	if request.isUnresponsiveAddress(contextargs.GetCopyIfAddressOutdated(input, generatedRequest.URL())) {
 		return fmt.Errorf("hostErrorsCache : host %s is unresponsive", input.MetaInput.Input)
 	}
 
@@ -1093,7 +1121,8 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 		defer releaseBody()
 	}
 	if generatedRequest.sendTimeout > 0 && generatedRequest.request != nil {
-		ctx, cancel := context.WithTimeoutCause(generatedRequest.request.Context(), generatedRequest.sendTimeout, ErrHttpEngineRequestDeadline)
+		ctx, cancel := context.WithTimeoutCause(
+			generatedRequest.request.Context(), generatedRequest.sendTimeout, generatedRequest.sendTimeoutCause)
 		defer cancel()
 		generatedRequest.request = generatedRequest.request.WithContext(ctx)
 	}
@@ -1340,6 +1369,16 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 				}
 			}
 
+			if request.keepsRawResponse() && generatedRequest.request.Header.Get("Accept-Encoding") == "" &&
+				generatedRequest.request.Header.Get("Range") == "" && generatedRequest.request.Method != http.MethodHead {
+				// the transport decodes a response to the gzip header it adds
+				// itself, leaving nothing raw; sending the same header keeps the
+				// request on the wire unchanged
+				generatedRequest.request.Header.Set("Accept-Encoding", "gzip")
+			}
+			if request.sharesResponse {
+				generatedRequest.request.WithContext(httpclientpool.WithSharedResponse(generatedRequest.request.Context(), request.options.TemplateID))
+			}
 			resp, err = executingClient.Do(generatedRequest.request)
 			sent = true
 
@@ -1388,9 +1427,10 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 			}
 		}
 	}
-	// A project-file hit never sets sent, so a stored response cannot move the delay.
-	// Record before dump or the dialer lookup can return and drop the outcome.
-	if sent {
+	// A project-file hit never sets sent, and a pure HTTP cache hit did not
+	// contact the origin, so neither can move the delay. Record before dump
+	// or the dialer lookup can return and drop the outcome.
+	if httpcache.ContactedOrigin(sent, resp) {
 		request.observeHostBackoff(backoffKey, resp, err)
 	}
 	// use request url as matched url if empty
@@ -1505,7 +1545,11 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 
 	// respChain is http response chain that reads response body
 	// efficiently by reusing buffers and does all decoding and optimizations
-	respChain := httpUtils.NewResponseChain(resp, int64(maxBodylimit))
+	newResponseChain := httpUtils.NewResponseChain
+	if request.keepsRawResponse() {
+		newResponseChain = httpUtils.NewResponseChainWithRaw
+	}
+	respChain := newResponseChain(resp, int64(maxBodylimit))
 	defer respChain.Close() // reuse buffers
 
 	// we only intend to log/save the final redirected response
@@ -1527,7 +1571,7 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 	onceFunc := sync.OnceFunc(func() {
 		// if nuclei-project is enabled store the response if not previously done
 		if request.options.ProjectFile != nil && !fromCache {
-			if err := request.options.ProjectFile.Set(projectCacheKey, resp, respChain.BodyBytes()); err != nil {
+			if err := request.options.ProjectFile.Set(projectCacheKey, resp, respChain.RawBodyBytes()); err != nil {
 				errx = errors.Wrap(err, "could not store in project file")
 			}
 		}
@@ -1634,6 +1678,10 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 		}
 
 		outputEvent := request.responseToDSLMap(respChain.Response(), input.MetaInput.Input, matchedURL, convUtil.String(dumpedRequest.data), fullResponseStr, bodyStr, headersStr, duration, generatedRequest.meta)
+		if request.readsRawResponse {
+			outputEvent["raw_body"] = respChain.RawBodyString()
+			outputEvent["raw_response"] = respChain.RawFullResponseString()
+		}
 		// add response fields to template context and merge templatectx variables to output event
 		request.options.AddTemplateVars(input.MetaInput, request.Type(), request.ID, outputEvent)
 		if request.options.HasTemplateCtx(input.MetaInput) {

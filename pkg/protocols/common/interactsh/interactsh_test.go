@@ -204,6 +204,42 @@ func TestRequestScopeCloseWaitsForInFlightCallback(t *testing.T) {
 	require.False(t, scope.beginCallback(), "a closed scope must reject later callbacks")
 }
 
+func TestRequestEventDropsExpiredRegistrations(t *testing.T) {
+	options := DefaultOptions(nil, nil, nil)
+	options.Eviction = time.Millisecond
+	options.PollDuration = time.Millisecond
+	client, err := New(options)
+	require.NoError(t, err)
+	client.setHostname("oast.test")
+
+	client.RequestEvent([]string{"stale.oast.test"}, newTestRequestData())
+	require.ElementsMatch(t, []string{"stale"}, client.requests.Keys(false))
+
+	time.Sleep(10 * time.Millisecond)
+	client.RequestEvent([]string{"fresh.oast.test"}, newTestRequestData())
+
+	require.ElementsMatch(t, []string{"fresh"}, client.requests.Keys(false),
+		"a registration past its eviction can no longer match and must not stay cached")
+}
+
+func TestRequestEventKeepsLiveRegistrations(t *testing.T) {
+	options := DefaultOptions(nil, nil, nil)
+	options.PollDuration = time.Millisecond
+	client, err := New(options)
+	require.NoError(t, err)
+	client.setHostname("oast.test")
+
+	client.RequestEvent([]string{"first.oast.test"}, newTestRequestData())
+	time.Sleep(10 * time.Millisecond)
+	client.RequestEvent([]string{"second.oast.test"}, newTestRequestData())
+
+	require.ElementsMatch(t, []string{"first", "second"}, client.requests.Keys(false))
+}
+
+func newTestRequestData() *RequestData {
+	return &RequestData{Event: &output.InternalWrappedEvent{InternalEvent: output.InternalEvent{}}}
+}
+
 func TestHasMarkersDoesNotTreatPipeAsEncodedBrace(t *testing.T) {
 	require.True(t, HasMarkers("{{interactsh-url}}"))
 	require.True(t, HasMarkers("%7B%7Binteractsh-url%7D%7D"))

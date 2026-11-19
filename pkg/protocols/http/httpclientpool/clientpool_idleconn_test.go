@@ -175,7 +175,9 @@ func TestIdleConnPoolSizeIsWiredToTransport(t *testing.T) {
 	client, err := Get(opts, &Configuration{}, "example.com")
 	require.NoError(t, err)
 
-	tracking, ok := client.HTTPClient.Transport.(*connTrackingTransport)
+	sharing, ok := client.HTTPClient.Transport.(*sharingTransport)
+	require.True(t, ok, "expected the shared-response transport wrapper")
+	tracking, ok := sharing.base.(*connTrackingTransport)
 	require.True(t, ok, "expected the connection-tracking transport wrapper")
 	transport, ok := tracking.base.(*http.Transport)
 	require.True(t, ok, "expected an *http.Transport underneath")

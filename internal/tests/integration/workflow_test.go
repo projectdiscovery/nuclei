@@ -266,8 +266,9 @@ func (h *workflowMultiMatchKeyValueShare) Execute(filePath string) error {
 	}
 
 	// Check if we received the data from both request to /path1 and it is not overwritten by the later one.
-	// They will appear in brackets because of another bug: https://github.com/orgs/projectdiscovery/discussions/3766
-	if !sliceutil.Contains(receivedData, "[test-value-1]") || !sliceutil.Contains(receivedData, "[test-value-2]") {
+	// Each child event carries its own single extracted value, so it must render without brackets,
+	// see https://github.com/orgs/projectdiscovery/discussions/3766.
+	if !sliceutil.Contains(receivedData, "test-value-1") || !sliceutil.Contains(receivedData, "test-value-2") {
 		return fmt.Errorf(
 			"incorrect data: did not receive both extracted data from the first request!\nReceived Data:\n\t%s\nResults:\n\t%s",
 			strings.Join(receivedData, "\n\t"),

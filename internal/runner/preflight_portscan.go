@@ -14,6 +14,7 @@ import (
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/loader"
 	"github.com/projectdiscovery/nuclei/v3/pkg/input/provider"
+	"github.com/projectdiscovery/nuclei/v3/pkg/input/targetprofile"
 	inputtypes "github.com/projectdiscovery/nuclei/v3/pkg/input/types"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
@@ -52,6 +53,19 @@ func (f *filteringInputProvider) SetWithProbe(executionId string, value string, 
 func (f *filteringInputProvider) SetWithExclusions(executionId string, value string) error {
 	return f.base.SetWithExclusions(executionId, value)
 }
+
+// TargetProfiles forwards the list provider's registry. -auto-tech binds
+// detections on it after preflight has wrapped the provider.
+func (f *filteringInputProvider) TargetProfiles() *targetprofile.Registry {
+	profiles, ok := f.base.(interface {
+		TargetProfiles() *targetprofile.Registry
+	})
+	if !ok {
+		return nil
+	}
+	return profiles.TargetProfiles()
+}
+
 func (f *filteringInputProvider) Iterate(callback func(value *contextargs.MetaInput) bool) {
 	f.base.Iterate(func(mi *contextargs.MetaInput) bool {
 		key, err := mi.MarshalString()

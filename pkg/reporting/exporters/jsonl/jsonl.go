@@ -110,6 +110,9 @@ func (exporter *Exporter) Close() error {
 	// Write all pending rows
 	err := exporter.WriteRows()
 	if err != nil {
+		if exporter.outputFile != nil {
+			_ = exporter.outputFile.Close()
+		}
 		// The error is already logged, return it to bubble up to the caller
 		return err
 	}
