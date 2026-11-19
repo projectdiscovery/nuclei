@@ -1189,6 +1189,11 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 			if maxBodylimit := request.getEffectiveReadLimit(); maxBodylimit > 0 {
 				projectCacheKey = append(projectCacheKey, []byte(fmt.Sprintf(":limit:%d", maxBodylimit))...)
 			}
+			// A raw-reading request stores the encoded bytes. A plain request
+			// stores the decoded body. They must not share a cache entry.
+			if request.readsRawResponse {
+				projectCacheKey = append(projectCacheKey, ":raw"...)
+			}
 		}
 
 		// A truncated dump leaves part of the body out, so check the rest
@@ -1369,7 +1374,7 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 				}
 			}
 
-			if request.keepsRawResponse() && generatedRequest.request.Header.Get("Accept-Encoding") == "" &&
+			if request.readsRawResponse && generatedRequest.request.Header.Get("Accept-Encoding") == "" &&
 				generatedRequest.request.Header.Get("Range") == "" && generatedRequest.request.Method != http.MethodHead {
 				// the transport decodes a response to the gzip header it adds
 				// itself, leaving nothing raw; sending the same header keeps the
@@ -1546,7 +1551,9 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 	// respChain is http response chain that reads response body
 	// efficiently by reusing buffers and does all decoding and optimizations
 	newResponseChain := httpUtils.NewResponseChain
-	if request.keepsRawResponse() {
+	// The project file stores the bytes as received, because a replay decodes
+	// them again and a decoded body would be decoded twice.
+	if request.readsRawResponse || request.options.ProjectFile != nil {
 		newResponseChain = httpUtils.NewResponseChainWithRaw
 	}
 	respChain := newResponseChain(resp, int64(maxBodylimit))

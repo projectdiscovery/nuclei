@@ -16,6 +16,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators/extractors"
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators/matchers"
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
+	"github.com/projectdiscovery/nuclei/v3/pkg/projectfile"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
 	"github.com/stretchr/testify/require"
 )
@@ -32,7 +33,7 @@ func TestRawBodyKeepsTheBytesAsReceived(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	execute := func(t *testing.T, extractor *extractors.Extractor) output.InternalEvent {
+	execute := func(t *testing.T, project *projectfile.ProjectFile, extractor *extractors.Extractor) output.InternalEvent {
 		options := testutils.DefaultOptions
 		testutils.Init(options)
 		request := &Request{
@@ -44,6 +45,7 @@ func TestRawBodyKeepsTheBytesAsReceived(t *testing.T) {
 			ID:   "raw-body",
 			Info: model.Info{SeverityHolder: severity.Holder{Severity: severity.Info}, Name: "test"},
 		})
+		executerOpts.ProjectFile = project
 		require.NoError(t, request.Compile(executerOpts))
 
 		var event output.InternalEvent
@@ -55,7 +57,7 @@ func TestRawBodyKeepsTheBytesAsReceived(t *testing.T) {
 	}
 
 	t.Run("reading raw_body", func(t *testing.T) {
-		event := execute(t, &extractors.Extractor{
+		event := execute(t, nil, &extractors.Extractor{
 			Type: extractors.ExtractorTypeHolder{ExtractorType: extractors.DSLExtractor},
 			DSL:  []string{"to_string(gzip_mtime(raw_body))"},
 		})
@@ -64,12 +66,50 @@ func TestRawBodyKeepsTheBytesAsReceived(t *testing.T) {
 		require.Equal(t, `{"hello":"world"}`, event["body"], "body stays decoded")
 	})
 	t.Run("not reading it", func(t *testing.T) {
-		event := execute(t, &extractors.Extractor{
+		event := execute(t, nil, &extractors.Extractor{
 			Type: extractors.ExtractorTypeHolder{ExtractorType: extractors.DSLExtractor},
 			DSL:  []string{"body"},
 		})
 		require.NotContains(t, event, "raw_body")
 		require.Equal(t, `{"hello":"world"}`, event["body"])
+	})
+	t.Run("not reading it under -project", func(t *testing.T) {
+		project, err := projectfile.New(&projectfile.Options{Path: t.TempDir(), Cleanup: true})
+		require.NoError(t, err)
+		defer project.Close()
+		event := execute(t, project, &extractors.Extractor{
+			Type: extractors.ExtractorTypeHolder{ExtractorType: extractors.DSLExtractor},
+			DSL:  []string{"body"},
+		})
+		require.NotContains(t, event, "content_encoding", "the transport decodes the response as without -project")
+		require.EqualValues(t, len(`{"hello":"world"}`), event["content_length"])
+	})
+	t.Run("project cache keeps raw and decoded apart", func(t *testing.T) {
+		project, err := projectfile.New(&projectfile.Options{Path: t.TempDir(), Cleanup: true})
+		require.NoError(t, err)
+		defer project.Close()
+		plain := &extractors.Extractor{
+			Type: extractors.ExtractorTypeHolder{ExtractorType: extractors.DSLExtractor},
+			DSL:  []string{"body"},
+		}
+		raw := &extractors.Extractor{
+			Type: extractors.ExtractorTypeHolder{ExtractorType: extractors.DSLExtractor},
+			DSL:  []string{"to_string(gzip_mtime(raw_body))"},
+		}
+
+		first := execute(t, project, plain)
+		require.Equal(t, `{"hello":"world"}`, first["body"])
+		second := execute(t, project, raw)
+		require.Equal(t, compressed.String(), second["raw_body"], "a raw reader must not reuse the decoded cache entry")
+		require.Equal(t, `{"hello":"world"}`, second["body"])
+
+		other, err := projectfile.New(&projectfile.Options{Path: t.TempDir(), Cleanup: true})
+		require.NoError(t, err)
+		defer other.Close()
+		_ = execute(t, other, raw)
+		third := execute(t, other, plain)
+		require.Equal(t, `{"hello":"world"}`, third["body"], "a plain reader must not reuse the raw cache entry")
+		require.EqualValues(t, len(`{"hello":"world"}`), third["content_length"])
 	})
 }
 
