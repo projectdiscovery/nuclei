@@ -1189,6 +1189,11 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 			if maxBodylimit := request.getEffectiveReadLimit(); maxBodylimit > 0 {
 				projectCacheKey = append(projectCacheKey, []byte(fmt.Sprintf(":limit:%d", maxBodylimit))...)
 			}
+			// A raw-reading request stores the encoded bytes. A plain request
+			// stores the decoded body. They must not share a cache entry.
+			if request.readsRawResponse {
+				projectCacheKey = append(projectCacheKey, ":raw"...)
+			}
 		}
 
 		// A truncated dump leaves part of the body out, so check the rest

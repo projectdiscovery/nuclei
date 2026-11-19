@@ -84,6 +84,33 @@ func TestRawBodyKeepsTheBytesAsReceived(t *testing.T) {
 		require.NotContains(t, event, "content_encoding", "the transport decodes the response as without -project")
 		require.EqualValues(t, len(`{"hello":"world"}`), event["content_length"])
 	})
+	t.Run("project cache keeps raw and decoded apart", func(t *testing.T) {
+		project, err := projectfile.New(&projectfile.Options{Path: t.TempDir(), Cleanup: true})
+		require.NoError(t, err)
+		defer project.Close()
+		plain := &extractors.Extractor{
+			Type: extractors.ExtractorTypeHolder{ExtractorType: extractors.DSLExtractor},
+			DSL:  []string{"body"},
+		}
+		raw := &extractors.Extractor{
+			Type: extractors.ExtractorTypeHolder{ExtractorType: extractors.DSLExtractor},
+			DSL:  []string{"to_string(gzip_mtime(raw_body))"},
+		}
+
+		first := execute(t, project, plain)
+		require.Equal(t, `{"hello":"world"}`, first["body"])
+		second := execute(t, project, raw)
+		require.Equal(t, compressed.String(), second["raw_body"], "a raw reader must not reuse the decoded cache entry")
+		require.Equal(t, `{"hello":"world"}`, second["body"])
+
+		other, err := projectfile.New(&projectfile.Options{Path: t.TempDir(), Cleanup: true})
+		require.NoError(t, err)
+		defer other.Close()
+		_ = execute(t, other, raw)
+		third := execute(t, other, plain)
+		require.Equal(t, `{"hello":"world"}`, third["body"], "a plain reader must not reuse the raw cache entry")
+		require.EqualValues(t, len(`{"hello":"world"}`), third["content_length"])
+	})
 }
 
 func TestReadsRawResponse(t *testing.T) {
