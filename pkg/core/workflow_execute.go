@@ -41,7 +41,8 @@ func (e *Engine) executeWorkflow(ctx *scan.ScanContext, w *workflows.Workflow) b
 	for _, template := range w.Workflows {
 		newCtx := scan.NewScanContext(ctx.Context(), ctx.Input.Clone())
 		// Root steps do not own a waitgroup slot.
-		if err := e.runWorkflowStep(template, newCtx, results, swg, &pending, w, nil); err != nil {
+		err := e.runWorkflowStep(template, newCtx, results, swg, &pending, nil)
+		if err != nil {
 			gologger.Warning().Msgf(workflowStepExecutionError, template.Template, err)
 		}
 	}
@@ -71,7 +72,12 @@ func slotRelease(swg *syncutil.AdaptiveWaitGroup) func() {
 //
 // pending is incremented for every child step before it starts, and each child
 // calls Done when it returns, so the root can wait for the whole tree.
-func (e *Engine) runWorkflowStep(template *workflows.WorkflowTemplate, ctx *scan.ScanContext, results *atomic.Bool, swg *syncutil.AdaptiveWaitGroup, pending *sync.WaitGroup, w *workflows.Workflow, releaseSlot func()) error {
+//
+//nolint:cyclop,funlen,gocognit // a step's executers, matchers and child steps share its match result and slot
+func (e *Engine) runWorkflowStep(
+	template *workflows.WorkflowTemplate, ctx *scan.ScanContext, results *atomic.Bool,
+	swg *syncutil.AdaptiveWaitGroup, pending *sync.WaitGroup, releaseSlot func(),
+) error {
 	var firstMatched bool
 	var err error
 	var mainErr error
@@ -103,9 +109,9 @@ func (e *Engine) runWorkflowStep(template *workflows.WorkflowTemplate, ctx *scan
 					firstMatched = true
 				}
 			}
-			if w.Options.HostErrorsCache != nil {
-				w.Options.HostErrorsCache.MarkFailedOrRemove(w.Options.ProtocolType.String(), ctx.Input, err)
-			}
+			// Each request records its own result in the host errors cache. A
+			// step can return nil when all its requests failed, and recording
+			// that nil would clear the host after every step (#8177).
 			if err != nil {
 				if len(template.Executers) == 1 {
 					mainErr = err
@@ -156,8 +162,10 @@ func (e *Engine) runWorkflowStep(template *workflows.WorkflowTemplate, ctx *scan
 							// create a new context with the same input but with unset callbacks
 							// clone the Input so that other parallel executions won't overwrite the shared variables when subsequent templates are running
 							subCtx := scan.NewScanContext(ctx.Context(), ctx.Input.Clone())
-							if err := e.runWorkflowStep(subtemplate, subCtx, results, swg, pending, w, release); err != nil {
-								gologger.Warning().Msgf(workflowStepExecutionError, subtemplate.Template, err)
+
+							stepErr := e.runWorkflowStep(subtemplate, subCtx, results, swg, pending, release)
+							if stepErr != nil {
+								gologger.Warning().Msgf(workflowStepExecutionError, subtemplate.Template, stepErr)
 							}
 						}(subtemplate)
 					}
@@ -194,8 +202,10 @@ func (e *Engine) runWorkflowStep(template *workflows.WorkflowTemplate, ctx *scan
 
 				// create a new context with the same input but with unset callbacks
 				subCtx := scan.NewScanContext(ctx.Context(), ctx.Input.Clone())
-				if err := e.runWorkflowStep(template, subCtx, results, swg, pending, w, release); err != nil {
-					gologger.Warning().Msgf(workflowStepExecutionError, template.Template, err)
+
+				stepErr := e.runWorkflowStep(template, subCtx, results, swg, pending, release)
+				if stepErr != nil {
+					gologger.Warning().Msgf(workflowStepExecutionError, template.Template, stepErr)
 				}
 			}(subtemplate)
 		}
