@@ -268,6 +268,28 @@ func TestWaitCancelledSlotsKeepLiveCallersInPlace(t *testing.T) {
 	require.Less(t, got.at.Sub(start), 4*step, "the caller behind a cancelled wait kept its slot")
 }
 
+// Decay drops the slots handed out under the old delay, so a wait held from
+// before the host recovered does not push back callers once it backs off again.
+func TestDecayDropsHeldSlots(t *testing.T) {
+	t.Parallel()
+
+	const step = 300 * time.Millisecond
+
+	governor := pacedGovernor(step)
+
+	// This wait keeps its slot, which ends 2 steps from now.
+	_, _ = startWait(t, governor)
+
+	governor.Observe(waitHost, http.StatusOK, 0, nil)
+	require.Zero(t, governor.Delay(waitHost), "a healthy response clears a one-step delay")
+	governor.Observe(waitHost, http.StatusTooManyRequests, 0, nil)
+
+	start := time.Now()
+
+	require.NoError(t, governor.Wait(t.Context(), waitHost))
+	require.Less(t, time.Since(start), 3*step/2, "the next caller waits one step, not behind the earlier slot")
+}
+
 func TestForbiddenRetryAfterBacksOffImmediately(t *testing.T) {
 	g := New(Config{Step: 100 * time.Millisecond, ForbiddenStreak: 5, Max: time.Minute})
 	g.Observe("acme.test", http.StatusForbidden, 2*time.Second, nil)
