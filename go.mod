@@ -74,7 +74,7 @@ require (
 	github.com/miekg/dns v1.1.73
 	github.com/oiweiwei/go-msrpc v1.2.12
 	github.com/olekukonko/tablewriter v1.0.8
-	github.com/openrdap/rdap v0.9.1
+	github.com/openrdap/rdap v0.10.2
 	github.com/ory/dockertest/v3 v3.12.0
 	github.com/pkg/errors v0.9.1
 	github.com/praetorian-inc/fingerprintx v1.1.15
@@ -99,7 +99,6 @@ require (
 	github.com/projectdiscovery/networkpolicy v0.1.58
 	github.com/projectdiscovery/ratelimit v0.0.95
 	github.com/projectdiscovery/rawhttp v0.3.1
-	github.com/projectdiscovery/rdap v0.9.0
 	github.com/projectdiscovery/retryabledns v1.0.118
 	github.com/projectdiscovery/retryablehttp-go v1.3.34
 	github.com/projectdiscovery/sarif v0.1.0
@@ -176,8 +175,7 @@ require (
 	github.com/VividCortex/ewma v1.2.0 // indirect
 	github.com/akrylysov/pogreb v0.10.2 // indirect
 	github.com/alecthomas/kingpin/v2 v2.4.0 // indirect
-	github.com/alecthomas/template v0.0.0-20190718012654-fb15b899a751 // indirect
-	github.com/alecthomas/units v0.0.0-20211218093645-b94a6e3cc137 // indirect
+	github.com/alecthomas/units v0.0.0-20240927000941-0f3dac36c52b // indirect
 	github.com/andybalholm/cascadia v1.3.4 // indirect
 	github.com/asaskevich/govalidator v0.0.0-20230301143203-a9d515a09cc2 // indirect
 	github.com/aws/aws-sdk-go-v2/aws/protocol/eventstream v1.7.8 // indirect
@@ -424,6 +422,7 @@ require (
 	github.com/xeipuuv/gojsonpointer v0.0.0-20190905194746-02993c407bfb // indirect
 	github.com/xeipuuv/gojsonreference v0.0.0-20180127040603-bd5ef7bd5415 // indirect
 	github.com/xeipuuv/gojsonschema v1.2.0 // indirect
+	github.com/xhit/go-str2duration/v2 v2.1.0 // indirect
 	github.com/xo/terminfo v0.0.0-20220910002029-abceb7e1c41e // indirect
 	github.com/youmark/pkcs8 v0.0.0-20240726163527-a2c0da244d78 // indirect
 	github.com/ysmood/fetchup v0.2.3 // indirect
@@ -463,7 +462,6 @@ require (
 	google.golang.org/genproto v0.0.0-20260128011058-8636f8732409 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20260526163538-3dc84a4a5aaa // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20260526163538-3dc84a4a5aaa // indirect
-	gopkg.in/alecthomas/kingpin.v2 v2.2.6 // indirect
 	gopkg.in/corvus-ch/zbase32.v1 v1.0.0 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
 	gopkg.in/warnings.v0 v0.1.2 // indirect
