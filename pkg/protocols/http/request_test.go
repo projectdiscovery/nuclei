@@ -32,6 +32,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/interactsh"
 	"github.com/projectdiscovery/ratelimit"
 	"github.com/projectdiscovery/retryablehttp-go"
+	urlutil "github.com/projectdiscovery/utils/url"
 )
 
 func executeDynamicHTTPTestRequest(t *testing.T, request *Request, target string) {
@@ -2792,4 +2793,31 @@ func TestHTTPToHTTPSUnrelated400IsNotRetried(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, matched, "an ordinary 400 is still a response the matcher can see")
 	require.Equal(t, int32(0), tlsHits.Load())
+}
+
+// The pipeline client is given the fastdialer, which refuses an address with
+// no port, so a turbo request's address carries its scheme's port.
+func TestTurboAddress(t *testing.T) {
+	tests := []struct {
+		target string
+		want   string
+	}{
+		{target: "http://example.com", want: "example.com:80"},
+		{target: "https://example.com", want: "example.com:443"},
+		{target: "http://example.com/path?x=1", want: "example.com:80"},
+		{target: "http://example.com:8080", want: "example.com:8080"},
+		{target: "https://example.com:8443", want: "example.com:8443"},
+		{target: "http://127.0.0.1", want: "127.0.0.1:80"},
+		{target: "https://[::1]", want: "[::1]:443"},
+		{target: "http://[::1]:8080", want: "[::1]:8080"},
+		{target: "example.com", want: "example.com:80"},
+		{target: "example.com:8080", want: "example.com:8080"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.target, func(t *testing.T) {
+			parsed, err := urlutil.Parse(tt.target)
+			require.NoError(t, err)
+			require.Equal(t, tt.want, turboAddress(parsed))
+		})
+	}
 }

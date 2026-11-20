@@ -565,6 +565,21 @@ func (request *Request) executeParallelHTTP(input *contextargs.Context, dynamicV
 	return requestsError(spmHandler.CombinedResults(), skipped.Load())
 }
 
+// turboAddress is the address the pipeline client dials for a target. The
+// client adds a missing port only when it dials by itself, and it is given the
+// fastdialer, which refuses an address without one.
+func turboAddress(target *urlutil.URL) string {
+	if target.Port() != "" || target.Hostname() == "" {
+		return target.Host
+	}
+	port := "80"
+	if target.Scheme == urlutil.HTTPS {
+		port = "443"
+	}
+
+	return net.JoinHostPort(target.Hostname(), port)
+}
+
 // executeTurboHTTP executes turbo http request for a URL
 func (request *Request) executeTurboHTTP(input *contextargs.Context, dynamicValues, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
 	generator := request.newGenerator(false)
@@ -576,7 +591,7 @@ func (request *Request) executeTurboHTTP(input *contextargs.Context, dynamicValu
 	}
 
 	pipeOptions := rawhttp.DefaultPipelineOptions
-	pipeOptions.Host = URL.Host
+	pipeOptions.Host = turboAddress(URL)
 	pipeOptions.MaxConnections = 1
 	// route pipelined connections through the fastdialer so the network policy
 	// applies; without an explicit Dialer the pipeline client uses a raw dial.
