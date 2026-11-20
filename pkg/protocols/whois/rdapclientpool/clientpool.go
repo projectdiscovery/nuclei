@@ -7,17 +7,28 @@ import (
 	"net/http"
 	"sync"
 
+	"github.com/openrdap/rdap"
+	"github.com/openrdap/rdap/bootstrap"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
-	"github.com/projectdiscovery/rdap"
-	"github.com/projectdiscovery/rdap/bootstrap"
 )
 
 // clients holds one client per execution, because each one dials with the
 // network policy of its execution.
-var clients = map[string]*rdap.Client{}
+var clients = map[string]*Client{}
 var m sync.Mutex
+
+type Client struct {
+	mu     sync.Mutex
+	client *rdap.Client
+}
+
+func (c *Client) Do(request *rdap.Request) (*rdap.Response, error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.client.Do(request)
+}
 
 // Init initializes the client pool implementation
 func Init(options *types.Options) error {
@@ -28,7 +39,7 @@ func Init(options *types.Options) error {
 // newClient returns an rdap client whose requests, bootstrap lookups and
 // redirects all dial through the fastdialer of the execution, so every
 // address it connects to is checked against the network policy.
-func newClient(options *types.Options) *rdap.Client {
+func newClient(options *types.Options) *Client {
 	executionID := options.ExecutionId
 	httpClient := &http.Client{
 		Transport: &http.Transport{
@@ -51,7 +62,7 @@ func newClient(options *types.Options) *rdap.Client {
 			gologger.Debug().Msgf("rdap: %s", text)
 		}
 	}
-	return client
+	return &Client{client: client}
 }
 
 // Configuration contains the custom configuration options for a client - placeholder
@@ -63,7 +74,7 @@ func (c *Configuration) Hash() string {
 }
 
 // Get creates or gets the client of the execution
-func Get(options *types.Options, configuration *Configuration) (*rdap.Client, error) {
+func Get(options *types.Options, configuration *Configuration) (*Client, error) {
 	m.Lock()
 	defer m.Unlock()
 	if client, ok := clients[options.ExecutionId]; ok {
@@ -81,6 +92,8 @@ func Close(executionID string) {
 	delete(clients, executionID)
 	m.Unlock()
 	if client != nil {
-		client.HTTP.CloseIdleConnections()
+		client.mu.Lock()
+		client.client.HTTP.CloseIdleConnections()
+		client.mu.Unlock()
 	}
 }
