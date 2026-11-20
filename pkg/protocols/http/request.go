@@ -35,6 +35,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/helpers/eventcreator"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/helpers/responsehighlighter"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/hostbackoff"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/hosterrorscache"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/hostratelimit"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/interactsh"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/marker"
@@ -239,12 +240,15 @@ func (request *Request) executeRaceRequest(input *contextargs.Context, dynamicVa
 		}
 	}
 
+	var skippedUnresponsive bool
 	for i := 0; i < request.RaceNumberRequests; i++ {
 		updatedInput := contextargs.GetCopyIfHostOutdated(input, generatedRequests[i].URL())
 
 		hostErrorsInput := contextargs.GetCopyIfAddressOutdated(input, generatedRequests[i].URL())
-		if spmHandler.FoundFirstMatch() || request.isUnresponsiveAddress(hostErrorsInput) {
+		unresponsive := request.isUnresponsiveAddress(hostErrorsInput)
+		if spmHandler.FoundFirstMatch() || unresponsive {
 			// stop sending more requests condition is met
+			skippedUnresponsive = skippedUnresponsive || unresponsive
 			break
 		}
 		if err := spmHandler.Acquire(); err != nil {
@@ -288,7 +292,13 @@ func (request *Request) executeRaceRequest(input *contextargs.Context, dynamicVa
 		// ignore any context cancellation and in-transit execution errors
 		return nil
 	}
-	return multierr.Combine(spmHandler.CombinedResults()...)
+	if err := multierr.Combine(spmHandler.CombinedResults()...); err != nil {
+		return err
+	}
+	if skippedUnresponsive {
+		return hosterrorscache.ErrUnresponsiveHost
+	}
+	return nil
 }
 
 // executeParallelHTTP executes parallel requests for a template
@@ -312,6 +322,10 @@ func (request *Request) executeParallelHTTP(input *contextargs.Context, dynamicV
 
 	spmHandler := httputils.NewBlockingSPMHandler[error](context.Background(), maxWorkers, maxErrorsWhenParallel, shouldStop)
 	defer spmHandler.Cancel()
+
+	// skippedUnresponsive notes that a request was not sent because its address
+	// is unresponsive. The scan reports that instead of an empty result.
+	var skippedUnresponsive bool
 
 	// wrappedCallback is a callback that wraps the original callback
 	// to implement stop at first match logic
@@ -475,7 +489,8 @@ func (request *Request) executeParallelHTTP(input *contextargs.Context, dynamicV
 		}
 
 		// break if stop at first match is found or host is unresponsive
-		if spmHandler.FoundFirstMatch() || request.isUnresponsiveAddress(input) {
+		if unresponsive := request.isUnresponsiveAddress(input); spmHandler.FoundFirstMatch() || unresponsive {
+			skippedUnresponsive = skippedUnresponsive || unresponsive
 			break
 		}
 
@@ -511,7 +526,7 @@ func (request *Request) executeParallelHTTP(input *contextargs.Context, dynamicV
 			stopWorkers()
 			// The handler watches context.Background(), so only Wait ends it.
 			spmHandler.Wait()
-			return nil
+			return hosterrorscache.ErrUnresponsiveHost
 		}
 		select {
 		case <-spmHandler.Done():
@@ -545,7 +560,13 @@ func (request *Request) executeParallelHTTP(input *contextargs.Context, dynamicV
 		// ignore any context cancellation and in-transit execution errors
 		return nil
 	}
-	return multierr.Combine(spmHandler.CombinedResults()...)
+	if err := multierr.Combine(spmHandler.CombinedResults()...); err != nil {
+		return err
+	}
+	if skippedUnresponsive {
+		return hosterrorscache.ErrUnresponsiveHost
+	}
+	return nil
 }
 
 // executeTurboHTTP executes turbo http request for a URL
@@ -643,7 +664,7 @@ func (request *Request) executeTurboHTTP(input *contextargs.Context, dynamicValu
 			// skip on unresponsive host no need to continue
 			reservation.done()
 			spmHandler.Cancel()
-			return nil
+			return hosterrorscache.ErrUnresponsiveHost
 		}
 		generatedHttpRequest.pipelinedClient = pipeClient
 		if err := spmHandler.Acquire(); err != nil {
@@ -760,7 +781,7 @@ executionLoop:
 			}
 			// Check if hosts keep erroring
 			if request.isUnresponsiveAddress(hostErrorsInput) {
-				return false, true, nil, nil
+				return false, true, nil, hosterrorscache.ErrUnresponsiveHost
 			}
 			var gotMatches bool
 			var extractedDynamicValues map[string][]string

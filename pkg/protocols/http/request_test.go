@@ -27,6 +27,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators/matchers"
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/hosterrorscache"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/interactsh"
 	"github.com/projectdiscovery/ratelimit"
 	"github.com/projectdiscovery/retryablehttp-go"
@@ -1512,9 +1513,36 @@ func TestSchemelessTargetChecksHostErrorsAtRequestPort(t *testing.T) {
 			require.Contains(t, spy.checks, "127.0.0.1:443", "the request port must be checked")
 			// A sent request records a mark if it fails and a reset if it succeeds.
 			require.Empty(t, slices.Concat(spy.marks, spy.resets), "no request may be sent to an unresponsive port")
-			require.NoError(t, err)
+			require.ErrorIs(t, err, hosterrorscache.ErrUnresponsiveHost)
 		})
 	}
+}
+
+// A literal URL of the target is classified as possibly leaving it, so the
+// engine runs the template. The request path must still report the skip when
+// that URL's address is unresponsive.
+func TestLiteralTargetURLReportsUnresponsiveSkip(t *testing.T) {
+	options := testutils.DefaultOptions
+	testutils.Init(options)
+
+	req := &Request{
+		ID:     "literal-same-address",
+		Method: HTTPMethodTypeHolder{MethodType: HTTPGet},
+		Path:   []string{"https://127.0.0.1/"},
+	}
+	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
+		ID:   req.ID,
+		Info: model.Info{SeverityHolder: severity.Holder{Severity: severity.Low}, Name: "test"},
+	})
+	spy := &addressSpyHostErrorsCache{unresponsive: "127.0.0.1:443"}
+	executerOpts.HostErrorsCache = spy
+	require.NoError(t, req.Compile(executerOpts))
+
+	err := req.ExecuteWithResults(contextargs.NewWithInput(context.Background(), "https://127.0.0.1"),
+		make(output.InternalEvent), make(output.InternalEvent), func(*output.InternalWrappedEvent) {})
+
+	require.ErrorIs(t, err, hosterrorscache.ErrUnresponsiveHost)
+	require.Empty(t, slices.Concat(spy.marks, spy.resets), "no request may be sent to an unresponsive port")
 }
 
 // Each request outcome is recorded at the port the request went to, so a
@@ -1766,7 +1794,7 @@ func TestExecuteParallelHTTP_SkipOnUnresponsiveFromCache(t *testing.T) {
 			atomic.AddInt32(&matches, 1)
 		}
 	})
-	require.NoError(t, err)
+	require.ErrorIs(t, err, hosterrorscache.ErrUnresponsiveHost)
 	require.Equal(t, int32(0), atomic.LoadInt32(&matches), "expected no matches when host is marked unresponsive")
 }
 
@@ -1879,7 +1907,7 @@ func TestExecuteParallelHTTP_GoroutineLeaks(t *testing.T) {
 		ctxArgs := contextargs.NewWithInput(context.Background(), ts.URL)
 
 		err = req.ExecuteWithResults(ctxArgs, metadata, previous, func(event *output.InternalWrappedEvent) {})
-		require.NoError(t, err)
+		require.ErrorIs(t, err, hosterrorscache.ErrUnresponsiveHost)
 	})
 
 	// Test Case 3: Context cancellation scenario

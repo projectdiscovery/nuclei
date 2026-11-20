@@ -1,11 +1,13 @@
 package generic
 
 import (
+	"errors"
 	"sync/atomic"
 
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/hosterrorscache"
 	"github.com/projectdiscovery/nuclei/v3/pkg/scan"
 	templateTypes "github.com/projectdiscovery/nuclei/v3/pkg/templates/types"
 	"github.com/projectdiscovery/nuclei/v3/pkg/tmplexec/utils"
@@ -77,7 +79,11 @@ func (g *Generic) ExecuteWithResults(ctx *scan.ScanContext) error {
 		})
 		if err != nil {
 			ctx.LogError(err)
-			gologger.Warning().Msgf("[%s] Could not execute request for %s: %s\n", g.options.TemplateID, ctx.Input.MetaInput.PrettyPrint(), err)
+			// A skip is reported on the event, the same way the engine reports a
+			// target it did not run. It is not a request that failed.
+			if !errors.Is(err, hosterrorscache.ErrUnresponsiveHost) {
+				gologger.Warning().Msgf("[%s] Could not execute request for %s: %s\n", g.options.TemplateID, ctx.Input.MetaInput.PrettyPrint(), err)
+			}
 		}
 		// HTTP requests already record per-request host error results against the
 		// effective request URL/host inside http.Request.ExecuteWithResults.
