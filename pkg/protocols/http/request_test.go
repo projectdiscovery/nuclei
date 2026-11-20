@@ -1584,6 +1584,33 @@ func TestSchemelessTargetChecksHostErrorsAtRequestPort(t *testing.T) {
 	}
 }
 
+// A literal URL of the target is classified as possibly leaving it, so the
+// engine runs the template. The request path must still report the skip when
+// that URL's address is unresponsive.
+func TestLiteralTargetURLReportsUnresponsiveSkip(t *testing.T) {
+	options := testutils.DefaultOptions
+	testutils.Init(options)
+
+	req := &Request{
+		ID:     "literal-same-address",
+		Method: HTTPMethodTypeHolder{MethodType: HTTPGet},
+		Path:   []string{"https://127.0.0.1/"},
+	}
+	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
+		ID:   req.ID,
+		Info: model.Info{SeverityHolder: severity.Holder{Severity: severity.Low}, Name: "test"},
+	})
+	spy := &addressSpyHostErrorsCache{unresponsive: "127.0.0.1:443"}
+	executerOpts.HostErrorsCache = spy
+	require.NoError(t, req.Compile(executerOpts))
+
+	err := req.ExecuteWithResults(contextargs.NewWithInput(context.Background(), "https://127.0.0.1"),
+		make(output.InternalEvent), make(output.InternalEvent), func(*output.InternalWrappedEvent) {})
+
+	require.ErrorIs(t, err, hosterrorscache.ErrUnresponsiveHost)
+	require.Empty(t, slices.Concat(spy.marks, spy.resets), "no request may be sent to an unresponsive port")
+}
+
 // Each request outcome is recorded at the port the request went to, so a
 // success resets the same entry its failures count against (#8175). The
 // requests reach 127.0.0.1:443: a closed port records marks, an open one

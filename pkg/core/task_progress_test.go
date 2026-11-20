@@ -24,6 +24,8 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types/scanstrategy"
 	"github.com/stretchr/testify/require"
+
+	"github.com/projectdiscovery/nuclei/v3/internal/tests/testutils" //nolint:depguard // No depguard rules are configured, so its default list allows only the standard library.
 )
 
 // taskRecorder counts the tasks the engine schedules and completes.
@@ -386,6 +388,156 @@ func refuseSchemelessTarget(t *testing.T, engine *Engine, probed, refusedURL str
 	require.True(t, cache.Check(protoType, refused), "the refused address must be unresponsive")
 
 	return target
+}
+
+const (
+	otherPortTemplateID = "b-live.yaml"
+	firstHTTPID         = "a1.yaml"
+	secondHTTPID        = "a2.yaml"
+)
+
+// TestUnresponsiveTargetKeepsTemplatesSendingElsewhere refuses the target's
+// address, then scans it with an http template that sends to the target, one
+// that sends to another port, another that sends to the target, and a dns
+// template. The templates that send to the target are skipped. The one that
+// sends to another port runs, so the request path can check that port (#8197),
+// and in host-spray it does not end the skips of the templates after it.
+func TestUnresponsiveTargetKeepsTemplatesSendingElsewhere(t *testing.T) {
+	// compiling a request sets up global protocol state, so do it before the
+	// subtests run in parallel; they only read the requests
+	requests := []*http.Request{
+		compiledHTTP(t, "{{BaseURL}}/a1"),
+		compiledHTTP(t, "http://{{Host}}:18081/"),
+		compiledHTTP(t, "{{BaseURL}}/a2"),
+	}
+
+	t.Parallel()
+
+	tests := []struct {
+		name     string
+		target   string
+		wantRuns []string
+		// wantSkips lists the templates that get a skip event, which in
+		// host-spray is one for a target whose own address is refused
+		wantSkips map[scanstrategy.ScanStrategy][]string
+	}{
+		{
+			name:     "target with a scheme",
+			target:   "https://127.0.0.1",
+			wantRuns: []string{otherPortTemplateID},
+			wantSkips: map[scanstrategy.ScanStrategy][]string{
+				scanstrategy.TemplateSpray: {firstHTTPID, secondHTTPID, dnsTemplateID},
+				scanstrategy.HostSpray:     {firstHTTPID},
+			},
+		},
+		{
+			// the http requests go to https, where the refusal was recorded;
+			// the dns template goes elsewhere and runs, as before
+			name:     "target without a scheme",
+			target:   "127.0.0.1",
+			wantRuns: []string{otherPortTemplateID, dnsTemplateID},
+			wantSkips: map[scanstrategy.ScanStrategy][]string{
+				scanstrategy.TemplateSpray: {firstHTTPID, secondHTTPID},
+				scanstrategy.HostSpray:     {firstHTTPID, secondHTTPID},
+			},
+		},
+	}
+
+	for _, strategy := range []scanstrategy.ScanStrategy{scanstrategy.TemplateSpray, scanstrategy.HostSpray} {
+		for _, test := range tests {
+			t.Run(strategy.String()+"/"+test.name, func(t *testing.T) {
+				t.Parallel()
+
+				runs, skipped, tasksLeft := scanAfterRefusal(t, strategy, test.target, requests)
+				require.ElementsMatch(t, test.wantRuns, runs, "templates run")
+				require.ElementsMatch(t, test.wantSkips[strategy], skipped, "templates that got a skip event")
+				require.Zero(t, tasksLeft, "tasks left undone")
+			})
+		}
+	}
+}
+
+// scanAfterRefusal scans target after recording a refused request to
+// https://127.0.0.1, with http templates of the three requests followed by a dns
+// template. It returns the templates that ran, the templates that got a skip
+// event, and the tasks left undone.
+//
+//nolint:exhaustruct,exhaustruct_v5 // fixtures keep zero-value defaults
+func scanAfterRefusal(
+	t *testing.T, strategy scanstrategy.ScanStrategy, target string, requests []*http.Request,
+) ([]string, []string, int64) {
+	t.Helper()
+
+	var (
+		skipped  []string
+		eventsMu sync.Mutex
+	)
+
+	engine, recorder := newTaskEngine(strategy, nil, nil, nil)
+	engine.Callback = func(event *output.ResultEvent) {
+		eventsMu.Lock()
+		defer eventsMu.Unlock()
+
+		if event.Error == "host was skipped as it was found unresponsive" {
+			skipped = append(skipped, event.TemplateID)
+		}
+	}
+
+	cache := hosterrorscache.New(1, hosterrorscache.DefaultMaxHostsCount, nil)
+	t.Cleanup(cache.Close)
+
+	engine.executerOpts.HostErrorsCache = cache
+	input := contextargs.NewMetaInput()
+	input.Input = target
+
+	protoType := tmpltypes.HTTPProtocol.String()
+	ctx := contextargs.NewWithMetaInput(t.Context(), input)
+	refused := contextargs.GetCopyIfAddressOutdated(ctx, "https://127.0.0.1/a1")
+	cache.MarkFailedOrRemove(protoType, refused, errConnectionRefused)
+	require.True(t, cache.Check(protoType, refused), "the refused address must be unresponsive")
+
+	templatesList := []*templates.Template{
+		{ID: firstHTTPID, RequestsHTTP: requests[:1]},
+		{ID: otherPortTemplateID, RequestsHTTP: requests[1:2]},
+		{ID: secondHTTPID, RequestsHTTP: requests[2:]},
+		{ID: dnsTemplateID, RequestsDNS: []*dns.Request{{}}},
+	}
+	executers := make([]*scriptedExecuter, len(templatesList))
+
+	for i, template := range templatesList {
+		executers[i] = &scriptedExecuter{}
+		template.Path, template.Executer = template.ID, executers[i]
+	}
+
+	targets := &fakeTargetProvider{values: []*contextargs.MetaInput{input}}
+	engine.ExecuteScanWithOpts(t.Context(), templatesList, targets, true)
+
+	var runs []string
+
+	for i, template := range templatesList {
+		if executers[i].calls > 0 {
+			runs = append(runs, template.ID)
+		}
+	}
+
+	return runs, skipped, recorder.total.Load() - recorder.done.Load()
+}
+
+// compiledHTTP returns an http request with path, compiled as a template run
+// compiles it.
+//
+//nolint:exhaustruct,exhaustruct_v5 // only the path matters
+func compiledHTTP(t *testing.T, path string) *http.Request {
+	t.Helper()
+
+	options := testutils.DefaultOptions
+	testutils.Init(options)
+
+	request := &http.Request{Path: []string{path}}
+	info := &testutils.TemplateInfo{ID: path}
+	require.NoError(t, request.Compile(testutils.NewMockExecuterOptions(options, info)))
+
+	return request
 }
 
 // TestHTTPSkipKeepsResumeIndex refuses the https address of a schemeless
