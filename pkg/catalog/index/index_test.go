@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"reflect"
 	"runtime"
+	"slices"
 	"testing"
 	"time"
 
@@ -674,9 +676,14 @@ func TestCacheConcurrentSaveAcrossIndexes(t *testing.T) {
 		entries = 2000
 	)
 
+	// What each index of the last round set, by index.
+	var written []map[string]*Metadata
 	for round := range rounds {
+		written = make([]map[string]*Metadata, indexes)
 		errs := make(chan error, indexes)
 		for id := range indexes {
+			own := make(map[string]*Metadata, entries)
+			written[id] = own
 			go func() {
 				cache, err := NewIndex(tmpDir)
 				if err != nil {
@@ -685,7 +692,8 @@ func TestCacheConcurrentSaveAcrossIndexes(t *testing.T) {
 				}
 				for n := range entries {
 					path := filepath.Join("/tmp", fmt.Sprintf("%d-%d-%d.yaml", round, id, n))
-					cache.Set(path, &Metadata{ID: fmt.Sprintf("t-%d", n), FilePath: path})
+					own[path] = &Metadata{ID: fmt.Sprintf("t-%d", n), FilePath: path}
+					cache.Set(path, own[path])
 				}
 				errs <- cache.Save()
 			}()
@@ -700,7 +708,8 @@ func TestCacheConcurrentSaveAcrossIndexes(t *testing.T) {
 	require.NoError(t, err)
 	require.Empty(t, tmpFiles, "Temporary files should not exist after the saves")
 
-	// The file left in place is one whole snapshot.
+	// The file left in place is one index's whole snapshot of the last round,
+	// never a mix of the two.
 	file, err := os.Open(filepath.Join(tmpDir, IndexFileName))
 	require.NoError(t, err)
 	defer func() { _ = file.Close() }()
@@ -708,6 +717,10 @@ func TestCacheConcurrentSaveAcrossIndexes(t *testing.T) {
 	var snapshot cacheSnapshot
 	require.NoError(t, gob.NewDecoder(file).Decode(&snapshot))
 	require.Len(t, snapshot.Data, entries)
+	whole := slices.ContainsFunc(written, func(own map[string]*Metadata) bool {
+		return reflect.DeepEqual(own, snapshot.Data)
+	})
+	require.True(t, whole, "The cache file should hold exactly what one index of the last round set")
 }
 
 func TestCacheSize(t *testing.T) {
