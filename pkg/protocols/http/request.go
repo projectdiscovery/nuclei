@@ -1191,7 +1191,7 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 			}
 			// A raw-reading request stores the encoded bytes. A plain request
 			// stores the decoded body. They must not share a cache entry.
-			if request.readsRawResponse {
+			if request.keepsRawResponse() {
 				projectCacheKey = append(projectCacheKey, ":raw"...)
 			}
 		}
@@ -1374,7 +1374,7 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 				}
 			}
 
-			if request.readsRawResponse && generatedRequest.request.Header.Get("Accept-Encoding") == "" &&
+			if request.keepsRawResponse() && generatedRequest.request.Header.Get("Accept-Encoding") == "" &&
 				generatedRequest.request.Header.Get("Range") == "" && generatedRequest.request.Method != http.MethodHead {
 				// the transport decodes a response to the gzip header it adds
 				// itself, leaving nothing raw; sending the same header keeps the
@@ -1553,7 +1553,7 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 	newResponseChain := httpUtils.NewResponseChain
 	// The project file stores the bytes as received, because a replay decodes
 	// them again and a decoded body would be decoded twice.
-	if request.readsRawResponse || request.options.ProjectFile != nil {
+	if request.keepsRawResponse() || request.options.ProjectFile != nil {
 		newResponseChain = httpUtils.NewResponseChainWithRaw
 	}
 	respChain := newResponseChain(resp, int64(maxBodylimit))
@@ -1685,7 +1685,7 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 		}
 
 		outputEvent := request.responseToDSLMap(respChain.Response(), input.MetaInput.Input, matchedURL, convUtil.String(dumpedRequest.data), fullResponseStr, bodyStr, headersStr, duration, generatedRequest.meta)
-		if request.readsRawResponse {
+		if request.keepsRawResponse() {
 			outputEvent["raw_body"] = respChain.RawBodyString()
 			outputEvent["raw_response"] = respChain.RawFullResponseString()
 		}

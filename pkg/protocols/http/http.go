@@ -597,8 +597,29 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 		request.connConfiguration.Connection.DisableKeepAlive = true
 	}
 	request.sharesResponse = canShareResponse(request, options.Flow)
-	request.readsRawResponse = reads(request, options.Flow, "raw_body", "raw_response")
+	request.readsRawResponse = request.readsRawResponse || reads(request, options.Flow, rawParts...)
 	return nil
+}
+
+// rawParts hold a response as received, before content decoding.
+var rawParts = []string{"raw_body", "raw_response"}
+
+// KeepRawResponses makes every request of a template keep raw responses when
+// any of them or the flow reads raw parts, as a request can read those of an
+// earlier one. It is called before the requests are compiled.
+func KeepRawResponses(requests []*Request, flow string) {
+	if !slices.ContainsFunc(requests, func(request *Request) bool { return reads(request, flow, rawParts...) }) {
+		return
+	}
+	for _, request := range requests {
+		request.readsRawResponse = true
+	}
+}
+
+// keepsRawResponse reports whether responses keep their bytes as received,
+// for this request's raw parts or for global matchers reading its events.
+func (request *Request) keepsRawResponse() bool {
+	return request.readsRawResponse || request.options.GlobalMatchers.Reads(rawParts...)
 }
 
 // canShareResponse reports whether a response another template got for the
