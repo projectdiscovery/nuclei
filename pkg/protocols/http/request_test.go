@@ -28,6 +28,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators/matchers"
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/hosterrorscache" //nolint:depguard // No depguard rules are configured, so its default list allows only the standard library.
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/interactsh"
 	"github.com/projectdiscovery/ratelimit"
 	"github.com/projectdiscovery/retryablehttp-go"
@@ -1578,7 +1579,7 @@ func TestSchemelessTargetChecksHostErrorsAtRequestPort(t *testing.T) {
 			require.Contains(t, spy.checks, "127.0.0.1:443", "the request port must be checked")
 			// A sent request records a mark if it fails and a reset if it succeeds.
 			require.Empty(t, slices.Concat(spy.marks, spy.resets), "no request may be sent to an unresponsive port")
-			require.NoError(t, err)
+			require.ErrorIs(t, err, hosterrorscache.ErrUnresponsiveHost)
 		})
 	}
 }
@@ -1832,7 +1833,7 @@ func TestExecuteParallelHTTP_SkipOnUnresponsiveFromCache(t *testing.T) {
 			atomic.AddInt32(&matches, 1)
 		}
 	})
-	require.NoError(t, err)
+	require.ErrorIs(t, err, hosterrorscache.ErrUnresponsiveHost)
 	require.Equal(t, int32(0), atomic.LoadInt32(&matches), "expected no matches when host is marked unresponsive")
 }
 
@@ -1945,7 +1946,7 @@ func TestExecuteParallelHTTP_GoroutineLeaks(t *testing.T) {
 		ctxArgs := contextargs.NewWithInput(context.Background(), ts.URL)
 
 		err = req.ExecuteWithResults(ctxArgs, metadata, previous, func(event *output.InternalWrappedEvent) {})
-		require.NoError(t, err)
+		require.ErrorIs(t, err, hosterrorscache.ErrUnresponsiveHost)
 	})
 
 	// Test Case 3: Context cancellation scenario
@@ -2072,7 +2073,7 @@ func TestExecuteParallelHTTP_GoroutineLeaks(t *testing.T) {
 		ctxArgs := contextargs.NewWithInput(t.Context(), "127.0.0.1")
 		err = req.ExecuteWithResults(ctxArgs, make(output.InternalEvent), make(output.InternalEvent),
 			func(*output.InternalWrappedEvent) {})
-		require.NoError(t, err)
+		require.ErrorIs(t, err, hosterrorscache.ErrUnresponsiveHost)
 	})
 
 	// Test Case 6: a first match cancels the workers while payloads are still
