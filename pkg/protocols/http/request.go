@@ -448,7 +448,13 @@ func (request *Request) executeParallelHTTP(input *contextargs.Context, dynamicV
 						spmHandler.Release()
 						return false
 					case spmHandler.ResultChan <- err:
-						request.recordHostResultAndCancelIfUnresponsive(t.hostErrorsInput, err, spmHandler.Cancel)
+						// In a block that may send elsewhere, one address going down says
+						// nothing about the others, so only its result is recorded.
+						if request.maySendElsewhere {
+							request.recordHostResult(t.hostErrorsInput, err)
+						} else {
+							request.recordHostResultAndCancelIfUnresponsive(t.hostErrorsInput, err, spmHandler.Cancel)
+						}
 						spmHandler.Release()
 					}
 					return false
@@ -492,8 +498,8 @@ func (request *Request) executeParallelHTTP(input *contextargs.Context, dynamicV
 			}
 		}
 
-		// break if stop at first match is found or host is unresponsive
-		if spmHandler.FoundFirstMatch() || request.skipUnresponsive(input, &skipped) {
+		// break if stop at first match is found
+		if spmHandler.FoundFirstMatch() {
 			break
 		}
 
@@ -523,10 +529,15 @@ func (request *Request) executeParallelHTTP(input *contextargs.Context, dynamicV
 
 		hostErrorsInput := contextargs.GetCopyIfAddressOutdated(input, generatedHttpRequest.URL())
 		if request.skipUnresponsive(hostErrorsInput, &skipped) {
-			// skip on unresponsive host no need to continue
 			reservation.done()
+			// Every request of the block goes to this address, so none can be sent.
+			if !request.maySendElsewhere {
+				break
+			}
+			// The next request may go to another address.
+			request.options.Progress.IncrementRequests()
 
-			break
+			continue
 		}
 		select {
 		case <-spmHandler.Done():
@@ -744,6 +755,14 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 	}
 	var requestErr error
 
+	var skipped bool
+	// skipRequest counts a request the execution does not send because its address is unresponsive.
+	skipRequest := func() {
+		skipped = true
+
+		request.options.Progress.IncrementRequests()
+	}
+
 executionLoop:
 	for {
 		executeFunc := func(data string, payloads, dynamicValue map[string]interface{}, previousEvent output.InternalEvent) (skipBranch, stop bool, extracted map[string][]string, err error) {
@@ -751,7 +770,7 @@ executionLoop:
 
 			// A stop or an error ends the execution, and the requests it leaves
 			// unsent count as processed. This request counts once too: below once it
-			// is sent or fails, or here when the execution ends before that.
+			// is sent, fails or is skipped, or here when the execution ends before that.
 			processed := false
 
 			defer func() {
@@ -789,6 +808,13 @@ executionLoop:
 			// a copy and using it to check for host errors etc
 			// but this should be replaced once templateCtx is refactored properly
 			hostErrorsInput := contextargs.GetCopyIfAddressOutdated(input, generatedHttpRequest.URL())
+
+			// A request that is not sent takes no rate-limit token, which every template shares.
+			if request.maySendElsewhere && request.isUnresponsiveAddress(hostErrorsInput) {
+				skipRequest()
+
+				return false, false, nil, nil
+			}
 
 			// Full URL, so https and an explicit port stay on the same key the observation uses.
 			if err := request.rateLimitTake(ctx, hostBackoffKey(generatedHttpRequest, input)); err != nil {
@@ -842,7 +868,14 @@ executionLoop:
 			// executeRequest sent nothing, so there is no host result to record
 			// and no failure to count.
 			if errors.Is(execReqErr, hosterrorscache.ErrUnresponsiveHost) {
-				return false, true, nil, execReqErr
+				// Every request of the block goes to this address, so none can be sent.
+				if !request.maySendElsewhere {
+					return false, true, nil, execReqErr
+				}
+				// Another template can mark the address after the check above.
+				skipRequest()
+
+				return false, false, nil, nil
 			}
 
 			request.recordHostResult(hostErrorsInput, execReqErr)
@@ -948,6 +981,11 @@ executionLoop:
 		}
 		dynamicValueContexts = nextDynamicValueContexts
 	}
+	// A request error takes precedence over a skip, as in requestsError.
+	if requestErr == nil && skipped {
+		return hosterrorscache.ErrUnresponsiveHost
+	}
+
 	return requestErr
 }
 

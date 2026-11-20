@@ -614,8 +614,9 @@ func (e *Request) MaySendElsewhere() bool {
 
 // sendsElsewhere reports whether any request of the block may go to an address
 // other than its target's. A false positive only moves the skip of a request to
-// a down target from the engine to the request path, so every form that is not
-// known to stay at the target counts. That is a
+// a down target from the engine to the request path, which then skips each
+// request to that address instead of ending the block, so every form that is
+// not known to stay at the target counts. That is a
 // self-contained request, which names its own destination, a path that does
 // not start with {{BaseURL}} or {{RootURL}}, or that continues them with
 // anything but a path, query or fragment, such as a port, and a raw request
