@@ -749,6 +749,26 @@ executionLoop:
 		executeFunc := func(data string, payloads, dynamicValue map[string]interface{}, previousEvent output.InternalEvent) (skipBranch, stop bool, extracted map[string][]string, err error) {
 			hasInteractMatchers := interactsh.HasMatchers(request.CompiledOperators)
 
+			// A stop or an error ends the execution, and the requests it leaves
+			// unsent count as processed. This request counts once too: below once it
+			// is sent or fails, or here when the execution ends before that.
+			processed := false
+
+			defer func() {
+				if !stop && err == nil {
+					return
+				}
+
+				unsent := generator.Remaining()
+				if !processed {
+					unsent++
+				}
+
+				if unsent > 0 {
+					request.options.Progress.SetRequests(uint64(unsent))
+				}
+			}()
+
 			ctx := input.Context()
 			generatedHttpRequest, reservation, err := request.makeReserved(ctx, generator, input, data, payloads, dynamicValue)
 			if err != nil {
@@ -836,6 +856,8 @@ executionLoop:
 				request.options.Progress.IncrementRequests()
 			}
 
+			processed = true
+
 			// If this was a match, and we want to stop at first match, skip all further requests.
 			shouldStopAtFirstMatch := generatedHttpRequest.original.options.Options.StopAtFirstMatch || generatedHttpRequest.original.options.StopAtFirstMatch || request.StopAtFirstMatch
 			if shouldStopAtFirstMatch && gotMatches {
@@ -875,11 +897,9 @@ executionLoop:
 					if requestErr == nil {
 						requestErr = gotErr
 					}
-					request.options.Progress.SetRequests(uint64(generator.Remaining() + 1))
 					break executionLoop
 				}
 				if stop {
-					request.options.Progress.SetRequests(uint64(generator.Remaining() + 1))
 					break executionLoop
 				}
 				if skipBranch {
@@ -917,11 +937,9 @@ executionLoop:
 				if requestErr == nil {
 					requestErr = gotErr
 				}
-				request.options.Progress.SetRequests(uint64(generator.Remaining() + 1))
 				break executionLoop
 			}
 			if stop {
-				request.options.Progress.SetRequests(uint64(generator.Remaining() + 1))
 				break executionLoop
 			}
 			if skipBranch {
