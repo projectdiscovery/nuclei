@@ -144,9 +144,9 @@ func (c *Cache) NormalizeCacheValue(value string) string {
 	return normalizedValue
 }
 
-// ErrUnresponsiveHost reports that a request was not sent because the address
-// it goes to was found unresponsive. Its message is the error the engine
-// writes for a target it skips for the same reason.
+// ErrUnresponsiveHost reports that a request was not sent because the
+// address it goes to was found unresponsive. Its message is the error the
+// engine writes for a target it skips for the same reason.
 var ErrUnresponsiveHost = errors.New("host was skipped as it was found unresponsive")
 
 // Check returns true if a host should be skipped as it has been

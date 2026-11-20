@@ -1,5 +1,6 @@
 package generic
 
+//nolint:depguard // No depguard rules are configured, so its default list allows only the standard library.
 import (
 	"errors"
 	"sync/atomic"
@@ -79,10 +80,10 @@ func (g *Generic) ExecuteWithResults(ctx *scan.ScanContext) error {
 		})
 		if err != nil {
 			ctx.LogError(err)
-			// A skip is reported on the event, the same way the engine reports a
-			// target it did not run. It is not a request that failed.
+			// A skip reports like the engine's: in the event, with no warning.
 			if !errors.Is(err, hosterrorscache.ErrUnresponsiveHost) {
-				gologger.Warning().Msgf("[%s] Could not execute request for %s: %s\n", g.options.TemplateID, ctx.Input.MetaInput.PrettyPrint(), err)
+				gologger.Warning().Msgf("[%s] Could not execute request for %s: %s\n",
+					g.options.TemplateID, ctx.Input.MetaInput.PrettyPrint(), err)
 			}
 		}
 		// HTTP requests already record per-request host error results against the

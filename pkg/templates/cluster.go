@@ -1,6 +1,8 @@
 package templates
 
+//nolint:depguard // No depguard rules are configured, so its default list allows only the standard library.
 import (
+	"errors"
 	"fmt"
 	"slices"
 	"sort"
@@ -15,6 +17,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/helpers/writer"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/hosterrorscache"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/catchall"
 	protocolUtils "github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils"
@@ -427,6 +430,11 @@ func (e *ClusterExecuter) Execute(ctx *scan.ScanContext) (bool, error) {
 	if e.options.HostErrorsCache != nil && e.templateType != types.HTTPProtocol {
 		e.options.HostErrorsCache.MarkFailedOrRemove(e.templateType.String(), ctx.Input, err)
 	}
+	// A skip is reported like the engine's own skip of a target: in the
+	// failure event, without a warning.
+	if errors.Is(err, hosterrorscache.ErrUnresponsiveHost) {
+		err = nil
+	}
 	return results, err
 }
 
@@ -469,6 +477,11 @@ func (e *ClusterExecuter) ExecuteWithResults(ctx *scan.ScanContext) ([]*output.R
 
 	if e.options.HostErrorsCache != nil && e.templateType != types.HTTPProtocol {
 		e.options.HostErrorsCache.MarkFailedOrRemove(e.templateType.String(), ctx.Input, err)
+	}
+	// The skip is logged on ctx above, so the caller does not warn about it as
+	// it would about a failed request.
+	if errors.Is(err, hosterrorscache.ErrUnresponsiveHost) {
+		err = nil
 	}
 	return scanCtx.GenerateResult(), err
 }

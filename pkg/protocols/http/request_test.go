@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"slices"
+	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -27,7 +28,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators/matchers"
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/hosterrorscache"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/hosterrorscache" //nolint:depguard // No depguard rules are configured, so its default list allows only the standard library.
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/interactsh"
 	"github.com/projectdiscovery/ratelimit"
 	"github.com/projectdiscovery/retryablehttp-go"
@@ -995,6 +996,71 @@ func TestParallelRequestGetsDefaultTimeoutWithoutClientTimeout(t *testing.T) {
 	require.Less(t, time.Since(start), 1500*time.Millisecond, "requests waited out the server's 2s reply")
 }
 
+// Canceling the scan must stop a request of a template that uses @timeout,
+// whether the request has the annotation or takes the default timeout because
+// another request of the template does (#8178).
+//
+//nolint:paralleltest // the cases share the protocol state testutils.Init sets up
+func TestTimeoutAnnotationKeepsScanCancellation(t *testing.T) {
+	const answerAfter = 5 * time.Second
+
+	tests := []struct {
+		name string
+		raw  []string
+	}{
+		{name: "annotated", raw: []string{"@timeout: 30s\nGET / HTTP/1.1\nHost: {{Hostname}}"}},
+		{name: "default timeout", raw: []string{
+			"GET / HTTP/1.1\nHost: {{Hostname}}",
+			"@timeout: 30s\nGET /next HTTP/1.1\nHost: {{Hostname}}",
+		}},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			options := testutils.DefaultOptions.Copy()
+			timeouts := *options.GetTimeouts()
+			timeouts.HttpTimeout = time.Minute
+			options.SetTimeouts(&timeouts)
+			testutils.Init(options)
+			t.Cleanup(func() { testutils.Cleanup(options) })
+
+			server := httptest.NewServer(http.HandlerFunc(func(resp http.ResponseWriter, req *http.Request) {
+				select {
+				case <-req.Context().Done():
+				case <-time.After(answerAfter):
+					_, _ = resp.Write([]byte("done"))
+				}
+			}))
+			t.Cleanup(server.Close)
+
+			//nolint:exhaustruct,exhaustruct_v5 // zero values are the template defaults
+			request := &Request{
+				Raw: test.raw,
+				Matchers: []*matchers.Matcher{{
+					Type:  matchers.MatcherTypeHolder{MatcherType: matchers.WordsMatcher},
+					Words: []string{"done"},
+				}},
+			}
+			require.NoError(t, request.Compile(testutils.NewMockExecuterOptions(options, nil)))
+
+			ctx, cancel := context.WithTimeout(t.Context(), 200*time.Millisecond)
+			defer cancel()
+
+			var matched atomic.Bool
+
+			start := time.Now()
+			_ = request.ExecuteWithResults(contextargs.NewWithInput(ctx, server.URL),
+				make(output.InternalEvent), make(output.InternalEvent), func(event *output.InternalWrappedEvent) {
+					if event.OperatorsResult != nil && event.OperatorsResult.Matched {
+						matched.Store(true)
+					}
+				})
+
+			require.Less(t, time.Since(start), answerAfter/2, "the request outlived the canceled scan")
+			require.False(t, matched.Load(), "a canceled scan reported a match")
+		})
+	}
+}
+
 // executePacedRequests runs request with a 500ms HTTP timeout and a rate limit
 // of one token every 800ms, so the second request waits past its timeout. It
 // returns the paths the server received.
@@ -1957,6 +2023,131 @@ func TestExecuteParallelHTTP_GoroutineLeaks(t *testing.T) {
 		err = req.ExecuteWithResults(ctxArgs, metadata, previous, func(event *output.InternalWrappedEvent) {})
 		require.Error(t, err)
 		require.Equal(t, context.Canceled, err)
+	})
+
+	// Test Case 4: the context is canceled while payloads still wait for a
+	// worker, so the scan returns before its stop-at-first-match handler is
+	// waited on (#8181).
+	//
+	//nolint:exhaustruct,exhaustruct_v5,paralleltest // zero-value fixtures; goleak and testutils.Init state are shared
+	t.Run("ContextCancellationWhileQueueing", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, r *http.Request) {
+			select {
+			case <-r.Context().Done():
+			case <-time.After(200 * time.Millisecond):
+			}
+
+			_, _ = fmt.Fprintf(writer, "response")
+		}))
+		defer server.Close()
+
+		req := &Request{
+			ID:      "parallel-context-cancel-queueing",
+			Method:  HTTPMethodTypeHolder{MethodType: HTTPGet},
+			Path:    []string{"{{BaseURL}}/test?param={{payload}}"},
+			Threads: 2,
+			Payloads: map[string]any{
+				"payload": []string{"1", "2", "3", "4", "5", "6", "7", "8", "9", "10"},
+			},
+			Matchers: []*matchers.Matcher{{
+				Part:  "body",
+				Type:  matchers.MatcherTypeHolder{MatcherType: matchers.WordsMatcher},
+				Words: []string{"response"},
+			}},
+		}
+
+		executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
+			ID:   "parallel-context-cancel-queueing",
+			Info: model.Info{SeverityHolder: severity.Holder{Severity: severity.Low}, Name: "test"},
+		})
+
+		err := req.Compile(executerOpts)
+		require.NoError(t, err)
+
+		ctx, cancel := context.WithTimeout(t.Context(), 300*time.Millisecond)
+		defer cancel()
+
+		ctxArgs := contextargs.NewWithInput(ctx, server.URL)
+		err = req.ExecuteWithResults(ctxArgs, make(output.InternalEvent), make(output.InternalEvent),
+			func(*output.InternalWrappedEvent) {})
+		require.ErrorIs(t, err, context.DeadlineExceeded)
+	})
+
+	// Test Case 5: only the port the requests go to is unresponsive, not the
+	// target's own, so the scan returns from inside the payload loop.
+	//
+	//nolint:exhaustruct,exhaustruct_v5,paralleltest // zero-value fixtures; goleak and testutils.Init state are shared
+	t.Run("UnresponsiveRequestPort", func(t *testing.T) {
+		req := &Request{
+			ID:       "parallel-unresponsive-request-port",
+			Method:   HTTPMethodTypeHolder{MethodType: HTTPGet},
+			Path:     []string{"{{BaseURL}}/n?x={{v}}"},
+			Threads:  2,
+			Payloads: map[string]any{"v": []string{"1", "2"}},
+		}
+
+		executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
+			ID:   "parallel-unresponsive-request-port",
+			Info: model.Info{SeverityHolder: severity.Holder{Severity: severity.Low}, Name: "test"},
+		})
+		executerOpts.HostErrorsCache = &addressSpyHostErrorsCache{unresponsive: "127.0.0.1:443"}
+
+		err := req.Compile(executerOpts)
+		require.NoError(t, err)
+
+		// A target without a scheme is sent to https, so its own address is
+		// 127.0.0.1:80 while its requests go to 127.0.0.1:443.
+		ctxArgs := contextargs.NewWithInput(t.Context(), "127.0.0.1")
+		err = req.ExecuteWithResults(ctxArgs, make(output.InternalEvent), make(output.InternalEvent),
+			func(*output.InternalWrappedEvent) {})
+		require.ErrorIs(t, err, hosterrorscache.ErrUnresponsiveHost)
+	})
+
+	// Test Case 6: a first match cancels the workers while payloads are still
+	// being queued, and the scan can return before its stop-at-first-match
+	// handler is waited on. Only some scans take that return, so it runs 30
+	// (#8181).
+	//
+	//nolint:exhaustruct,exhaustruct_v5,paralleltest // zero-value fixtures; goleak and testutils.Init state are shared
+	t.Run("StopAtFirstMatchWhileQueueing", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, _ *http.Request) {
+			_, _ = fmt.Fprintf(writer, "response")
+		}))
+		defer server.Close()
+
+		payloads := make([]string, 2000)
+		for i := range payloads {
+			payloads[i] = strconv.Itoa(i)
+		}
+
+		req := &Request{
+			ID:               "parallel-stop-first-match-queueing",
+			Method:           HTTPMethodTypeHolder{MethodType: HTTPGet},
+			Path:             []string{"{{BaseURL}}/test?param={{payload}}"},
+			Threads:          50,
+			Payloads:         map[string]any{"payload": payloads},
+			StopAtFirstMatch: true,
+			Matchers: []*matchers.Matcher{{
+				Part:  "body",
+				Type:  matchers.MatcherTypeHolder{MatcherType: matchers.WordsMatcher},
+				Words: []string{"response"},
+			}},
+		}
+
+		executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
+			ID:   "parallel-stop-first-match-queueing",
+			Info: model.Info{SeverityHolder: severity.Holder{Severity: severity.Low}, Name: "test"},
+		})
+
+		err := req.Compile(executerOpts)
+		require.NoError(t, err)
+
+		for range 30 {
+			ctxArgs := contextargs.NewWithInput(t.Context(), server.URL)
+			err = req.ExecuteWithResults(ctxArgs, make(output.InternalEvent), make(output.InternalEvent),
+				func(*output.InternalWrappedEvent) {})
+			require.NoError(t, err)
+		}
 	})
 }
 

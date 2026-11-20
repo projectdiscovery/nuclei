@@ -1,5 +1,6 @@
 package http
 
+//nolint:depguard // No depguard rules are configured, so its default list allows only the standard library.
 import (
 	"bytes"
 	"context"
@@ -221,6 +222,8 @@ func (request *Request) executeRaceRequest(input *contextargs.Context, dynamicVa
 	defer spmHandler.Cancel()
 
 	gotMatches := &atomic.Bool{}
+	// skipped notes that a request was not sent because its address is unresponsive.
+	var skipped atomic.Bool
 	// wrappedCallback is a callback that wraps the original callback
 	// to implement stop at first match logic
 	wrappedCallback := func(event *output.InternalWrappedEvent) {
@@ -240,15 +243,12 @@ func (request *Request) executeRaceRequest(input *contextargs.Context, dynamicVa
 		}
 	}
 
-	var skippedUnresponsive bool
 	for i := 0; i < request.RaceNumberRequests; i++ {
 		updatedInput := contextargs.GetCopyIfHostOutdated(input, generatedRequests[i].URL())
 
 		hostErrorsInput := contextargs.GetCopyIfAddressOutdated(input, generatedRequests[i].URL())
-		unresponsive := request.isUnresponsiveAddress(hostErrorsInput)
-		if spmHandler.FoundFirstMatch() || unresponsive {
+		if spmHandler.FoundFirstMatch() || request.skipUnresponsive(hostErrorsInput, &skipped) {
 			// stop sending more requests condition is met
-			skippedUnresponsive = skippedUnresponsive || unresponsive
 			break
 		}
 		if err := spmHandler.Acquire(); err != nil {
@@ -258,7 +258,7 @@ func (request *Request) executeRaceRequest(input *contextargs.Context, dynamicVa
 		go func(httpRequest *generatedRequest, requestInput, hostErrorsInput *contextargs.Context) {
 			defer spmHandler.Release()
 
-			if spmHandler.FoundFirstMatch() || request.isUnresponsiveAddress(hostErrorsInput) {
+			if spmHandler.FoundFirstMatch() || request.skipUnresponsive(hostErrorsInput, &skipped) {
 				// stop sending more requests condition is met
 				return
 			}
@@ -292,13 +292,8 @@ func (request *Request) executeRaceRequest(input *contextargs.Context, dynamicVa
 		// ignore any context cancellation and in-transit execution errors
 		return nil
 	}
-	if err := multierr.Combine(spmHandler.CombinedResults()...); err != nil {
-		return err
-	}
-	if skippedUnresponsive {
-		return hosterrorscache.ErrUnresponsiveHost
-	}
-	return nil
+
+	return requestsError(spmHandler.CombinedResults(), skipped.Load())
 }
 
 // executeParallelHTTP executes parallel requests for a template
@@ -320,12 +315,19 @@ func (request *Request) executeParallelHTTP(input *contextargs.Context, dynamicV
 	workerCtx, cancelWorkers := context.WithCancel(input.Context())
 	defer cancelWorkers()
 
-	spmHandler := httputils.NewBlockingSPMHandler[error](context.Background(), maxWorkers, maxErrorsWhenParallel, shouldStop)
+	// The handler's goroutine runs until Wait or until the context passed to
+	// it ends; Cancel does not stop it. Some returns skip Wait, so that context
+	// ends with this function (#8181). It does not derive from the input: with
+	// stop-at-first-match, the handler would report the input's cancellation
+	// as a first match.
+	spmCtx, cancelSPM := context.WithCancel(context.Background())
+	defer cancelSPM()
+
+	spmHandler := httputils.NewBlockingSPMHandler[error](spmCtx, maxWorkers, maxErrorsWhenParallel, shouldStop)
 	defer spmHandler.Cancel()
 
-	// skippedUnresponsive notes that a request was not sent because its address
-	// is unresponsive. The scan reports that instead of an empty result.
-	var skippedUnresponsive bool
+	// skipped notes that a request was not sent because its address is unresponsive.
+	var skipped atomic.Bool
 
 	// wrappedCallback is a callback that wraps the original callback
 	// to implement stop at first match logic
@@ -381,14 +383,16 @@ func (request *Request) executeParallelHTTP(input *contextargs.Context, dynamicV
 					default:
 					}
 
-					if spmHandler.FoundFirstMatch() || request.isUnresponsiveAddress(t.hostErrorsInput) || spmHandler.Cancelled() {
+					if spmHandler.FoundFirstMatch() || request.skipUnresponsive(t.hostErrorsInput, &skipped) ||
+						spmHandler.Cancelled() {
 						return false
 					}
 					if err := spmHandler.Acquire(); err != nil {
 						return false
 					}
 
-					if spmHandler.FoundFirstMatch() || request.isUnresponsiveAddress(t.hostErrorsInput) || spmHandler.Cancelled() {
+					if spmHandler.FoundFirstMatch() || request.skipUnresponsive(t.hostErrorsInput, &skipped) ||
+						spmHandler.Cancelled() {
 						spmHandler.Release()
 						return false
 					}
@@ -412,7 +416,7 @@ func (request *Request) executeParallelHTTP(input *contextargs.Context, dynamicV
 					}
 
 					if ctx.Err() != nil || spmHandler.FoundFirstMatch() ||
-						request.isUnresponsiveAddress(t.hostErrorsInput) || spmHandler.Cancelled() {
+						request.skipUnresponsive(t.hostErrorsInput, &skipped) || spmHandler.Cancelled() {
 						spmHandler.Release()
 						return false
 					}
@@ -489,8 +493,7 @@ func (request *Request) executeParallelHTTP(input *contextargs.Context, dynamicV
 		}
 
 		// break if stop at first match is found or host is unresponsive
-		if unresponsive := request.isUnresponsiveAddress(input); spmHandler.FoundFirstMatch() || unresponsive {
-			skippedUnresponsive = skippedUnresponsive || unresponsive
+		if spmHandler.FoundFirstMatch() || request.skipUnresponsive(input, &skipped) {
 			break
 		}
 
@@ -519,14 +522,11 @@ func (request *Request) executeParallelHTTP(input *contextargs.Context, dynamicV
 		updatedInput := contextargs.GetCopyIfHostOutdated(input, generatedHttpRequest.URL())
 
 		hostErrorsInput := contextargs.GetCopyIfAddressOutdated(input, generatedHttpRequest.URL())
-		if request.isUnresponsiveAddress(hostErrorsInput) {
+		if request.skipUnresponsive(hostErrorsInput, &skipped) {
 			// skip on unresponsive host no need to continue
 			reservation.done()
-			spmHandler.Cancel()
-			stopWorkers()
-			// The handler watches context.Background(), so only Wait ends it.
-			spmHandler.Wait()
-			return hosterrorscache.ErrUnresponsiveHost
+
+			break
 		}
 		select {
 		case <-spmHandler.Done():
@@ -536,7 +536,8 @@ func (request *Request) executeParallelHTTP(input *contextargs.Context, dynamicV
 			if spmHandler.FoundFirstMatch() {
 				return nil
 			}
-			return multierr.Combine(spmHandler.CombinedResults()...)
+
+			return requestsError(spmHandler.CombinedResults(), skipped.Load())
 		case <-workerCtx.Done():
 			reservation.done()
 			stopWorkers()
@@ -560,13 +561,8 @@ func (request *Request) executeParallelHTTP(input *contextargs.Context, dynamicV
 		// ignore any context cancellation and in-transit execution errors
 		return nil
 	}
-	if err := multierr.Combine(spmHandler.CombinedResults()...); err != nil {
-		return err
-	}
-	if skippedUnresponsive {
-		return hosterrorscache.ErrUnresponsiveHost
-	}
-	return nil
+
+	return requestsError(spmHandler.CombinedResults(), skipped.Load())
 }
 
 // executeTurboHTTP executes turbo http request for a URL
@@ -613,6 +609,9 @@ func (request *Request) executeTurboHTTP(input *contextargs.Context, dynamicValu
 	spmHandler := httputils.NewBlockingSPMHandler[error](ctx, maxWorkers, maxErrorsWhenParallel, shouldStop)
 	defer spmHandler.Cancel()
 
+	// skipped notes that a request was not sent because its address is unresponsive.
+	var skipped atomic.Bool
+
 	// wrappedCallback is a callback that wraps the original callback
 	// to implement stop at first match logic
 	wrappedCallback := func(event *output.InternalWrappedEvent) {
@@ -643,7 +642,7 @@ func (request *Request) executeTurboHTTP(input *contextargs.Context, dynamicValu
 		default:
 		}
 
-		if spmHandler.FoundFirstMatch() || request.isUnresponsiveAddress(input) || spmHandler.Cancelled() {
+		if spmHandler.FoundFirstMatch() || request.skipUnresponsive(input, &skipped) || spmHandler.Cancelled() {
 			// skip if first match is found
 			break
 		}
@@ -660,11 +659,11 @@ func (request *Request) executeTurboHTTP(input *contextargs.Context, dynamicValu
 		updatedInput := contextargs.GetCopyIfHostOutdated(input, generatedHttpRequest.URL())
 
 		hostErrorsInput := contextargs.GetCopyIfAddressOutdated(input, generatedHttpRequest.URL())
-		if request.isUnresponsiveAddress(hostErrorsInput) {
+		if request.skipUnresponsive(hostErrorsInput, &skipped) {
 			// skip on unresponsive host no need to continue
 			reservation.done()
-			spmHandler.Cancel()
-			return hosterrorscache.ErrUnresponsiveHost
+
+			break
 		}
 		generatedHttpRequest.pipelinedClient = pipeClient
 		if err := spmHandler.Acquire(); err != nil {
@@ -676,7 +675,7 @@ func (request *Request) executeTurboHTTP(input *contextargs.Context, dynamicValu
 			defer spmHandler.Release()
 			defer body.done()
 
-			if spmHandler.FoundFirstMatch() || request.isUnresponsiveAddress(hostErrorsInput) {
+			if spmHandler.FoundFirstMatch() || request.skipUnresponsive(hostErrorsInput, &skipped) {
 				// skip if first match is found
 				return
 			}
@@ -708,7 +707,8 @@ func (request *Request) executeTurboHTTP(input *contextargs.Context, dynamicValu
 		// ignore any context cancellation and in-transit execution errors
 		return nil
 	}
-	return multierr.Combine(spmHandler.CombinedResults()...)
+
+	return requestsError(spmHandler.CombinedResults(), skipped.Load())
 }
 
 // ExecuteWithResults executes the final request on a URL
@@ -779,10 +779,6 @@ executionLoop:
 			if input.MetaInput.Input == "" {
 				input.MetaInput.Input = generatedHttpRequest.URL()
 			}
-			// Check if hosts keep erroring
-			if request.isUnresponsiveAddress(hostErrorsInput) {
-				return false, true, nil, hosterrorscache.ErrUnresponsiveHost
-			}
 			var gotMatches bool
 			var extractedDynamicValues map[string][]string
 			execReqErr := request.executeRequest(input, generatedHttpRequest, previousEvent, hasInteractMatchers, func(event *output.InternalWrappedEvent) {
@@ -822,6 +818,11 @@ executionLoop:
 			// branches remain executable.
 			if errors.Is(execReqErr, ErrMissingVars) {
 				return true, false, nil, nil
+			}
+			// executeRequest sent nothing, so there is no host result to record
+			// and no failure to count.
+			if errors.Is(execReqErr, hosterrorscache.ErrUnresponsiveHost) {
+				return false, true, nil, execReqErr
 			}
 
 			request.recordHostResult(hostErrorsInput, execReqErr)
@@ -1130,7 +1131,7 @@ func rewindRequestBody(req *retryablehttp.Request) {
 func (request *Request) executeRequest(input *contextargs.Context, generatedRequest *generatedRequest, previousEvent output.InternalEvent, hasInteractMatchers bool, processEvent protocols.OutputEventCallback, requestCount int) (err error) {
 	// Check if hosts keep erroring
 	if request.isUnresponsiveAddress(contextargs.GetCopyIfAddressOutdated(input, generatedRequest.URL())) {
-		return fmt.Errorf("hostErrorsCache : host %s is unresponsive", input.MetaInput.Input)
+		return hosterrorscache.ErrUnresponsiveHost
 	}
 
 	// Race requests must all be in flight together to reach the open gate.
@@ -1212,7 +1213,7 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 			}
 			// A raw-reading request stores the encoded bytes. A plain request
 			// stores the decoded body. They must not share a cache entry.
-			if request.readsRawResponse {
+			if request.keepsRawResponse() {
 				projectCacheKey = append(projectCacheKey, ":raw"...)
 			}
 		}
@@ -1395,7 +1396,7 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 				}
 			}
 
-			if request.readsRawResponse && generatedRequest.request.Header.Get("Accept-Encoding") == "" &&
+			if request.keepsRawResponse() && generatedRequest.request.Header.Get("Accept-Encoding") == "" &&
 				generatedRequest.request.Header.Get("Range") == "" && generatedRequest.request.Method != http.MethodHead {
 				// the transport decodes a response to the gzip header it adds
 				// itself, leaving nothing raw; sending the same header keeps the
@@ -1574,7 +1575,7 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 	newResponseChain := httpUtils.NewResponseChain
 	// The project file stores the bytes as received, because a replay decodes
 	// them again and a decoded body would be decoded twice.
-	if request.readsRawResponse || request.options.ProjectFile != nil {
+	if request.keepsRawResponse() || request.options.ProjectFile != nil {
 		newResponseChain = httpUtils.NewResponseChainWithRaw
 	}
 	respChain := newResponseChain(resp, int64(maxBodylimit))
@@ -1706,7 +1707,7 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 		}
 
 		outputEvent := request.responseToDSLMap(respChain.Response(), input.MetaInput.Input, matchedURL, convUtil.String(dumpedRequest.data), fullResponseStr, bodyStr, headersStr, duration, generatedRequest.meta)
-		if request.readsRawResponse {
+		if request.keepsRawResponse() {
 			outputEvent["raw_body"] = respChain.RawBodyString()
 			outputEvent["raw_response"] = respChain.RawFullResponseString()
 		}
@@ -2071,6 +2072,45 @@ func (request *Request) recordHostResultAndCancelIfUnresponsive(input *contextar
 	if request.isUnresponsiveAddress(input) {
 		cancel()
 	}
+}
+
+// skipUnresponsive reports whether the address input stands for is
+// unresponsive. When it is, it notes in skipped that a request was not sent.
+func (request *Request) skipUnresponsive(input *contextargs.Context, skipped *atomic.Bool) bool {
+	unresponsive := request.isUnresponsiveAddress(input)
+	if unresponsive {
+		skipped.Store(true)
+	}
+
+	return unresponsive
+}
+
+// requestsError joins the errors that the requests of one execution returned.
+// A request error takes precedence over a skip for an unresponsive address,
+// which is returned only when no request failed.
+func requestsError(results []error, skipped bool) error {
+	failures := make([]error, 0, len(results))
+
+	for _, err := range results {
+		if errors.Is(err, hosterrorscache.ErrUnresponsiveHost) {
+			skipped = true
+
+			continue
+		}
+
+		failures = append(failures, err)
+	}
+
+	err := multierr.Combine(failures...)
+	if err != nil {
+		return err //nolint:wrapcheck // the requests' own errors, which callers read as they are
+	}
+
+	if skipped {
+		return hosterrorscache.ErrUnresponsiveHost
+	}
+
+	return nil
 }
 
 // isUnresponsiveAddress checks if the error is a unreponsive based on its execution history

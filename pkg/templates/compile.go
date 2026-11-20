@@ -20,6 +20,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/globalmatchers"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/offlinehttp"
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates/signer"
 	templateTypes "github.com/projectdiscovery/nuclei/v3/pkg/templates/types"
@@ -570,6 +571,7 @@ func (template *Template) compileProtocolRequests(options *protocols.ExecutorOpt
 	if options.Options.OfflineHTTP {
 		return template.compileOfflineHTTPRequest(options)
 	}
+	http.KeepRawResponses(template.RequestsHTTP, options.Flow)
 
 	var requests []protocols.Request
 	caps := CapabilitiesFromOptions(options.Options)
