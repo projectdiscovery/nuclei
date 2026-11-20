@@ -31,7 +31,9 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/hosterrorscache" //nolint:depguard // No depguard rules are configured, so its default list allows only the standard library.
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/interactsh"
 	"github.com/projectdiscovery/ratelimit"
+	"github.com/projectdiscovery/rawhttp"
 	"github.com/projectdiscovery/retryablehttp-go"
+	urlutil "github.com/projectdiscovery/utils/url"
 )
 
 func executeDynamicHTTPTestRequest(t *testing.T, request *Request, target string) {
@@ -2792,4 +2794,84 @@ func TestHTTPToHTTPSUnrelated400IsNotRetried(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, matched, "an ordinary 400 is still a response the matcher can see")
 	require.Equal(t, int32(0), tlsHits.Load())
+}
+
+// The pipeline client is given the fastdialer, which refuses an address with
+// no port, so a turbo request's address carries the port of the request's own
+// scheme. With no dialer the client adds that port itself, from the same
+// scheme, so the address stays as the target names it.
+func TestTurboAddress(t *testing.T) {
+	tests := []struct {
+		target    string
+		scheme    string
+		hasDialer bool
+		want      string
+	}{
+		{target: "http://example.com", scheme: "http", hasDialer: true, want: "example.com:80"},
+		{target: "https://example.com", scheme: "https", hasDialer: true, want: "example.com:443"},
+		{target: "http://example.com", scheme: "https", hasDialer: true, want: "example.com:443"},
+		{target: "https://example.com", scheme: "http", hasDialer: true, want: "example.com:80"},
+		{target: "http://example.com/path?x=1", scheme: "http", hasDialer: true, want: "example.com:80"},
+		{target: "http://example.com:8080", scheme: "http", hasDialer: true, want: "example.com:8080"},
+		{target: "http://example.com:8080", scheme: "https", hasDialer: true, want: "example.com:8080"},
+		{target: "https://example.com:8443", scheme: "https", hasDialer: true, want: "example.com:8443"},
+		{target: "http://127.0.0.1", scheme: "http", hasDialer: true, want: "127.0.0.1:80"},
+		{target: "https://[::1]", scheme: "https", hasDialer: true, want: "[::1]:443"},
+		{target: "http://[::1]:8080", scheme: "http", hasDialer: true, want: "[::1]:8080"},
+		{target: "example.com", scheme: "http", hasDialer: true, want: "example.com:80"},
+		{target: "example.com", scheme: "https", hasDialer: true, want: "example.com:443"},
+		{target: "example.com:8080", scheme: "https", hasDialer: true, want: "example.com:8080"},
+		{target: "http://example.com", scheme: "http", hasDialer: false, want: "example.com"},
+		{target: "http://example.com", scheme: "https", hasDialer: false, want: "example.com"},
+		{target: "https://example.com:8443", scheme: "https", hasDialer: false, want: "example.com:8443"},
+	}
+	for _, tt := range tests {
+		t.Run(fmt.Sprintf("%s as %s, dialer %t", tt.target, tt.scheme, tt.hasDialer), func(t *testing.T) {
+			parsed, err := urlutil.Parse(tt.target)
+			require.NoError(t, err)
+			require.Equal(t, tt.want, turboAddress(parsed, tt.scheme, tt.hasDialer))
+		})
+	}
+}
+
+// A pipeline client dials one fixed address, so a target that names no port
+// takes one client per scheme its requests use, and any other target one.
+func TestTurboClients(t *testing.T) {
+	clientsOf := func(t *testing.T, target string, hasDialer bool) *turboClients {
+		parsed, err := urlutil.Parse(target)
+		require.NoError(t, err)
+		options := rawhttp.DefaultPipelineOptions
+		if hasDialer {
+			options.Dialer = func(string) (net.Conn, error) { return nil, fmt.Errorf("no dial in this test") }
+		}
+		return &turboClients{target: parsed, options: options, clients: make(map[string]*rawhttp.PipelineClient)}
+	}
+
+	t.Run("no port, one client per request scheme", func(t *testing.T) {
+		clients := clientsOf(t, "http://example.com", true)
+		plain := clients.of("http://example.com/a")
+		require.Same(t, plain, clients.of("http://example.com/b"))
+		require.NotSame(t, plain, clients.of("https://example.com/a"))
+		require.Len(t, clients.clients, 2)
+		require.Contains(t, clients.clients, "example.com:80")
+		require.Contains(t, clients.clients, "example.com:443")
+	})
+	t.Run("a request naming no scheme takes the target's", func(t *testing.T) {
+		clients := clientsOf(t, "https://example.com", true)
+		require.Same(t, clients.of("https://example.com/a"), clients.of("/b"))
+		require.Contains(t, clients.clients, "example.com:443")
+		require.Len(t, clients.clients, 1)
+	})
+	t.Run("an explicit port, one client", func(t *testing.T) {
+		clients := clientsOf(t, "http://example.com:8080", true)
+		require.Same(t, clients.of("http://example.com:8080/a"), clients.of("https://example.com:8080/a"))
+		require.Contains(t, clients.clients, "example.com:8080")
+		require.Len(t, clients.clients, 1)
+	})
+	t.Run("no dialer, one client that adds the port itself", func(t *testing.T) {
+		clients := clientsOf(t, "http://example.com", false)
+		require.Same(t, clients.of("http://example.com/a"), clients.of("https://example.com/a"))
+		require.Contains(t, clients.clients, "example.com")
+		require.Len(t, clients.clients, 1)
+	})
 }
