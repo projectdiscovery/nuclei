@@ -24,6 +24,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/httpclientpool"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/raw" //nolint:depguard // No depguard rules are configured, so its default list allows only the standard library.
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/network/networkclientpool"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types/scanstrategy"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils/json"
@@ -155,6 +156,8 @@ type Request struct {
 	// readsRawResponse keeps the response bytes as received, before content
 	// decoding, for the raw_body and raw_response parts
 	readsRawResponse bool
+	// maySendElsewhere is set by Compile, see MaySendElsewhere
+	maySendElsewhere bool
 
 	// description: |
 	//   SelfContained specifies if the request is self-contained.
@@ -598,7 +601,49 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 	}
 	request.sharesResponse = canShareResponse(request, options.Flow)
 	request.readsRawResponse = reads(request, options.Flow, "raw_body", "raw_response")
+	request.maySendElsewhere = sendsElsewhere(request)
 	return nil
+}
+
+// MaySendElsewhere reports whether a request of the block may go to an address
+// other than its target's, such as another port. It is false for a block that
+// sends only to the target, and it is false before Compile.
+func (e *Request) MaySendElsewhere() bool {
+	return e.maySendElsewhere
+}
+
+// sendsElsewhere reports whether any request of the block may go to an address
+// other than its target's. A false positive only moves the skip of a request to
+// a down target from the engine to the request path, so every form that is not
+// known to stay at the target counts. That is a
+// self-contained request, which names its own destination, a path that does
+// not start with {{BaseURL}} or {{RootURL}}, or that continues them with
+// anything but a path, query or fragment, such as a port, and a raw request
+// with a @Host annotation. A raw request line names only a path to send to the
+// target: raw.Parse drops the host and port of an absolute URL there.
+func sendsElsewhere(request *Request) bool {
+	return request.SelfContained ||
+		slices.ContainsFunc(request.Path, pathMayLeaveTarget) ||
+		slices.ContainsFunc(request.Raw, hasHostAnnotation)
+}
+
+// pathMayLeaveTarget reports whether path may go to an address other than the
+// target's.
+func pathMayLeaveTarget(path string) bool {
+	for _, variable := range []string{"{{BaseURL}}", "{{RootURL}}"} {
+		if rest, found := strings.CutPrefix(path, variable); found {
+			return rest != "" && strings.IndexByte("/?#", rest[0]) < 0
+		}
+	}
+
+	return true
+}
+
+// hasHostAnnotation reports whether rawRequest has a @Host annotation.
+func hasHostAnnotation(rawRequest string) bool {
+	annotations, _ := raw.SplitAnnotations(rawRequest)
+
+	return reHostAnnotation.MatchString(annotations)
 }
 
 // canShareResponse reports whether a response another template got for the

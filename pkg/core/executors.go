@@ -2,6 +2,7 @@ package core
 
 import (
 	"context"
+	"slices"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -13,6 +14,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/progress"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http" //nolint:depguard // No depguard rules are configured, so its default list allows only the standard library.
 	"github.com/projectdiscovery/nuclei/v3/pkg/scan"
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates"
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates/types"
@@ -229,7 +231,10 @@ func (e *Engine) executeTemplatesOnTarget(ctx context.Context, alltemplates []*t
 	wp := e.GetWorkPool()
 	defer wp.Wait()
 
-	for i, tpl := range alltemplates {
+	// reported is set once a skip event stands for the target's own address
+	var reported bool
+
+	for _, tpl := range alltemplates {
 		select {
 		case <-ctx.Done():
 			return
@@ -240,9 +245,20 @@ func (e *Engine) executeTemplatesOnTarget(ctx context.Context, alltemplates []*t
 			continue
 		}
 
+		// A target whose own address is down gets one event, not one per
+		// template (#7049). That address stays down, so after the event only a
+		// template that may send elsewhere is checked.
+		if reported && !sendsElsewhere(tpl) {
+			e.tasksDone(1)
+
+			continue
+		}
+
 		// Check whether the target has already been marked as permanently
 		// unresponsive by HostErrorsCache before spawning another goroutine.
-		if down, httpOnly := e.hostDown(ctx, tpl, target); down {
+		if down, perTemplate := e.hostDown(ctx, tpl, target); down {
+			reported = reported || !perTemplate
+
 			skipEvent := &output.ResultEvent{
 				TemplateID:    tpl.ID,
 				TemplatePath:  tpl.Path,
@@ -258,15 +274,10 @@ func (e *Engine) executeTemplatesOnTarget(ctx context.Context, alltemplates []*t
 			} else if e.executerOpts.Output != nil {
 				_ = e.executerOpts.Output.Write(skipEvent)
 			}
-			// skip only this template; the ones after it may send elsewhere
-			if httpOnly {
-				e.tasksDone(1)
 
-				continue
-			}
-			// the remaining templates are skipped for this target as well
-			e.tasksDone(int64(getSelectedCount(alltemplates[i:], e.selectionFor(target))))
-			break
+			e.tasksDone(1)
+
+			continue
 		}
 
 		// resize check point - nop if there are no changes
@@ -304,13 +315,17 @@ func (e *Engine) executeTemplatesOnTarget(ctx context.Context, alltemplates []*t
 }
 
 // hostDown reports whether the host errors cache marks value unresponsive for
-// template, and whether that skips only templates whose requests are all http.
-// A failure at value's own address skips every template. The cache records
-// http failures at the address each request went to, which for a value without
-// a scheme is by default the URL its http probe found, or https, as
-// retryablehttp fills it in. A failure there skips each template whose requests
-// are all http. As for a target with a scheme, that includes a template that
-// sends to another port of the target (#8180).
+// template, and whether the failure is at the address the http requests of a
+// value without a scheme go to rather than at value's own. A failure at value's
+// own address skips every template. The cache records http failures at the
+// address each request went to, which for a value without a scheme is by
+// default the URL its http probe found, or https, as retryablehttp fills it in.
+// A failure there skips only the templates whose requests are all http (#8180).
+//
+// Neither failure skips such a template if one of its requests may go to
+// another address, such as another port of the target (#8197). The failed
+// address says nothing about that one, so the template runs, and the request
+// path checks the addresses its requests go to.
 func (e *Engine) hostDown(
 	ctx context.Context, template *templates.Template, value *contextargs.MetaInput,
 ) (bool, bool) {
@@ -321,11 +336,10 @@ func (e *Engine) hostDown(
 
 	protoType := template.Type().String()
 	if cache.Check(protoType, contextargs.NewWithMetaInput(ctx, value)) {
-		return true, false
+		return !sendsElsewhere(template), false
 	}
 
-	onlyHTTP := len(template.RequestsHTTP) > 0 && template.Requests() == len(template.RequestsHTTP)
-	if !onlyHTTP || strings.Contains(value.Input, "://") {
+	if !onlyHTTP(template) || strings.Contains(value.Input, "://") {
 		return false, false
 	}
 
@@ -341,7 +355,18 @@ func (e *Engine) hostDown(
 	httpValue := value.Clone()
 	httpValue.Input = target
 
-	return cache.Check(protoType, contextargs.NewWithMetaInput(ctx, httpValue)), true
+	return cache.Check(protoType, contextargs.NewWithMetaInput(ctx, httpValue)) && !sendsElsewhere(template), true
+}
+
+// onlyHTTP reports whether all requests of template are http.
+func onlyHTTP(template *templates.Template) bool {
+	return len(template.RequestsHTTP) > 0 && template.Requests() == len(template.RequestsHTTP)
+}
+
+// sendsElsewhere reports whether the requests of template are all http and one
+// of them may go to an address other than its target's.
+func sendsElsewhere(template *templates.Template) bool {
+	return onlyHTTP(template) && slices.ContainsFunc(template.RequestsHTTP, (*http.Request).MaySendElsewhere)
 }
 
 // inScope reports whether per-target profiles select template for input.
