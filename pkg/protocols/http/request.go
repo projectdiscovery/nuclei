@@ -851,10 +851,9 @@ executionLoop:
 				reqKitErr.Msgf("got err while executing %v", generatedHttpRequest.URL())
 
 				requestErr = reqKitErr
-				request.options.Progress.IncrementFailedRequestsBy(1)
-			} else {
-				request.options.Progress.IncrementRequests()
 			}
+			// executeRequest counts the error of a failed request.
+			request.options.Progress.IncrementRequests()
 
 			processed = true
 
@@ -1145,12 +1144,23 @@ func rewindRequestBody(req *retryablehttp.Request) {
 	req.Body = body
 }
 
-// executeRequest executes the actual generated request and returns error if occurred
+// executeRequest executes the actual generated request and returns error if occurred.
+// It counts one progress error for each error it returns, except
+// ErrUnresponsiveHost and ErrMissingVars, so its callers count only the request.
 func (request *Request) executeRequest(input *contextargs.Context, generatedRequest *generatedRequest, previousEvent output.InternalEvent, hasInteractMatchers bool, processEvent protocols.OutputEventCallback, requestCount int) (err error) {
 	// Check if hosts keep erroring
 	if request.isUnresponsiveAddress(contextargs.GetCopyIfAddressOutdated(input, generatedRequest.URL())) {
 		return hosterrorscache.ErrUnresponsiveHost
 	}
+
+	// A request that fails from here on counts as one error, so its caller
+	// counts the request only. A variable left unresolved skips the request
+	// instead.
+	defer func() {
+		if err != nil && !errors.Is(err, ErrMissingVars) {
+			request.options.Progress.IncrementErrorsBy(1)
+		}
+	}()
 
 	// Race requests must all be in flight together to reach the open gate.
 	if !generatedRequest.original.Race && !generatedRequest.bodyReserved {
@@ -1530,7 +1540,6 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 			_ = resp.Body.Close()
 		}
 		request.options.Output.Request(request.options.TemplatePath, formedURL, request.Type().String(), err)
-		request.options.Progress.IncrementErrorsBy(1)
 
 		// In case of interactsh markers and request times out, still send
 		// a callback event so in case we receive an interaction, correlation is possible.
