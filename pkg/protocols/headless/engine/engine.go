@@ -165,13 +165,17 @@ func newChromeLauncher(options *types.Options, dataStore, proxyAddr string, noSa
 
 	// if musl is used, most likely we are on alpine linux which is not supported by go-rod, so we fallback to default chrome
 	useMusl, _ := fileutil.UseMusl(executablePath)
-	// go-rod has no chromium download for windows/arm64, so use the installed chrome/edge there too
-	windowsArm64 := runtime.GOOS == "windows" && runtime.GOARCH == "arm64"
-	if options.UseInstalledChrome || useMusl || windowsArm64 {
+	if options.UseInstalledChrome || useMusl {
 		if chromePath, hasChrome := launcher.LookPath(); hasChrome {
 			chromeLauncher.Bin(chromePath)
 		} else {
 			return nil, errors.New("the chrome browser is not installed")
+		}
+	} else if runtime.GOOS == "windows" && runtime.GOARCH == "arm64" {
+		// go-rod has no chromium download for windows/arm64, so prefer the installed chrome/edge;
+		// an explicit rod-bin in -headless-options still overrides it below
+		if chromePath, hasChrome := launcher.LookPath(); hasChrome {
+			chromeLauncher.Bin(chromePath)
 		}
 	}
 
