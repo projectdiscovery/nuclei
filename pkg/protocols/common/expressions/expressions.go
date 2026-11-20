@@ -317,7 +317,7 @@ func unresolvedVarMarkers(vars []string, base map[string]any) string {
 		if !ok {
 			continue
 		}
-		for _, match := range unresolvedVariablesRegex.FindAllStringSubmatch(valStr, -1) {
+		for _, match := range findVariableMatches(valStr) {
 			if len(match) < 2 {
 				continue
 			}
