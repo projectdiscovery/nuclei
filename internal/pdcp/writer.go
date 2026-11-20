@@ -128,7 +128,7 @@ func newUploadClient() *retryablehttp.Client {
 // SetScanID sets the scan id for the upload writer
 func (u *UploadWriter) SetScanID(id string) error {
 	if !xidRegex.MatchString(id) {
-		gologger.Warning().Msgf("invalid asset id provided (unknown xid format): %s", id)
+		u.Logger.Warning().Msgf("invalid asset id provided (unknown xid format): %s", id)
 	}
 	u.scanID = id
 	return nil
