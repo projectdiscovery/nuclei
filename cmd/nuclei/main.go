@@ -55,6 +55,9 @@ var (
 	inlineSecretsTempMu  sync.Mutex
 )
 
+// defaultMaxHostError is the default of -max-host-error.
+const defaultMaxHostError = 30
+
 // normalizeHeaderValue trims a -H value and drops it when the whole line is a
 // "#" comment. The goflags default strips inline comments, which cut values
 // such as "Cookie: color=#fff" at the "#".
@@ -477,7 +480,10 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.IntVar(&options.Timeout, "timeout", 10, "time to wait in seconds before timeout"),
 		flagSet.IntVar(&options.Retries, "retries", 1, "number of times to retry a failed request"),
 		flagSet.BoolVarP(&options.LeaveDefaultPorts, "leave-default-ports", "ldp", false, "leave default HTTP/HTTPS ports (eg. host:80,host:443)"),
-		flagSet.IntVarP(&options.MaxHostError, "max-host-error", "mhe", 30, "max errors for a host before skipping from scan"),
+		flagSet.IntVarP(
+			&options.MaxHostError, "max-host-error", "mhe", defaultMaxHostError,
+			"max http errors for a host:port before skipping requests to it",
+		),
 		flagSet.StringSliceVarP(&options.TrackError, "track-error", "te", nil, "adds given error to max-host-error watchlist (standard, file)", goflags.FileStringSliceOptions),
 		flagSet.BoolVarP(&options.NoHostErrors, "no-mhe", "nmhe", false, "disable skipping host from scan based on errors"),
 		flagSet.BoolVar(&options.Project, "project", false, "use a project folder to avoid sending same request multiple times"),

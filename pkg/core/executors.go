@@ -251,9 +251,9 @@ func (e *Engine) executeTemplatesOnTarget(ctx context.Context, alltemplates []*t
 		}
 
 		// A target whose own address is down gets one event, not one per
-		// template (#7049). That address stays down, so after the event only a
-		// template that may send elsewhere is checked.
-		if reported && !sendsElsewhere(tpl) {
+		// template (#7049). That address stays down, so after the event the
+		// templates that send only to the target are skipped without one.
+		if reported && sendsOnlyToTarget(tpl) {
 			e.tasksDone(1)
 
 			continue
@@ -321,30 +321,29 @@ func (e *Engine) executeTemplatesOnTarget(ctx context.Context, alltemplates []*t
 
 // hostDown reports whether the host errors cache marks value unresponsive for
 // template, and whether the failure is at the address the http requests of a
-// value without a scheme go to rather than at value's own. A failure at value's
-// own address skips every template. The cache records http failures at the
-// address each request went to, which for a value without a scheme is by
-// default the URL its http probe found, or https, as retryablehttp fills it in.
-// A failure there skips only the templates whose requests are all http (#8180).
+// value without a scheme go to rather than at value's own. The cache records
+// http failures at the address each request went to, which for a value without
+// a scheme is by default the URL its http probe found, or https, as
+// retryablehttp fills it in (#8180).
 //
-// Neither failure skips such a template if one of its requests may go to
-// another address, such as another port of the target (#8197). The failed
-// address says nothing about that one, so the template runs, and the request
-// path checks the addresses its requests go to.
+// Only a template that sends only to the target (sendsOnlyToTarget) is skipped.
+// The engine cannot tell which address another template dials, such as another
+// port (#8197) or another protocol (#8203), so that template runs, and its
+// http, network and ssl requests check the address each one dials.
 func (e *Engine) hostDown(
 	ctx context.Context, template *templates.Template, value *contextargs.MetaInput,
 ) (bool, bool) {
 	cache := e.executerOpts.HostErrorsCache
-	if cache == nil {
+	if cache == nil || !sendsOnlyToTarget(template) {
 		return false, false
 	}
 
 	protoType := template.Type().String()
 	if cache.Check(protoType, contextargs.NewWithMetaInput(ctx, value)) {
-		return !sendsElsewhere(template), false
+		return true, false
 	}
 
-	if !onlyHTTP(template) || strings.Contains(value.Input, "://") {
+	if strings.Contains(value.Input, "://") {
 		return false, false
 	}
 
@@ -360,7 +359,7 @@ func (e *Engine) hostDown(
 	httpValue := value.Clone()
 	httpValue.Input = target
 
-	return cache.Check(protoType, contextargs.NewWithMetaInput(ctx, httpValue)) && !sendsElsewhere(template), true
+	return cache.Check(protoType, contextargs.NewWithMetaInput(ctx, httpValue)), true
 }
 
 // onlyHTTP reports whether all requests of template are http.
@@ -368,10 +367,10 @@ func onlyHTTP(template *templates.Template) bool {
 	return len(template.RequestsHTTP) > 0 && template.Requests() == len(template.RequestsHTTP)
 }
 
-// sendsElsewhere reports whether the requests of template are all http and one
-// of them may go to an address other than its target's.
-func sendsElsewhere(template *templates.Template) bool {
-	return onlyHTTP(template) && slices.ContainsFunc(template.RequestsHTTP, (*http.Request).MaySendElsewhere)
+// sendsOnlyToTarget reports whether the requests of template are all http and
+// none of them may go to an address other than its target's.
+func sendsOnlyToTarget(template *templates.Template) bool {
+	return onlyHTTP(template) && !slices.ContainsFunc(template.RequestsHTTP, (*http.Request).MaySendElsewhere)
 }
 
 // inScope reports whether per-target profiles select template for input.

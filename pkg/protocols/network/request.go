@@ -144,11 +144,6 @@ func (request *Request) executeOnTarget(input *contextargs.Context, visited maps
 	var address string
 	var err error
 
-	if request.isUnresponsiveAddress(input) {
-		// skip on unresponsive address no need to continue
-		return nil
-	}
-
 	if request.SelfContained {
 		address = ""
 	} else {
