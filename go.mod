@@ -74,7 +74,6 @@ require (
 	github.com/miekg/dns v1.1.73
 	github.com/oiweiwei/go-msrpc v1.2.12
 	github.com/olekukonko/tablewriter v1.0.8
-	github.com/openrdap/rdap v0.9.1
 	github.com/ory/dockertest/v3 v3.12.0
 	github.com/pkg/errors v0.9.1
 	github.com/praetorian-inc/fingerprintx v1.1.15
@@ -99,7 +98,7 @@ require (
 	github.com/projectdiscovery/networkpolicy v0.1.58
 	github.com/projectdiscovery/ratelimit v0.0.95
 	github.com/projectdiscovery/rawhttp v0.3.1
-	github.com/projectdiscovery/rdap v0.9.0
+	github.com/projectdiscovery/rdap v0.9.1-0.20221108103045-9865884d1917
 	github.com/projectdiscovery/retryabledns v1.0.118
 	github.com/projectdiscovery/retryablehttp-go v1.3.34
 	github.com/projectdiscovery/sarif v0.1.0
@@ -175,7 +174,6 @@ require (
 	github.com/STARRY-S/zip v0.2.3 // indirect
 	github.com/VividCortex/ewma v1.2.0 // indirect
 	github.com/akrylysov/pogreb v0.10.2 // indirect
-	github.com/alecthomas/kingpin/v2 v2.4.0 // indirect
 	github.com/alecthomas/template v0.0.0-20190718012654-fb15b899a751 // indirect
 	github.com/alecthomas/units v0.0.0-20211218093645-b94a6e3cc137 // indirect
 	github.com/andybalholm/cascadia v1.3.4 // indirect
@@ -311,6 +309,7 @@ require (
 	github.com/imdario/mergo v0.3.16 // indirect
 	github.com/indece-official/go-ebcdic v1.2.0 // indirect
 	github.com/itchyny/timefmt-go v0.1.6 // indirect
+	github.com/jarcoal/httpmock v1.3.0 // indirect
 	github.com/jbenet/go-context v0.0.0-20150711004518-d14ea06fba99 // indirect
 	github.com/jcmturner/aescts/v2 v2.0.0 // indirect
 	github.com/jcmturner/dnsutils/v2 v2.0.0 // indirect

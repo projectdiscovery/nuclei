@@ -7,11 +7,11 @@ import (
 	"net/http"
 	"sync"
 
-	"github.com/openrdap/rdap/bootstrap"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	"github.com/projectdiscovery/rdap"
+	"github.com/projectdiscovery/rdap/bootstrap"
 )
 
 // clients holds one client per execution, because each one dials with the
