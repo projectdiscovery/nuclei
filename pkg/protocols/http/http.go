@@ -638,8 +638,20 @@ func reads(request *Request, flow string, parts ...string) bool {
 	if err != nil {
 		return true
 	}
+	// A later request can read an earlier raw part from its own body, path,
+	// headers, or raw request, not only from its operators.
+	fields, err := json.Marshal(struct {
+		Path    []string          `json:"path,omitempty"`
+		Raw     []string          `json:"raw,omitempty"`
+		Body    string            `json:"body,omitempty"`
+		Headers map[string]string `json:"headers,omitempty"`
+	}{request.Path, request.Raw, request.Body, request.Headers})
+	if err != nil {
+		return true
+	}
 	return slices.ContainsFunc(parts, func(part string) bool {
-		return strings.Contains(flow, part) || bytes.Contains(operators, []byte(part))
+		needle := []byte(part)
+		return strings.Contains(flow, part) || bytes.Contains(operators, needle) || bytes.Contains(fields, needle)
 	})
 }
 

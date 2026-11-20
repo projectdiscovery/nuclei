@@ -142,3 +142,32 @@ func TestKeepRawResponsesCoversEveryRequestOfTheTemplate(t *testing.T) {
 	require.False(t, requests[0].readsRawResponse)
 	require.False(t, requests[1].readsRawResponse)
 }
+
+func TestKeepRawResponsesSeesRequestConstruction(t *testing.T) {
+	marked := []*Request{
+		{ID: "first"},
+		{Body: "{{first_raw_body}}"},
+	}
+	KeepRawResponses(marked, "")
+	require.True(t, marked[0].readsRawResponse, "the next request's body reads the raw body")
+	require.True(t, marked[1].readsRawResponse)
+
+	for _, request := range []*Request{
+		{Path: []string{"{{BaseURL}}/{{http_1_raw_response}}"}},
+		{Raw: []string{"GET / HTTP/1.1\r\nHost: {{Hostname}}\r\n\r\n{{http_1_raw_body}}"}},
+		{Headers: map[string]string{"X-Raw": "{{http_1_raw_body}}"}},
+	} {
+		requests := []*Request{{ID: "first"}, request}
+		KeepRawResponses(requests, "")
+		require.True(t, requests[0].readsRawResponse)
+		require.True(t, requests[1].readsRawResponse)
+	}
+
+	unmarked := []*Request{
+		{ID: "first", Body: "hello", Path: []string{"{{BaseURL}}/"}},
+		{Headers: map[string]string{"Accept": "text/plain"}},
+	}
+	KeepRawResponses(unmarked, "")
+	require.False(t, unmarked[0].readsRawResponse)
+	require.False(t, unmarked[1].readsRawResponse)
+}
