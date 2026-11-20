@@ -310,7 +310,15 @@ func (request *Request) executeParallelHTTP(input *contextargs.Context, dynamicV
 	workerCtx, cancelWorkers := context.WithCancel(input.Context())
 	defer cancelWorkers()
 
-	spmHandler := httputils.NewBlockingSPMHandler[error](context.Background(), maxWorkers, maxErrorsWhenParallel, shouldStop)
+	// The handler's goroutine runs until Wait or until the context passed to
+	// it ends; Cancel does not stop it. Some returns skip Wait, so that context
+	// ends with this function (#8181). It does not derive from the input: with
+	// stop-at-first-match, the handler would report the input's cancellation
+	// as a first match.
+	spmCtx, cancelSPM := context.WithCancel(context.Background())
+	defer cancelSPM()
+
+	spmHandler := httputils.NewBlockingSPMHandler[error](spmCtx, maxWorkers, maxErrorsWhenParallel, shouldStop)
 	defer spmHandler.Cancel()
 
 	// wrappedCallback is a callback that wraps the original callback
@@ -509,8 +517,6 @@ func (request *Request) executeParallelHTTP(input *contextargs.Context, dynamicV
 			reservation.done()
 			spmHandler.Cancel()
 			stopWorkers()
-			// The handler watches context.Background(), so only Wait ends it.
-			spmHandler.Wait()
 			return nil
 		}
 		select {
