@@ -565,19 +565,47 @@ func (request *Request) executeParallelHTTP(input *contextargs.Context, dynamicV
 	return requestsError(spmHandler.CombinedResults(), skipped.Load())
 }
 
-// turboAddress is the address the pipeline client dials for a target. The
-// client adds a missing port only when it dials by itself, and it is given the
-// fastdialer, which refuses an address without one.
-func turboAddress(target *urlutil.URL) string {
-	if target.Port() != "" || target.Hostname() == "" {
+// turboAddress is the address a pipeline client dials for a request of the
+// given scheme to target. A client that dials by itself adds a missing port
+// from the request's scheme; one given a dialer does not, and the fastdialer
+// refuses an address without a port, so the port is named here.
+func turboAddress(target *urlutil.URL, scheme string, hasDialer bool) string {
+	if !hasDialer || target.Port() != "" || target.Hostname() == "" {
 		return target.Host
 	}
 	port := "80"
-	if target.Scheme == urlutil.HTTPS {
+	if scheme == urlutil.HTTPS {
 		port = "443"
 	}
 
 	return net.JoinHostPort(target.Hostname(), port)
+}
+
+// turboClients holds the pipeline clients of one target, one per address its
+// requests dial: a pipeline client dials one fixed address, and a target that
+// names no port is dialed at the default port of each request's own scheme.
+type turboClients struct {
+	target  *urlutil.URL
+	options rawhttp.PipelineOptions
+	clients map[string]*rawhttp.PipelineClient
+}
+
+// of returns the client for a generated request's URL, which falls back to
+// the target's scheme where it names none. It is not safe for concurrent use.
+func (c *turboClients) of(requestURL string) *rawhttp.PipelineClient {
+	scheme := c.target.Scheme
+	if parsed, err := urlutil.Parse(requestURL); err == nil && parsed.Scheme != "" {
+		scheme = parsed.Scheme
+	}
+	options := c.options
+	options.Host = turboAddress(c.target, scheme, options.Dialer != nil)
+	client, ok := c.clients[options.Host]
+	if !ok {
+		client = rawhttp.NewPipelineClient(options)
+		c.clients[options.Host] = client
+	}
+
+	return client
 }
 
 // executeTurboHTTP executes turbo http request for a URL
@@ -591,7 +619,6 @@ func (request *Request) executeTurboHTTP(input *contextargs.Context, dynamicValu
 	}
 
 	pipeOptions := rawhttp.DefaultPipelineOptions
-	pipeOptions.Host = turboAddress(URL)
 	pipeOptions.MaxConnections = 1
 	// route pipelined connections through the fastdialer so the network policy
 	// applies; without an explicit Dialer the pipeline client uses a raw dial.
@@ -608,7 +635,7 @@ func (request *Request) executeTurboHTTP(input *contextargs.Context, dynamicValu
 	if request.PipelineRequestsPerConnection > 0 {
 		pipeOptions.MaxPendingRequests = request.PipelineRequestsPerConnection
 	}
-	pipeClient := rawhttp.NewPipelineClient(pipeOptions)
+	pipeClients := &turboClients{target: URL, options: pipeOptions, clients: make(map[string]*rawhttp.PipelineClient)}
 
 	// defaultMaxWorkers should be a sufficient value to keep queues always full
 	// in case the queue is bigger increase the workers
@@ -680,7 +707,7 @@ func (request *Request) executeTurboHTTP(input *contextargs.Context, dynamicValu
 
 			break
 		}
-		generatedHttpRequest.pipelinedClient = pipeClient
+		generatedHttpRequest.pipelinedClient = pipeClients.of(generatedHttpRequest.URL())
 		if err := spmHandler.Acquire(); err != nil {
 			reservation.done()
 			break
