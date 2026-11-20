@@ -145,6 +145,15 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 	case rdap.DomainRequest:
 		// convert the rdap response to a whois style response (for domain request type only)
 		whoisResp := res.ToWhoisStyleResponse()
+		if servers, ok := whoisResp.Data["WHOIS Server"]; ok {
+			delete(whoisResp.Data, "WHOIS Server")
+			whoisResp.Data["Registrar WHOIS Server"] = servers
+			for i, key := range whoisResp.KeyDisplayOrder {
+				if key == "WHOIS Server" {
+					whoisResp.KeyDisplayOrder[i] = "Registrar WHOIS Server"
+				}
+			}
+		}
 		for k, v := range whoisResp.Data {
 			data[strings.ToLower(k)] = strings.Join(v, ",")
 		}
