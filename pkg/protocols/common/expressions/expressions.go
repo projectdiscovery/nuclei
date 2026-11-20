@@ -95,7 +95,17 @@ func evaluate(data string, base map[string]interface{}, options *types.Options) 
 func evaluateExpression(expression string, base map[string]any, options *types.Options) (string, error) {
 	source := replaceStringPlaceholders(expression, base)
 
-	compiled, err := govaluate.NewEvaluableExpressionWithFunctions(source, dsl.HelperFunctions)
+	// A source that differs from the expression carries inlined values, which
+	// change per request; parse it without caching.
+	var (
+		compiled *govaluate.EvaluableExpression
+		err      error
+	)
+	if source == expression {
+		compiled, err = compileExpression(source)
+	} else {
+		compiled, err = govaluate.NewEvaluableExpressionWithFunctions(source, dsl.HelperFunctions)
+	}
 	if err != nil {
 		return "", fmt.Errorf("failed to compile expression %q: %w", expression, err)
 	}
@@ -291,7 +301,7 @@ func isExpression(data string, base map[string]interface{}) bool {
 		return false
 	}
 
-	if _, err := govaluate.NewEvaluableExpression(data); err == nil {
+	if parsesWithoutFunctions(data) {
 		if stringsutil.ContainsAny(data, getFunctionsNames(base)...) {
 			return true
 		} else if stringsutil.ContainsAny(data, dsl.FunctionNames...) {
@@ -299,7 +309,7 @@ func isExpression(data string, base map[string]interface{}) bool {
 		}
 		return false
 	}
-	_, err := govaluate.NewEvaluableExpressionWithFunctions(data, dsl.HelperFunctions)
+	_, err := compileExpression(data)
 	return err == nil
 }
 
