@@ -387,3 +387,38 @@ func refuseSchemelessTarget(t *testing.T, engine *Engine, probed, refusedURL str
 
 	return target
 }
+
+// TestHTTPSkipKeepsResumeIndex refuses the https address of a schemeless
+// target that a resumed scan has already passed, then scans the unfinished
+// target after it. The skipped target must consume its index, so the
+// unfinished one still runs (#8180).
+func TestHTTPSkipKeepsResumeIndex(t *testing.T) {
+	t.Parallel()
+
+	const templateID = "http.yaml"
+
+	resume := types.NewResumeCfg()
+	resume.ResumeFrom[templateID] = &types.ResumeInfo{
+		SkipUnder: 1,
+		InFlight:  map[uint32]struct{}{1: {}},
+	}
+	engine, recorder := newTaskEngine(scanstrategy.TemplateSpray, nil, map[string]bool{
+		"https://10.0.0.1": true,
+	}, resume)
+	executer := &scriptedExecuter{}
+	template := &templates.Template{
+		ID:           templateID,
+		Path:         templateID,
+		RequestsHTTP: []*http.Request{{}},
+		Executer:     executer,
+	}
+	first := contextargs.NewMetaInput()
+	first.Input = "10.0.0.1"
+	second := contextargs.NewMetaInput()
+	second.Input = "10.0.0.2"
+	targets := &fakeTargetProvider{values: []*contextargs.MetaInput{first, second}}
+	engine.ExecuteScanWithOpts(t.Context(), []*templates.Template{template}, targets, true)
+
+	require.Equal(t, 1, executer.calls, "the unfinished target must run")
+	require.Zero(t, recorder.total.Load()-recorder.done.Load(), "tasks left undone")
+}

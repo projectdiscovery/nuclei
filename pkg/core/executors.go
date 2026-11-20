@@ -202,6 +202,11 @@ func (e *Engine) executeTemplateWithTargets(ctx context.Context, template *templ
 			} else if e.executerOpts.Output != nil {
 				_ = e.executerOpts.Output.Write(skipEvent)
 			}
+			// This target still occupies its resume index. Leaving the index in
+			// place would hand it to the next target, and a resumed scan would
+			// skip that target as already processed.
+			cleanupInFlight(index)
+			index++
 			return true
 		}
 
