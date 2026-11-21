@@ -6,8 +6,10 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"net/http/httptest"
+	"runtime"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -89,6 +91,33 @@ func TestSharedResponsesSendEachRequestOncePerScan(t *testing.T) {
 		_ = resp.Body.Close()
 	}
 	require.EqualValues(t, 8, hits.Load(), "a request with a body is always sent")
+}
+
+func TestSharedResponsesReleaseTheConnection(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Connection", "close")
+		_, _ = io.WriteString(w, r.URL.Path)
+	}))
+	defer server.Close()
+
+	var released atomic.Bool
+	var dialer net.Dialer
+	base := &http.Transport{DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
+		conn, err := dialer.DialContext(ctx, network, addr)
+		if tcp, ok := conn.(*net.TCPConn); ok {
+			runtime.AddCleanup(tcp, func(struct{}) { released.Store(true) }, struct{}{})
+		}
+		return conn, err
+	}}
+	transport := newSharingTransport(base)
+
+	require.Equal(t, "/a", sharedGet(t, transport, http.MethodGet, server.URL+"/a", "one", nil))
+	require.Len(t, transport.shared.entries, 1)
+	require.Eventually(t, func() bool {
+		runtime.GC()
+		return released.Load()
+	}, 5*time.Second, 10*time.Millisecond, "the stored response keeps the closed connection it came from")
+	require.Equal(t, "/a", sharedGet(t, transport, http.MethodGet, server.URL+"/a", "two", nil), "the entry is still served")
 }
 
 func TestSharedResponsesWaitForTheRequestInFlight(t *testing.T) {
