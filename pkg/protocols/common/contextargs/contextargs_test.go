@@ -1,11 +1,22 @@
 package contextargs
 
+//nolint:depguard // No depguard rules are configured, so its default list allows only the standard library.
 import (
 	"context"
 	"testing"
 
 	"github.com/stretchr/testify/require"
+
+	"github.com/projectdiscovery/nuclei/v3/pkg/input"
+	templateTypes "github.com/projectdiscovery/nuclei/v3/pkg/templates/types"
 )
+
+// newNetworkContext returns the context a network request receives for target.
+// The executers transform a target for the protocol first, and UseNetworkPort
+// can only tell a scheme-implied port from a typed one if that keeps the scheme.
+func newNetworkContext(target string) *Context {
+	return NewWithInput(context.Background(), input.NewHelper().Transform(target, templateTypes.NetworkProtocol))
+}
 
 // TestUseNetworkPort is the behavior matrix for UseNetworkPort.
 //
@@ -160,6 +171,18 @@ func TestUseNetworkPort(t *testing.T) {
 
 		// --- excludePorts: replaces the default reserved set ---
 		{
+			name:         "single-label host with a scheme port is replaced",
+			input:        "https://intranet:443",
+			templatePort: "22",
+			wantInput:    "intranet:22",
+		},
+		{
+			name:         "single-label host with a non-reserved port is preserved verbatim",
+			input:        "https://intranet:9999",
+			templatePort: "22",
+			wantInput:    "https://intranet:9999",
+		},
+		{
 			name:         "scheme port in excludePorts is replaced",
 			input:        "http://example.com:9090",
 			templatePort: "22",
@@ -201,7 +224,7 @@ func TestUseNetworkPort(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ctx := NewWithInput(context.Background(), tt.input)
+			ctx := newNetworkContext(tt.input)
 			err := ctx.UseNetworkPort(tt.templatePort, tt.excludePorts)
 			require.NoError(t, err)
 			require.Equal(t, tt.wantInput, ctx.MetaInput.Input)
@@ -240,7 +263,7 @@ func TestUseNetworkPortIPv6(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ctx := NewWithInput(context.Background(), tt.input)
+			ctx := newNetworkContext(tt.input)
 			err := ctx.UseNetworkPort(tt.templatePort, "")
 			require.NoError(t, err)
 			require.Equal(t, tt.wantInput, ctx.MetaInput.Input)
@@ -286,7 +309,7 @@ func TestTemplateVariableOwnershipIsCloned(t *testing.T) {
 // TestUseNetworkPortServiceNameExclude verifies excludePorts accepts service
 // names (resolved via portutil), e.g. "http" -> "80".
 func TestUseNetworkPortServiceNameExclude(t *testing.T) {
-	ctx := NewWithInput(context.Background(), "http://example.com:80")
+	ctx := newNetworkContext("http://example.com:80")
 	err := ctx.UseNetworkPort("22", "http")
 	require.NoError(t, err)
 	require.Equal(t, "example.com:22", ctx.MetaInput.Input)
