@@ -195,6 +195,13 @@ func (request *Request) ExecuteWithResults(target *contextargs.Context, metadata
 }
 
 func (request *Request) executeOnTarget(input *contextargs.Context, visited mapsutil.Map[string, struct{}], metadata, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
+	// An address the loop doesn't start counts as processed, whether it breaks,
+	// skips a visited address or returns on a cancel or an error.
+	started := 0
+	defer func() {
+		request.countUnsent((len(request.addresses) - started) * request.requestsPerAddress())
+	}()
+
 	var address string
 	var err error
 
@@ -206,7 +213,8 @@ func (request *Request) executeOnTarget(input *contextargs.Context, visited maps
 
 	if err != nil {
 		request.options.Output.Request(request.options.TemplatePath, input.MetaInput.Input, request.Type().String(), err)
-		request.options.Progress.IncrementFailedRequestsBy(1)
+		// The deferred count counts the requests this input would have sent.
+		request.options.Progress.IncrementErrorsBy(1)
 		return errors.Wrap(err, "could not get address from url")
 	}
 
@@ -256,6 +264,7 @@ func (request *Request) executeOnTarget(input *contextargs.Context, visited maps
 
 		visited.Set(actualAddress, struct{}{})
 
+		started++
 		addressErr := request.executeAddress(variables, actualAddress, address, input, kv.tls, previous,
 			interactshURLs, wrappedCallback)
 
@@ -293,13 +302,21 @@ func (request *Request) executeOnTarget(input *contextargs.Context, visited maps
 
 // executeAddress executes the request for an address
 func (request *Request) executeAddress(variables map[string]interface{}, actualAddress, address string, input *contextargs.Context, shouldUseTLS bool, previous output.InternalEvent, interactshURLs []string, callback protocols.OutputEventCallback) error {
+	// A request the loop below doesn't start counts as processed: a payload it
+	// skips, one that fails to render, and the rest after a cancel or a skip.
+	started := 0
+	defer func() {
+		request.countUnsent(request.requestsPerAddress() - started)
+	}()
+
 	variables = generators.MergeMaps(variables, map[string]interface{}{"Hostname": address})
 	payloads := generators.BuildPayloadFromOptions(request.options.Options)
 
 	if !strings.Contains(actualAddress, ":") {
 		err := errors.New("no port provided in network protocol request")
 		request.options.Output.Request(request.options.TemplatePath, address, request.Type().String(), err)
-		request.options.Progress.IncrementFailedRequestsBy(1)
+		// The deferred count counts the requests this address would have sent.
+		request.options.Progress.IncrementErrorsBy(1)
 		return err
 	}
 	updatedTarget := input.Clone()
@@ -340,12 +357,9 @@ func (request *Request) executeAddress(variables map[string]interface{}, actualA
 				}
 			}
 			if request.isUnresponsiveAddress(updatedTarget) {
-				// The remaining payloads would be skipped as well, so they count
-				// as processed here. Value has taken this payload, so Remaining
-				// counts only the ones after it. Wait for the running ones, as
-				// an error of theirs takes precedence.
-				//nolint:gosec // at least 1, as this payload was taken
-				request.options.Progress.SetRequests(uint64(iterator.Remaining() + 1))
+				// The remaining payloads would be skipped as well, and the
+				// deferred count counts them. Wait for the running ones, as an
+				// error of theirs takes precedence.
 				skipped.Store(true)
 
 				break payloadLoop
@@ -360,6 +374,7 @@ func (request *Request) executeAddress(variables map[string]interface{}, actualA
 				InteractURLs: interactshURLs,
 			})
 			if err != nil {
+				request.options.Progress.IncrementErrorsBy(1)
 				m.Lock()
 				multiErr = multierr.Append(multiErr, errors.Wrap(err, "could not evaluate payload helper expressions"))
 				m.Unlock()
@@ -369,6 +384,8 @@ func (request *Request) executeAddress(variables map[string]interface{}, actualA
 			if err := swg.AddWithContext(input.Context()); err != nil {
 				break payloadLoop
 			}
+
+			started++
 			go func(vars map[string]interface{}, urls []string) {
 				defer swg.Done()
 
@@ -398,6 +415,7 @@ func (request *Request) executeAddress(variables map[string]interface{}, actualA
 		}
 	} else {
 		value := maps.Clone(payloads)
+		started++
 		if err := request.executeRequestWithPayloads(variables, actualAddress, address, input, shouldUseTLS, value, previous, interactshURLs, callback); err != nil {
 			return err
 		}
@@ -426,6 +444,7 @@ func (request *Request) executeRequestWithPayloads(variables map[string]interfac
 	}
 
 	if err := request.options.HostBackoffWait(input.Context(), actualAddress); err != nil {
+		request.options.Progress.IncrementFailedRequestsBy(1)
 		return err
 	}
 	if err := request.options.RateLimitTakeContext(input.Context(), actualAddress); err != nil {
@@ -488,6 +507,9 @@ func (request *Request) executeRequestWithPayloads(variables map[string]interfac
 
 		if err := expressions.ContainsUnresolvedVariables(data); err != nil {
 			gologger.Warning().Msgf("[%s] Could not make network request for %s: %v\n", request.options.TemplateID, actualAddress, err)
+			// Unresolved variables are a skip, not an error, as in http.
+			request.options.Progress.IncrementRequests()
+
 			return nil
 		}
 
@@ -511,6 +533,7 @@ func (request *Request) executeRequestWithPayloads(variables map[string]interfac
 		if input.Read > 0 {
 			buffer, err := ConnReadNWithTimeout(conn, int64(input.Read), request.options.Options.GetTimeouts().TcpReadTimeout)
 			if err != nil {
+				request.options.Progress.IncrementFailedRequestsBy(1)
 				return errkit.Wrap(err, "could not read response from connection")
 			}
 			stepDurations = append(stepDurations, time.Since(timeStart))

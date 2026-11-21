@@ -345,6 +345,8 @@ func (p *skipProgress) SetRequests(count uint64) {
 	p.requests.Add(int64(count)) //nolint:gosec // test counters stay small
 }
 
+func (p *skipProgress) IncrementErrorsBy(count int64) { p.errors.Add(count) }
+
 func (p *skipProgress) IncrementFailedRequestsBy(count int64) {
 	p.requests.Add(count)
 	p.errors.Add(count)
