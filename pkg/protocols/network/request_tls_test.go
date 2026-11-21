@@ -111,6 +111,27 @@ func TestTLSEntryIsNotDuplicateOfPlainEntry(t *testing.T) {
 		require.Zero(t, progress.errors.Load())
 	})
 
+	// A plain entry after a tls:// one is still plain.
+	t.Run("one port with the tls entry first", func(t *testing.T) {
+		server := listenTLS(t)
+		request := &Request{
+			Address:   []string{tlsHostTemplate, addressTemplate},
+			Inputs:    []*Input{{Data: tlsData}},
+			Operators: wordMatcher(okReply),
+		}
+		compileWithCache(t, request)
+		progress := countRequests(request)
+
+		matches, err := executeMatching(request, contextargs.NewWithInput(context.Background(), server.address))
+
+		require.NoError(t, err)
+		require.Equal(t, 1, matches)
+		require.Equal(t, int32(1), server.handshakes.Load())
+		require.Equal(t, int32(1), server.plain.Load())
+		require.Equal(t, int64(2), progress.requests.Load())
+		require.Zero(t, progress.errors.Load())
+	})
+
 	t.Run("two ports", func(t *testing.T) {
 		first := listenTLS(t)
 		second := listenTLS(t)
