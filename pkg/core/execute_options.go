@@ -154,7 +154,13 @@ func (e *Engine) executeTemplateSpray(ctx context.Context, templatesList []*temp
 func (e *Engine) executeHostSpray(ctx context.Context, templatesList []*templates.Template, target provider.InputProvider) *atomic.Bool {
 	results := &atomic.Bool{}
 	wp, _ := syncutil.New(syncutil.WithSize(e.options.BulkSize + e.options.HeadlessBulkSize))
-	defer wp.Wait()
+
+	// Targets are the positions here, and each target runs every template. A
+	// resumed scan skips the targets before the lowest one in flight at the
+	// interrupt, as the template-spray loop does for each template.
+	currentInfo, resumeFromInfo := e.hostSprayResumeInfo()
+
+	var index uint32
 
 	target.Iterate(func(value *contextargs.MetaInput) bool {
 		select {
@@ -163,6 +169,20 @@ func (e *Engine) executeHostSpray(ctx context.Context, templatesList []*template
 		default:
 		}
 
+		position := index
+		index++
+
+		if resumeFromInfo.IsCompleted() || position < resumeFromInfo.GetSkipUnder() {
+			e.options.Logger.Debug().Msgf("Skipping %q: Resume - Target already processed", value.Input)
+			e.tasksDone(int64(getSelectedCount(templatesList, e.selectionFor(value))))
+
+			return true
+		}
+
+		currentInfo.Lock()
+		currentInfo.InFlight[position] = struct{}{}
+		currentInfo.Unlock()
+
 		if err := wp.AddWithContext(ctx); err != nil {
 			return false
 		}
@@ -170,11 +190,33 @@ func (e *Engine) executeHostSpray(ctx context.Context, templatesList []*template
 		go func(targetval *contextargs.MetaInput) {
 			defer wp.Done()
 			e.executeTemplatesOnTarget(ctx, templatesList, targetval, results)
+
+			// A target that cancellation cut off didn't finish. It stays in flight,
+			// so the resumed scan runs it again.
+			if ctx.Err() == nil {
+				currentInfo.Lock()
+				delete(currentInfo.InFlight, position)
+				currentInfo.Unlock()
+			}
 		}(value)
 		return true
 	})
+	wp.Wait()
+
+	// A cancelled loop never took the remaining targets, so the scan isn't
+	// complete.
+	if ctx.Err() == nil {
+		currentInfo.Lock()
+		currentInfo.Completed = true
+		currentInfo.Unlock()
+	}
+
 	return results
 }
+
+// hostSprayResumeID keys the progress of a host-spray scan among the template
+// IDs of the resume file. A template ID can't hold an @, so it never collides.
+const hostSprayResumeID = "@host-spray"
 
 // clusterTemplates merges templates that send identical requests unless
 // noCluster is set, and returns the templates to run with the number merged.

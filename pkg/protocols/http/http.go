@@ -614,8 +614,9 @@ func (e *Request) MaySendElsewhere() bool {
 
 // sendsElsewhere reports whether any request of the block may go to an address
 // other than its target's. A false positive only moves the skip of a request to
-// a down target from the engine to the request path, so every form that is not
-// known to stay at the target counts. That is a
+// a down target from the engine to the request path, which then skips each
+// request to that address instead of ending the block, so every form that is
+// not known to stay at the target counts. That is a
 // self-contained request, which names its own destination, a path that does
 // not start with {{BaseURL}} or {{RootURL}}, or that continues them with
 // anything but a path, query or fragment, such as a port, and a raw request
@@ -778,11 +779,16 @@ func shouldDisableKeepAliveForHTTPProxy(request *Request, options *protocols.Exe
 // user enables it, since the pooled transport sets custom dial hooks). It only
 // affects the time_delay analyzer decision below.
 func (r *Request) AnalyzeConnectionReuse(forceHTTP2 bool) ConnectionReusePolicy {
-	// Priority 0: race and pipeline requests need dedicated connections. Race
-	// uses a one-shot synced body gate that breaks if a connection is reused and
-	// the body is re-read, and reusing a single keep-alive connection would also
+	// Priority 0: race requests need dedicated connections. Race uses a
+	// one-shot synced body gate that breaks if a connection is reused and the
+	// body is re-read, and reusing a single keep-alive connection would also
 	// serialize the requests and defeat the race.
-	if r.Race || r.Pipeline {
+	//
+	// Pipelined requests are not listed: the pipeline client dials its own
+	// connections, so the pool never serves them. ReuseUnsafe would only add
+	// "Connection: close" to each request, and the server would then close the
+	// connection that the block's other requests are waiting on.
+	if r.Race {
 		return ReuseUnsafe
 	}
 

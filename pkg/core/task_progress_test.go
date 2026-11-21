@@ -84,11 +84,14 @@ func newTaskEngine(strategy scanstrategy.ScanStrategy, scope protocols.TargetSco
 func targetsOf(inputs ...string) *fakeTargetProvider {
 	targets := &fakeTargetProvider{}
 	for _, input := range inputs {
-		targets.values = append(targets.values, &contextargs.MetaInput{Input: input})
+		value := contextargs.NewMetaInput()
+		value.Input = input
+		targets.values = append(targets.values, value)
 	}
 	return targets
 }
 
+//nolint:exhaustruct,exhaustruct_v5 // fixtures keep zero-value defaults
 func TestExecuteScanCountsTasks(t *testing.T) {
 	scope := scopeByInput{
 		"php":    {paths: []string{"thinkphp.yaml"}},
@@ -154,6 +157,7 @@ func TestExecuteScanCountsTasks(t *testing.T) {
 						ID:            path,
 						Path:          path,
 						TotalRequests: 1,
+						RequestsHTTP:  []*http.Request{{}},
 						Executer:      &recordingExecuter{path: path, mu: &mu, runs: &runs},
 					})
 				}
@@ -204,6 +208,7 @@ func TestExecuteScanCountsOriginScopedTasks(t *testing.T) {
 	}
 }
 
+//nolint:exhaustruct,exhaustruct_v5 // fixtures keep zero-value defaults
 func TestExecuteScanCountsResumedTasks(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -238,6 +243,7 @@ func TestExecuteScanCountsResumedTasks(t *testing.T) {
 					ID:            path,
 					Path:          path,
 					TotalRequests: 1,
+					RequestsHTTP:  []*http.Request{{}},
 					Executer:      &recordingExecuter{path: path, mu: &mu, runs: &runs},
 				})
 			}
@@ -263,8 +269,7 @@ const (
 // a target without a scheme, at the address the request went to, as the http
 // request path does. The http template on that target must then be skipped
 // with a skip event, while a template with network requests and a dns
-// template, whose requests also go elsewhere, still run unless the target's
-// own address is the one refused (#8180).
+// template, whose requests also go elsewhere, still run (#8180).
 //
 //nolint:exhaustruct,exhaustruct_v5 // each case sets only the fields it needs
 func TestUnresponsiveSchemelessTargetIsSkipped(t *testing.T) {
@@ -277,7 +282,10 @@ func TestUnresponsiveSchemelessTargetIsSkipped(t *testing.T) {
 		wantRuns   []string
 	}{
 		{name: "not probed", refusedURL: "https://127.0.0.1/n1", wantRuns: []string{mixedTemplateID, dnsTemplateID}},
-		{name: "probed to http", probed: "http://127.0.0.1", refusedURL: "http://127.0.0.1/n1"},
+		{
+			name: "probed to http", probed: "http://127.0.0.1", refusedURL: "http://127.0.0.1/n1",
+			wantRuns: []string{mixedTemplateID, dnsTemplateID},
+		},
 		{
 			name: "probed to http, https refused", probed: "http://127.0.0.1", refusedURL: "https://127.0.0.1/n1",
 			wantRuns: []string{httpTemplateID, mixedTemplateID, dnsTemplateID},
@@ -394,6 +402,7 @@ const (
 	otherPortTemplateID = "b-live.yaml"
 	firstHTTPID         = "a1.yaml"
 	secondHTTPID        = "a2.yaml"
+	networkTemplateID   = "tcp.yaml"
 )
 
 // TestUnresponsiveTargetKeepsTemplatesSendingElsewhere refuses the target's
@@ -402,6 +411,8 @@ const (
 // template. The templates that send to the target are skipped. The one that
 // sends to another port runs, so the request path can check that port (#8197),
 // and in host-spray it does not end the skips of the templates after it.
+//
+//nolint:exhaustruct_v5 // fixtures keep zero-value defaults
 func TestUnresponsiveTargetKeepsTemplatesSendingElsewhere(t *testing.T) {
 	// compiling a request sets up global protocol state, so do it before the
 	// subtests run in parallel; they only read the requests
@@ -424,9 +435,9 @@ func TestUnresponsiveTargetKeepsTemplatesSendingElsewhere(t *testing.T) {
 		{
 			name:     "target with a scheme",
 			target:   "https://127.0.0.1",
-			wantRuns: []string{otherPortTemplateID},
+			wantRuns: []string{otherPortTemplateID, dnsTemplateID},
 			wantSkips: map[scanstrategy.ScanStrategy][]string{
-				scanstrategy.TemplateSpray: {firstHTTPID, secondHTTPID, dnsTemplateID},
+				scanstrategy.TemplateSpray: {firstHTTPID, secondHTTPID},
 				scanstrategy.HostSpray:     {firstHTTPID},
 			},
 		},
@@ -448,7 +459,14 @@ func TestUnresponsiveTargetKeepsTemplatesSendingElsewhere(t *testing.T) {
 			t.Run(strategy.String()+"/"+test.name, func(t *testing.T) {
 				t.Parallel()
 
-				runs, skipped, tasksLeft := scanAfterRefusal(t, strategy, test.target, requests)
+				templatesList := []*templates.Template{
+					{ID: firstHTTPID, RequestsHTTP: requests[:1]},
+					{ID: otherPortTemplateID, RequestsHTTP: requests[1:2]},
+					{ID: secondHTTPID, RequestsHTTP: requests[2:]},
+					{ID: dnsTemplateID, RequestsDNS: []*dns.Request{{}}},
+				}
+
+				runs, skipped, tasksLeft := scanAfterRefusal(t, strategy, test.target, templatesList)
 				require.ElementsMatch(t, test.wantRuns, runs, "templates run")
 				require.ElementsMatch(t, test.wantSkips[strategy], skipped, "templates that got a skip event")
 				require.Zero(t, tasksLeft, "tasks left undone")
@@ -457,14 +475,13 @@ func TestUnresponsiveTargetKeepsTemplatesSendingElsewhere(t *testing.T) {
 	}
 }
 
-// scanAfterRefusal scans target after recording a refused request to
-// https://127.0.0.1, with http templates of the three requests followed by a dns
-// template. It returns the templates that ran, the templates that got a skip
-// event, and the tasks left undone.
+// scanAfterRefusal scans target with templatesList after recording a refused
+// request to https://127.0.0.1. It returns the templates that ran, the
+// templates that got a skip event, and the tasks left undone.
 //
 //nolint:exhaustruct,exhaustruct_v5 // fixtures keep zero-value defaults
 func scanAfterRefusal(
-	t *testing.T, strategy scanstrategy.ScanStrategy, target string, requests []*http.Request,
+	t *testing.T, strategy scanstrategy.ScanStrategy, target string, templatesList []*templates.Template,
 ) ([]string, []string, int64) {
 	t.Helper()
 
@@ -496,12 +513,6 @@ func scanAfterRefusal(
 	cache.MarkFailedOrRemove(protoType, refused, errConnectionRefused)
 	require.True(t, cache.Check(protoType, refused), "the refused address must be unresponsive")
 
-	templatesList := []*templates.Template{
-		{ID: firstHTTPID, RequestsHTTP: requests[:1]},
-		{ID: otherPortTemplateID, RequestsHTTP: requests[1:2]},
-		{ID: secondHTTPID, RequestsHTTP: requests[2:]},
-		{ID: dnsTemplateID, RequestsDNS: []*dns.Request{{}}},
-	}
 	executers := make([]*scriptedExecuter, len(templatesList))
 
 	for i, template := range templatesList {
@@ -521,6 +532,43 @@ func scanAfterRefusal(
 	}
 
 	return runs, skipped, recorder.total.Load() - recorder.done.Load()
+}
+
+// TestRefusedHTTPAddressKeepsOtherProtocolsRunning refuses the target's https
+// address, then scans it with an http template, a network template, a mixed
+// one, a dns template, and another http template. Only the http templates are
+// skipped: the engine cannot tell which address the others dial, so they run
+// and their requests check the address each one dials (#8203). In host-spray
+// the first skip stands for the target, so the second http template gets no
+// event of its own.
+//
+//nolint:exhaustruct_v5 // fixtures keep zero-value defaults
+func TestRefusedHTTPAddressKeepsOtherProtocolsRunning(t *testing.T) {
+	t.Parallel()
+
+	wantSkips := map[scanstrategy.ScanStrategy][]string{
+		scanstrategy.TemplateSpray: {firstHTTPID, secondHTTPID},
+		scanstrategy.HostSpray:     {firstHTTPID},
+	}
+
+	for _, strategy := range []scanstrategy.ScanStrategy{scanstrategy.TemplateSpray, scanstrategy.HostSpray} {
+		t.Run(strategy.String(), func(t *testing.T) {
+			t.Parallel()
+
+			templatesList := []*templates.Template{
+				{ID: firstHTTPID, RequestsHTTP: []*http.Request{{}}},
+				{ID: networkTemplateID, RequestsNetwork: []*network.Request{{}}},
+				{ID: mixedTemplateID, RequestsHTTP: []*http.Request{{}}, RequestsNetwork: []*network.Request{{}}},
+				{ID: dnsTemplateID, RequestsDNS: []*dns.Request{{}}},
+				{ID: secondHTTPID, RequestsHTTP: []*http.Request{{}}},
+			}
+
+			runs, skipped, tasksLeft := scanAfterRefusal(t, strategy, "https://127.0.0.1", templatesList)
+			require.ElementsMatch(t, []string{networkTemplateID, mixedTemplateID, dnsTemplateID}, runs, "templates run")
+			require.ElementsMatch(t, wantSkips[strategy], skipped, "templates that got a skip event")
+			require.Zero(t, tasksLeft, "tasks left undone")
+		})
+	}
 }
 
 // compiledHTTP returns an http request with path, compiled as a template run

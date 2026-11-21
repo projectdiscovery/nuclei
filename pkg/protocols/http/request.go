@@ -448,7 +448,13 @@ func (request *Request) executeParallelHTTP(input *contextargs.Context, dynamicV
 						spmHandler.Release()
 						return false
 					case spmHandler.ResultChan <- err:
-						request.recordHostResultAndCancelIfUnresponsive(t.hostErrorsInput, err, spmHandler.Cancel)
+						// In a block that may send elsewhere, one address going down says
+						// nothing about the others, so only its result is recorded.
+						if request.maySendElsewhere {
+							request.recordHostResult(t.hostErrorsInput, err)
+						} else {
+							request.recordHostResultAndCancelIfUnresponsive(t.hostErrorsInput, err, spmHandler.Cancel)
+						}
 						spmHandler.Release()
 					}
 					return false
@@ -464,11 +470,20 @@ func (request *Request) executeParallelHTTP(input *contextargs.Context, dynamicV
 
 	// iterate payloads and make requests
 	generator := request.newGenerator(false)
+	taken := 0
+
+	defer func() { request.countUntaken(generator, taken) }()
 	for {
 		inputData, payloads, ok := generator.nextValue()
 		if !ok {
 			break
 		}
+
+		// A request counts once, here, whether it is then sent, skipped or
+		// fails to build. countUntaken counts the ones the loop never takes.
+		taken++
+
+		request.options.Progress.IncrementRequests()
 
 		select {
 		case <-input.Context().Done():
@@ -492,8 +507,8 @@ func (request *Request) executeParallelHTTP(input *contextargs.Context, dynamicV
 			}
 		}
 
-		// break if stop at first match is found or host is unresponsive
-		if spmHandler.FoundFirstMatch() || request.skipUnresponsive(input, &skipped) {
+		// break if stop at first match is found
+		if spmHandler.FoundFirstMatch() {
 			break
 		}
 
@@ -501,9 +516,6 @@ func (request *Request) executeParallelHTTP(input *contextargs.Context, dynamicV
 		// stop, so the wait has to end with them.
 		generatedHttpRequest, reservation, err := request.makeReserved(workerCtx, generator, input, inputData, payloads, dynamicValues)
 		if err != nil {
-			if err == types.ErrNoMoreRequests {
-				break
-			}
 			if workerCtx.Err() != nil {
 				stopWorkers()
 				if spmHandler.FoundFirstMatch() {
@@ -511,7 +523,6 @@ func (request *Request) executeParallelHTTP(input *contextargs.Context, dynamicV
 				}
 				return context.Cause(workerCtx)
 			}
-			request.options.Progress.IncrementFailedRequestsBy(int64(generator.Total()))
 			stopWorkers()
 			return err
 		}
@@ -523,10 +534,13 @@ func (request *Request) executeParallelHTTP(input *contextargs.Context, dynamicV
 
 		hostErrorsInput := contextargs.GetCopyIfAddressOutdated(input, generatedHttpRequest.URL())
 		if request.skipUnresponsive(hostErrorsInput, &skipped) {
-			// skip on unresponsive host no need to continue
 			reservation.done()
-
-			break
+			// Every request of the block goes to this address, so none can be sent.
+			if !request.maySendElsewhere {
+				break
+			}
+			// The next request may go to another address.
+			continue
 		}
 		select {
 		case <-spmHandler.Done():
@@ -553,7 +567,6 @@ func (request *Request) executeParallelHTTP(input *contextargs.Context, dynamicV
 			hasInteractMarkers: hasInteractMarkers,
 		}:
 		}
-		request.options.Progress.IncrementRequests()
 	}
 	stopWorkers()
 	spmHandler.Wait()
@@ -568,6 +581,9 @@ func (request *Request) executeParallelHTTP(input *contextargs.Context, dynamicV
 // executeTurboHTTP executes turbo http request for a URL
 func (request *Request) executeTurboHTTP(input *contextargs.Context, dynamicValues, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
 	generator := request.newGenerator(false)
+	taken := 0
+
+	defer func() { request.countUntaken(generator, taken) }()
 
 	// need to extract the target from the url
 	URL, err := urlutil.Parse(input.MetaInput.Input)
@@ -636,6 +652,12 @@ func (request *Request) executeTurboHTTP(input *contextargs.Context, dynamicValu
 			break
 		}
 
+		// A request counts once, here, whether it is then sent, skipped or
+		// fails to build. countUntaken counts the ones the loop never takes.
+		taken++
+
+		request.options.Progress.IncrementRequests()
+
 		select {
 		case <-input.Context().Done():
 			return input.Context().Err()
@@ -650,7 +672,9 @@ func (request *Request) executeTurboHTTP(input *contextargs.Context, dynamicValu
 		ctx := input.Context()
 		generatedHttpRequest, reservation, err := request.makeReserved(ctx, generator, input, inputData, payloads, dynamicValues)
 		if err != nil {
-			request.options.Progress.IncrementFailedRequestsBy(int64(generator.Total()))
+			// The requests already started deliver their results first, as in executeParallelHTTP.
+			spmHandler.Wait()
+
 			return err
 		}
 		if input.MetaInput.Input == "" {
@@ -700,7 +724,6 @@ func (request *Request) executeTurboHTTP(input *contextargs.Context, dynamicValu
 				return
 			}
 		}(generatedHttpRequest, reservation, updatedInput, hostErrorsInput)
-		request.options.Progress.IncrementRequests()
 	}
 	spmHandler.Wait()
 	if spmHandler.FoundFirstMatch() {
@@ -709,6 +732,16 @@ func (request *Request) executeTurboHTTP(input *contextargs.Context, dynamicValu
 	}
 
 	return requestsError(spmHandler.CombinedResults(), skipped.Load())
+}
+
+// countUntaken counts the requests of generator that the loop never took, so a
+// block that stops, skips or fails to build still ends at its total (#7838).
+// Remaining() can't stand in: it leaves out @once requests, and with payloads it
+// counts an extra pass before the first take and after the generator runs out.
+func (request *Request) countUntaken(generator *requestGenerator, taken int) {
+	if untaken := generator.Total() - taken; untaken > 0 {
+		request.options.Progress.SetRequests(uint64(untaken))
+	}
 }
 
 // ExecuteWithResults executes the final request on a URL
@@ -744,6 +777,14 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 	}
 	var requestErr error
 
+	var skipped bool
+	// skipRequest counts a request the execution does not send because its address is unresponsive.
+	skipRequest := func() {
+		skipped = true
+
+		request.options.Progress.IncrementRequests()
+	}
+
 executionLoop:
 	for {
 		executeFunc := func(data string, payloads, dynamicValue map[string]interface{}, previousEvent output.InternalEvent) (skipBranch, stop bool, extracted map[string][]string, err error) {
@@ -751,7 +792,7 @@ executionLoop:
 
 			// A stop or an error ends the execution, and the requests it leaves
 			// unsent count as processed. This request counts once too: below once it
-			// is sent or fails, or here when the execution ends before that.
+			// is sent, fails or is skipped, or here when the execution ends before that.
 			processed := false
 
 			defer func() {
@@ -772,9 +813,6 @@ executionLoop:
 			ctx := input.Context()
 			generatedHttpRequest, reservation, err := request.makeReserved(ctx, generator, input, data, payloads, dynamicValue)
 			if err != nil {
-				if err == types.ErrNoMoreRequests {
-					return false, true, nil, nil
-				}
 				return false, true, nil, err
 			}
 			defer reservation.done()
@@ -789,6 +827,13 @@ executionLoop:
 			// a copy and using it to check for host errors etc
 			// but this should be replaced once templateCtx is refactored properly
 			hostErrorsInput := contextargs.GetCopyIfAddressOutdated(input, generatedHttpRequest.URL())
+
+			// A request that is not sent takes no rate-limit token, which every template shares.
+			if request.maySendElsewhere && request.isUnresponsiveAddress(hostErrorsInput) {
+				skipRequest()
+
+				return false, false, nil, nil
+			}
 
 			// Full URL, so https and an explicit port stay on the same key the observation uses.
 			if err := request.rateLimitTake(ctx, hostBackoffKey(generatedHttpRequest, input)); err != nil {
@@ -842,7 +887,14 @@ executionLoop:
 			// executeRequest sent nothing, so there is no host result to record
 			// and no failure to count.
 			if errors.Is(execReqErr, hosterrorscache.ErrUnresponsiveHost) {
-				return false, true, nil, execReqErr
+				// Every request of the block goes to this address, so none can be sent.
+				if !request.maySendElsewhere {
+					return false, true, nil, execReqErr
+				}
+				// Another template can mark the address after the check above.
+				skipRequest()
+
+				return false, false, nil, nil
 			}
 
 			request.recordHostResult(hostErrorsInput, execReqErr)
@@ -948,6 +1000,11 @@ executionLoop:
 		}
 		dynamicValueContexts = nextDynamicValueContexts
 	}
+	// A request error takes precedence over a skip, as in requestsError.
+	if requestErr == nil && skipped {
+		return hosterrorscache.ErrUnresponsiveHost
+	}
+
 	return requestErr
 }
 

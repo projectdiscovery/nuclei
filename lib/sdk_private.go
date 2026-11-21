@@ -34,7 +34,6 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/headless/engine"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/httpclientpool"
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates"
-	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	nucleiUtils "github.com/projectdiscovery/nuclei/v3/pkg/utils"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils/httpbody"
 	"github.com/projectdiscovery/ratelimit"
@@ -188,6 +187,13 @@ func (e *NucleiEngine) init(ctx context.Context) error {
 		return err
 	}
 
+	// Load the resume file before init creates the temp dir and the interactsh
+	// client, so a bad file fails without resources to release.
+	resumeCfg, resumeErr := e.loadResumeCfg()
+	if resumeErr != nil {
+		return resumeErr
+	}
+
 	if e.opts.Parser != nil {
 		if op, ok := e.opts.Parser.(*templates.Parser); ok {
 			e.parser = op
@@ -283,7 +289,7 @@ func (e *NucleiEngine) init(ctx context.Context) error {
 		RequestBodyBudget:  httpbody.NewBudget(int64(e.opts.MaxRequestBodyInFlight)),
 		Interactsh:         e.interactshClient,
 		Colorizer:          aurora.New(aurora.WithColors(true)),
-		ResumeCfg:          types.NewResumeCfg(),
+		ResumeCfg:          resumeCfg,
 		Browser:            e.browserInstance,
 		Parser:             e.compiledParser,
 		DoNotCache:         e.opts.DoNotCacheTemplates,

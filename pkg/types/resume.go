@@ -153,6 +153,12 @@ func (resumeCfg *ResumeCfg) Compile() {
 			resumeInfo.Repeat[index] = struct{}{}
 		}
 		resumeInfo.SkipUnder = min
+		// An interrupt can find a started template with no target in flight, such
+		// as between two targets. Then the file doesn't say how far the scan got,
+		// and skipping every target would lose the ones it never reached.
+		if len(resumeInfo.InFlight) == 0 {
+			resumeInfo.SkipUnder = 0
+		}
 		resumeInfo.DoAbove = max
 	}
 }

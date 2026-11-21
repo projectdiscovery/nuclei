@@ -143,7 +143,7 @@ TARGET:
    -l, -list string              path to file containing a list of target URLs/hosts to scan (one per line)
    -targets-inline string        inline multiline target list (for use in template profiles)
    -eh, -exclude-hosts string[]  hosts to exclude to scan from the input list (ip, cidr, hostname)
-   -resume string                resume scan from and save to specified file (clustering will be disabled)
+   -resume string                resume scan from and save to specified file
    -sa, -scan-all-ips            scan all the IP's associated with dns record
    -iv, -ip-version string[]     IP version to scan of hostname (4,6); default uses dialer fallback, -sa scans all addresses
    -dun, -disable-url-normalization  keep targets exactly as supplied instead of collapsing urls that address the same resource
@@ -322,7 +322,7 @@ OPTIMIZATIONS:
    -timeout int                     time to wait in seconds before timeout (default 10)
    -retries int                     number of times to retry a failed request (default 1)
    -ldp, -leave-default-ports       leave default HTTP/HTTPS ports (eg. host:80,host:443)
-   -mhe, -max-host-error int        max errors for a host before skipping from scan (default 30)
+   -mhe, -max-host-error int        max http errors for a host:port before skipping requests to it (default 30)
    -te, -track-error string[]       adds given error to max-host-error watchlist (standard, file)
    -nmhe, -no-mhe                   disable skipping host from scan based on errors
    -project                         use a project folder to avoid sending same request multiple times
