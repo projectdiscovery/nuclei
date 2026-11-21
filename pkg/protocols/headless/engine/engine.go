@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"runtime"
 	"strings"
 	"sync"
 
@@ -169,6 +170,12 @@ func newChromeLauncher(options *types.Options, dataStore, proxyAddr string, noSa
 			chromeLauncher.Bin(chromePath)
 		} else {
 			return nil, errors.New("the chrome browser is not installed")
+		}
+	} else if runtime.GOOS == "windows" && runtime.GOARCH == "arm64" {
+		// go-rod has no chromium download for windows/arm64, so prefer the installed chrome/edge;
+		// an explicit rod-bin in -headless-options still overrides it below
+		if chromePath, hasChrome := launcher.LookPath(); hasChrome {
+			chromeLauncher.Bin(chromePath)
 		}
 	}
 

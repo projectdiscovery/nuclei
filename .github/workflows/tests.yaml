@@ -41,12 +41,21 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest, macOS-latest]
+        os: [ubuntu-latest, windows-latest, windows-11-arm, macOS-latest]
     runs-on: "${{ matrix.os }}"
     steps:
       - uses: actions/checkout@v7.0.1
       - uses: projectdiscovery/actions/setup/go@v1
       - uses: projectdiscovery/nuclei-action/cache@v3
+      # the runner's gcc is x64-only; cgo (go-sqlite3) needs an arm64 C compiler
+      - &setup-arm64-cc
+        name: Setup arm64 C compiler
+        if: ${{ matrix.os == 'windows-11-arm' }}
+        shell: pwsh
+        run: |
+          C:\msys64\usr\bin\pacman.exe -Sy --noconfirm --needed mingw-w64-clang-aarch64-clang
+          "C:\msys64\clangarm64\bin" >> $env:GITHUB_PATH
+          "CC=clang" >> $env:GITHUB_ENV
       # The data-race detector is OS-independent, so we only pay its ~2-3x cost
       # on ubuntu; windows/macOS run the same suite without instrumentation.
       - name: "Unit tests (race)"
@@ -60,7 +69,7 @@ jobs:
         env:
           PDCP_API_KEY: "${{ secrets.PDCP_API_KEY }}"
       - run: go run -race . -l ${{ github.workspace }}/internal/tests/functional/testdata/targets.txt -id tech-detect,tls-version
-        if: ${{ matrix.os != 'windows-latest' }} # known issue: https://github.com/golang/go/issues/46099
+        if: ${{ !startsWith(matrix.os, 'windows') }} # known issue: https://github.com/golang/go/issues/46099
         working-directory: cmd/nuclei/
       # Hermetic HTTP-engine scale regression: stands up many loopback hosts and
       # asserts finding parity across a diverse template set (per-host pool,
@@ -104,19 +113,23 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest, macOS-latest]
+        os: [ubuntu-latest, windows-latest, windows-11-arm, macOS-latest]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v7.0.1
       - uses: projectdiscovery/actions/setup/python@v1
+        with:
+          # python 3.10 has no windows arm64 build
+          python-version: ${{ matrix.os == 'windows-11-arm' && '3.11' || '3.10' }}
       - uses: projectdiscovery/actions/setup/go@v1
       - uses: projectdiscovery/nuclei-action/cache@v3
+      - *setup-arm64-cc
       # The suite launches one nuclei process per case, ~175 of them, and the
       # binary is around 200MB. This job takes roughly four times longer on
       # windows than on linux for the same work; Defender scanning an executable
       # on every launch is the leading suspect for the difference.
       - name: Exclude the workspace from Defender scanning
-        if: ${{ matrix.os == 'windows-latest' }}
+        if: ${{ startsWith(matrix.os, 'windows') }}
         shell: pwsh
         run: |
           Add-MpPreference -ExclusionPath "${{ github.workspace }}"
@@ -136,17 +149,25 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest, macOS-latest]
+        os: [ubuntu-latest, windows-latest, windows-11-arm, macOS-latest]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v7.0.1
       - uses: projectdiscovery/actions/setup/python@v1
+        with:
+          # python 3.10 has no windows arm64 build
+          python-version: ${{ matrix.os == 'windows-11-arm' && '3.11' || '3.10' }}
       - uses: projectdiscovery/actions/setup/go@v1
       - uses: projectdiscovery/nuclei-action/cache@v3
+      - *setup-arm64-cc
       - uses: projectdiscovery/nuclei-action@v3
+        if: ${{ matrix.os != 'windows-11-arm' }}
         with:
           version: latest
           install-only: true
+      # no windows_arm64 release asset is published yet; build the latest release instead
+      - run: go install github.com/projectdiscovery/nuclei/v3/cmd/nuclei@latest
+        if: ${{ matrix.os == 'windows-11-arm' }}
       - run: make functional
 
   validate:

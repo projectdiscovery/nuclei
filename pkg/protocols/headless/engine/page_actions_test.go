@@ -1173,7 +1173,7 @@ func TestBlockedHeadlessURLS(t *testing.T) {
 	// of global variables
 	if os.Getenv("TEST_BLOCK_HEADLESS_URLS") != "1" {
 		cmd := exec.Command(os.Args[0], "-test.run=TestBlockedHeadlessURLS", "-test.v")
-		cmd.Env = append(cmd.Env, "TEST_BLOCK_HEADLESS_URLS=1")
+		cmd.Env = append(os.Environ(), "TEST_BLOCK_HEADLESS_URLS=1")
 		out, err := cmd.CombinedOutput()
 		if !strings.Contains(string(out), "PASS\n") || err != nil {
 			t.Fatalf("%s\n(exit status %v)", string(out), err)
