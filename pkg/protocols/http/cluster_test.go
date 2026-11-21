@@ -109,9 +109,11 @@ func TestIsClusterableRace(t *testing.T) {
 		clusterable bool
 	}{
 		{name: "race with race_count is not clusterable", race: true, count: 5},
-		// without race_count, or in a pipeline, race runs as any other block
+		// without race_count, race runs as any other block
 		{name: "race without race_count is clusterable", race: true, clusterable: true},
-		{name: "race with race_count in a pipeline is clusterable", race: true, count: 5, pipeline: true, clusterable: true},
+		// a pipelined block sends its request differently from a plain one
+		{name: "race with race_count in a pipeline is not clusterable", race: true, count: 5, pipeline: true},
+		{name: "pipeline is not clusterable", pipeline: true},
 		{name: "race_count without race is clusterable", count: 5, clusterable: true},
 	}
 	for _, test := range tests {
