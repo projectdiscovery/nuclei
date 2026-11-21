@@ -6,10 +6,10 @@ import (
 	"net/http/httputil"
 	"strings"
 
-	"github.com/go-rod/rod"
-	"github.com/go-rod/rod/lib/proto"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
+	"github.com/projectdiscovery/rod"
+	"github.com/projectdiscovery/rod/lib/proto"
 )
 
 // routingRuleHandler handles proxy rule for actions related to request/response modification
