@@ -15,6 +15,18 @@ import (
 
 const payloadName = "value"
 
+// wordMatcher returns operators that match a response containing word, in the
+// raw part so that the data an input reads counts too.
+//
+//nolint:exhaustruct,exhaustruct_v5 // fixtures keep zero-value defaults
+func wordMatcher(word string) operators.Operators {
+	return operators.Operators{Matchers: []*matchers.Matcher{{
+		Part:  "raw",
+		Type:  matchers.MatcherTypeHolder{MatcherType: matchers.WordsMatcher},
+		Words: []string{word},
+	}}}
+}
+
 // serverPorts returns a port for each flag: one that answers when it is true,
 // and a closed one when it is false.
 func serverPorts(t *testing.T, open []bool) []string {
@@ -77,10 +89,7 @@ func TestUnstartedPortsCountAsProcessed(t *testing.T) {
 			}
 
 			if test.stopAtFirstMatch {
-				request.Operators = operators.Operators{Matchers: []*matchers.Matcher{{
-					Type:  matchers.MatcherTypeHolder{MatcherType: matchers.WordsMatcher},
-					Words: []string{"ok"},
-				}}}
+				request.Operators = wordMatcher(okReply)
 			}
 
 			compileWithCache(t, request)
