@@ -15,6 +15,7 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
+	"unicode/utf8"
 
 	"github.com/logrusorgru/aurora/v4"
 	"github.com/pkg/errors"
@@ -72,6 +73,7 @@ type StandardWriter struct {
 	timestamp             bool
 	noMetadata            bool
 	matcherStatus         bool
+	responseSaveSize      int
 	honeypotDetector      *honeypotdetector.Detector
 	suppressHoneypot      bool
 	honeypotThreshold     int
@@ -314,6 +316,7 @@ func NewStandardWriter(options *types.Options) (*StandardWriter, error) {
 		jsonReqResp:       !options.OmitRawRequests,
 		noMetadata:        options.NoMeta,
 		matcherStatus:     options.MatcherStatus,
+		responseSaveSize:  options.ResponseSaveSize,
 		timestamp:         options.Timestamp,
 		suppressHoneypot:  options.SuppressHoneypotResults,
 		honeypotThreshold: options.HoneypotThreshold,
@@ -393,6 +396,9 @@ func (w *StandardWriter) Write(event *ResultEvent) error {
 	event.Matched = redactWithSet(event.Matched, patterns)
 	for _, field := range event.Info.FilledFields(event.TemplateInfo) {
 		*field.Value = redactWithSet(*field.Value, patterns)
+	}
+	if w.responseSaveSize > 0 && len(event.Response) > w.responseSaveSize && event.Type == "http" {
+		event.Response = truncateResponse(event.Response, w.responseSaveSize)
 	}
 
 	event.Timestamp = time.Now()
@@ -669,6 +675,12 @@ func (w *StandardWriter) WriteFailure(wrappedEvent *InternalWrappedEvent) error 
 		templateInfo = event["template-info"].(model.Info)
 	}
 	fields := protocolUtils.GetJsonFieldsFromURL(types.ToString(event["host"]))
+	// -rss limits the saved response of an http failure, as truncateResponse
+	// does for an http match
+	response := types.ToString(event["response"])
+	if w.responseSaveSize > 0 && len(response) > w.responseSaveSize && types.ToString(event["type"]) == "http" {
+		response = truncateResponse(response, w.responseSaveSize)
+	}
 	if types.ToString(event["ip"]) != "" {
 		fields.Ip = types.ToString(event["ip"])
 	}
@@ -690,7 +702,7 @@ func (w *StandardWriter) WriteFailure(wrappedEvent *InternalWrappedEvent) error 
 		URL:           fields.URL,
 		IP:            fields.Ip,
 		Request:       types.ToString(event["request"]),
-		Response:      types.ToString(event["response"]),
+		Response:      response,
 		MatcherStatus: false,
 		Timestamp:     time.Now(),
 		//FIXME: this is workaround to encode the template when no results were found
@@ -708,6 +720,28 @@ func (w *StandardWriter) encodeTemplate(templatePath string) string {
 		return base64.StdEncoding.EncodeToString(data)
 	}
 	return ""
+}
+
+// truncateResponse slices response to limit. If limit lands inside a multi-byte
+// UTF-8 code point in a valid text response, it backs up so JSON serialization
+// does not replace incomplete bytes with U+FFFD. For binary responses, it
+// retains the byte limit.
+func truncateResponse(response string, limit int) string {
+	if limit <= 0 || len(response) <= limit {
+		return response
+	}
+	if !utf8.RuneStart(response[limit]) {
+		for start := limit - 1; start >= 0 && start >= limit-3; start-- {
+			if utf8.RuneStart(response[start]) {
+				r, size := utf8.DecodeRuneInString(response[start:])
+				if r != utf8.RuneError && start+size > limit {
+					return response[:start]
+				}
+				break
+			}
+		}
+	}
+	return response[:limit]
 }
 
 func sanitizeFileName(fileName string) string {
