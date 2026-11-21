@@ -167,9 +167,14 @@ func (e *Engine) executeTemplateWithTargets(ctx context.Context, template *templ
 			skip = true
 		}
 
-		currentInfo.Lock()
-		currentInfo.InFlight[index] = struct{}{}
-		currentInfo.Unlock()
+		// A skipped position never runs, so cancellation can't cut it off. Marking
+		// it would let an interrupt save it as unfinished, below the progress this
+		// scan loaded, and the next scan would repeat targets that are done.
+		if !skip {
+			currentInfo.Lock()
+			currentInfo.InFlight[index] = struct{}{}
+			currentInfo.Unlock()
+		}
 
 		// Skip if the host has had errors
 		var hostDown bool

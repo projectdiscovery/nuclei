@@ -115,8 +115,7 @@ func downSet(down []string) map[string]bool {
 func resumeFromSaved(t *testing.T, saved *types.ResumeCfg) *types.ResumeCfg {
 	t.Helper()
 
-	saved.ResumeFrom = saved.Current
-	data, err := json.Marshal(saved)
+	data, err := json.Marshal(saved.Snapshot())
 	require.NoError(t, err)
 
 	cfg := types.NewResumeCfg()

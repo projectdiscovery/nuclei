@@ -11,6 +11,7 @@ import (
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/hosterrorscache"
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types/scanstrategy"
@@ -138,24 +139,107 @@ func TestResumeBetweenTargets(t *testing.T) {
 	assert.ElementsMatch(t, inputs, got, "targets of the resumed scan")
 }
 
-// A resumed scan interrupted while it still skips the targets before the
-// position it resumes from has nothing in flight either, and the next resumed
-// scan must still reach every target.
+// skippingCase is a template that the first scan saved, and the targets that a
+// third scan runs after the second scan is interrupted while it still skips the
+// targets the first scan finished.
+type skippingCase struct {
+	name  string
+	first *types.ResumeInfo
+	want  []string
+}
+
+// skippingCases returns the saved states of the first scan over a, b, c and d.
+func skippingCases() []skippingCase {
+	return []skippingCase{
+		// the first scan ran a and b
+		//nolint:exhaustruct,exhaustruct_v5 // zero values are the defaults
+		{name: "in flight", first: &types.ResumeInfo{InFlight: map[uint32]struct{}{2: {}}}, want: []string{"c", "d"}},
+		// the first scan finished the template
+		//nolint:exhaustruct,exhaustruct_v5 // zero values are the defaults
+		{name: "completed", first: &types.ResumeInfo{Completed: true}, want: nil},
+	}
+}
+
+// A resumed scan interrupted while it still skips the targets that the loaded
+// progress marks as done hasn't done anything yet, so its saved progress must
+// keep that mark, and the next resumed scan skips those targets again.
 //
 //nolint:paralleltest // each scan resets the shared HTTP responses of the process
 func TestResumeAgainWhileSkipping(t *testing.T) {
 	inputs := []string{"a", "b", "c", "d"}
 
-	first := types.NewResumeCfg()
-	//nolint:exhaustruct,exhaustruct_v5 // zero values are the defaults
-	first.Current[resumeTemplateID] = &types.ResumeInfo{InFlight: map[uint32]struct{}{2: {}}}
+	for _, test := range skippingCases() {
+		t.Run(test.name, func(t *testing.T) {
+			first := types.NewResumeCfg()
+			first.Current[resumeTemplateID] = test.first
 
-	// the second scan skips a, the targets before c, and is saved before b
-	saved := savedBetween(t, resumeFromSaved(t, first), inputs, 1)
-	require.Empty(t, saved.Current[resumeTemplateID].InFlight)
+			// the second scan skips a, and is saved before b
+			saved := savedBetween(t, resumeFromSaved(t, first), inputs, 1)
+			require.Empty(t, saved.Current[resumeTemplateID].InFlight)
 
-	got := resumedRuns(resumeFromSaved(t, saved), inputs, nil)
-	assert.ElementsMatch(t, inputs, got, "targets of the third scan")
+			got := resumedRuns(resumeFromSaved(t, saved), inputs, nil)
+			assert.ElementsMatch(t, test.want, got, "targets of the third scan")
+		})
+	}
+}
+
+// cancelAtHost cancels the scan when the engine checks the host of input at, as
+// the engine does after it takes the input and before it hands it to a worker.
+type cancelAtHost struct {
+	hosterrorscache.CacheInterface
+
+	at     string
+	cancel context.CancelFunc
+}
+
+func (c *cancelAtHost) Check(_ string, ctx *contextargs.Context) bool {
+	if ctx.MetaInput.Input == c.at {
+		c.cancel()
+	}
+
+	return false
+}
+
+// A scan cancelled right after it takes a target that the loaded progress marks
+// as done never runs that target, so cancellation can't cut it off, and the
+// saved progress must not list it as unfinished below the loaded progress.
+//
+//nolint:paralleltest // each scan resets the shared HTTP responses of the process
+func TestResumeAgainCancelledWhileSkipping(t *testing.T) {
+	inputs := []string{"a", "b", "c", "d"}
+
+	for _, test := range skippingCases() {
+		t.Run(test.name, func(t *testing.T) {
+			first := types.NewResumeCfg()
+			first.Current[resumeTemplateID] = test.first
+
+			second := resumeFromSaved(t, first)
+			engine, _ := newTaskEngine(scanstrategy.TemplateSpray, nil, nil, second)
+
+			ctx, cancel := context.WithCancel(t.Context())
+			defer cancel()
+
+			// b is below the position that the first scan reached
+			engine.executerOpts.HostErrorsCache = &cancelAtHost{CacheInterface: nil, at: "b", cancel: cancel}
+
+			var (
+				runsMu sync.Mutex
+				runs   []string
+			)
+
+			tpls := []*templates.Template{resumeTemplate(&recordingExecuter{path: resumeTemplateID, mu: &runsMu, runs: &runs})}
+			engine.ExecuteScanWithOpts(ctx, tpls, targetsOf(inputs...), true)
+
+			require.Empty(t, runs, "targets of the second scan")
+
+			saved := second.Clone()
+			assert.False(t, saved.Current[resumeTemplateID].Completed, "completed")
+			assert.Empty(t, saved.Current[resumeTemplateID].InFlight, "positions in flight")
+
+			got := resumedRuns(resumeFromSaved(t, saved), inputs, nil)
+			assert.ElementsMatch(t, test.want, got, "targets of the third scan")
+		})
+	}
 }
 
 // A scan cancelled while a target runs leaves that target unfinished and the
@@ -443,4 +527,192 @@ func TestHostSprayResumeInfoOfLaterRun(t *testing.T) {
 	assert.NotSame(t, later, cfg.Current[hostSprayResumeID], "the later run's progress is not saved")
 	assert.True(t, firstLoaded.Completed, "the first run keeps the progress it loaded")
 	assert.Equal(t, []uint32{1}, slices.Sorted(maps.Keys(first.InFlight)), "the first run keeps its positions")
+}
+
+// Snapshot keeps the entry a scan loaded when the current one is idle, so a
+// later host-spray run must leave both maps empty. Otherwise the file the
+// interrupted scan saves would carry the loaded entry for a run that tracks
+// nothing.
+func TestSnapshotAfterLaterHostSprayRun(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name   string
+		loaded *types.ResumeInfo
+	}{
+		//nolint:exhaustruct,exhaustruct_v5 // zero values are the defaults
+		{name: "completed", loaded: &types.ResumeInfo{Completed: true}},
+		//nolint:exhaustruct,exhaustruct_v5 // zero values are the defaults
+		{name: "in flight", loaded: &types.ResumeInfo{InFlight: map[uint32]struct{}{5: {}}}},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+
+			cfg := types.NewResumeCfg()
+			cfg.ResumeFrom[hostSprayResumeID] = test.loaded
+			cfg.Compile()
+
+			engine, _ := newTaskEngine(scanstrategy.HostSpray, nil, nil, cfg)
+			first, _ := engine.hostSprayResumeInfo()
+			first.InFlight[1] = struct{}{}
+
+			engine.hostSprayResumeInfo()
+
+			saved := cfg.Snapshot().ResumeFrom
+			require.Contains(t, saved, hostSprayResumeID, "saved entry")
+			assert.False(t, saved[hostSprayResumeID].Completed, "completed")
+			assert.Empty(t, saved[hostSprayResumeID].InFlight, "positions in flight")
+		})
+	}
+}
+
+// namedTemplate returns a template that runs executer under its own ID.
+func namedTemplate(id string, executer protocols.Executer) *templates.Template {
+	//nolint:exhaustruct,exhaustruct_v5 // zero values are the defaults
+	return &templates.Template{ID: id, Path: id, TotalRequests: 1, Executer: executer}
+}
+
+// resumedPairs returns the template and input pairs that a scan resumed from
+// cfg runs.
+func resumedPairs(cfg *types.ResumeCfg, inputs []string, ids ...string) []string {
+	return resumedPairsWithContext(context.Background(), cfg, inputs, ids...)
+}
+
+// resumedPairsWithContext is resumedPairs for a scan that runs under ctx.
+func resumedPairsWithContext(ctx context.Context, cfg *types.ResumeCfg, inputs []string, ids ...string) []string {
+	var (
+		runsMu sync.Mutex
+		runs   []string
+	)
+
+	tpls := make([]*templates.Template, 0, len(ids))
+	for _, id := range ids {
+		tpls = append(tpls, namedTemplate(id, &recordingExecuter{path: id, mu: &runsMu, runs: &runs}))
+	}
+
+	engine, _ := newTaskEngine(scanstrategy.TemplateSpray, nil, nil, cfg)
+	engine.ExecuteScanWithOpts(ctx, tpls, targetsOf(inputs...), true)
+
+	return runs
+}
+
+// savedAfterFinishingT1 runs a first scan of t1 and t2 over inputs, and returns
+// the progress saved once t1 is complete and t2 is held on b, which is the only
+// target of t2 in flight.
+func savedAfterFinishingT1(t *testing.T, inputs []string) *types.ResumeCfg {
+	t.Helper()
+
+	cfg := types.NewResumeCfg()
+	engine, _ := newTaskEngine(scanstrategy.TemplateSpray, nil, nil, cfg)
+	executer := &holdExecuter{hold: "b", held: make(chan struct{}), release: make(chan struct{})}
+	release := sync.OnceFunc(func() { close(executer.release) })
+	t.Cleanup(release)
+
+	var (
+		runsMu sync.Mutex
+		runs   []string
+	)
+
+	done := make(chan struct{})
+
+	go func() {
+		defer close(done)
+
+		tpls := []*templates.Template{
+			namedTemplate("t1", &recordingExecuter{path: "t1", mu: &runsMu, runs: &runs}),
+			namedTemplate("t2", executer),
+		}
+
+		engine.ExecuteScanWithOpts(context.Background(), tpls, targetsOf(inputs...), true)
+	}()
+
+	select {
+	case <-executer.held:
+	case <-time.After(10 * time.Second):
+		t.Fatal("the first scan never reached b")
+	}
+
+	var (
+		saved   *types.ResumeCfg
+		reached bool
+	)
+
+	deadline := time.Now().Add(2 * time.Second)
+
+	for !reached && time.Now().Before(deadline) {
+		time.Sleep(time.Millisecond)
+
+		saved = cfg.Snapshot()
+
+		t1, t2 := saved.ResumeFrom["t1"], saved.ResumeFrom["t2"]
+		reached = t1 != nil && t1.Completed && t2 != nil && slices.Equal(slices.Sorted(maps.Keys(t2.InFlight)), []uint32{1})
+	}
+
+	if !reached {
+		t.Fatal("the first scan never completed t1 with only b of t2 in flight")
+	}
+
+	release()
+	<-done
+
+	return saved
+}
+
+// A resumed scan that an interrupt stops before it reaches some templates must
+// save the progress it loaded for them, or the next resumed scan runs again what
+// the first scan finished.
+//
+//nolint:paralleltest // each scan resets the shared HTTP responses of the process
+func TestResumeAgainKeepsProgressOfUnreachedTemplates(t *testing.T) {
+	inputs := []string{"a", "b", "c"}
+	saved1 := savedAfterFinishingT1(t, inputs)
+
+	t.Run("before any template", func(t *testing.T) {
+		// the second scan is interrupted before it starts a template
+		second := resumeFromSaved(t, saved1)
+		ctx, cancel := context.WithCancel(t.Context())
+		cancel()
+
+		got := resumedPairsWithContext(ctx, second, inputs, "t1", "t2")
+		require.Empty(t, got, "pairs of the interrupted second scan")
+
+		got = resumedPairs(resumeFromSaved(t, second), inputs, "t1", "t2")
+		assert.ElementsMatch(t, []string{"t2@b", "t2@c"}, got, "pairs of the third scan")
+	})
+
+	t.Run("after one template", func(t *testing.T) {
+		// the second scan runs t2 only, and stops while it runs c
+		second := resumeFromSaved(t, saved1)
+		engine, _ := newTaskEngine(scanstrategy.TemplateSpray, nil, nil, second)
+		executer := &holdExecuter{hold: "c", held: make(chan struct{}), release: make(chan struct{})}
+		release := sync.OnceFunc(func() { close(executer.release) })
+		t.Cleanup(release)
+
+		ctx, cancel := context.WithCancel(t.Context())
+		defer cancel()
+
+		done := make(chan struct{})
+
+		go func() {
+			defer close(done)
+
+			engine.ExecuteScanWithOpts(ctx, []*templates.Template{namedTemplate("t2", executer)}, targetsOf(inputs...), true)
+		}()
+
+		select {
+		case <-executer.held:
+		case <-time.After(10 * time.Second):
+			t.Fatal("the second scan never reached c")
+		}
+
+		savedWhenInFlight(t, second, "t2", 2)
+		cancel()
+		release()
+		<-done
+
+		got := resumedPairs(resumeFromSaved(t, second), inputs, "t1", "t2")
+		assert.ElementsMatch(t, []string{"t2@c"}, got, "pairs of the third scan")
+	})
 }
