@@ -56,6 +56,9 @@ var (
 	inlineSecretsTempMu  sync.Mutex
 )
 
+// defaultMaxHostError is the default of -max-host-error.
+const defaultMaxHostError = 30
+
 // normalizeHeaderValue trims a -H value and drops it when the whole line is a
 // "#" comment. The goflags default strips inline comments, which cut values
 // such as "Cookie: color=#fff" at the "#".
@@ -307,7 +310,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.StringVarP(&options.TargetsFilePath, "list", "l", "", "path to file containing a list of target URLs/hosts to scan (one per line)"),
 		flagSet.StringVarP(&options.InlineTargetsList, "targets-inline", "", "", "inline multiline target list (for use in template profiles)"),
 		flagSet.StringSliceVarP(&options.ExcludeTargets, "exclude-hosts", "eh", nil, "hosts to exclude to scan from the input list (ip, cidr, hostname)", goflags.FileNormalizedOriginalStringSliceOptions),
-		flagSet.StringVar(&options.Resume, "resume", "", "resume scan from and save to specified file (clustering will be disabled)"),
+		flagSet.StringVar(&options.Resume, "resume", "", "resume scan from and save to specified file"),
 		flagSet.BoolVarP(&options.ScanAllIPs, "scan-all-ips", "sa", false, "scan all the IP's associated with dns record"),
 		flagSet.StringSliceVarP(&options.IPVersion, "ip-version", "iv", nil, "IP version to scan of hostname (4,6); default uses dialer fallback, -sa scans all addresses", goflags.CommaSeparatedStringSliceOptions),
 		flagSet.BoolVarP(&options.DisableURLNormalization, "disable-url-normalization", "dun", false, "keep targets exactly as supplied instead of collapsing urls that address the same resource"),
@@ -496,7 +499,10 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.IntVar(&options.Timeout, "timeout", 10, "time to wait in seconds before timeout"),
 		flagSet.IntVar(&options.Retries, "retries", 1, "number of times to retry a failed request"),
 		flagSet.BoolVarP(&options.LeaveDefaultPorts, "leave-default-ports", "ldp", false, "leave default HTTP/HTTPS ports (eg. host:80,host:443)"),
-		flagSet.IntVarP(&options.MaxHostError, "max-host-error", "mhe", 30, "max errors for a host before skipping from scan"),
+		flagSet.IntVarP(
+			&options.MaxHostError, "max-host-error", "mhe", defaultMaxHostError,
+			"max http errors for a host:port before skipping requests to it",
+		),
 		flagSet.StringSliceVarP(&options.TrackError, "track-error", "te", nil, "adds given error to max-host-error watchlist (standard, file)", goflags.FileStringSliceOptions),
 		flagSet.BoolVarP(&options.NoHostErrors, "no-mhe", "nmhe", false, "disable skipping host from scan based on errors"),
 		flagSet.BoolVar(&options.Project, "project", false, "use a project folder to avoid sending same request multiple times"),

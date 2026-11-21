@@ -26,6 +26,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/helpers/eventcreator"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/helpers/responsehighlighter"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/hosterrorscache" //nolint:depguard // No depguard rules are configured, so its default list allows only the standard library.
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/interactsh"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/render"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/replacer"
@@ -121,6 +122,7 @@ func (request *Request) ExecuteWithResults(target *contextargs.Context, metadata
 		callback(event)
 	}
 
+	var skipped bool
 	for _, port := range ports {
 		input := target.Clone()
 		// use network port updates input with new port requested in template file
@@ -129,12 +131,20 @@ func (request *Request) ExecuteWithResults(target *contextargs.Context, metadata
 		if err := input.UseNetworkPort(port, request.ExcludePorts); err != nil {
 			gologger.Debug().Msgf("Could not network port from constants: %s\n", err)
 		}
-		if err := request.executeOnTarget(input, visitedAddresses, metadata, previous, wrappedCallback); err != nil {
-			return err
+
+		targetErr := request.executeOnTarget(input, visitedAddresses, metadata, previous, wrappedCallback)
+		if stderrors.Is(targetErr, hosterrorscache.ErrUnresponsiveHost) {
+			skipped = true
+		} else if targetErr != nil {
+			return targetErr
 		}
 		if shouldStopAtFirstMatch && atomicBool.Load() {
 			break
 		}
+	}
+
+	if skipped {
+		return hosterrorscache.ErrUnresponsiveHost
 	}
 
 	return nil
@@ -143,11 +153,6 @@ func (request *Request) ExecuteWithResults(target *contextargs.Context, metadata
 func (request *Request) executeOnTarget(input *contextargs.Context, visited mapsutil.Map[string, struct{}], metadata, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
 	var address string
 	var err error
-
-	if request.isUnresponsiveAddress(input) {
-		// skip on unresponsive address no need to continue
-		return nil
-	}
 
 	if request.SelfContained {
 		address = ""
@@ -187,6 +192,11 @@ func (request *Request) executeOnTarget(input *contextargs.Context, visited maps
 		callback(event)
 	}
 
+	var (
+		skipped bool
+		failErr error
+	)
+
 	for _, kv := range request.addresses {
 		select {
 		case <-input.Context().Done():
@@ -202,16 +212,36 @@ func (request *Request) executeOnTarget(input *contextargs.Context, visited maps
 
 		visited.Set(actualAddress, struct{}{})
 
-		if err = request.executeAddress(variables, actualAddress, address, input, kv.tls, previous, interactshURLs, wrappedCallback); err != nil {
+		addressErr := request.executeAddress(variables, actualAddress, address, input, kv.tls, previous,
+			interactshURLs, wrappedCallback)
+
+		switch {
+		case stderrors.Is(addressErr, hosterrorscache.ErrUnresponsiveHost):
+			// A failed address takes precedence over the skip, which is
+			// reported below only when no address failed.
+			skipped = true
+		case addressErr != nil:
+			err = addressErr
+			failErr = addressErr
 			outputEvent := request.responseToDSLMap("", "", "", address, "")
 			gologger.Warning().Msgf("[%v] Could not make network request for (%s) : %s\n", request.options.TemplateID, actualAddress, err)
 
 			callback(&output.InternalWrappedEvent{InternalEvent: outputEvent})
+		default:
+			err = nil
 		}
 
 		if shouldStopAtFirstMatch && atomicBool.Load() {
 			break
 		}
+	}
+
+	if skipped {
+		if failErr != nil {
+			return failErr
+		}
+
+		return hosterrorscache.ErrUnresponsiveHost
 	}
 
 	return err
@@ -238,6 +268,7 @@ func (request *Request) executeAddress(variables map[string]interface{}, actualA
 		iterator := request.generator.NewIterator()
 		var multiErr error
 		m := &sync.Mutex{}
+		skipped := &atomic.Bool{}
 		swg, err := syncutil.New(syncutil.WithSize(request.Threads))
 		if err != nil {
 			return err
@@ -265,8 +296,15 @@ func (request *Request) executeAddress(variables map[string]interface{}, actualA
 				}
 			}
 			if request.isUnresponsiveAddress(updatedTarget) {
-				// skip on unresponsive address no need to continue
-				return nil
+				// The remaining payloads would be skipped as well, so they count
+				// as processed here. Value has taken this payload, so Remaining
+				// counts only the ones after it. Wait for the running ones, as
+				// an error of theirs takes precedence.
+				//nolint:gosec // at least 1, as this payload was taken
+				request.options.Progress.SetRequests(uint64(iterator.Remaining() + 1))
+				skipped.Store(true)
+
+				break payloadLoop
 			}
 
 			renderedValue, err := render.RenderMap(render.MapInput{
@@ -290,12 +328,11 @@ func (request *Request) executeAddress(variables map[string]interface{}, actualA
 			go func(vars map[string]interface{}, urls []string) {
 				defer swg.Done()
 
-				if request.isUnresponsiveAddress(updatedTarget) {
-					// skip on unresponsive address no need to continue
-					return
-				}
-
-				if err := request.executeRequestWithPayloads(variables, actualAddress, address, input, shouldUseTLS, vars, previous, urls, callback); err != nil {
+				err := request.executeRequestWithPayloads(variables, actualAddress, address, input, shouldUseTLS, vars,
+					previous, urls, callback)
+				if stderrors.Is(err, hosterrorscache.ErrUnresponsiveHost) {
+					skipped.Store(true)
+				} else if err != nil {
 					m.Lock()
 					multiErr = multierr.Append(multiErr, err)
 					m.Unlock()
@@ -310,6 +347,10 @@ func (request *Request) executeAddress(variables map[string]interface{}, actualA
 
 		if multiErr != nil {
 			return multiErr
+		}
+
+		if skipped.Load() {
+			return hosterrorscache.ErrUnresponsiveHost
 		}
 	} else {
 		value := maps.Clone(payloads)
@@ -334,8 +375,10 @@ func (request *Request) executeRequestWithPayloads(variables map[string]interfac
 	updatedTarget.MetaInput.Input = actualAddress
 
 	if request.isUnresponsiveAddress(updatedTarget) {
-		// skip on unresponsive address no need to continue
-		return nil
+		// A skip is a processed request, not an error.
+		request.options.Progress.IncrementRequests()
+
+		return hosterrorscache.ErrUnresponsiveHost
 	}
 
 	if err := request.options.HostBackoffWait(input.Context(), actualAddress); err != nil {
@@ -593,6 +636,13 @@ func getAddress(toTest string) (string, error) {
 			return "", err
 		}
 		toTest = parsed.Host
+
+		if parsed.Scheme == "https" && parsed.Port() == "" {
+			// With no template port, an https URL reaches here without one,
+			// since Transform leaves the port to UseNetworkPort. Dial the
+			// scheme's default port.
+			toTest = net.JoinHostPort(parsed.Hostname(), "443")
+		}
 	}
 	return toTest, nil
 }
