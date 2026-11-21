@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"errors"
 	"io"
 	"os"
 	"sync"
@@ -327,6 +328,8 @@ func (e *NucleiEngine) ExecuteCallbackWithCtx(ctx context.Context, callback ...f
 		return ErrNoTemplatesAvailable
 	}
 
+	e.resetResumeProgress()
+
 	var wg sync.WaitGroup
 	wg.Add(1)
 	go func() {
@@ -338,6 +341,18 @@ func (e *NucleiEngine) ExecuteCallbackWithCtx(ctx context.Context, callback ...f
 	select {
 	case <-ctx.Done():
 		<-wait(&wg) // wait for scan to finish
+
+		// Only a cancelled scan saves its progress; a finished scan has nothing
+		// to resume.
+		if e.opts.Resume != "" {
+			err := e.saveResumeCfg()
+			if err != nil {
+				// Join the save error so the caller learns the file was not
+				// written, while errors.Is still matches the context error.
+				return errors.Join(ctx.Err(), err)
+			}
+		}
+
 		return ctx.Err()
 	case <-wait(&wg):
 		// scan finished
