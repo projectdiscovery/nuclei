@@ -429,9 +429,6 @@ func (e *ClusterExecuter) Execute(ctx *scan.ScanContext) (bool, error) {
 		}
 	}
 
-	if e.options.HostErrorsCache != nil && e.templateType != types.HTTPProtocol {
-		e.options.HostErrorsCache.MarkFailedOrRemove(e.templateType.String(), ctx.Input, err)
-	}
 	// A skip is reported like the engine's own skip of a target: in the
 	// failure event, without a warning.
 	if errors.Is(err, hosterrorscache.ErrUnresponsiveHost) {
@@ -477,9 +474,6 @@ func (e *ClusterExecuter) ExecuteWithResults(ctx *scan.ScanContext) ([]*output.R
 		ctx.LogError(err)
 	}
 
-	if e.options.HostErrorsCache != nil && e.templateType != types.HTTPProtocol {
-		e.options.HostErrorsCache.MarkFailedOrRemove(e.templateType.String(), ctx.Input, err)
-	}
 	// The skip is logged on ctx above, so the caller does not warn about it as
 	// it would about a failed request.
 	if errors.Is(err, hosterrorscache.ErrUnresponsiveHost) {

@@ -50,6 +50,7 @@ func TestClusterTotalIsTheRequestsTotal(t *testing.T) {
 				ID:   "cluster-total",
 				Info: model.Info{SeverityHolder: severity.Holder{Severity: severity.Low}, Name: clusterTotalName},
 			})
+			t.Cleanup(executerOpts.RateLimiter.Stop)
 
 			members := make([]*templates.Template, 0, 2)
 

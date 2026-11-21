@@ -57,6 +57,30 @@ func TestUseNetworkPort(t *testing.T) {
 			wantInput:    "example.com:9090",
 		},
 		{
+			name:         "https single-label host keeps its name",
+			input:        "https://intranet",
+			templatePort: "22",
+			wantInput:    "intranet:22",
+		},
+		{
+			name:         "http single-label host keeps its name",
+			input:        "http://intranet",
+			templatePort: "22",
+			wantInput:    "intranet:22",
+		},
+		{
+			name:         "bare single-label host keeps its name",
+			input:        "intranet",
+			templatePort: "22",
+			wantInput:    "intranet:22",
+		},
+		{
+			name:         "single-label host with path and userinfo keeps its name",
+			input:        "https://user@intranet/login?x=1",
+			templatePort: "22",
+			wantInput:    "intranet:22",
+		},
+		{
 			name:         "http scheme with path and no port uses template port",
 			input:        "http://example.com/some/path",
 			templatePort: "8888",
