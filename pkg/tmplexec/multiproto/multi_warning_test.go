@@ -23,18 +23,22 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils"
 )
 
-var errRefused = errors.New("connection refused")
+var (
+	errRefused   = errors.New("connection refused")
+	errHandshake = errors.New("could not do tls handshake")
+)
 
-// countingRequest is a request that sends nothing, counts its executions and
-// returns err.
+// countingRequest is a request of the given protocol that sends nothing,
+// counts its executions and returns err.
 type countingRequest struct {
 	protocols.Request
 
-	err   error
-	calls *int
+	protocolType templateTypes.ProtocolType
+	err          error
+	calls        *int
 }
 
-func (r countingRequest) Type() templateTypes.ProtocolType { return templateTypes.HTTPProtocol }
+func (r countingRequest) Type() templateTypes.ProtocolType { return r.protocolType }
 
 func (r countingRequest) GetID() string { return "" }
 
@@ -54,11 +58,14 @@ func (r countingRequest) ExecuteWithResults(
 func TestFailedRequestWarns(t *testing.T) {
 	tests := []struct {
 		name         string
+		protocolType templateTypes.ProtocolType
 		err          error
 		wantWarnings int
 	}{
-		{name: "skip", err: hosterrorscache.ErrUnresponsiveHost, wantWarnings: 0},
-		{name: "failure", err: errRefused, wantWarnings: 1},
+		{name: "skip", protocolType: templateTypes.HTTPProtocol, err: hosterrorscache.ErrUnresponsiveHost, wantWarnings: 0},
+		{name: "failure", protocolType: templateTypes.HTTPProtocol, err: errRefused, wantWarnings: 1},
+		// a tls handshake error is no exception in an ssl block
+		{name: "ssl handshake failure", protocolType: templateTypes.SSLProtocol, err: errHandshake, wantWarnings: 1},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
@@ -76,8 +83,8 @@ func TestFailedRequestWarns(t *testing.T) {
 
 			engine := multiproto.NewMultiProtocol(
 				[]protocols.Request{
-					countingRequest{err: test.err, calls: &failedCalls},
-					countingRequest{calls: &nextCalls},
+					countingRequest{protocolType: test.protocolType, err: test.err, calls: &failedCalls},
+					countingRequest{protocolType: templateTypes.HTTPProtocol, calls: &nextCalls},
 				},
 				&protocols.ExecutorOptions{TemplateID: "t", Options: &types.Options{}},
 				nil,
@@ -141,7 +148,7 @@ func TestCanceledRequestReturnsContextError(t *testing.T) {
 	engine := multiproto.NewMultiProtocol(
 		[]protocols.Request{
 			cancelingRequest{cancel: cancel},
-			countingRequest{calls: &nextCalls},
+			countingRequest{protocolType: templateTypes.HTTPProtocol, calls: &nextCalls},
 		},
 		&protocols.ExecutorOptions{TemplateID: "t", Options: &types.Options{}},
 		nil,
