@@ -320,3 +320,262 @@ func TestPipelineSkipsUnresponsiveAddressDuringBudgetWait(t *testing.T) {
 		t.Fatal("the block did not return")
 	}
 }
+
+// countingServer serves skipOK, and counts the requests it gets and the
+// connections they arrive on.
+type countingServer struct {
+	*httptest.Server
+
+	requests    atomic.Int32
+	connections atomic.Int32
+}
+
+// newCountingServer starts a countingServer, with TLS when useTLS is set.
+//
+//nolint:exhaustruct,exhaustruct_v5 // the counters start at zero
+func newCountingServer(t *testing.T, useTLS bool) *countingServer {
+	t.Helper()
+
+	server := &countingServer{}
+	handler := http.HandlerFunc(func(writer http.ResponseWriter, _ *http.Request) {
+		server.requests.Add(1)
+
+		_, _ = io.WriteString(writer, skipOK)
+	})
+
+	server.Server = httptest.NewUnstartedServer(handler)
+	server.Config.ConnState = func(_ net.Conn, state http.ConnState) {
+		if state == http.StateNew {
+			server.connections.Add(1)
+		}
+	}
+
+	if useTLS {
+		server.StartTLS()
+	} else {
+		server.Start()
+	}
+
+	t.Cleanup(server.Close)
+
+	return server
+}
+
+// A pipelined request goes to the address of its URL, not to the target's, and
+// the block keeps one connection to each address (#8225).
+//
+//nolint:paralleltest // testutils.Init state is shared
+func TestPipelineSendsToAddressOfItsURL(t *testing.T) {
+	target, other := newCountingServer(t, false), newCountingServer(t, false)
+
+	request := pipelined("pipe-other-address", map[string]any{"v": numberedPayloads(3)},
+		"http://{{Host}}:"+serverPort(t, other.Server)+"/other?x={{v}}", skipPathPayload)
+	request.Operators = matchStatusOK()
+	progress := compileWithCache(t, request, newDownHostErrorsCache(false))
+
+	events, err := executeSkippable(request, target.URL)
+
+	require.NoError(t, err)
+	require.Equal(t, 6, events)
+	require.EqualValues(t, 3, other.requests.Load(), "requests to the other address")
+	require.EqualValues(t, 1, other.connections.Load(), "connections to the other address")
+	require.EqualValues(t, 3, target.requests.Load(), "requests to the target")
+	require.EqualValues(t, 1, target.connections.Load(), "connections to the target")
+	require.EqualValues(t, 6, progress.requests.Load(), "requests processed")
+}
+
+// A pipelined request to a target without a port dials the port of its scheme,
+// as a request that is not pipelined does (#8213). Nothing listens on 80 or
+// 443 here, so the dial fails, and its error names the address. The test skips
+// where something does listen.
+//
+//nolint:paralleltest // testutils.Init state is shared
+func TestPipelineDialsDefaultPort(t *testing.T) {
+	for scheme, port := range map[string]string{"http": "80", "https": "443"} {
+		t.Run(scheme, func(t *testing.T) {
+			request := pipelined("pipe-default-port-"+scheme, nil, "{{BaseURL}}/x")
+			compileWithCache(t, request, newDownHostErrorsCache(false))
+
+			_, err := executeSkippable(request, scheme+"://127.0.0.1")
+			if err == nil {
+				t.Skipf("something answers on 127.0.0.1:%s", port)
+			}
+
+			require.NotContains(t, err.Error(), "port was not specified")
+			require.Contains(t, err.Error(), "127.0.0.1:"+port, "the address that was dialed")
+		})
+	}
+}
+
+// A raw pipelined request goes to the address and scheme of its own URL, which
+// a @Host annotation sets, not to the target's (#8225).
+//
+//nolint:exhaustruct,exhaustruct_v5,paralleltest // fixtures keep zero-value defaults; testutils.Init state is shared
+func TestPipelineRawSendsToAddressOfItsURL(t *testing.T) {
+	tests := []struct {
+		name   string
+		useTLS bool
+		unsafe bool
+		// schemeless makes the annotated server the target, and names it
+		// without a scheme, so the input does not say it speaks TLS.
+		schemeless bool
+	}{
+		{name: "unsafe", unsafe: true},
+		{name: "safe"},
+		{name: "unsafe to TLS from plain target", useTLS: true, unsafe: true},
+		{name: "safe to TLS from plain target", useTLS: true},
+		{name: "unsafe to TLS from scheme-less target", useTLS: true, unsafe: true, schemeless: true},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			target, other := newCountingServer(t, false), newCountingServer(t, test.useTLS)
+			address := other.Listener.Addr().String()
+			scheme := "http"
+
+			if test.useTLS {
+				scheme = "https"
+			}
+
+			request := pipelined("pipe-raw-address", nil)
+			request.Path, request.Unsafe = nil, test.unsafe
+			request.Raw = []string{"@Host: " + scheme + "://" + address + "\nGET /raw HTTP/1.1\nHost: " + address +
+				"\nConnection: keep-alive\n\n"}
+			compileWithCache(t, request, newDownHostErrorsCache(false))
+
+			input := target.URL
+			if test.schemeless {
+				input, target = address, other
+			}
+
+			_, err := executeSkippable(request, input)
+
+			require.NoError(t, err)
+			require.EqualValues(t, 1, other.requests.Load(), "requests to the annotated address")
+
+			if !test.schemeless {
+				require.Zero(t, target.requests.Load(), "requests to the target")
+			}
+		})
+	}
+}
+
+// The target's own address is down, but a request to another port of the same
+// host is not, so the block sends it (#8201).
+//
+//nolint:paralleltest // testutils.Init state is shared
+func TestPipelineRequestsToOtherPortAreSent(t *testing.T) {
+	server, received := serverCountingHits(t)
+	request := pipelined("pipe-other-port", map[string]any{"v": numberedPayloads(3)},
+		"http://{{Host}}:"+serverPort(t, server)+"/?x={{v}}")
+	progress := compileWithCache(t, request, newDownHostErrorsCache(false, schemelessAddress))
+
+	_, err := executeSkippable(request, "https://"+schemelessTarget)
+
+	require.NoError(t, err)
+	require.EqualValues(t, 3, received.Load(), "every request is sent")
+	require.EqualValues(t, 3, progress.requests.Load(), "requests processed")
+	require.Zero(t, progress.errors.Load())
+}
+
+// A down address skips only its own requests: the ones to the other address
+// are sent, the skip is reported once the block ends, and each request counts
+// once.
+//
+//nolint:paralleltest // testutils.Init state is shared
+func TestPipelineSkipDoesNotStopRequestsToOtherAddress(t *testing.T) {
+	server, received := serverCountingHits(t)
+	down := closedAddress(t)
+	request := pipelined("pipe-skip-other-address", map[string]any{"v": numberedPayloads(2)},
+		"http://"+down+"/?x={{v}}", "{{BaseURL}}/?x={{v}}")
+	progress := compileWithCache(t, request, newDownHostErrorsCache(false, down))
+
+	_, err := executeSkippable(request, server.URL)
+
+	require.ErrorIs(t, err, hosterrorscache.ErrUnresponsiveHost)
+	require.EqualValues(t, 2, received.Load(), "the requests to the live server are sent")
+	require.EqualValues(t, 4, progress.requests.Load(), "every request is processed once")
+	require.Zero(t, progress.errors.Load(), "a skipped request does not count as an error")
+}
+
+// An address that fails while the block runs does not end it: the requests to
+// the other address go on, and the failure is the error to report.
+//
+//nolint:paralleltest // testutils.Init state is shared
+func TestPipelineFailureDoesNotStopRequestsToOtherAddress(t *testing.T) {
+	server, received := serverCountingHits(t)
+	closed := closedAddress(t)
+	request := pipelined("pipe-failure-other-address", map[string]any{"v": numberedPayloads(1)},
+		"http://"+closed+"/?x={{v}}", "{{BaseURL}}/?x={{v}}")
+	cache := newDownHostErrorsCache(true)
+	progress := compileWithCache(t, request, cache)
+
+	// Hold the second request back until the first one's failure has marked
+	// its address, which is when a block that ends on a down address stops.
+	progress.onRequest = func(count int64) {
+		if count != 2 {
+			return
+		}
+
+		deadline := time.Now().Add(10 * time.Second)
+
+		for time.Now().Before(deadline) {
+			cache.mu.Lock()
+			down := cache.down[closed]
+			cache.mu.Unlock()
+
+			if down {
+				time.Sleep(50 * time.Millisecond)
+
+				return
+			}
+
+			time.Sleep(time.Millisecond)
+		}
+
+		t.Error("the first request did not mark its address")
+	}
+
+	_, err := executeSkippable(request, server.URL)
+
+	require.Error(t, err)
+	require.NotErrorIs(t, err, hosterrorscache.ErrUnresponsiveHost)
+	require.Contains(t, err.Error(), closed)
+	require.EqualValues(t, 1, received.Load(), "the request to the live server is sent")
+	require.EqualValues(t, 2, progress.requests.Load(), "every request is processed once")
+}
+
+// A pipeline client with a custom dialer gets no default port from rawhttp, so
+// pipelineAddress gives the port of the scheme, and keeps a host with a single
+// label, such as an intranet or Docker name (#8213, #8225).
+func TestPipelineAddress(t *testing.T) {
+	t.Parallel()
+
+	const (
+		secureHost = "https://example.com/x"
+		secureWeb  = "https://web"
+	)
+
+	tests := map[string]string{
+		"http://127.0.0.1:18214/pipe": "127.0.0.1:18214",
+		"http://example.com/x":        "example.com:80",
+		secureHost:                    "example.com:443",
+		"http://example.com:8080/x":   "example.com:8080",
+		"http://intranet/x":           "intranet:80",
+		"http://intranet":             "intranet:80",
+		secureWeb:                     "web:443",
+		"http://[::1]/x":              "[::1]:80",
+		"https://[::1]:8443/x":        "[::1]:8443",
+		"127.0.0.1:9/x":               "127.0.0.1:9",
+		"example.com/x":               "example.com:80",
+		"":                            "",
+	}
+
+	for requestURL, want := range tests {
+		t.Run(requestURL, func(t *testing.T) {
+			t.Parallel()
+
+			require.Equal(t, want, httpprotocol.PipelineAddress(requestURL))
+		})
+	}
+}
