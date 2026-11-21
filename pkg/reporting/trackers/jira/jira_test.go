@@ -1,7 +1,9 @@
 package jira
 
 import (
+	"fmt"
 	"net/http"
+	"net/http/httptest"
 	"os"
 	"strings"
 	"testing"
@@ -14,6 +16,188 @@ import (
 	"github.com/projectdiscovery/retryablehttp-go"
 	"github.com/stretchr/testify/require"
 )
+
+func TestCloseIssueUsesServerSearchResult(t *testing.T) {
+	transitionCalls := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.Method == http.MethodGet && strings.HasSuffix(r.URL.Path, "/search"):
+			_, _ = w.Write([]byte(`{"issues":[{"id":"10001","key":"TEST-1","fields":{"status":{"name":"Open"}}}]}`))
+		case r.Method == http.MethodGet && strings.HasSuffix(r.URL.Path, "/search/jql"):
+			http.Error(w, "", http.StatusForbidden)
+		case r.Method == http.MethodGet && strings.HasSuffix(r.URL.Path, "/transitions"):
+			_, _ = w.Write([]byte(`{"transitions":[{"id":"5","to":{"name":"Done"}}]}`))
+		case r.Method == http.MethodPost && strings.HasSuffix(r.URL.Path, "/transitions"):
+			transitionCalls++
+			w.WriteHeader(http.StatusNoContent)
+		default:
+			http.Error(w, "unexpected endpoint", http.StatusNotFound)
+		}
+	}))
+	defer server.Close()
+
+	integration, err := New(&Options{URL: server.URL, AccountID: "test", Token: "test", ProjectName: "TEST", StatusNot: "Done"})
+	require.NoError(t, err)
+	err = integration.CloseIssue(&output.ResultEvent{TemplateID: "pdcp-verify", Host: "example.test", Info: model.Info{Name: "Test issue"}})
+	require.NoError(t, err)
+	require.Equal(t, 1, transitionCalls)
+}
+
+func TestCloseIssueFindsOpenIssueWhenOlderMatchIsDone(t *testing.T) {
+	transitioned := ""
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.Method == http.MethodGet && strings.HasSuffix(r.URL.Path, "/search"):
+			if strings.Contains(r.URL.Query().Get("jql"), `status != "Done"`) {
+				_, _ = w.Write([]byte(`{"issues":[{"id":"10002","key":"TEST-2"}]}`))
+			} else {
+				_, _ = w.Write([]byte(`{"issues":[{"id":"10001","key":"TEST-1"}]}`))
+			}
+		case r.Method == http.MethodGet && strings.HasSuffix(r.URL.Path, "/issue/10001/transitions"):
+			_, _ = w.Write([]byte(`{"transitions":[]}`))
+		case r.Method == http.MethodGet && strings.HasSuffix(r.URL.Path, "/issue/10001"):
+			_, _ = w.Write([]byte(`{"fields":{"status":{"name":"Done"}}}`))
+		case r.Method == http.MethodGet && strings.HasSuffix(r.URL.Path, "/issue/10002/transitions"):
+			_, _ = w.Write([]byte(`{"transitions":[{"id":"5","to":{"name":"Done"}}]}`))
+		case r.Method == http.MethodPost && strings.HasSuffix(r.URL.Path, "/issue/10002/transitions"):
+			transitioned = "10002"
+			w.WriteHeader(http.StatusNoContent)
+		default:
+			http.Error(w, "unexpected endpoint", http.StatusNotFound)
+		}
+	}))
+	defer server.Close()
+
+	integration, err := New(&Options{URL: server.URL, AccountID: "test", Token: "test", ProjectName: "TEST", StatusNot: "Done"})
+	require.NoError(t, err)
+	err = integration.CloseIssue(&output.ResultEvent{TemplateID: "pdcp-verify", Host: "example.test", Info: model.Info{Name: "Test issue"}})
+	require.NoError(t, err)
+	require.Equal(t, "10002", transitioned)
+}
+
+func TestCloseIssueSearchesConfiguredProjectWhenEventHasAnotherJiraID(t *testing.T) {
+	searchCalls, transitionCalls := 0, 0
+	searchJQL := ""
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.Method == http.MethodGet && strings.HasSuffix(r.URL.Path, "/search"):
+			searchCalls++
+			searchJQL = r.URL.Query().Get("jql")
+			_, _ = w.Write([]byte(`{"issues":[{"id":"123","key":"TEST-1","fields":{"status":{"name":"Open"}}}]}`))
+		case r.Method == http.MethodGet && strings.HasSuffix(r.URL.Path, "/search/jql"):
+			http.Error(w, "", http.StatusForbidden)
+		case r.Method == http.MethodGet && strings.HasSuffix(r.URL.Path, "/issue/123/transitions"):
+			_, _ = w.Write([]byte(`{"transitions":[{"id":"5","to":{"name":"Done"}}]}`))
+		case r.Method == http.MethodPost && strings.HasSuffix(r.URL.Path, "/issue/123/transitions"):
+			transitionCalls++
+			w.WriteHeader(http.StatusNoContent)
+		default:
+			http.Error(w, "unexpected endpoint", http.StatusNotFound)
+		}
+	}))
+	defer server.Close()
+
+	integration, err := New(&Options{URL: server.URL, AccountID: "test", Token: "test", ProjectName: "TEST", StatusNot: "Done"})
+	require.NoError(t, err)
+	err = integration.CloseIssue(&output.ResultEvent{
+		TemplateID: "pdcp-verify",
+		Host:       "example.test",
+		IssueTrackers: map[string]output.IssueTrackerMetadata{
+			"jira": {IssueID: "10001", IssueURL: server.URL + "/browse/OTHER-1"},
+		},
+	})
+	require.NoError(t, err)
+	require.Equal(t, 1, searchCalls)
+	require.Contains(t, searchJQL, `project = "TEST"`)
+	require.Equal(t, 1, transitionCalls)
+}
+
+func TestCloseIssueByIDTargetsOnlyCreatedTicket(t *testing.T) {
+	searchCalls, transitionCalls := 0, 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.Method == http.MethodGet && strings.Contains(r.URL.Path, "/search"):
+			searchCalls++
+			http.Error(w, "", http.StatusForbidden)
+		case r.Method == http.MethodGet && strings.HasSuffix(r.URL.Path, "/issue/10001/transitions"):
+			_, _ = w.Write([]byte(`{"transitions":[{"id":"5","to":{"name":"Done"}}]}`))
+		case r.Method == http.MethodPost && strings.HasSuffix(r.URL.Path, "/issue/10001/transitions"):
+			transitionCalls++
+			w.WriteHeader(http.StatusNoContent)
+		default:
+			http.Error(w, "unexpected endpoint", http.StatusNotFound)
+		}
+	}))
+	defer server.Close()
+
+	integration, err := New(&Options{URL: server.URL, AccountID: "test", Token: "test", ProjectName: "TEST", StatusNot: "Done"})
+	require.NoError(t, err)
+	err = integration.CloseIssueByID("10001")
+	require.NoError(t, err)
+	require.Zero(t, searchCalls)
+	require.Equal(t, 1, transitionCalls)
+}
+
+func TestCloseIssueReportsTransitionLookupFailure(t *testing.T) {
+	transitionLookups := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.Method == http.MethodGet && strings.HasSuffix(r.URL.Path, "/search"):
+			_, _ = w.Write([]byte(`{"issues":[{"id":"10001","key":"TEST-1","fields":{"status":{"name":"Open"}}}]}`))
+		case r.Method == http.MethodGet && strings.HasSuffix(r.URL.Path, "/search/jql"):
+			http.Error(w, "", http.StatusForbidden)
+		case r.Method == http.MethodGet && strings.HasSuffix(r.URL.Path, "/transitions"):
+			transitionLookups++
+			http.Error(w, "", http.StatusForbidden)
+		default:
+			http.Error(w, "unexpected endpoint", http.StatusNotFound)
+		}
+	}))
+	defer server.Close()
+
+	integration, err := New(&Options{URL: server.URL, AccountID: "test", Token: "test", ProjectName: "TEST", StatusNot: "Done"})
+	require.NoError(t, err)
+	err = integration.CloseIssue(&output.ResultEvent{TemplateID: "pdcp-verify", Host: "example.test", Info: model.Info{Name: "Test issue"}})
+	require.ErrorContains(t, err, fmt.Sprint(http.StatusForbidden))
+	require.Equal(t, 1, transitionLookups)
+}
+
+func TestCloseIssueWithoutTargetTransition(t *testing.T) {
+	for _, tc := range []struct {
+		status  string
+		wantErr bool
+	}{
+		{status: "Open", wantErr: true},
+		{status: "Done", wantErr: false},
+	} {
+		t.Run(tc.status, func(t *testing.T) {
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				switch {
+				case r.Method == http.MethodGet && strings.HasSuffix(r.URL.Path, "/search"):
+					_, _ = w.Write([]byte(`{"issues":[{"id":"10001","key":"TEST-1","fields":{"status":{"name":"Open"}}}]}`))
+				case r.Method == http.MethodGet && strings.HasSuffix(r.URL.Path, "/transitions"):
+					_, _ = w.Write([]byte(`{"transitions":[]}`))
+				case r.Method == http.MethodGet && strings.HasSuffix(r.URL.Path, "/issue/10001"):
+					_, _ = fmt.Fprintf(w, `{"fields":{"status":{"name":%q}}}`, tc.status)
+				default:
+					http.Error(w, "unexpected endpoint", http.StatusNotFound)
+				}
+			}))
+			defer server.Close()
+
+			integration, err := New(&Options{URL: server.URL, AccountID: "test", Token: "test", StatusNot: "Done"})
+			require.NoError(t, err)
+			err = integration.CloseIssue(&output.ResultEvent{IssueTrackers: map[string]output.IssueTrackerMetadata{
+				"jira": {IssueID: "10001"},
+			}})
+			if tc.wantErr {
+				require.ErrorContains(t, err, "no transition")
+			} else {
+				require.NoError(t, err)
+			}
+		})
+	}
+}
 
 type recordingTransport struct {
 	inner http.RoundTripper

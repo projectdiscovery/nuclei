@@ -5,6 +5,7 @@ package http
 //	-> request.executePayloadUsingRules [executes single payload on all rules (if more than 1)]
 //		-> request.executeGeneratedFuzzingRequest [execute final generated fuzzing request and get result]
 
+//nolint:depguard // No depguard rules are configured, so its default list allows only the standard library.
 import (
 	"context"
 	"fmt"
@@ -21,6 +22,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/hosterrorscache"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/interactsh"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/utils/vardump"
 	protocolutils "github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils"
@@ -73,7 +75,8 @@ func (request *Request) executeFuzzingRule(input *contextargs.Context, previous 
 				gologger.Verbose().Msgf("[%s] fuzz: %s\n", request.options.TemplateID, err)
 				return nil
 			}
-			if errors.Is(err, ErrMissingVars) {
+
+			if errors.Is(err, ErrMissingVars) || errors.Is(err, hosterrorscache.ErrUnresponsiveHost) {
 				return err
 			}
 			gologger.Verbose().Msgf("[%s] fuzz: payload request execution failed: %s\n", request.options.TemplateID, err)
@@ -106,7 +109,8 @@ func (request *Request) executeFuzzingRule(input *contextargs.Context, previous 
 			gologger.Verbose().Msgf("[%s] fuzz: %s\n", request.options.TemplateID, err)
 			return nil
 		}
-		if errors.Is(err, ErrMissingVars) {
+
+		if errors.Is(err, ErrMissingVars) || errors.Is(err, hosterrorscache.ErrUnresponsiveHost) {
 			return err
 		}
 		gologger.Verbose().Msgf("[%s] fuzz: payload request execution failed: %s\n", request.options.TemplateID, err)
@@ -188,7 +192,7 @@ func (request *Request) executeGeneratedFuzzingRequest(gr fuzz.GeneratedRequest,
 	hasInteractMatchers := interactsh.HasMatchers(request.CompiledOperators)
 	hasInteractMarkers := len(gr.InteractURLs) > 0
 	if request.options.HostErrorsCache != nil && request.options.HostErrorsCache.Check(request.options.ProtocolType.String(), input) {
-		return false, nil
+		return false, hosterrorscache.ErrUnresponsiveHost
 	}
 	req := &generatedRequest{
 		request:              gr.Request,
@@ -242,6 +246,10 @@ func (request *Request) executeGeneratedFuzzingRequest(gr fuzz.GeneratedRequest,
 	// If a variable is unresolved, skip all further requests
 	if errors.Is(requestErr, ErrMissingVars) {
 		return false, nil
+	}
+	// executeRequest sent nothing, so there is no outcome to record or count.
+	if errors.Is(requestErr, hosterrorscache.ErrUnresponsiveHost) {
+		return false, requestErr
 	}
 	if requestErr != nil {
 		gologger.Verbose().Msgf("[%s] Error occurred in request: %s\n", request.options.TemplateID, requestErr)

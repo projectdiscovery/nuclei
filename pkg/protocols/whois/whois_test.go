@@ -2,6 +2,7 @@ package whois
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -17,6 +18,26 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
 	templateTypes "github.com/projectdiscovery/nuclei/v3/pkg/templates/types"
 )
+
+func TestWhoisPreservesRegistrarWhoisServer(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, "/domain/example.com", r.URL.Path)
+		w.Header().Set("Content-Type", "application/rdap+json")
+		_, _ = fmt.Fprint(w, `{"objectClassName":"domain","ldhName":"example.com","port43":"whois.example.com"}`)
+	}))
+	t.Cleanup(server.Close)
+
+	_, event, _ := runWhoisDurationRequest(t, "example.com", server.URL)
+	require.Equal(t, "whois.example.com", event["registrar whois server"])
+	var response struct {
+		Data            map[string][]string
+		KeyDisplayOrder []string
+	}
+	require.NoError(t, json.Unmarshal([]byte(event["response"].(string)), &response))
+	require.Equal(t, []string{"whois.example.com"}, response.Data["Registrar WHOIS Server"])
+	require.Contains(t, response.KeyDisplayOrder, "Registrar WHOIS Server")
+	require.NotContains(t, response.KeyDisplayOrder, "WHOIS Server")
+}
 
 func TestWhoisDuration(t *testing.T) {
 	tests := []struct {

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math"
 	"net/http"
+	"slices"
 	"strings"
 	"time"
 
@@ -23,6 +24,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/httpclientpool"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/raw" //nolint:depguard // No depguard rules are configured, so its default list allows only the standard library.
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/network/networkclientpool"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types/scanstrategy"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils/json"
@@ -151,6 +153,11 @@ type Request struct {
 	// sharesResponse lets other templates reuse a response this request gets,
 	// and this request reuse theirs (see httpclientpool.WithSharedResponse)
 	sharesResponse bool
+	// readsRawResponse keeps the response bytes as received, before content
+	// decoding, for the raw_body and raw_response parts
+	readsRawResponse bool
+	// maySendElsewhere is set by Compile, see MaySendElsewhere
+	maySendElsewhere bool
 
 	// description: |
 	//   SelfContained specifies if the request is self-contained.
@@ -301,6 +308,8 @@ var RequestPartDefinitions = map[string]string{
 	"response":              "HTTP response received from server",
 	"status_code":           "Status Code received from the Server",
 	"body":                  "HTTP response body received from server (default)",
+	"raw_body":              "HTTP response body as received, before content decoding",
+	"raw_response":          "HTTP response headers followed by raw_body",
 	"content_length":        "HTTP Response content length",
 	"header,all_headers":    "HTTP response headers",
 	"duration":              "HTTP request time duration",
@@ -591,21 +600,104 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 		request.connConfiguration.Connection.DisableKeepAlive = true
 	}
 	request.sharesResponse = canShareResponse(request, options.Flow)
+	request.readsRawResponse = request.readsRawResponse || reads(request, options.Flow, rawParts...)
+	request.maySendElsewhere = sendsElsewhere(request)
 	return nil
+}
+
+// MaySendElsewhere reports whether a request of the block may go to an address
+// other than its target's, such as another port. It is false for a block that
+// sends only to the target, and it is false before Compile.
+func (e *Request) MaySendElsewhere() bool {
+	return e.maySendElsewhere
+}
+
+// sendsElsewhere reports whether any request of the block may go to an address
+// other than its target's. A false positive only moves the skip of a request to
+// a down target from the engine to the request path, so every form that is not
+// known to stay at the target counts. That is a
+// self-contained request, which names its own destination, a path that does
+// not start with {{BaseURL}} or {{RootURL}}, or that continues them with
+// anything but a path, query or fragment, such as a port, and a raw request
+// with a @Host annotation. A raw request line names only a path to send to the
+// target: raw.Parse drops the host and port of an absolute URL there.
+func sendsElsewhere(request *Request) bool {
+	return request.SelfContained ||
+		slices.ContainsFunc(request.Path, pathMayLeaveTarget) ||
+		slices.ContainsFunc(request.Raw, hasHostAnnotation)
+}
+
+// pathMayLeaveTarget reports whether path may go to an address other than the
+// target's.
+func pathMayLeaveTarget(path string) bool {
+	for _, variable := range []string{"{{BaseURL}}", "{{RootURL}}"} {
+		if rest, found := strings.CutPrefix(path, variable); found {
+			return rest != "" && strings.IndexByte("/?#", rest[0]) < 0
+		}
+	}
+
+	return true
+}
+
+// hasHostAnnotation reports whether rawRequest has a @Host annotation.
+func hasHostAnnotation(rawRequest string) bool {
+	annotations, _ := raw.SplitAnnotations(rawRequest)
+
+	return reHostAnnotation.MatchString(annotations)
+}
+
+// rawParts hold a response as received, before content decoding.
+var rawParts = []string{"raw_body", "raw_response"}
+
+// KeepRawResponses makes every request of a template keep raw responses when
+// any of them or the flow reads raw parts, as a request can read those of an
+// earlier one. It is called before the requests are compiled.
+func KeepRawResponses(requests []*Request, flow string) {
+	if !slices.ContainsFunc(requests, func(request *Request) bool { return reads(request, flow, rawParts...) }) {
+		return
+	}
+	for _, request := range requests {
+		request.readsRawResponse = true
+	}
+}
+
+// keepsRawResponse reports whether responses keep their bytes as received,
+// for this request's raw parts or for global matchers reading its events.
+func (request *Request) keepsRawResponse() bool {
+	return request.readsRawResponse || request.options.GlobalMatchers.Reads(rawParts...)
 }
 
 // canShareResponse reports whether a response another template got for the
 // same request is as good as sending it again. A shared response arrives at
 // once, so nothing that measures time may take one: race requests, timing
-// analyzers, and a request whose operators or flow read the duration. The
-// operators are searched whole, so a new field that can read it, as LLM
-// matcher inputs do, is covered without being listed.
+// analyzers, and a request whose operators or flow read the duration.
 func canShareResponse(request *Request, flow string) bool {
-	if request.Race || request.Analyzer != nil || strings.Contains(flow, "duration") {
-		return false
-	}
+	return !request.Race && request.Analyzer == nil && !reads(request, flow, "duration")
+}
+
+// reads reports whether the operators or flow of request may read any of
+// parts. The operators are searched whole, so a new field that can read a
+// part, as LLM matcher inputs do, is covered without being listed.
+func reads(request *Request, flow string, parts ...string) bool {
 	operators, err := json.Marshal(request.Operators)
-	return err == nil && !bytes.Contains(operators, []byte("duration"))
+	if err != nil {
+		return true
+	}
+	// A later request can read an earlier raw part from its own body, path,
+	// headers, or raw request, not only from its operators.
+	fields, err := json.Marshal(struct {
+		Path    []string          `json:"path,omitempty"`
+		Raw     []string          `json:"raw,omitempty"`
+		Body    string            `json:"body,omitempty"`
+		Headers map[string]string `json:"headers,omitempty"`
+	}{request.Path, request.Raw, request.Body, request.Headers})
+	if err != nil {
+		return true
+	}
+	return slices.ContainsFunc(parts, func(part string) bool {
+		needle := []byte(part)
+		return strings.Contains(flow, part) || bytes.Contains(operators, needle) || bytes.Contains(fields, needle)
+	})
 }
 
 // RebuildGenerator rebuilds the generator for the request

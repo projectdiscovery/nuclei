@@ -20,6 +20,7 @@ import (
 	"context"
 	"math"
 	"net/http"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -88,10 +89,12 @@ type hostState struct {
 	// reachable is set once the host has answered. A dial that fails before
 	// then is a closed or filtered port, which is no reason to slow down.
 	reachable bool
-	// next is the earliest start time still free. Concurrent waits reserve
+	// slots holds the end of each slot handed out to a wait and not given
+	// back, oldest first. The next slot starts where the last one ends, or one
+	// delay from now once that end has passed. Concurrent waits reserve
 	// successive slots so a delay paces the host instead of holding a burst
 	// and releasing it together.
-	next time.Time
+	slots []time.Time
 }
 
 // Governor holds the per-host delay for a scan.
@@ -123,7 +126,8 @@ func (g *Governor) Delay(host string) time.Duration {
 // Wait pauses until this caller’s slot on the host. Callers that arrive
 // together take successive slots of the current delay, so they do not all
 // wake at once. It returns the context error if the scan is cancelled while
-// waiting, so a stop is not held up by a long backoff.
+// waiting, so a stop is not held up by a long backoff. A cancelled wait gives
+// its slot back; callers already holding later slots keep them.
 func (g *Governor) Wait(ctx context.Context, host string) error {
 	if g == nil || host == "" {
 		return nil
@@ -138,11 +142,17 @@ func (g *Governor) Wait(ctx context.Context, host string) error {
 		return nil
 	}
 	now := time.Now()
-	start := state.next
-	if start.Before(now) {
-		start = now.Add(state.delay)
+	// A slot that already ended constrains no one.
+	ended, _ := slices.BinarySearchFunc(state.slots, now, time.Time.Compare)
+	state.slots = slices.Delete(state.slots, 0, ended)
+
+	start := now.Add(state.delay)
+	if n := len(state.slots); n > 0 {
+		start = state.slots[n-1]
 	}
-	state.next = start.Add(state.delay)
+
+	end := start.Add(state.delay)
+	state.slots = append(state.slots, end)
 	_ = g.hosts.Set(host, state)
 	wait := start.Sub(now)
 	g.mu.Unlock()
@@ -153,6 +163,7 @@ func (g *Governor) Wait(ctx context.Context, host string) error {
 	defer timer.Stop()
 	select {
 	case <-ctx.Done():
+		g.release(state, end)
 		return ctx.Err()
 	case <-timer.C:
 		return nil
@@ -224,6 +235,18 @@ func (g *Governor) ObserveDial(host string, err error) {
 	_ = g.hosts.Set(host, state)
 }
 
+// release gives back the slot ending at end. Slots after it belong to callers
+// still waiting and keep their place. It does nothing when the slot is already
+// gone because decay cleared the list or a later Wait pruned it.
+func (g *Governor) release(state *hostState, end time.Time) {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+
+	if i := slices.IndexFunc(state.slots, end.Equal); i >= 0 {
+		state.slots = slices.Delete(state.slots, i, i+1)
+	}
+}
+
 func (g *Governor) state(host string) *hostState {
 	if state, err := g.hosts.GetIFPresent(host); err == nil && state != nil {
 		return state
@@ -253,7 +276,7 @@ func (g *Governor) decay(state *hostState) {
 	state.delay = time.Duration(float64(state.delay) * g.cfg.Decay)
 	if state.delay < g.cfg.Step {
 		state.delay = 0
-		state.next = time.Time{}
+		state.slots = nil
 	}
 }
 
