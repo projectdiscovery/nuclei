@@ -73,6 +73,9 @@ func Init(options *types.Options) error {
 			if existingDialers.Fastdialer != nil {
 				existingDialers.Fastdialer.Close()
 			}
+			if existingDialers.HTTPProxyTunnelFastdialer != nil {
+				existingDialers.HTTPProxyTunnelFastdialer.Close()
+			}
 			dialers.Delete(options.ExecutionId)
 			return initDialers(options)
 		}
@@ -216,6 +219,18 @@ func initDialers(options *types.Options) error {
 		return errors.Wrap(err, "could not create network policy")
 	}
 
+	// a separate dialer tunnels raw TCP/TLS protocols through an http proxy,
+	// since the shared one is also used by the http client which already
+	// speaks to the proxy itself
+	var tunnelDialer *fastdialer.Dialer
+	if options.AliveHttpProxy != "" {
+		tunnelDialer, err = newHTTPProxyTunnelDialer(opts, options.AliveHttpProxy)
+		if err != nil {
+			dialer.Close()
+			return errors.Wrap(err, "could not create http proxy tunnel dialer")
+		}
+	}
+
 	// Per-host HTTP clients and transports are evicted after 90 seconds of
 	// inactivity (checked lazily every 30 seconds). Evicted transports get
 	// their idle connections closed immediately, so connections to
@@ -224,6 +239,7 @@ func initDialers(options *types.Options) error {
 
 	dialersInstance := &Dialers{
 		Fastdialer:                 dialer,
+		HTTPProxyTunnelFastdialer:  tunnelDialer,
 		NetworkPolicy:              networkPolicy,
 		HTTPClientPool:             httpClientPool,
 		HTTPDesyncHosts:            NewExpiringSet(time.Minute),
@@ -299,6 +315,25 @@ func interfaceAddress(interfaceName string) (net.IP, error) {
 	return address, nil
 }
 
+// newHTTPProxyTunnelDialer returns a fastdialer with the same settings as
+// opts that reaches every target through an http CONNECT proxy.
+func newHTTPProxyTunnelDialer(opts fastdialer.Options, proxyURL string) (*fastdialer.Dialer, error) {
+	var forward proxy.ContextDialer = opts.Dialer
+	if opts.Dialer == nil {
+		forward = &net.Dialer{
+			Timeout:   opts.DialerTimeout,
+			KeepAlive: opts.DialerKeepAlive,
+		}
+	}
+	connectDialer, err := newHTTPConnectDialer(proxyURL, forward, opts.DialerTimeout)
+	if err != nil {
+		return nil, err
+	}
+	var proxyDialer proxy.Dialer = connectDialer
+	opts.ProxyDialer = &proxyDialer
+	return fastdialer.NewDialer(opts)
+}
+
 // interfaceAddresses returns all interface addresses.
 func interfaceAddresses(interfaceName string) ([]net.Addr, error) {
 	if interfaceName == "any" {
@@ -335,6 +370,9 @@ func Close(executionId string) {
 			pool.Close()
 		}
 		dialersInstance.Fastdialer.Close()
+		if dialersInstance.HTTPProxyTunnelFastdialer != nil {
+			dialersInstance.HTTPProxyTunnelFastdialer.Close()
+		}
 	}
 
 	dialers.Delete(executionId)
