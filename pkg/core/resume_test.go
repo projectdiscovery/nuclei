@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
@@ -202,4 +203,244 @@ func TestResumeAfterCancel(t *testing.T) {
 
 	got := resumedRuns(resumeFromSaved(t, saved), inputs, nil)
 	assert.ElementsMatch(t, []string{"b", "c", "d"}, got, "targets of the resumed scan")
+}
+
+// hostSprayTemplates returns two templates that run on every target: t1 with
+// the first executer and t2 with the second.
+func hostSprayTemplates(first, second protocols.Executer) []*templates.Template {
+	//nolint:exhaustruct_v5 // zero values are the defaults
+	return []*templates.Template{
+		{ID: "t1", Path: "t1", TotalRequests: 1, Executer: first},
+		{ID: "t2", Path: "t2", TotalRequests: 1, Executer: second},
+	}
+}
+
+// resumedHostSprayRuns returns the template and input pairs that a host-spray
+// scan resumed from cfg runs, and checks that its tasks all end.
+func resumedHostSprayRuns(t *testing.T, cfg *types.ResumeCfg, inputs []string) []string {
+	t.Helper()
+
+	var (
+		runsMu sync.Mutex
+		runs   []string
+	)
+
+	engine, recorder := newTaskEngine(scanstrategy.HostSpray, nil, nil, cfg)
+	tpls := hostSprayTemplates(
+		&recordingExecuter{path: "t1", mu: &runsMu, runs: &runs},
+		&recordingExecuter{path: "t2", mu: &runsMu, runs: &runs},
+	)
+	engine.ExecuteScanWithOpts(context.Background(), tpls, targetsOf(inputs...), true)
+	assert.Equal(t, recorder.total.Load(), recorder.done.Load(), "tasks that didn't end")
+
+	return runs
+}
+
+// startHostSprayHeldOnB starts a host-spray run of inputs on engine whose t1
+// holds on b, and returns once every target is dispatched and b is the only
+// one in flight. The run ends after the returned release and done.
+func startHostSprayHeldOnB(
+	ctx context.Context, t *testing.T, engine *Engine, inputs []string,
+) (func(), chan struct{}) {
+	t.Helper()
+
+	var (
+		runsMu sync.Mutex
+		runs   []string
+	)
+
+	executer := &holdExecuter{hold: "b", held: make(chan struct{}), release: make(chan struct{})}
+	release := sync.OnceFunc(func() { close(executer.release) })
+	t.Cleanup(release)
+
+	targets := &yieldedTargets{fakeTargetProvider: targetsOf(inputs...), yielded: make(chan struct{})}
+	tpls := hostSprayTemplates(executer, &recordingExecuter{path: "t2", mu: &runsMu, runs: &runs})
+	done := make(chan struct{})
+
+	go func() {
+		defer close(done)
+
+		engine.ExecuteScanWithOpts(ctx, tpls, targets, true)
+	}()
+
+	for _, reached := range []chan struct{}{executer.held, targets.yielded} {
+		select {
+		case <-reached:
+		case <-time.After(10 * time.Second):
+			t.Fatal("the scan never reached b and the end of its targets")
+		}
+	}
+
+	return release, done
+}
+
+// A host-spray scan saves the position of the target in flight. Its resumed
+// scan runs every template on that target and the ones after it, and skips the
+// targets before it.
+//
+//nolint:paralleltest // each scan resets the shared HTTP responses of the process
+func TestHostSprayResume(t *testing.T) {
+	inputs := []string{"a", "b", "c"}
+
+	t.Run("interrupted", func(t *testing.T) {
+		cfg := types.NewResumeCfg()
+		engine, _ := newTaskEngine(scanstrategy.HostSpray, nil, nil, cfg)
+		release, done := startHostSprayHeldOnB(t.Context(), t, engine, inputs)
+		saved := savedWhenInFlight(t, cfg, hostSprayResumeID, 1)
+
+		release()
+		<-done
+
+		got := resumedHostSprayRuns(t, resumeFromSaved(t, saved), inputs)
+		assert.ElementsMatch(t, []string{"t1@b", "t2@b", "t1@c", "t2@c"}, got, "pairs of the resumed scan")
+	})
+
+	t.Run("cancelled", func(t *testing.T) {
+		cfg := types.NewResumeCfg()
+		engine, _ := newTaskEngine(scanstrategy.HostSpray, nil, nil, cfg)
+		ctx, cancel := context.WithCancel(t.Context())
+
+		defer cancel()
+
+		release, done := startHostSprayHeldOnB(ctx, t, engine, inputs)
+		savedWhenInFlight(t, cfg, hostSprayResumeID, 1)
+		cancel()
+		release()
+		<-done
+
+		saved := cfg.Clone()
+		require.Contains(t, saved.Current, hostSprayResumeID, "progress of the scan")
+
+		info := saved.Current[hostSprayResumeID]
+		assert.False(t, info.Completed, "completed")
+		assert.Equal(t, []uint32{1}, slices.Sorted(maps.Keys(info.InFlight)), "positions in flight")
+
+		got := resumedHostSprayRuns(t, resumeFromSaved(t, saved), inputs)
+		assert.ElementsMatch(t, []string{"t1@b", "t2@b", "t1@c", "t2@c"}, got, "pairs of the resumed scan")
+	})
+
+	t.Run("finished", func(t *testing.T) {
+		cfg := types.NewResumeCfg()
+		resumedHostSprayRuns(t, cfg, inputs)
+
+		saved := cfg.Clone()
+		require.Contains(t, saved.Current, hostSprayResumeID, "progress of the scan")
+		assert.True(t, saved.Current[hostSprayResumeID].Completed, "completed")
+		assert.Empty(t, saved.Current[hostSprayResumeID].InFlight, "positions in flight")
+
+		got := resumedHostSprayRuns(t, resumeFromSaved(t, saved), inputs)
+		assert.Empty(t, got, "pairs of a resumed scan that was complete")
+	})
+}
+
+// hostSprayRuns runs a host-spray run of recording templates, one per id, on
+// engine and returns the template and input pairs that it ran.
+func hostSprayRuns(engine *Engine, inputs []string, ids ...string) []string {
+	var (
+		runsMu sync.Mutex
+		runs   []string
+	)
+
+	tpls := make([]*templates.Template, 0, len(ids))
+
+	for _, id := range ids {
+		//nolint:exhaustruct,exhaustruct_v5 // zero values are the defaults
+		tpls = append(tpls, &templates.Template{
+			ID: id, Path: id, TotalRequests: 1, Executer: &recordingExecuter{path: id, mu: &runsMu, runs: &runs},
+		})
+	}
+
+	engine.ExecuteScanWithOpts(context.Background(), tpls, targetsOf(inputs...), true)
+
+	return runs
+}
+
+// pairsOf returns the pairs of every template id on every input.
+func pairsOf(inputs []string, ids ...string) []string {
+	pairs := make([]string, 0, len(ids)*len(inputs))
+
+	for _, id := range ids {
+		for _, input := range inputs {
+			pairs = append(pairs, id+"@"+input)
+		}
+	}
+
+	return pairs
+}
+
+// An engine runs host-spray once per ExecuteScanWithOpts call, as -auto-tech
+// does, and the engines of -as share one resume config. The progress of one
+// run can't stand for the others, so a scan interrupted after another run
+// resumes from the first target.
+//
+//nolint:paralleltest // each scan resets the shared HTTP responses of the process
+func TestHostSprayResumeAcrossRuns(t *testing.T) {
+	inputs := []string{"a", "b", "c"}
+
+	t.Run("a later run is interrupted", func(t *testing.T) {
+		cfg := types.NewResumeCfg()
+		engine, _ := newTaskEngine(scanstrategy.HostSpray, nil, nil, cfg)
+		hostSprayRuns(engine, inputs, "fp")
+
+		release, done := startHostSprayHeldOnB(t.Context(), t, engine, inputs)
+		saved := cfg.Clone()
+
+		release()
+		<-done
+
+		resumed, _ := newTaskEngine(scanstrategy.HostSpray, nil, nil, resumeFromSaved(t, saved))
+		got := append(hostSprayRuns(resumed, inputs, "fp"), hostSprayRuns(resumed, inputs, "t1", "t2")...)
+		assert.ElementsMatch(t, pairsOf(inputs, "fp", "t1", "t2"), got, "pairs of the resumed scan")
+	})
+
+	t.Run("two runs end around an interrupted one", func(t *testing.T) {
+		cfg := types.NewResumeCfg()
+		engine, _ := newTaskEngine(scanstrategy.HostSpray, nil, nil, cfg)
+		hostSprayRuns(engine, inputs, "fp")
+
+		release, done := startHostSprayHeldOnB(t.Context(), t, engine, inputs)
+		hostSprayRuns(engine, inputs, "gp")
+
+		saved := cfg.Clone()
+
+		release()
+		<-done
+
+		// the runs may come in another order than in the interrupted scan
+		resumed, _ := newTaskEngine(scanstrategy.HostSpray, nil, nil, resumeFromSaved(t, saved))
+		got := append(hostSprayRuns(resumed, inputs, "t1", "t2"), hostSprayRuns(resumed, inputs, "fp")...)
+		got = append(got, hostSprayRuns(resumed, inputs, "gp")...)
+		assert.ElementsMatch(t, pairsOf(inputs, "fp", "gp", "t1", "t2"), got, "pairs of the resumed scan")
+	})
+}
+
+// A later host-spray run resets the entry in both maps. A resumed scan that
+// kept the entry it loaded would save it again, and a loaded completed entry
+// would stay completed in every file that scan saves.
+func TestHostSprayResumeInfoOfLaterRun(t *testing.T) {
+	t.Parallel()
+
+	cfg := types.NewResumeCfg()
+	//nolint:exhaustruct,exhaustruct_v5 // zero values are the defaults
+	cfg.ResumeFrom[hostSprayResumeID] = &types.ResumeInfo{Completed: true}
+	engine, _ := newTaskEngine(scanstrategy.HostSpray, nil, nil, cfg)
+
+	first, firstLoaded := engine.hostSprayResumeInfo()
+	first.InFlight[1] = struct{}{}
+
+	later, laterLoaded := engine.hostSprayResumeInfo()
+
+	for name, info := range map[string]*types.ResumeInfo{
+		"current":       cfg.Current[hostSprayResumeID],
+		"loaded":        cfg.ResumeFrom[hostSprayResumeID],
+		"later current": later,
+		"later loaded":  laterLoaded,
+	} {
+		assert.False(t, info.Completed, "%s completed", name)
+		assert.Empty(t, info.InFlight, "%s positions in flight", name)
+	}
+
+	assert.NotSame(t, later, cfg.Current[hostSprayResumeID], "the later run's progress is not saved")
+	assert.True(t, firstLoaded.Completed, "the first run keeps the progress it loaded")
+	assert.Equal(t, []uint32{1}, slices.Sorted(maps.Keys(first.InFlight)), "the first run keeps its positions")
 }
