@@ -66,6 +66,18 @@ func (p *pausingTargets) Iterate(callback func(*contextargs.MetaInput) bool) {
 	}
 }
 
+// yieldedTargets closes yielded once the scan has taken every input.
+type yieldedTargets struct {
+	*fakeTargetProvider
+
+	yielded chan struct{}
+}
+
+func (y *yieldedTargets) Iterate(callback func(*contextargs.MetaInput) bool) {
+	y.fakeTargetProvider.Iterate(callback)
+	close(y.yielded)
+}
+
 // savedBetween runs a template-spray scan of inputs from cfg, and returns the
 // progress saved while the scan waits before pauseAt with every earlier target
 // done, which is when an interrupt finds no target in flight.
@@ -143,4 +155,51 @@ func TestResumeAgainWhileSkipping(t *testing.T) {
 
 	got := resumedRuns(resumeFromSaved(t, saved), inputs, nil)
 	assert.ElementsMatch(t, inputs, got, "targets of the third scan")
+}
+
+// A scan cancelled while a target runs leaves that target unfinished and the
+// template incomplete, so the resumed scan runs the target and the ones after it.
+//
+//nolint:paralleltest // each scan resets the shared HTTP responses of the process
+func TestResumeAfterCancel(t *testing.T) {
+	inputs := []string{"a", "b", "c", "d"}
+	cfg := types.NewResumeCfg()
+	engine, _ := newTaskEngine(scanstrategy.TemplateSpray, nil, nil, cfg)
+	executer := &holdExecuter{hold: "b", held: make(chan struct{}), release: make(chan struct{})}
+	release := sync.OnceFunc(func() { close(executer.release) })
+	t.Cleanup(release)
+
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+
+	targets := &yieldedTargets{fakeTargetProvider: targetsOf(inputs...), yielded: make(chan struct{})}
+	done := make(chan struct{})
+
+	go func() {
+		defer close(done)
+
+		engine.ExecuteScanWithOpts(ctx, []*templates.Template{resumeTemplate(executer)}, targets, true)
+	}()
+
+	for _, reached := range []chan struct{}{executer.held, targets.yielded} {
+		select {
+		case <-reached:
+		case <-time.After(10 * time.Second):
+			t.Fatal("the scan never reached b and the end of its targets")
+		}
+	}
+
+	// every target is dispatched, the others are done, and b is the only one in flight
+	savedWhenInFlight(t, cfg, resumeTemplateID, 1)
+	cancel()
+	release()
+	<-done
+
+	saved := cfg.Clone()
+	info := saved.Current[resumeTemplateID]
+	assert.False(t, info.Completed, "completed")
+	assert.Equal(t, []uint32{1}, slices.Sorted(maps.Keys(info.InFlight)), "positions in flight")
+
+	got := resumedRuns(resumeFromSaved(t, saved), inputs, nil)
+	assert.ElementsMatch(t, []string{"b", "c", "d"}, got, "targets of the resumed scan")
 }

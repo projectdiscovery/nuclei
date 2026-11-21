@@ -122,7 +122,13 @@ func (e *Engine) executeTemplateWithTargets(ctx context.Context, template *templ
 			defer workersWg.Done()
 			for t := range tasks {
 				func() {
-					defer cleanupInFlight(t.index)
+					// A target that cancellation cut off didn't finish. It stays in
+					// flight, so the resumed scan runs it again.
+					defer func() {
+						if ctx.Err() == nil {
+							cleanupInFlight(t.index)
+						}
+					}()
 					select {
 					case <-ctx.Done():
 						return
@@ -219,6 +225,12 @@ func (e *Engine) executeTemplateWithTargets(ctx context.Context, template *templ
 
 	close(tasks)
 	workersWg.Wait()
+
+	// A cancelled loop never took the remaining targets, so the template isn't
+	// complete.
+	if ctx.Err() != nil {
+		return
+	}
 
 	// on completion marks the template as completed
 	currentInfo.Lock()
