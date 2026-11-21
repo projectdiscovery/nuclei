@@ -2,7 +2,9 @@ package ssh
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"net"
 	"regexp"
 	"strings"
 	"time"
@@ -117,7 +119,7 @@ func (c *SSHClient) ConnectWithKey(ctx context.Context, host string, port int, u
 // ```
 func (c *SSHClient) ConnectSSHInfoMode(ctx context.Context, host string, port int) (*ssh.HandshakeLog, error) {
 	executionId := ctx.Value("executionId").(string)
-	return memoizedconnectSSHInfoMode(&connectOptions{
+	return memoizedconnectSSHInfoMode(ctx, &connectOptions{
 		Host:        host,
 		Port:        port,
 		ExecutionId: executionId,
@@ -211,8 +213,38 @@ func (c *connectOptions) validate() error {
 	return nil
 }
 
-// @memo
-func connectSSHInfoMode(opts *connectOptions) (*ssh.HandshakeLog, error) {
+// errSSHInfoCacheMiss allows cache lookups without sharing an in-flight handshake.
+var errSSHInfoCacheMiss = errors.New("SSH info cache miss")
+
+func memoizedconnectSSHInfoMode(ctx context.Context, opts *connectOptions) (*ssh.HandshakeLog, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+	hash := "connectSSHInfoMode:" + fmt.Sprint(opts)
+	value, err, _ := protocolstate.Memoizer.Do(hash, func() (interface{}, error) {
+		return nil, errSSHInfoCacheMiss
+	})
+	if ctx.Err() != nil {
+		return nil, ctx.Err()
+	}
+	if err == nil {
+		return value.(*ssh.HandshakeLog), nil
+	}
+	// Each cache miss owns its connection, so canceling one caller cannot close
+	// another caller's handshake. Only completed successes are shared.
+	data, err := connectSSHInfoMode(ctx, opts)
+	if err != nil {
+		return nil, err
+	}
+	// A concurrent cache lookup may share this short call and return a cache
+	// miss. Caching is best effort; the completed handshake still succeeded.
+	_, _, _ = protocolstate.Memoizer.Do(hash, func() (interface{}, error) {
+		return data, nil
+	})
+	return data, nil
+}
+
+func connectSSHInfoMode(ctx context.Context, opts *connectOptions) (*ssh.HandshakeLog, error) {
 	if err := opts.validate(); err != nil {
 		return nil, err
 	}
@@ -220,21 +252,35 @@ func connectSSHInfoMode(opts *connectOptions) (*ssh.HandshakeLog, error) {
 	data := new(ssh.HandshakeLog)
 
 	sshConfig := ssh.MakeSSHConfig()
-	sshConfig.Timeout = 10 * time.Second
+	sshConfig.Timeout = opts.Timeout
 	sshConfig.ConnLog = data
 	sshConfig.DontAuthenticate = true
 	sshConfig.BannerCallback = func(banner string) error {
 		data.Banner = strings.TrimSpace(banner)
 		return nil
 	}
-	rhost := fmt.Sprintf("%s:%d", opts.Host, opts.Port)
-	client, err := ssh.Dial("tcp", rhost, sshConfig)
+	rhost := net.JoinHostPort(opts.Host, fmt.Sprint(opts.Port))
+	conn, err := (&net.Dialer{Timeout: sshConfig.Timeout}).DialContext(ctx, "tcp", rhost)
 	if err != nil {
 		return nil, err
 	}
-	defer func() {
-		_ = client.Close()
-	}()
+	defer conn.Close()
+	stop := context.AfterFunc(ctx, func() { _ = conn.Close() })
+	defer stop()
+	if err := conn.SetDeadline(time.Now().Add(sshConfig.Timeout)); err != nil {
+		if ctx.Err() != nil {
+			return nil, ctx.Err()
+		}
+		return nil, err
+	}
+	sshConn, _, _, err := ssh.NewClientConn(conn, rhost, sshConfig)
+	if ctx.Err() != nil {
+		return nil, ctx.Err()
+	}
+	if err != nil {
+		return nil, err
+	}
+	defer sshConn.Close()
 
 	return data, nil
 }
