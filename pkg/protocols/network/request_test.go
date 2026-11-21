@@ -3,6 +3,7 @@ package network
 import (
 	"context"
 	"crypto/md5"
+	"crypto/tls"
 	"encoding/hex"
 	"fmt"
 	"io"
@@ -10,6 +11,8 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -150,6 +153,101 @@ func captureNetworkRequest(t *testing.T, listener net.Listener) (<-chan string, 
 	}()
 
 	return captured, serverErr
+}
+
+// serveEcho answers "pong" to each connection whose first read starts with
+// "ping", and counts those connections. A client that dials with the wrong
+// transport sends something else, so it gets no answer and is not counted.
+func serveEcho(listener net.Listener) *atomic.Int32 {
+	var pings atomic.Int32
+
+	go func() {
+		for {
+			conn, err := listener.Accept()
+			if err != nil {
+				return
+			}
+
+			go func() {
+				defer func() { _ = conn.Close() }()
+
+				_ = conn.SetDeadline(time.Now().Add(5 * time.Second))
+				buffer := make([]byte, 4096)
+
+				n, err := conn.Read(buffer)
+				if err != nil || !strings.HasPrefix(string(buffer[:n]), "ping") {
+					return
+				}
+
+				pings.Add(1)
+
+				_, _ = conn.Write([]byte("pong"))
+			}()
+		}
+	}()
+
+	return &pings
+}
+
+//nolint:exhaustruct,exhaustruct_v5,paralleltest // fixtures keep zero-value defaults; the test options are global
+func TestNetworkExecuteAppliesTLSPerAddress(t *testing.T) {
+	options := testutils.DefaultOptions
+
+	testutils.Init(options)
+
+	// Borrow the self-signed certificate of an httptest server for the TLS listener.
+	certSource := httptest.NewTLSServer(http.NotFoundHandler())
+	defer certSource.Close()
+
+	var listenConfig net.ListenConfig
+
+	rawListener, err := listenConfig.Listen(context.Background(), "tcp", "127.0.0.1:0")
+	require.NoError(t, err)
+
+	tlsConfig := &tls.Config{Certificates: certSource.TLS.Certificates, MinVersion: tls.VersionTLS12}
+
+	tlsListener := tls.NewListener(rawListener, tlsConfig)
+	defer func() { _ = tlsListener.Close() }()
+
+	plainListener, err := listenConfig.Listen(context.Background(), "tcp", "127.0.0.1:0")
+	require.NoError(t, err)
+
+	defer func() { _ = plainListener.Close() }()
+
+	tlsPings := serveEcho(tlsListener)
+	plainPings := serveEcho(plainListener)
+
+	templateID := "testing-network-tls-per-address"
+	request := &Request{
+		ID:       templateID,
+		Address:  []string{"tls://" + tlsListener.Addr().String(), plainListener.Addr().String()},
+		ReadSize: 1024,
+		Inputs:   []*Input{{Data: "ping\r\n"}},
+		Matchers: []*matchers.Matcher{{
+			Part:  "data",
+			Type:  matchers.MatcherTypeHolder{MatcherType: matchers.WordsMatcher},
+			Words: []string{"pong"},
+		}},
+	}
+	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
+		ID:   templateID,
+		Info: model.Info{SeverityHolder: severity.Holder{Severity: severity.Low}, Name: "test"},
+	})
+	require.NoError(t, request.Compile(executerOpts))
+
+	matched := 0
+	ctxArgs := contextargs.NewWithInput(context.Background(), "127.0.0.1")
+	callback := func(event *output.InternalWrappedEvent) {
+		if event != nil && event.HasOperatorResult() {
+			matched++
+		}
+	}
+	metadata, previous := make(output.InternalEvent), make(output.InternalEvent)
+	require.NoError(t, request.ExecuteWithResults(ctxArgs, metadata, previous, callback))
+
+	require.Equal(t, int32(1), tlsPings.Load(), "the tls:// entry should be dialed with TLS")
+	require.Equal(t, int32(1), plainPings.Load(), "the entry after a tls:// entry should be dialed in plain text")
+	require.Equal(t, 2, matched, "both entries should match")
 }
 
 func TestNetworkGeneratorPayloadInteractshMarkerRendersBeforeInput(t *testing.T) {
