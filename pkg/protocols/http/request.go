@@ -516,9 +516,6 @@ func (request *Request) executeParallelHTTP(input *contextargs.Context, dynamicV
 		// stop, so the wait has to end with them.
 		generatedHttpRequest, reservation, err := request.makeReserved(workerCtx, generator, input, inputData, payloads, dynamicValues)
 		if err != nil {
-			if err == types.ErrNoMoreRequests {
-				break
-			}
 			if workerCtx.Err() != nil {
 				stopWorkers()
 				if spmHandler.FoundFirstMatch() {
@@ -816,9 +813,6 @@ executionLoop:
 			ctx := input.Context()
 			generatedHttpRequest, reservation, err := request.makeReserved(ctx, generator, input, data, payloads, dynamicValue)
 			if err != nil {
-				if err == types.ErrNoMoreRequests {
-					return false, true, nil, nil
-				}
 				return false, true, nil, err
 			}
 			defer reservation.done()
