@@ -2,13 +2,10 @@ package generic
 
 //nolint:depguard // No depguard rules are configured, so its default list allows only the standard library.
 import (
-	"errors"
 	"sync/atomic"
 
-	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/hosterrorscache"
 	"github.com/projectdiscovery/nuclei/v3/pkg/scan"
 	"github.com/projectdiscovery/nuclei/v3/pkg/tmplexec/utils"
 	mapsutil "github.com/projectdiscovery/utils/maps"
@@ -78,12 +75,7 @@ func (g *Generic) ExecuteWithResults(ctx *scan.ScanContext) error {
 			ctx.LogEvent(event)
 		})
 		if err != nil {
-			ctx.LogError(err)
-			// A skip reports like the engine's: in the event, with no warning.
-			if !errors.Is(err, hosterrorscache.ErrUnresponsiveHost) {
-				gologger.Warning().Msgf("[%s] Could not execute request for %s: %s\n",
-					g.options.TemplateID, ctx.Input.MetaInput.PrettyPrint(), err)
-			}
+			utils.LogRequestError(ctx, g.options.TemplateID, err)
 		}
 		// If a match was found and stop at first match is set, break out of the loop and return
 		if g.results.Load() && (g.options.StopAtFirstMatch || g.options.Options.StopAtFirstMatch) {
