@@ -16,7 +16,8 @@ import (
 const clusterTotalName = "cluster"
 
 // A cluster runs the request of its first template, so its total is that
-// request's: a race request sends race_count copies (#8257).
+// request's, not one per member: a request with several paths sends each.
+// A block that sends race copies doesn't cluster (#8280), so none is here.
 //
 //nolint:exhaustruct,exhaustruct_v5,paralleltest // fixtures keep zero-value defaults; testutils.Init state is shared
 func TestClusterTotalIsTheRequestsTotal(t *testing.T) {
@@ -25,13 +26,6 @@ func TestClusterTotalIsTheRequestsTotal(t *testing.T) {
 		request func() *httpprotocol.Request
 		total   int
 	}{
-		{
-			name: "race",
-			request: func() *httpprotocol.Request {
-				return &httpprotocol.Request{Path: []string{"{{BaseURL}}/race"}, Race: true, RaceNumberRequests: 5}
-			},
-			total: 5,
-		},
 		{
 			name: "one path",
 			request: func() *httpprotocol.Request {
