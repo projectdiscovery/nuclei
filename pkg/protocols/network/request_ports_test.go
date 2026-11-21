@@ -13,6 +13,7 @@ import (
 	"sync/atomic"
 	"syscall"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 	"go.uber.org/multierr"
@@ -237,7 +238,13 @@ func TestFailedPortTakesPrecedenceOverSkippedPort(t *testing.T) {
 
 			require.Error(t, err)
 			require.NotErrorIs(t, err, hosterrorscache.ErrUnresponsiveHost)
-			require.Equal(t, int32(1), downAccepted.Load(), "only the port check dialed the port marked down")
+			// The listener counts a connection in its own goroutine, so the count
+			// can trail the scan: wait for the port check's dial, then make sure
+			// no other one follows.
+			require.Eventually(t, func() bool { return downAccepted.Load() == 1 }, 5*time.Second, 5*time.Millisecond,
+				"the port check did not dial the port marked down")
+			require.Never(t, func() bool { return downAccepted.Load() > 1 }, 200*time.Millisecond, 10*time.Millisecond,
+				"only the port check dials the port marked down")
 		})
 	}
 }
