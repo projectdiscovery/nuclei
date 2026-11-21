@@ -3,6 +3,7 @@ package httpclientpool
 import (
 	"container/list"
 	"context"
+	"crypto/tls"
 	"errors"
 	"fmt"
 	"io"
@@ -14,6 +15,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/tlsverify"
 	"github.com/projectdiscovery/retryablehttp-go"
 	"github.com/projectdiscovery/useragent"
 	"github.com/stretchr/testify/require"
@@ -305,4 +307,15 @@ func TestSharedResponsesDoNotKeepShortReads(t *testing.T) {
 	second := send("two")
 	_ = second.Body.Close()
 	require.EqualValues(t, 2, base.hits.Load(), "a short read is not reused")
+}
+
+// Reporting clients send tokens, so tlsverify must reach the scan transport
+// under the sharing wrapper and turn certificate verification on.
+func TestSharingTransportUnwrapsForTLSVerification(t *testing.T) {
+	base := &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}}
+	wrapped := newSharingTransport(&connTrackingTransport{base: base})
+
+	got, ok := tlsverify.Client(&http.Client{Transport: wrapped}).Transport.(*http.Transport)
+	require.True(t, ok, "tlsverify did not reach the scan transport under the sharing wrapper")
+	require.False(t, got.TLSClientConfig.InsecureSkipVerify)
 }
