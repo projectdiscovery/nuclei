@@ -712,6 +712,11 @@ func (request *Request) RebuildGenerator() error {
 
 // Requests returns the total number of requests the YAML rule will perform
 func (request *Request) Requests() int {
+	// a race block sends race_count copies of its first request, however many
+	// entries it has, and it does so before it looks at fuzzing rules
+	if request.sendsRaceCopies() {
+		return request.RaceNumberRequests
+	}
 	// fuzzing requests depend on each input's parameters and add themselves to
 	// the total as they are sent; any path or raw is not sent as such
 	if len(request.Fuzzing) > 0 {
@@ -873,6 +878,13 @@ func (request *Request) IsOriginScoped() bool {
 		}
 	}
 	return true
+}
+
+// sendsRaceCopies reports whether the block sends race_count copies of its
+// first request at once. Without race_count, or in a pipeline, a block with
+// race set runs as any other.
+func (e *Request) sendsRaceCopies() bool {
+	return e.Race && !e.Pipeline && e.RaceNumberRequests > 0
 }
 
 // carriesTargetPath reports whether a value interpolates the target's own path.

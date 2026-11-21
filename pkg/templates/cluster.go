@@ -166,13 +166,14 @@ func ClusterTemplates(templatesList []*Template, options *protocols.ExecutorOpti
 				req.Options().TemplateID = clusterID
 			}
 			executerOpts.TemplateID = clusterID
+			executer := NewClusterExecuter(cluster, executerOpts)
 			finalTemplatesList = append(finalTemplatesList, &Template{
 				ID:            clusterID,
 				RequestsDNS:   cluster[0].RequestsDNS,
 				RequestsHTTP:  cluster[0].RequestsHTTP,
 				RequestsSSL:   cluster[0].RequestsSSL,
-				Executer:      NewClusterExecuter(cluster, executerOpts),
-				TotalRequests: len(cluster[0].RequestsHTTP) + len(cluster[0].RequestsDNS),
+				Executer:      executer,
+				TotalRequests: executer.Requests(),
 			})
 			clusterCount += len(cluster)
 		} else {

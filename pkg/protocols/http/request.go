@@ -161,6 +161,18 @@ func (request *Request) executeRaceRequest(input *contextargs.Context, dynamicVa
 	reqURL := input.MetaInput.Input
 	var generatedRequests []*generatedRequest
 
+	// The total of the block is race_count, however many entries it has: it only
+	// sends copies of the first one. Each copy counts when it starts, and the
+	// ones left unsent count as processed on return (#7838), so the count ends
+	// at the total.
+	started := 0
+
+	defer func() {
+		if unsent := request.RaceNumberRequests - started; unsent > 0 {
+			request.options.Progress.SetRequests(uint64(unsent))
+		}
+	}()
+
 	// Requests within race condition should be dumped once and the output prefilled to allow DSL language to work
 	// This will introduce a delay and will populate in hacky way the field "request" of outputEvent
 	generator := request.newGenerator(false)
@@ -284,6 +296,8 @@ func (request *Request) executeRaceRequest(input *contextargs.Context, dynamicVa
 				return
 			}
 		}(generatedRequests[i], updatedInput, hostErrorsInput)
+
+		started++
 		request.options.Progress.IncrementRequests()
 	}
 	spmHandler.Wait()
@@ -718,7 +732,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 		return request.executeTurboHTTP(input, dynamicValues, previous, callback)
 	}
 	// verify if a basic race condition was requested
-	if request.Race && request.RaceNumberRequests > 0 {
+	if request.sendsRaceCopies() {
 		return request.executeRaceRequest(input, dynamicValues, previous, callback)
 	}
 
