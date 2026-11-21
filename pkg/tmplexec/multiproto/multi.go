@@ -8,10 +8,8 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/nuclei/v3/pkg/scan"
-	"github.com/projectdiscovery/nuclei/v3/pkg/templates/types"
 	"github.com/projectdiscovery/nuclei/v3/pkg/tmplexec/utils"
 	mapsutil "github.com/projectdiscovery/utils/maps"
-	stringsutil "github.com/projectdiscovery/utils/strings"
 )
 
 // Mutliprotocol is a template executer engine that executes multiple protocols
@@ -144,7 +142,8 @@ func (m *MultiProtocol) ExecuteWithResults(ctx *scan.ScanContext) error {
 			templateCtx.MergeTemplateVariables(evaluation.TemplateValues)
 		})
 
-		// in case of fatal error skip execution of next protocols
+		// a protocol's error is logged and the next protocol still runs, so that it emits its events (#5995)
+		// a cancelled scan is the exception: the loop returns the context error
 		if err != nil {
 			// the engine warns about the context error returned here, so a
 			// warning of our own would print the cancellation twice
@@ -155,13 +154,6 @@ func (m *MultiProtocol) ExecuteWithResults(ctx *scan.ScanContext) error {
 			}
 			// always log errors
 			utils.LogRequestError(ctx, m.options.TemplateID, err)
-			// for some classes of protocols (i.e ssl) errors like tls handshake are a legitimate behavior so we don't stop execution
-			// connection failures are already tracked by the internal host error cache
-			// we use strings comparison as the error is not formalized into instance within the standard library
-			// within a flow instead we consider ssl errors as fatal, since a specific logic was requested
-			if req.Type() == types.SSLProtocol && stringsutil.ContainsAnyI(err.Error(), "protocol version not supported", "could not do tls handshake") {
-				continue
-			}
 		}
 	}
 
