@@ -287,10 +287,8 @@ func (request *Request) Requests() int {
 	if len(request.ports) > 0 {
 		requests *= len(request.ports)
 	}
-	if request.generator != nil {
-		requests *= request.generator.NewIterator().Total()
-	}
-	return requests
+
+	return requests * request.requestsPerAddress()
 }
 
 func (request *Request) SetDialer(dialer *fastdialer.Dialer) {
@@ -309,4 +307,14 @@ func (r *Request) UpdateOptions(opts *protocols.ExecutorOptions) {
 	}
 	r.options = r.options.Copy()
 	r.options.ApplyNewEngineOptions(opts)
+}
+
+// requestsPerAddress returns the requests sent to each address: one per payload
+// combination, or one.
+func (request *Request) requestsPerAddress() int {
+	if request.generator == nil {
+		return 1
+	}
+
+	return request.generator.NewIterator().Total()
 }

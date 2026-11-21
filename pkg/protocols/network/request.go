@@ -90,6 +90,16 @@ func (request *Request) getOpenPorts(target *contextargs.Context) ([]string, err
 	return openPorts, nil
 }
 
+// countUnsent counts n requests an execution never started as processed, with
+// no error (#7838). Each request counts once, at the deepest level it reaches:
+// executeRequestWithPayloads counts each request it is given, and each loop
+// counts here the ones it doesn't start.
+func (request *Request) countUnsent(n int) {
+	if n > 0 {
+		request.options.Progress.SetRequests(uint64(n))
+	}
+}
+
 // ExecuteWithResults executes the protocol requests and returns results instead of writing them.
 func (request *Request) ExecuteWithResults(target *contextargs.Context, metadata, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
 	visitedAddresses := make(mapsutil.Map[string, struct{}])
@@ -101,6 +111,13 @@ func (request *Request) ExecuteWithResults(target *contextargs.Context, metadata
 			return err
 		}
 	}
+
+	// The total counts every listed port, so a port the loop doesn't start counts
+	// as processed: one the port check finds closed, or one the loop doesn't reach.
+	started := 0
+	defer func() {
+		request.countUnsent((len(request.ports) - started) * len(request.addresses) * request.requestsPerAddress())
+	}()
 
 	// get open ports from list of ports provided in template
 	ports, err := request.getOpenPorts(target)
@@ -132,6 +149,7 @@ func (request *Request) ExecuteWithResults(target *contextargs.Context, metadata
 			gologger.Debug().Msgf("Could not network port from constants: %s\n", err)
 		}
 
+		started++
 		targetErr := request.executeOnTarget(input, visitedAddresses, metadata, previous, wrappedCallback)
 		if stderrors.Is(targetErr, hosterrorscache.ErrUnresponsiveHost) {
 			skipped = true
