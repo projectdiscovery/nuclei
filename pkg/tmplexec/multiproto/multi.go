@@ -146,8 +146,15 @@ func (m *MultiProtocol) ExecuteWithResults(ctx *scan.ScanContext) error {
 
 		// in case of fatal error skip execution of next protocols
 		if err != nil {
+			// the engine warns about the context error returned here, so a
+			// warning of our own would print the cancellation twice
+			ctxErr := ctx.Context().Err()
+			if ctxErr != nil {
+				//nolint:wrapcheck // the loop returns the context error unwrapped too, and the engine prints it as is
+				return ctxErr
+			}
 			// always log errors
-			ctx.LogError(err)
+			utils.LogRequestError(ctx, m.options.TemplateID, err)
 			// for some classes of protocols (i.e ssl) errors like tls handshake are a legitimate behavior so we don't stop execution
 			// connection failures are already tracked by the internal host error cache
 			// we use strings comparison as the error is not formalized into instance within the standard library
