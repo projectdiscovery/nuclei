@@ -779,11 +779,16 @@ func shouldDisableKeepAliveForHTTPProxy(request *Request, options *protocols.Exe
 // user enables it, since the pooled transport sets custom dial hooks). It only
 // affects the time_delay analyzer decision below.
 func (r *Request) AnalyzeConnectionReuse(forceHTTP2 bool) ConnectionReusePolicy {
-	// Priority 0: race and pipeline requests need dedicated connections. Race
-	// uses a one-shot synced body gate that breaks if a connection is reused and
-	// the body is re-read, and reusing a single keep-alive connection would also
+	// Priority 0: race requests need dedicated connections. Race uses a
+	// one-shot synced body gate that breaks if a connection is reused and the
+	// body is re-read, and reusing a single keep-alive connection would also
 	// serialize the requests and defeat the race.
-	if r.Race || r.Pipeline {
+	//
+	// Pipelined requests are not listed: the pipeline client dials its own
+	// connections, so the pool never serves them. ReuseUnsafe would only add
+	// "Connection: close" to each request, and the server would then close the
+	// connection that the block's other requests are waiting on.
+	if r.Race {
 		return ReuseUnsafe
 	}
 
