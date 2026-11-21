@@ -120,7 +120,8 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 	request.options = options
 
 	client, err := networkclientpool.Get(options.Options, &networkclientpool.Configuration{
-		CustomDialer: options.CustomFastdialer,
+		CustomDialer:    options.CustomFastdialer,
+		TunnelHTTPProxy: true,
 	})
 	if err != nil {
 		return errkit.Wrap(err, "could not get network client")
@@ -136,6 +137,11 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 
 	case request.ScanMode == "openssl" && !openssl.IsAvailable():
 		// if openssl is not installed instead of failing "auto" scanmode is used
+		request.ScanMode = "auto"
+
+	case request.ScanMode == "openssl" && (options.Options.AliveHttpProxy != "" || options.Options.AliveSocksProxy != ""):
+		// openssl mode runs s_client, which would connect to the target
+		// directly and bypass -proxy
 		request.ScanMode = "auto"
 	}
 	if request.TLSCiphersEnum {
