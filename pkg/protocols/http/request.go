@@ -675,6 +675,9 @@ func (request *Request) executeTurboHTTP(input *contextargs.Context, dynamicValu
 		ctx := input.Context()
 		generatedHttpRequest, reservation, err := request.makeReserved(ctx, generator, input, inputData, payloads, dynamicValues)
 		if err != nil {
+			// The requests already started deliver their results first, as in executeParallelHTTP.
+			spmHandler.Wait()
+
 			return err
 		}
 		if input.MetaInput.Input == "" {

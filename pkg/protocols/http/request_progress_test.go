@@ -6,13 +6,17 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strconv"
+	"sync"
 	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators"
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators/matchers"
+	"github.com/projectdiscovery/nuclei/v3/pkg/output"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
 	httpprotocol "github.com/projectdiscovery/nuclei/v3/pkg/protocols/http"
 )
 
@@ -295,4 +299,61 @@ func TestThreadedRequestsEndAtTotal(t *testing.T) {
 			require.Zero(t, progress.errors.Load(), "requests counted as errors")
 		})
 	}
+}
+
+// A pipelined block that fails to build a request still waits for the requests
+// it sent, so their results are reported before it returns (#8243).
+//
+//nolint:paralleltest // testutils.Init state is shared
+func TestPipelineReportsRequestsSentBeforeBuildError(t *testing.T) {
+	// The server answers nothing until release closes, as a server that is
+	// slow to answer the first request does.
+	release := make(chan struct{})
+	releaseOnce := sync.OnceFunc(func() { close(release) })
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		<-release
+
+		_, _ = fmt.Fprint(w, skipOK)
+	}))
+	t.Cleanup(server.Close)
+	// It runs before server.Close, which waits for the handlers to return.
+	t.Cleanup(releaseOnce)
+
+	request := pipelined("pipe-build", map[string]any{"p": unbuildablePayloads()}, buildPath)
+	request.Operators = matchStatusOK()
+	progress := compileWithCache(t, request, newDownHostErrorsCache(false))
+
+	type outcome struct {
+		err    error
+		events int32
+	}
+
+	var events atomic.Int32
+
+	done := make(chan outcome, 1)
+
+	go func() {
+		err := request.ExecuteWithResults(contextargs.NewWithInput(t.Context(), server.URL),
+			make(output.InternalEvent), make(output.InternalEvent),
+			func(*output.InternalWrappedEvent) { events.Add(1) })
+		done <- outcome{err: err, events: events.Load()}
+	}()
+
+	// A block that does not wait returns inside this time, with no results.
+	// One that waits returns once the server answers.
+	time.AfterFunc(200*time.Millisecond, releaseOnce)
+
+	var got outcome
+
+	select {
+	case got = <-done:
+	case <-time.After(10 * time.Second):
+		t.Fatal("the block did not return")
+	}
+
+	require.ErrorContains(t, got.err, buildMessage)
+	require.EqualValues(t, 3, got.events, "results reported before the block returns")
+	require.EqualValues(t, 10, progress.requests.Load(), "requests processed")
+	require.Zero(t, progress.errors.Load(), "requests counted as errors")
 }
