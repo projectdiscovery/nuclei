@@ -163,6 +163,11 @@ func (ctx *Context) UseNetworkPort(port string, excludePorts string) error {
 	if err != nil {
 		return err
 	}
+	if target.Host == "" {
+		// urlutil.Parse drops the host of a single-label name such as
+		// "https://intranet", which would turn the template port into ":port".
+		target.Host = rawInputHost(ctx.MetaInput.Input)
+	}
 	inputPort := target.Port()
 	if inputPort == "" {
 		// No port in input at all — use the template port.
@@ -181,6 +186,21 @@ func (ctx *Context) UseNetworkPort(port string, excludePorts string) error {
 		ctx.MetaInput.Input = target.Host
 	}
 	return nil
+}
+
+// rawInputHost returns the host part of an input without relying on
+// urlutil.Parse: scheme, userinfo, path, query and fragment are stripped.
+func rawInputHost(input string) string {
+	if _, rest, ok := strings.Cut(input, "://"); ok {
+		input = rest
+	}
+	if i := strings.IndexAny(input, "/?#"); i >= 0 {
+		input = input[:i]
+	}
+	if i := strings.LastIndex(input, "@"); i >= 0 {
+		input = input[i+1:]
+	}
+	return input
 }
 
 // Port returns the port of the target
