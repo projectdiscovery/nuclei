@@ -13,6 +13,7 @@ import (
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http"
 	"github.com/projectdiscovery/nuclei/v3/pkg/scan"
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
@@ -46,7 +47,12 @@ func (h *holdExecuter) ExecuteWithResults(*scan.ScanContext) ([]*output.ResultEv
 
 func resumeTemplate(executer protocols.Executer) *templates.Template {
 	//nolint:exhaustruct,exhaustruct_v5 // zero values are the defaults
-	return &templates.Template{ID: resumeTemplateID, Path: resumeTemplateID, TotalRequests: 1, Executer: executer}
+	// The template is http-only, as the engine checks the host of only those
+	// before it runs them.
+	return &templates.Template{
+		ID: resumeTemplateID, Path: resumeTemplateID, TotalRequests: 1, Executer: executer,
+		RequestsHTTP: []*http.Request{{}},
+	}
 }
 
 // interruptedScan starts a template-spray scan of inputs that holds on the
@@ -115,8 +121,7 @@ func downSet(down []string) map[string]bool {
 func resumeFromSaved(t *testing.T, saved *types.ResumeCfg) *types.ResumeCfg {
 	t.Helper()
 
-	saved.ResumeFrom = saved.Current
-	data, err := json.Marshal(saved)
+	data, err := json.Marshal(saved.Snapshot())
 	require.NoError(t, err)
 
 	cfg := types.NewResumeCfg()

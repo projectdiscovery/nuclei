@@ -198,6 +198,41 @@ func TestWithResumeFileSavesCancelledScan(t *testing.T) { //nolint:paralleltest 
 	assert.Equal(t, int32(1), results.Load())
 }
 
+// TestWithResumeFileKeepsProgressOfUnreachedTemplates covers a scan that resumes
+// from a file and is cancelled before it reaches every template in that file:
+// the file it saves must keep the progress it loaded for the templates the scan
+// never started, or the next resumed scan repeats their finished work.
+func TestWithResumeFileKeepsProgressOfUnreachedTemplates(t *testing.T) { //nolint:paralleltest // shared DefaultConfig
+	target, arrived, _ := startHoldingServer(t, 1)
+	resumeFile := filepath.Join(t.TempDir(), "resume.cfg")
+
+	require.NoError(t, os.WriteFile(resumeFile,
+		[]byte(`{"resumeFrom":{`+
+			`"unreached-done":{"completed":true,"inFlight":{}},`+
+			`"unreached-partial":{"completed":false,"inFlight":{"3":{}}}}}`), 0o600))
+
+	require.ErrorIs(t, scanUntilCancelled(t, resumeFile, target, arrived), context.Canceled)
+
+	data, err := os.ReadFile(resumeFile) //nolint:gosec // the path is a test temp file
+	require.NoError(t, err)
+
+	var saved struct {
+		ResumeFrom map[string]struct {
+			Completed bool                `json:"completed"`
+			InFlight  map[string]struct{} `json:"inFlight"`
+		} `json:"resumeFrom"`
+	}
+
+	require.NoError(t, json.Unmarshal(data, &saved))
+	require.Contains(t, saved.ResumeFrom, "unreached-done")
+	assert.True(t, saved.ResumeFrom["unreached-done"].Completed, "a loaded completed template stays completed")
+	require.Contains(t, saved.ResumeFrom, "unreached-partial")
+	assert.False(t, saved.ResumeFrom["unreached-partial"].Completed)
+	assert.Contains(t, saved.ResumeFrom["unreached-partial"].InFlight, "3", "a loaded position stays in flight")
+	require.Contains(t, saved.ResumeFrom, "sdk-resume", "the template the scan started")
+	assert.NotEmpty(t, saved.ResumeFrom["sdk-resume"].InFlight, "the cancelled target must stay in flight")
+}
+
 // TestWithResumeFileSavesOnlyTheCancelledCall covers an engine that runs a scan
 // twice: the first call finishes its template and the second is cancelled in
 // flight. The saved file must describe the second call alone, or resuming from
