@@ -37,6 +37,8 @@ import (
 	"github.com/projectdiscovery/utils/errkit"
 	fileutil "github.com/projectdiscovery/utils/file"
 	osutils "github.com/projectdiscovery/utils/os"
+
+	filepathutil "github.com/projectdiscovery/nuclei/v3/pkg/utils/filepath"
 	unitutils "github.com/projectdiscovery/utils/unit"
 	urlutil "github.com/projectdiscovery/utils/url"
 )
@@ -734,10 +736,24 @@ func (w *StandardWriter) WriteStoreDebugData(host, templateID, eventType string,
 
 		filename := sanitizeFileName(fmt.Sprintf("%s_%s", host, templateID))
 		subFolder := filepath.Join(w.storeResponseDir, sanitizeFileName(eventType))
+		// Defense-in-depth: verify the constructed sub-folder is still inside
+		// the configured store-response directory before creating it. The
+		// sanitizeFileName call above should prevent any traversal sequence from
+		// surviving, but an explicit containment check is a cheap second gate
+		// that will catch any future regression in the sanitizer.
+		if !filepathutil.IsPathWithinDirectory(subFolder, w.storeResponseDir) {
+			gologger.Error().Msgf("Computed debug sub-folder %s is outside store directory %s; skipping", subFolder, w.storeResponseDir)
+			return
+		}
 		if !fileutil.FolderExists(subFolder) {
 			_ = fileutil.CreateFolder(subFolder)
 		}
 		filename = filepath.Join(subFolder, fmt.Sprintf("%s.txt", filename))
+		// Second containment check for the final file path.
+		if !filepathutil.IsPathWithinDirectory(filename, w.storeResponseDir) {
+			gologger.Error().Msgf("Computed debug file path %s is outside store directory %s; skipping", filename, w.storeResponseDir)
+			return
+		}
 		f, err := os.OpenFile(filename, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644)
 		if err != nil {
 			gologger.Error().Msgf("Could not open debug output file: %s", err)
