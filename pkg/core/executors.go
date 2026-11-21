@@ -86,19 +86,7 @@ func (e *Engine) executeTemplateWithTargets(ctx context.Context, template *templ
 		index uint32
 	)
 
-	e.executerOpts.ResumeCfg.Lock()
-	currentInfo, ok := e.executerOpts.ResumeCfg.Current[template.ID]
-	if !ok {
-		currentInfo = &generalTypes.ResumeInfo{}
-		e.executerOpts.ResumeCfg.Current[template.ID] = currentInfo
-	}
-	currentInfo.InitInFlight()
-	resumeFromInfo, ok := e.executerOpts.ResumeCfg.ResumeFrom[template.ID]
-	if !ok {
-		resumeFromInfo = &generalTypes.ResumeInfo{}
-		e.executerOpts.ResumeCfg.ResumeFrom[template.ID] = resumeFromInfo
-	}
-	e.executerOpts.ResumeCfg.Unlock()
+	currentInfo, resumeFromInfo := e.resumeInfo(template.ID)
 
 	// track progression
 	cleanupInFlight := func(index uint32) {
@@ -236,6 +224,66 @@ func (e *Engine) executeTemplateWithTargets(ctx context.Context, template *templ
 	currentInfo.Lock()
 	currentInfo.Completed = true
 	currentInfo.Unlock()
+}
+
+// resumeInfo returns the progress under key in this scan and in the scan it
+// resumes from, and creates the ones that don't exist yet.
+func (e *Engine) resumeInfo(key string) (*generalTypes.ResumeInfo, *generalTypes.ResumeInfo) {
+	cfg := e.executerOpts.ResumeCfg
+	cfg.Lock()
+	defer cfg.Unlock()
+
+	return resumeInfoLocked(cfg, key)
+}
+
+// resumeInfoLocked is resumeInfo for a caller that holds cfg's lock.
+func resumeInfoLocked(cfg *generalTypes.ResumeCfg, key string) (*generalTypes.ResumeInfo, *generalTypes.ResumeInfo) {
+	current, exists := cfg.Current[key]
+	if !exists {
+		current = new(generalTypes.ResumeInfo)
+		cfg.Current[key] = current
+	}
+
+	current.InitInFlight()
+
+	resumeFrom, exists := cfg.ResumeFrom[key]
+	if !exists {
+		resumeFrom = new(generalTypes.ResumeInfo)
+		cfg.ResumeFrom[key] = resumeFrom
+	}
+
+	return current, resumeFrom
+}
+
+// hostSprayResumeInfo returns the progress of a host-spray run in this scan and
+// in the scan it resumes from.
+//
+// The resume file has one entry for host-spray, but an engine runs host-spray
+// once per ExecuteScanWithOpts call, as -auto-tech does, and the engines of -as
+// share one resume config. The progress of one run can't stand for the others,
+// and a finished run would mark the entry as completed for a run still going.
+// Only the first run tracks. A later run gets progress that no one saves and
+// resets the entry to an empty one, so a resumed scan starts from the first
+// target, as it did before host-spray saved progress. The entry stays, because
+// a missing one would let a third run track again.
+func (e *Engine) hostSprayResumeInfo() (*generalTypes.ResumeInfo, *generalTypes.ResumeInfo) {
+	cfg := e.executerOpts.ResumeCfg
+	cfg.Lock()
+	defer cfg.Unlock()
+
+	if _, taken := cfg.Current[hostSprayResumeID]; !taken {
+		return resumeInfoLocked(cfg, hostSprayResumeID)
+	}
+
+	empty := func() *generalTypes.ResumeInfo {
+		info := new(generalTypes.ResumeInfo)
+		info.InitInFlight()
+
+		return info
+	}
+	cfg.Current[hostSprayResumeID] = empty()
+
+	return empty(), empty()
 }
 
 // executeTemplatesOnTarget execute given templates on given single target
