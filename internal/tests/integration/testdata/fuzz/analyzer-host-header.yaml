@@ -1,0 +1,29 @@
+id: analyzer-host-header
+
+info:
+  name: Host Header Injection via analyzer
+  author: pdteam
+  severity: medium
+  description: |
+    Drives the built-in host_header_injection analyzer through the real fuzzing
+    pipeline. The analyzer overrides Host / X-Forwarded-Host with a canary and
+    confirms when it is reflected back in an absolute URL.
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}"
+    fuzzing:
+      - part: query
+        type: replace
+        mode: single
+        keys:
+          - "q"
+        fuzz:
+          - "x"
+    analyzer:
+      name: host_header_injection
+    matchers:
+      - type: dsl
+        dsl:
+          - "analyzer == true"
