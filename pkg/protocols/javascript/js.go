@@ -502,7 +502,6 @@ func (request *Request) executeWithResults(port string, target *contextargs.Cont
 			if err := request.executeRequestWithPayloads(hostPort, input, hostname, renderedValue.Values, nil, func(result *output.InternalWrappedEvent) {
 				if result.OperatorsResult != nil && result.OperatorsResult.Matched {
 					gotMatches = true
-					request.options.Progress.IncrementMatched()
 				}
 				callback(result)
 			}, requestOptions, renderedValue.InteractURLs); err != nil {
@@ -632,10 +631,6 @@ func (request *Request) executeRequestParallel(ctxParent context.Context, hostPo
 
 	if runErr != nil {
 		return runErr
-	}
-
-	if gotmatches.Load() {
-		request.options.Progress.IncrementMatched()
 	}
 
 	return nil
