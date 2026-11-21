@@ -24,6 +24,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/hosterrorscache"
 	httpprotocol "github.com/projectdiscovery/nuclei/v3/pkg/protocols/http"
+	"github.com/projectdiscovery/nuclei/v3/pkg/utils/httpbody"
 	"github.com/projectdiscovery/ratelimit"
 )
 
@@ -141,9 +142,19 @@ func (c *downHostErrorsCache) IsPermanentErr(*contextargs.Context, error) bool {
 
 // compileWithCache compiles request with cache as its host errors cache and a
 // progress that counts.
+func compileWithCache(t *testing.T, request *httpprotocol.Request, cache *downHostErrorsCache) *skipProgress {
+	t.Helper()
+
+	return compileWithBudget(t, request, cache, nil)
+}
+
+// compileWithBudget is compileWithCache with budget as the request-body
+// budget, unless it is nil.
 //
 //nolint:exhaustruct,exhaustruct_v5 // fixtures keep zero-value defaults
-func compileWithCache(t *testing.T, request *httpprotocol.Request, cache *downHostErrorsCache) *skipProgress {
+func compileWithBudget(
+	t *testing.T, request *httpprotocol.Request, cache *downHostErrorsCache, budget *httpbody.Budget,
+) *skipProgress {
 	t.Helper()
 
 	options := testutils.DefaultOptions.Copy()
@@ -160,6 +171,11 @@ func compileWithCache(t *testing.T, request *httpprotocol.Request, cache *downHo
 	progress := &skipProgress{}
 	executerOpts.Progress = progress
 	executerOpts.HostErrorsCache = cache
+
+	if budget != nil {
+		executerOpts.RequestBodyBudget = budget
+	}
+
 	require.NoError(t, request.Compile(executerOpts))
 
 	return progress

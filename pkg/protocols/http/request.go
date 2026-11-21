@@ -688,9 +688,22 @@ func (request *Request) executeTurboHTTP(input *contextargs.Context, dynamicValu
 			break
 		}
 
-		ctx := input.Context()
+		// The handler's context ends the wait for budget at the first match, and
+		// with the input's cancel, as executeParallelHTTP's workerCtx does.
+		ctx := spmHandler.Context()
 		generatedHttpRequest, reservation, err := request.makeReserved(ctx, generator, input, inputData, payloads, dynamicValues)
 		if err != nil {
+			// A first match, or an unresponsive address, cancels the handler and
+			// ends the wait. The block then ends as at the check above, noting
+			// the skip when the address is down. The handler's context derives
+			// from the input's, so an input cancel has to be told apart first:
+			// it stays an error.
+			if input.Context().Err() == nil && spmHandler.Cancelled() {
+				request.skipUnresponsive(input, &skipped)
+
+				break
+			}
+
 			// The requests already started deliver their results first, as in executeParallelHTTP.
 			spmHandler.Wait()
 
