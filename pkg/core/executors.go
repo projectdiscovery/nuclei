@@ -76,11 +76,7 @@ func (e *Engine) executeTemplateWithTargets(ctx context.Context, template *templ
 		e.workPool = e.GetWorkPool()
 	}
 	// Bounded worker pool using input concurrency
-	pool := e.workPool.InputPool(template.Type())
-	workerCount := 1
-	if pool != nil && pool.Size > 0 {
-		workerCount = pool.Size
-	}
+	workerCount := e.workPool.InputPool(template.Type()).Size
 
 	var (
 		index uint32
