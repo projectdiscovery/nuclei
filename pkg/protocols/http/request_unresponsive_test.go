@@ -54,9 +54,17 @@ type skipProgress struct {
 
 	requests atomic.Int64
 	errors   atomic.Int64
+	// onRequest, when set before the request runs, is called with the count
+	// after each IncrementRequests.
+	onRequest func(count int64)
 }
 
-func (p *skipProgress) IncrementRequests() { p.requests.Add(1) }
+func (p *skipProgress) IncrementRequests() {
+	count := p.requests.Add(1)
+	if p.onRequest != nil {
+		p.onRequest(count)
+	}
+}
 
 func (p *skipProgress) SetRequests(count uint64) {
 	p.requests.Add(int64(count)) //nolint:gosec // test counters stay small
