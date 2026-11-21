@@ -156,7 +156,9 @@ func (h *Helper) convertInputToType(input string, inputType inputType, defaultPo
 		if hasHost && hasPort {
 			return net.JoinHostPort(host, port)
 		}
-		if uri != nil && !hasPort && uri.Scheme == "https" {
+		// An optional port is left to the request, which knows the template
+		// port and applies the scheme default only when the template has none.
+		if uri != nil && !hasPort && uri.Scheme == "https" && inputType == typeHostWithPort {
 			// uri.Host keeps the brackets of an IPv6 literal, while
 			// JoinHostPort adds them again, yielding "[[::1]]:443".
 			return net.JoinHostPort(uri.Hostname(), "443")
