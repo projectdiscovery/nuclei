@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"net"
+	"strconv"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -327,4 +328,141 @@ func TestUnresponsivePortAmongOthers(t *testing.T) {
 
 	require.ErrorIs(t, err, hosterrorscache.ErrUnresponsiveHost)
 	require.Equal(t, 1, events)
+}
+
+// skipProgress counts what the progress display would show: requests that
+// count as done, and errors.
+type skipProgress struct {
+	testutils.MockProgressClient
+
+	requests atomic.Int64
+	errors   atomic.Int64
+}
+
+func (p *skipProgress) IncrementRequests() { p.requests.Add(1) }
+
+func (p *skipProgress) SetRequests(count uint64) {
+	p.requests.Add(int64(count)) //nolint:gosec // test counters stay small
+}
+
+func (p *skipProgress) IncrementFailedRequestsBy(count int64) {
+	p.requests.Add(count)
+	p.errors.Add(count)
+}
+
+// countRequests makes request report to a progress that counts, and returns it.
+// Call it after the request is compiled.
+//
+//nolint:exhaustruct,exhaustruct_v5 // the counters start at zero
+func countRequests(request *Request) *skipProgress {
+	progress := &skipProgress{}
+	request.options.Progress = progress
+
+	return progress
+}
+
+// payloadValues returns n distinct payload values.
+func payloadValues(n int) []string {
+	values := make([]string, n)
+	for i := range values {
+		values[i] = strconv.Itoa(i)
+	}
+
+	return values
+}
+
+// lateDownCache reports every address as up for the first downAfter checks and
+// as unresponsive after them, as when another template marks the address
+// mid-run.
+type lateDownCache struct {
+	*hosterrorscache.Cache
+
+	downAfter int32
+	checks    atomic.Int32
+}
+
+func (c *lateDownCache) Check(string, *contextargs.Context) bool {
+	return c.checks.Add(1) > c.downAfter
+}
+
+// Each request that a skip leaves unsent counts as processed once, and none
+// counts as an error (#8244).
+//
+//nolint:exhaustruct,exhaustruct_v5,paralleltest // fixtures keep zero-value defaults; the test options are global
+func TestUnresponsiveAddressCountsSkippedRequests(t *testing.T) {
+	tests := []struct {
+		name     string
+		payloads int
+		want     int64
+	}{
+		{name: "single request", want: 1},
+		{name: "3 payloads", payloads: 3, want: 3},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			address, accepted := listen(t, nil, "ok")
+
+			request := &Request{Address: []string{address}, Inputs: []*Input{{Data: pingData}}, Threads: 1}
+
+			if test.payloads > 0 {
+				request.Payloads = map[string]any{"value": payloadValues(test.payloads)}
+			}
+
+			markDown(compileWithCache(t, request), address)
+			progress := countRequests(request)
+
+			_, err := executeCounting(request, address)
+
+			require.ErrorIs(t, err, hosterrorscache.ErrUnresponsiveHost)
+			require.Equal(t, test.want, progress.requests.Load())
+			require.Zero(t, progress.errors.Load())
+			require.Zero(t, accepted.Load(), "dialed an address marked down")
+		})
+	}
+}
+
+// A payload request that finds the address unresponsive only after the payload
+// loop has checked it counts as processed once. Whichever of the loop and the
+// request sees the address down first, every payload is counted exactly once.
+//
+//nolint:exhaustruct,exhaustruct_v5,paralleltest // fixtures keep zero-value defaults; the test options are global
+func TestUnresponsiveAddressMarkedAfterLoopCheckCountsOnce(t *testing.T) {
+	for _, payloads := range []int{1, 3} {
+		t.Run(strconv.Itoa(payloads)+" payloads", func(t *testing.T) {
+			address, accepted := listen(t, nil, "ok")
+			request := &Request{
+				Address:  []string{address},
+				Inputs:   []*Input{{Data: pingData}},
+				Payloads: map[string]any{"value": payloadValues(payloads)},
+				Threads:  1,
+			}
+			cache := compileWithCache(t, request)
+			request.options.HostErrorsCache = &lateDownCache{Cache: cache, downAfter: 1}
+			progress := countRequests(request)
+
+			_, err := executeCounting(request, address)
+
+			require.ErrorIs(t, err, hosterrorscache.ErrUnresponsiveHost)
+			require.Equal(t, int64(payloads), progress.requests.Load())
+			require.Zero(t, progress.errors.Load())
+			require.Zero(t, accepted.Load(), "dialed an address marked down")
+		})
+	}
+}
+
+// A request that fails to connect counts as one processed request and one
+// error. It does not count as a skip.
+//
+//nolint:exhaustruct,exhaustruct_v5,paralleltest // fixtures keep zero-value defaults; the test options are global
+func TestFailedConnectionCountsOneRequestAndOneError(t *testing.T) {
+	request := &Request{Address: []string{closedAddress(t)}, Inputs: []*Input{{Data: pingData}}}
+	compileWithCache(t, request)
+	progress := countRequests(request)
+
+	_, err := executeCounting(request, "127.0.0.1")
+
+	require.Error(t, err)
+	require.NotErrorIs(t, err, hosterrorscache.ErrUnresponsiveHost)
+	require.Equal(t, int64(1), progress.requests.Load())
+	require.Equal(t, int64(1), progress.errors.Load())
 }
