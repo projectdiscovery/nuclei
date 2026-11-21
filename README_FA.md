@@ -335,7 +335,7 @@ OPTIMIZATIONS:
    -timeout int                     time to wait in seconds before timeout (default 10)
    -retries int                     number of times to retry a failed request (default 1)
    -ldp, -leave-default-ports       leave default HTTP/HTTPS ports (eg. host:80,host:443)
-   -mhe, -max-host-error int        max errors for a host before skipping from scan (default 30)
+   -mhe, -max-host-error int        max http errors for a host:port before skipping requests to it (default 30)
    -te, -track-error string[]       adds given error to max-host-error watchlist (standard, file)
    -nmhe, -no-mhe                   disable skipping host from scan based on errors
    -project                         use a project folder to avoid sending same request multiple times

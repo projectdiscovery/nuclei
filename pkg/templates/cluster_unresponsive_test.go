@@ -75,3 +75,59 @@ func TestClusterReportsUnresponsiveSkip(t *testing.T) {
 		})
 	}
 }
+
+// succeedingNetworkRequest is a network request that sends nothing and succeeds.
+type succeedingNetworkRequest struct {
+	protocols.Request
+}
+
+func (succeedingNetworkRequest) ExecuteWithResults(
+	*contextargs.Context, output.InternalEvent, output.InternalEvent, protocols.OutputEventCallback,
+) error {
+	return nil
+}
+
+// A cluster of network requests that succeeds leaves the target's http failure
+// in place, as a template run on its own does (#8203).
+//
+//nolint:exhaustruct,exhaustruct_v5,paralleltest // fixtures keep zero-value defaults
+func TestNonHTTPClusterKeepsTargetFailure(t *testing.T) {
+	tests := []struct {
+		name string
+		run  func(*ClusterExecuter, *scan.ScanContext) error
+	}{
+		{name: "Execute", run: func(c *ClusterExecuter, ctx *scan.ScanContext) error {
+			_, err := c.Execute(ctx)
+
+			return err
+		}},
+		{name: "ExecuteWithResults", run: func(c *ClusterExecuter, ctx *scan.ScanContext) error {
+			_, err := c.ExecuteWithResults(ctx)
+
+			return err
+		}},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			cache := hosterrorscache.New(1, hosterrorscache.DefaultMaxHostsCount, nil)
+			t.Cleanup(cache.Close)
+
+			protoType := templateTypes.HTTPProtocol.String()
+			target := contextargs.NewWithInput(context.Background(), "https://127.0.0.1")
+			cache.MarkFailedOrRemove(protoType, target, errRefused)
+			require.True(t, cache.Check(protoType, target), "the refused address must be unresponsive")
+
+			cluster := &ClusterExecuter{
+				requests:     succeedingNetworkRequest{},
+				templateType: templateTypes.NetworkProtocol,
+				operators:    []*clusteredOperator{{templateID: "a"}, {templateID: "b"}},
+				options: &protocols.ExecutorOptions{
+					Options: &types.Options{}, Output: testutils.NewMockOutputWriter(false), HostErrorsCache: cache,
+				},
+			}
+
+			require.NoError(t, test.run(cluster, scan.NewScanContext(context.Background(), target)))
+			require.True(t, cache.Check(protoType, target), "the cluster cleared the failure of the target's address")
+		})
+	}
+}
