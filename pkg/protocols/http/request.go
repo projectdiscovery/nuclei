@@ -599,14 +599,13 @@ func (request *Request) executeTurboHTTP(input *contextargs.Context, dynamicValu
 
 	defer func() { request.countUntaken(generator, taken) }()
 
-	// need to extract the target from the url
-	URL, err := urlutil.Parse(input.MetaInput.Input)
+	// An input that does not parse fails the block before any request is built.
+	_, err := urlutil.Parse(input.MetaInput.Input)
 	if err != nil {
 		return err
 	}
 
 	pipeOptions := rawhttp.DefaultPipelineOptions
-	pipeOptions.Host = URL.Host
 	pipeOptions.MaxConnections = 1
 	// route pipelined connections through the fastdialer so the network policy
 	// applies; without an explicit Dialer the pipeline client uses a raw dial.
@@ -623,7 +622,22 @@ func (request *Request) executeTurboHTTP(input *contextargs.Context, dynamicValu
 	if request.PipelineRequestsPerConnection > 0 {
 		pipeOptions.MaxPendingRequests = request.PipelineRequestsPerConnection
 	}
-	pipeClient := rawhttp.NewPipelineClient(pipeOptions)
+	// A pipeline client dials one address, so each address a request goes to
+	// gets its own, with the same limits. Only this loop reads the map.
+	pipeClients := make(map[string]*rawhttp.PipelineClient)
+	pipeClientFor := func(requestURL string) *rawhttp.PipelineClient {
+		address := pipelineAddress(requestURL)
+
+		client, ok := pipeClients[address]
+		if !ok {
+			options := pipeOptions
+			options.Host = address
+			client = rawhttp.NewPipelineClient(options)
+			pipeClients[address] = client
+		}
+
+		return client
+	}
 
 	// defaultMaxWorkers should be a sufficient value to keep queues always full
 	// in case the queue is bigger increase the workers
@@ -674,18 +688,40 @@ func (request *Request) executeTurboHTTP(input *contextargs.Context, dynamicValu
 
 		select {
 		case <-input.Context().Done():
+			// The pipeline client takes no context, so a request already sent
+			// still delivers its result. Wait for it, as executeParallelHTTP
+			// does, so none reaches the callback after this returns.
+			spmHandler.Wait()
+
 			return input.Context().Err()
 		default:
 		}
 
-		if spmHandler.FoundFirstMatch() || request.skipUnresponsive(input, &skipped) || spmHandler.Cancelled() {
+		// In a block that may send elsewhere, a down target says nothing about
+		// the addresses of its requests, which are checked one by one below.
+		if spmHandler.FoundFirstMatch() || (!request.maySendElsewhere && request.skipUnresponsive(input, &skipped)) ||
+			spmHandler.Cancelled() {
 			// skip if first match is found
 			break
 		}
 
-		ctx := input.Context()
+		// The handler's context ends the wait for budget at the first match, and
+		// with the input's cancel, as executeParallelHTTP's workerCtx does.
+		ctx := spmHandler.Context()
 		generatedHttpRequest, reservation, err := request.makeReserved(ctx, generator, input, inputData, payloads, dynamicValues)
 		if err != nil {
+			// A first match cancels the handler and ends the wait, and so does a
+			// result that finds the address down, in a block that cannot send
+			// elsewhere. The block then ends as at the check above, noting the
+			// skip when the address is down. The handler's context derives from
+			// the input's, so an input cancel has to be told apart first: it
+			// stays an error.
+			if input.Context().Err() == nil && spmHandler.Cancelled() {
+				request.skipUnresponsive(input, &skipped)
+
+				break
+			}
+
 			// The requests already started deliver their results first, as in executeParallelHTTP.
 			spmHandler.Wait()
 
@@ -698,12 +734,16 @@ func (request *Request) executeTurboHTTP(input *contextargs.Context, dynamicValu
 
 		hostErrorsInput := contextargs.GetCopyIfAddressOutdated(input, generatedHttpRequest.URL())
 		if request.skipUnresponsive(hostErrorsInput, &skipped) {
-			// skip on unresponsive host no need to continue
 			reservation.done()
-
-			break
+			// Every request of the block goes to this address, so none can be sent.
+			if !request.maySendElsewhere {
+				break
+			}
+			// The next request may go to another address.
+			continue
 		}
-		generatedHttpRequest.pipelinedClient = pipeClient
+
+		generatedHttpRequest.pipelinedClient = pipeClientFor(generatedHttpRequest.URL())
 		if err := spmHandler.Acquire(); err != nil {
 			reservation.done()
 			break
@@ -734,7 +774,13 @@ func (request *Request) executeTurboHTTP(input *contextargs.Context, dynamicValu
 			case <-spmHandler.Done():
 				return
 			case spmHandler.ResultChan <- err:
-				request.recordHostResultAndCancelIfUnresponsive(hostErrorsInput, err, spmHandler.Cancel)
+				// In a block that may send elsewhere, one address going down
+				// says nothing about the others, so only its result is recorded.
+				if request.maySendElsewhere {
+					request.recordHostResult(hostErrorsInput, err)
+				} else {
+					request.recordHostResultAndCancelIfUnresponsive(hostErrorsInput, err, spmHandler.Cancel)
+				}
 				return
 			}
 		}(generatedHttpRequest, reservation, updatedInput, hostErrorsInput)
@@ -746,6 +792,27 @@ func (request *Request) executeTurboHTTP(input *contextargs.Context, dynamicValu
 	}
 
 	return requestsError(spmHandler.CombinedResults(), skipped.Load())
+}
+
+// pipelineAddress returns the host and port that a request to requestURL goes
+// to, with the default port of its scheme when it names none. A pipeline client
+// with a custom dialer gets no default port from rawhttp.
+func pipelineAddress(requestURL string) string {
+	// ParseURL reads a host with a single label, such as http://intranet, as a path.
+	parsed, err := urlutil.ParseAbsoluteURL(requestURL, true)
+	if err != nil {
+		return ""
+	}
+
+	port := parsed.Port()
+	if port == "" {
+		port = "80"
+		if parsed.Scheme == urlutil.HTTPS {
+			port = "443"
+		}
+	}
+
+	return net.JoinHostPort(parsed.Hostname(), port)
 }
 
 // countUntaken counts the requests of generator that the loop never took, so a
@@ -1362,7 +1429,18 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 			if parsed, parseErr := urlutil.ParseURL(formedURL, true); parseErr == nil {
 				hostname = parsed.Host
 			}
-			resp, err = generatedRequest.pipelinedClient.DoRaw(generatedRequest.rawRequest.Method, input.MetaInput.Input, generatedRequest.rawRequest.Path, generators.ExpandMapValues(generatedRequest.rawRequest.Headers), io.NopCloser(strings.NewReader(generatedRequest.rawRequest.Data)))
+			// The request's own URL picks the scheme, as it does the address of its
+			// client. The input can leave the scheme out of a host that @Host names
+			// with one.
+			rawURL := input.MetaInput.Input
+			if formedURL != "" {
+				rawURL = formedURL
+			}
+
+			resp, err = generatedRequest.pipelinedClient.DoRaw(
+				generatedRequest.rawRequest.Method, rawURL, generatedRequest.rawRequest.Path,
+				generators.ExpandMapValues(generatedRequest.rawRequest.Headers),
+				io.NopCloser(strings.NewReader(generatedRequest.rawRequest.Data)))
 			sent = true
 		} else if generatedRequest.request != nil {
 			if generatedRequest.request.URL != nil {

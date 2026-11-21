@@ -186,7 +186,9 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 			return errors.Wrap(err, "could not parse payloads")
 		}
 		// default to 20 threads for payload requests
-		request.Threads = options.GetThreadsForNPayloadRequests(request.Requests(), request.Threads)
+		// syncutil.New rejects a pool size below 1, so a -pc below 1 sends one
+		// payload at a time, as http and javascript requests do.
+		request.Threads = max(options.GetThreadsForNPayloadRequests(request.Requests(), request.Threads), 1)
 	}
 	return nil
 }

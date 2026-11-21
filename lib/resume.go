@@ -38,9 +38,10 @@ func (e *NucleiEngine) loadResumeCfg() (*types.ResumeCfg, error) {
 
 // resetResumeProgress drops the progress that earlier calls on this engine
 // recorded. Each call then starts like a new CLI run with -resume: it skips what
-// the loaded file marks as done and saves only what it did itself. Without it, a
-// template that an earlier call finished stays completed in the next call's
-// saved file, and resuming from that file skips work the call never finished.
+// the loaded file marks as done and saves what it did itself over the loaded
+// progress. Without it, a template that an earlier call finished stays completed
+// in the next call's saved file, and resuming from that file skips work the call
+// never finished.
 func (e *NucleiEngine) resetResumeProgress() {
 	resumeCfg := e.executerOpts.ResumeCfg
 
@@ -63,10 +64,7 @@ func (e *NucleiEngine) saveResumeCfg() error {
 		}
 	}
 
-	resumeCfg := e.executerOpts.ResumeCfg.Clone()
-	resumeCfg.ResumeFrom = resumeCfg.Current
-
-	data, err := json.MarshalIndent(resumeCfg, "", "\t")
+	data, err := json.MarshalIndent(e.executerOpts.ResumeCfg.Snapshot(), "", "\t")
 	if err != nil {
 		return errors.Wrap(err, "could not encode resume configuration")
 	}

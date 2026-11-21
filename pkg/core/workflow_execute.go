@@ -28,11 +28,12 @@ func (e *Engine) executeWorkflow(ctx *scan.ScanContext, w *workflows.Workflow) b
 
 	// we can know the nesting level only at runtime, so the best we can do here is increase template threads by one unit in case it's equal to 1 to allow
 	// at least one subtemplate to go through, which it's idempotent to one in-flight template as the parent one is in an idle state
-	templateThreads := w.Options.Options.TemplateThreads
+	templateThreads := max(w.Options.Options.TemplateThreads, 1)
 	if templateThreads == 1 {
 		templateThreads++
 	}
-	swg, _ := syncutil.New(syncutil.WithSize(templateThreads))
+
+	swg := newPool(templateThreads)
 	// pending tracks every started step until it returns. swg only limits
 	// concurrency and its slots can be released early, so completion is
 	// tracked here instead.
