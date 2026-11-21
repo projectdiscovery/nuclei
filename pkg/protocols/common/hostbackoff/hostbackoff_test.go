@@ -142,6 +142,90 @@ func TestWaitSpacesConcurrentCallers(t *testing.T) {
 	require.GreaterOrEqual(t, time.Since(start), 2*step-10*time.Millisecond)
 }
 
+func TestCancelledWaitReusesItsSlot(t *testing.T) {
+	const step = 100 * time.Millisecond
+	const host = "cancelled.test"
+	g := New(Config{Step: step, Max: step})
+	g.Observe(host, http.StatusTooManyRequests, 0, nil)
+
+	for i := 0; i < 3; i++ {
+		g.mu.Lock()
+		state, err := g.hosts.GetIFPresent(host)
+		require.NoError(t, err)
+		previous := state.next
+		g.mu.Unlock()
+
+		ctx, cancel := context.WithCancel(context.Background())
+		result := make(chan error, 1)
+		go func() { result <- g.Wait(ctx, host) }()
+		require.Eventually(t, func() bool {
+			g.mu.Lock()
+			defer g.mu.Unlock()
+			state, err := g.hosts.GetIFPresent(host)
+			return err == nil && state.next.After(previous)
+		}, time.Second, time.Millisecond)
+		cancel()
+		require.ErrorIs(t, <-result, context.Canceled)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 250*time.Millisecond)
+	defer cancel()
+	start := time.Now()
+	require.NoError(t, g.Wait(ctx, host))
+	require.Less(t, time.Since(start), 250*time.Millisecond)
+}
+
+func TestCancelledWaitDoesNotMoveLaterReservation(t *testing.T) {
+	const step = 200 * time.Millisecond
+	const host = "reserved.test"
+	g := New(Config{Step: step, Max: step})
+	g.Observe(host, http.StatusTooManyRequests, 0, nil)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancelledResult := make(chan error, 1)
+	go func() { cancelledResult <- g.Wait(ctx, host) }()
+	require.Eventually(t, func() bool {
+		g.mu.Lock()
+		defer g.mu.Unlock()
+		state, err := g.hosts.GetIFPresent(host)
+		return err == nil && !state.next.IsZero()
+	}, time.Second, time.Millisecond)
+	g.mu.Lock()
+	state, err := g.hosts.GetIFPresent(host)
+	require.NoError(t, err)
+	previous := state.next
+	g.mu.Unlock()
+
+	type waitResult struct {
+		at  time.Time
+		err error
+	}
+	laterResult := make(chan waitResult, 1)
+	go func() {
+		err := g.Wait(context.Background(), host)
+		laterResult <- waitResult{time.Now(), err}
+	}()
+	require.Eventually(t, func() bool {
+		g.mu.Lock()
+		defer g.mu.Unlock()
+		state, err := g.hosts.GetIFPresent(host)
+		return err == nil && state.next.After(previous)
+	}, time.Second, time.Millisecond)
+	cancel()
+	require.ErrorIs(t, <-cancelledResult, context.Canceled)
+
+	reusedResult := make(chan waitResult, 1)
+	go func() {
+		err := g.Wait(context.Background(), host)
+		reusedResult <- waitResult{time.Now(), err}
+	}()
+	reused := <-reusedResult
+	later := <-laterResult
+	require.NoError(t, reused.err)
+	require.NoError(t, later.err)
+	require.True(t, reused.at.Before(later.at))
+}
+
 func TestForbiddenRetryAfterBacksOffImmediately(t *testing.T) {
 	g := New(Config{Step: 100 * time.Millisecond, ForbiddenStreak: 5, Max: time.Minute})
 	g.Observe("acme.test", http.StatusForbidden, 2*time.Second, nil)

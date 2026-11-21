@@ -17,6 +17,7 @@
 package hostbackoff
 
 import (
+	"container/heap"
 	"context"
 	"math"
 	"net/http"
@@ -92,6 +93,20 @@ type hostState struct {
 	// successive slots so a delay paces the host instead of holding a burst
 	// and releasing it together.
 	next time.Time
+	// cancelled slots can be reused without moving reservations held by live callers.
+	freeSlots slotHeap
+}
+
+type slotHeap []time.Time
+
+func (h slotHeap) Len() int           { return len(h) }
+func (h slotHeap) Less(i, j int) bool { return h[i].Before(h[j]) }
+func (h slotHeap) Swap(i, j int)      { h[i], h[j] = h[j], h[i] }
+func (h *slotHeap) Push(value any)    { *h = append(*h, value.(time.Time)) }
+func (h *slotHeap) Pop() any {
+	last := (*h)[len(*h)-1]
+	*h = (*h)[:len(*h)-1]
+	return last
 }
 
 // Governor holds the per-host delay for a scan.
@@ -138,11 +153,21 @@ func (g *Governor) Wait(ctx context.Context, host string) error {
 		return nil
 	}
 	now := time.Now()
-	start := state.next
-	if start.Before(now) {
-		start = now.Add(state.delay)
+	// Discard slots whose start time has passed. They can no longer be reused.
+	for state.freeSlots.Len() > 0 && !state.freeSlots[0].After(now) {
+		heap.Pop(&state.freeSlots)
 	}
-	state.next = start.Add(state.delay)
+	start := state.next
+	if state.freeSlots.Len() > 0 {
+		start = heap.Pop(&state.freeSlots).(time.Time)
+	} else {
+		if start.Before(now) {
+			start = now.Add(state.delay)
+		}
+		state.next = start.Add(state.delay)
+	}
+	slotEnd := start.Add(state.delay)
+	reservedDelay := state.delay
 	_ = g.hosts.Set(host, state)
 	wait := start.Sub(now)
 	g.mu.Unlock()
@@ -153,6 +178,16 @@ func (g *Governor) Wait(ctx context.Context, host string) error {
 	defer timer.Stop()
 	select {
 	case <-ctx.Done():
+		g.mu.Lock()
+		if current, err := g.hosts.GetIFPresent(host); err == nil && current == state && current.delay == reservedDelay && time.Now().Before(start) {
+			if current.next.Equal(slotEnd) {
+				current.next = start
+			} else {
+				heap.Push(&current.freeSlots, start)
+			}
+			_ = g.hosts.Set(host, current)
+		}
+		g.mu.Unlock()
 		return ctx.Err()
 	case <-timer.C:
 		return nil
@@ -232,7 +267,8 @@ func (g *Governor) state(host string) *hostState {
 }
 
 func (g *Governor) grow(state *hostState, retryAfter time.Duration) {
-	next := state.delay
+	previousDelay := state.delay
+	next := previousDelay
 	if next <= 0 {
 		next = g.cfg.Step
 	} else {
@@ -247,10 +283,14 @@ func (g *Governor) grow(state *hostState, retryAfter time.Duration) {
 		next = g.cfg.Max
 	}
 	state.delay = next
+	if next != previousDelay {
+		state.freeSlots = nil
+	}
 }
 
 func (g *Governor) decay(state *hostState) {
 	state.delay = time.Duration(float64(state.delay) * g.cfg.Decay)
+	state.freeSlots = nil
 	if state.delay < g.cfg.Step {
 		state.delay = 0
 		state.next = time.Time{}
