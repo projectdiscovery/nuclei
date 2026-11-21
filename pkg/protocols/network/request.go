@@ -296,8 +296,12 @@ func (request *Request) executeAddress(variables map[string]interface{}, actualA
 				}
 			}
 			if request.isUnresponsiveAddress(updatedTarget) {
-				// The remaining payloads would be skipped as well. Wait for the
-				// running ones, as an error of theirs takes precedence.
+				// The remaining payloads would be skipped as well, so they count
+				// as processed here. Value has taken this payload, so Remaining
+				// counts only the ones after it. Wait for the running ones, as
+				// an error of theirs takes precedence.
+				//nolint:gosec // at least 1, as this payload was taken
+				request.options.Progress.SetRequests(uint64(iterator.Remaining() + 1))
 				skipped.Store(true)
 
 				break payloadLoop
@@ -371,6 +375,9 @@ func (request *Request) executeRequestWithPayloads(variables map[string]interfac
 	updatedTarget.MetaInput.Input = actualAddress
 
 	if request.isUnresponsiveAddress(updatedTarget) {
+		// A skip is a processed request, not an error.
+		request.options.Progress.IncrementRequests()
+
 		return hosterrorscache.ErrUnresponsiveHost
 	}
 
