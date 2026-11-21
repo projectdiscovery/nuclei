@@ -158,7 +158,7 @@ TARGET:
    -l, -list string              path to file containing a list of target URLs/hosts to scan (one per line)
    -targets-inline string        inline multiline target list (for use in template profiles)
    -eh, -exclude-hosts string[]  hosts to exclude to scan from the input list (ip, cidr, hostname)
-   -resume string                resume scan from and save to specified file (clustering will be disabled)
+   -resume string                resume scan from and save to specified file
    -sa, -scan-all-ips            scan all the IP's associated with dns record
    -iv, -ip-version string[]     IP version to scan of hostname (4,6) - (default 4)
    -dun, -disable-url-normalization  keep targets exactly as supplied instead of collapsing urls that address the same resource
