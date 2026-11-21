@@ -100,6 +100,17 @@ func (request *Request) countUnsent(n int) {
 	}
 }
 
+// dialKey identifies a dial in the set of visited addresses. A plain and a
+// tls:// entry for one address are different requests, so the key holds the TLS
+// flag too (#8263).
+func dialKey(address string, useTLS bool) string {
+	if useTLS {
+		return "tls://" + address
+	}
+
+	return address
+}
+
 // ExecuteWithResults executes the protocol requests and returns results instead of writing them.
 func (request *Request) ExecuteWithResults(target *contextargs.Context, metadata, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
 	visitedAddresses := make(mapsutil.Map[string, struct{}])
@@ -258,11 +269,12 @@ func (request *Request) executeOnTarget(input *contextargs.Context, visited maps
 
 		actualAddress := replacer.Replace(kv.address, variables)
 
-		if visited.Has(actualAddress) && !request.options.Options.DisableClustering {
+		key := dialKey(actualAddress, kv.tls)
+		if visited.Has(key) && !request.options.Options.DisableClustering {
 			continue
 		}
 
-		visited.Set(actualAddress, struct{}{})
+		visited.Set(key, struct{}{})
 
 		started++
 		addressErr := request.executeAddress(variables, actualAddress, address, input, kv.tls, previous,
