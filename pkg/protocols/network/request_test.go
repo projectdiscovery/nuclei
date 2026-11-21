@@ -1,6 +1,7 @@
 package network
 
 import (
+	"bufio"
 	"context"
 	"crypto/md5"
 	"encoding/hex"
@@ -10,6 +11,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"strings"
 	"testing"
 	"time"
 
@@ -323,3 +325,62 @@ var exampleBody = `<!doctype html>
 </body>
 </html>
 `
+
+// With -pc below 1 the worker pool must still be built, and one payload is
+// sent at a time, so the server sees them in iterator order.
+//
+//nolint:exhaustruct,exhaustruct_v5,paralleltest // fixtures keep zero-value defaults; the test options are global
+func TestNetworkPayloadsRunWithPayloadConcurrencyBelowOne(t *testing.T) {
+	for _, payloadConcurrency := range []int{0, -1} {
+		t.Run(fmt.Sprintf("pc=%d", payloadConcurrency), func(t *testing.T) {
+			options := testutils.DefaultOptions.Copy()
+			options.PayloadConcurrency = payloadConcurrency
+			testutils.Init(options)
+			t.Cleanup(func() { testutils.Cleanup(options) })
+
+			listener, err := (&net.ListenConfig{}).Listen(t.Context(), "tcp", "127.0.0.1:0")
+			require.NoError(t, err)
+			t.Cleanup(func() { _ = listener.Close() })
+
+			// ExecuteWithResults returns after the last reply, so every line is queued by then.
+			lines := make(chan string, 8)
+
+			go func() {
+				for {
+					conn, err := listener.Accept()
+					if err != nil {
+						return
+					}
+
+					line, _ := bufio.NewReader(conn).ReadString('\n')
+
+					lines <- strings.TrimSpace(line)
+
+					_, _ = conn.Write([]byte("pong\r\n"))
+					_ = conn.Close()
+				}
+			}()
+
+			request := &Request{
+				ID:       "network-payloads",
+				Address:  []string{"{{Hostname}}"},
+				Inputs:   []*Input{{Data: "{{word}}\r\n"}},
+				Payloads: map[string]any{"word": []string{"one", "two", "three"}},
+			}
+			executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{ID: "network-payloads"})
+			require.NoError(t, request.Compile(executerOpts))
+			require.Equal(t, 1, request.Threads, "a -pc below 1 sends one payload at a time")
+
+			input := contextargs.NewWithInput(t.Context(), listener.Addr().String())
+			err = request.ExecuteWithResults(input, nil, nil, func(*output.InternalWrappedEvent) {})
+			require.NoError(t, err)
+
+			got := make([]string, 0, len(lines))
+			for len(lines) > 0 {
+				got = append(got, <-lines)
+			}
+
+			require.Equal(t, []string{"one", "two", "three"}, got)
+		})
+	}
+}
