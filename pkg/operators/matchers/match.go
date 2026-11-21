@@ -2,7 +2,9 @@ package matchers
 
 import (
 	"os"
+	"regexp"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/antchfx/htmlquery"
 	"github.com/antchfx/xmlquery"
@@ -60,7 +62,14 @@ func (matcher *Matcher) MatchWords(corpus string, data map[string]interface{}) (
 
 // MatchWordsWithOptions matches words with the current scan's DSL network policy.
 func (matcher *Matcher) MatchWordsWithOptions(corpus string, data map[string]interface{}, options *types.Options) (bool, []string) {
-	if matcher.CaseInsensitive {
+	return matcher.MatchWordsAt(corpus, data, options, 0)
+}
+
+// MatchWordsAt matches words against a corpus that starts at byte position
+// base of the full response, so Offset stays absolute when the response is
+// matched in chunks.
+func (matcher *Matcher) MatchWordsAt(corpus string, data map[string]interface{}, options *types.Options, base int) (bool, []string) {
+	if matcher.CaseInsensitive && matcher.Offset == nil {
 		corpus = strings.ToLower(corpus)
 	}
 
@@ -84,7 +93,11 @@ func (matcher *Matcher) MatchWordsWithOptions(corpus string, data map[string]int
 			}
 		}
 		// Continue if the word doesn't match
-		if !strings.Contains(corpus, word) {
+		matched := matcher.matchStringAt(corpus, word, base)
+		if matcher.CaseInsensitive && matcher.Offset != nil {
+			matched = matcher.matchFoldStringAt(corpus, word, base)
+		}
+		if !matched {
 			// If we are in an AND request and a match failed,
 			// return false as the AND condition fails on any single mismatch.
 			switch matcher.condition {
@@ -114,36 +127,18 @@ func (matcher *Matcher) MatchWordsWithOptions(corpus string, data map[string]int
 
 // MatchRegex matches a regex check against a corpus
 func (matcher *Matcher) MatchRegex(corpus string) (bool, []string) {
+	return matcher.MatchRegexAt(corpus, 0)
+}
+
+// MatchRegexAt matches regexes against a corpus that starts at byte position
+// base of the full response, so Offset stays absolute when the response is
+// matched in chunks.
+func (matcher *Matcher) MatchRegexAt(corpus string, base int) (bool, []string) {
 	var matchedRegexes []string
 	// Iterate over all the regexes accepted as valid
 	for i, regex := range matcher.regexCompiled {
-		// Literal prefix short-circuit
-		rstr := regex.String()
-		if !strings.Contains(rstr, "(?i") { // covers (?i) and (?i:
-			if prefix, ok := regex.LiteralPrefix(); ok && prefix != "" {
-				if !strings.Contains(corpus, prefix) {
-					switch matcher.condition {
-					case ANDCondition:
-						return false, []string{}
-					case ORCondition:
-						continue
-					}
-				}
-			}
-		}
-
-		// Fast OR-path: return first match without full scan
-		if matcher.condition == ORCondition && !matcher.MatchAll {
-			m := regex.FindAllString(corpus, 1)
-			if len(m) == 0 {
-				continue
-			}
-			return true, m
-		}
-
-		// Single scan: get all matches directly
-		currentMatches := regex.FindAllString(corpus, -1)
-		if len(currentMatches) == 0 {
+		currentMatches, matched := matcher.findRegexMatches(corpus, i, regex, base)
+		if !matched {
 			switch matcher.condition {
 			case ANDCondition:
 				return false, []string{}
@@ -152,7 +147,10 @@ func (matcher *Matcher) MatchRegex(corpus string) (bool, []string) {
 			}
 		}
 
-		// If the condition was an OR (and MatchAll true), we still need to gather all
+		// If the condition was an OR, return on the first match.
+		if matcher.condition == ORCondition && !matcher.MatchAll {
+			return true, currentMatches
+		}
 		matchedRegexes = append(matchedRegexes, currentMatches...)
 
 		// If we are at the end of the regex, return with true
@@ -166,12 +164,98 @@ func (matcher *Matcher) MatchRegex(corpus string) (bool, []string) {
 	return false, []string{}
 }
 
+func (matcher *Matcher) findRegexMatches(corpus string, index int, regex *regexp.Regexp, base int) ([]string, bool) {
+	if matcher.Offset != nil {
+		return matcher.findRegexMatchAtOffset(corpus, index, regex, *matcher.Offset-base)
+	}
+
+	// Literal prefix short-circuit
+	rstr := regex.String()
+	if !strings.Contains(rstr, "(?i") { // covers (?i) and (?i:
+		if prefix, ok := regex.LiteralPrefix(); ok && prefix != "" {
+			if !strings.Contains(corpus, prefix) {
+				return nil, false
+			}
+		}
+	}
+
+	if matcher.condition == ORCondition && !matcher.MatchAll {
+		m := regex.FindAllString(corpus, 1)
+		if len(m) == 0 {
+			return nil, false
+		}
+		return m, true
+	}
+
+	currentMatches := regex.FindAllString(corpus, -1)
+	if len(currentMatches) == 0 {
+		return nil, false
+	}
+	return currentMatches, true
+}
+
+// findRegexMatchAtOffset reports whether the regex has a match starting exactly
+// at offset, which is matcher.Offset made relative to the corpus. Scanning the corpus for every match is both wasteful and
+// wrong here: leftmost matching hides overlapping candidates, so a regex like
+// `ab|b` against `ab` never reports the `b` starting at offset 1. Instead the
+// anchored variant of the regex is run once over the corpus suffix that starts
+// one rune before the offset, which keeps ^, \A and word boundaries evaluated
+// against the original surrounding bytes.
+func (matcher *Matcher) findRegexMatchAtOffset(corpus string, index int, regex *regexp.Regexp, offset int) ([]string, bool) {
+	if offset < 0 || offset > len(corpus) {
+		return nil, false
+	}
+	anchored := matcher.offsetRegex(index, regex, offset)
+	if anchored == nil {
+		return nil, false
+	}
+
+	start := offset
+	if offset > 0 {
+		_, backward := utf8.DecodeLastRuneInString(corpus[:offset])
+		start = offset - backward
+		// a match can only begin on a rune boundary, so an offset landing
+		// inside a multi byte rune never matches
+		if _, forward := utf8.DecodeRuneInString(corpus[start:]); forward != backward {
+			return nil, false
+		}
+	}
+
+	loc := anchored.FindStringIndex(corpus[start:])
+	if loc == nil {
+		return nil, false
+	}
+	return []string{corpus[offset : start+loc[1]]}, true
+}
+
+// offsetRegex returns the anchored variant of the regex at the given index,
+// compiling it on demand when the matcher was not compiled with an offset or
+// when the relative offset needs the other variant (offset 0 in a later chunk).
+func (matcher *Matcher) offsetRegex(index int, regex *regexp.Regexp, offset int) *regexp.Regexp {
+	sameVariant := matcher.Offset != nil && (*matcher.Offset > 0) == (offset > 0)
+	if sameVariant && index >= 0 && index < len(matcher.offsetRegexCompiled) {
+		return matcher.offsetRegexCompiled[index]
+	}
+	compiled, err := compileOffsetRegex(regex.String(), offset)
+	if err != nil {
+		return nil
+	}
+	return compiled
+}
+
 // MatchBinary matches a binary check against a corpus
 func (matcher *Matcher) MatchBinary(corpus string) (bool, []string) {
+	return matcher.MatchBinaryAt(corpus, 0)
+}
+
+// MatchBinaryAt matches binary values against a corpus that starts at byte
+// position base of the full response, so Offset stays absolute when the
+// response is matched in chunks.
+func (matcher *Matcher) MatchBinaryAt(corpus string, base int) (bool, []string) {
 	var matchedBinary []string
 	// Iterate over all the words accepted as valid
 	for i, binary := range matcher.binaryDecoded {
-		if !strings.Contains(corpus, binary) {
+		if !matcher.matchStringAt(corpus, binary, base) {
 			// If we are in an AND request and a match failed,
 			// return false as the AND condition fails on any single mismatch.
 			switch matcher.condition {
@@ -195,6 +279,38 @@ func (matcher *Matcher) MatchBinary(corpus string) (bool, []string) {
 		}
 	}
 	return false, []string{}
+}
+
+// matchStringAt reports whether needle is present in corpus, optionally pinned
+// to matcher.Offset when that field is set. base is the position of corpus in
+// the full response.
+func (matcher *Matcher) matchStringAt(corpus, needle string, base int) bool {
+	if matcher.Offset == nil {
+		return strings.Contains(corpus, needle)
+	}
+	offset := *matcher.Offset - base
+	if offset < 0 || offset > len(corpus) || offset+len(needle) > len(corpus) {
+		return false
+	}
+	return corpus[offset:offset+len(needle)] == needle
+}
+
+// matchFoldStringAt compares the same number of Unicode code points at the
+// configured byte offset without lowercasing the corpus and shifting offsets.
+func (matcher *Matcher) matchFoldStringAt(corpus, needle string, base int) bool {
+	offset := *matcher.Offset - base
+	if offset < 0 || offset > len(corpus) {
+		return false
+	}
+	end := offset
+	for range needle {
+		if end == len(corpus) {
+			return false
+		}
+		_, size := utf8.DecodeRuneInString(corpus[end:])
+		end += size
+	}
+	return strings.EqualFold(corpus[offset:end], needle)
 }
 
 // MatchDSL matches on a generic map result

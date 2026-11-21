@@ -44,16 +44,19 @@ func (matcher *Matcher) CompileMatchers() error {
 
 	// Compile the regexes (with shared cache)
 	for _, regex := range matcher.Regex {
-		if cached, err := cache.Regex().GetIFPresent(regex); err == nil && cached != nil {
-			matcher.regexCompiled = append(matcher.regexCompiled, cached)
-			continue
-		}
-		compiled, err := regexp.Compile(regex)
+		compiled, err := compileRegex(regex)
 		if err != nil {
 			return fmt.Errorf("could not compile regex: %s", regex)
 		}
-		_ = cache.Regex().Set(regex, compiled)
 		matcher.regexCompiled = append(matcher.regexCompiled, compiled)
+
+		if matcher.Offset != nil {
+			offsetCompiled, err := compileOffsetRegex(regex, *matcher.Offset)
+			if err != nil {
+				return fmt.Errorf("could not compile regex: %s", regex)
+			}
+			matcher.offsetRegexCompiled = append(matcher.offsetRegexCompiled, offsetCompiled)
+		}
 	}
 
 	// Compile and validate binary Values in matcher
@@ -98,6 +101,33 @@ func (matcher *Matcher) CompileMatchers() error {
 		}
 	}
 	return nil
+}
+
+// compileRegex compiles pattern through the shared regex cache
+func compileRegex(pattern string) (*regexp.Regexp, error) {
+	if cached, err := cache.Regex().GetIFPresent(pattern); err == nil && cached != nil {
+		return cached, nil
+	}
+	compiled, err := regexp.Compile(pattern)
+	if err != nil {
+		return nil, err
+	}
+	_ = cache.Regex().Set(pattern, compiled)
+	return compiled, nil
+}
+
+// compileOffsetRegex compiles the variant of pattern used when a matcher is
+// pinned to a byte offset. The pattern is anchored so a single match attempt
+// answers whether it matches at the requested position, and for offsets past
+// the start of the corpus it also consumes the rune preceding the offset. That
+// leading rune is matched against the real bytes of the corpus, so ^, \A, \b
+// and \B keep seeing the context they would see during a normal scan.
+func compileOffsetRegex(pattern string, offset int) (*regexp.Regexp, error) {
+	anchored := `\A(?:` + pattern + `)`
+	if offset > 0 {
+		anchored = `\A(?s:.)(?:` + pattern + `)`
+	}
+	return compileRegex(anchored)
 }
 
 // GetType returns the condition type of the matcher

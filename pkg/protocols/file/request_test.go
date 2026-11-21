@@ -14,6 +14,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/projectdiscovery/nuclei/v3/internal/tests/testutils"
 	"github.com/projectdiscovery/nuclei/v3/pkg/model"
 	"github.com/projectdiscovery/nuclei/v3/pkg/model/types/severity"
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators"
@@ -21,7 +22,6 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators/matchers"
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
-	"github.com/projectdiscovery/nuclei/v3/internal/tests/testutils"
 	permissionutil "github.com/projectdiscovery/utils/permission"
 )
 
@@ -211,4 +211,161 @@ func TestFileProtocolConcurrentExecution(t *testing.T) {
 	// test 2: verify callback invocation timing shows concurrency
 	timesMutex.Lock()
 	defer timesMutex.Unlock()
+}
+
+func TestFileFilesizeAndOffset(t *testing.T) {
+	tempDir, err := os.MkdirTemp("", "nuclei-filesize-*")
+	require.NoError(t, err)
+	defer func() { _ = os.RemoveAll(tempDir) }()
+
+	content := []byte("MZPAYLOADDATA")
+	filePath := filepath.Join(tempDir, "sample.bin")
+	require.NoError(t, os.WriteFile(filePath, content, permissionutil.TempFilePermission))
+
+	options := testutils.DefaultOptions
+	testutils.Init(options)
+	templateID := "testing-file-filesize-offset"
+	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
+		ID:   templateID,
+		Info: model.Info{SeverityHolder: severity.Holder{Severity: severity.Low}, Name: "test"},
+	})
+
+	offset0 := 0
+	request := &Request{
+		ID:         templateID,
+		MaxSize:    "1Gb",
+		Extensions: []string{"all"},
+		Operators: operators.Operators{
+			MatchersCondition: "and",
+			Matchers: []*matchers.Matcher{
+				{
+					Type:   matchers.MatcherTypeHolder{MatcherType: matchers.WordsMatcher},
+					Part:   "raw",
+					Words:  []string{"MZ"},
+					Offset: &offset0,
+				},
+				{
+					Type: matchers.MatcherTypeHolder{MatcherType: matchers.DSLMatcher},
+					DSL:  []string{"filesize == 13"},
+				},
+			},
+		},
+	}
+	require.NoError(t, request.Compile(executerOpts))
+
+	var matched bool
+	ctxArgs := contextargs.NewWithInput(context.Background(), tempDir)
+	err = request.ExecuteWithResults(ctxArgs, nil, nil, func(event *output.InternalWrappedEvent) {
+		if event.OperatorsResult != nil && event.OperatorsResult.Matched {
+			matched = true
+			require.Equal(t, int64(len(content)), event.InternalEvent["filesize"])
+		}
+	})
+	require.NoError(t, err)
+	require.True(t, matched)
+}
+
+func TestFileOffsetUsesAbsolutePosition(t *testing.T) {
+	tempDir, err := os.MkdirTemp("", "nuclei-offset-*")
+	require.NoError(t, err)
+	defer func() { _ = os.RemoveAll(tempDir) }()
+
+	filePath := filepath.Join(tempDir, "sample.txt")
+	require.NoError(t, os.WriteFile(filePath, []byte("header\nMZ"), permissionutil.TempFilePermission))
+
+	options := testutils.DefaultOptions
+	testutils.Init(options)
+	templateID := "testing-file-absolute-offset"
+	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
+		ID:   templateID,
+		Info: model.Info{SeverityHolder: severity.Holder{Severity: severity.Low}, Name: "test"},
+	})
+
+	offset0 := 0
+	request := &Request{
+		ID:         templateID,
+		MaxSize:    "1Gb",
+		Extensions: []string{"txt"},
+		Operators: operators.Operators{
+			Matchers: []*matchers.Matcher{{
+				Type:   matchers.MatcherTypeHolder{MatcherType: matchers.WordsMatcher},
+				Part:   "raw",
+				Words:  []string{"MZ"},
+				Offset: &offset0,
+			}},
+		},
+	}
+	require.NoError(t, request.Compile(executerOpts))
+
+	var matched bool
+	ctxArgs := contextargs.NewWithInput(context.Background(), tempDir)
+	err = request.ExecuteWithResults(ctxArgs, nil, nil, func(event *output.InternalWrappedEvent) {
+		matched = event.OperatorsResult != nil && event.OperatorsResult.Matched
+	})
+	require.NoError(t, err)
+	require.False(t, matched)
+}
+
+func TestFileOffsetAbsoluteAcrossChunks(t *testing.T) {
+	// shrink the chunk size so the file is read in several chunks
+	previousMaxReadSize := defaultMaxReadSize
+	defaultMaxReadSize = 5
+	defer func() { defaultMaxReadSize = previousMaxReadSize }()
+
+	tempDir, err := os.MkdirTemp("", "nuclei-offset-chunks-*")
+	require.NoError(t, err)
+	defer func() { _ = os.RemoveAll(tempDir) }()
+
+	// chunks are "01234", "56789" and "MZabc"
+	filePath := filepath.Join(tempDir, "sample.bin")
+	require.NoError(t, os.WriteFile(filePath, []byte("0123456789MZabc"), permissionutil.TempFilePermission))
+
+	options := testutils.DefaultOptions
+	testutils.Init(options)
+
+	run := func(t *testing.T, matcher *matchers.Matcher) bool {
+		templateID := "testing-file-offset-chunks"
+		executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
+			ID:   templateID,
+			Info: model.Info{SeverityHolder: severity.Holder{Severity: severity.Low}, Name: "test"},
+		})
+		request := &Request{
+			ID:         templateID,
+			MaxSize:    "1Kb",
+			Extensions: []string{"all"},
+			Operators:  operators.Operators{Matchers: []*matchers.Matcher{matcher}},
+		}
+		require.NoError(t, request.Compile(executerOpts))
+
+		var matched bool
+		ctxArgs := contextargs.NewWithInput(context.Background(), tempDir)
+		err := request.ExecuteWithResults(ctxArgs, nil, nil, func(event *output.InternalWrappedEvent) {
+			if event.OperatorsResult != nil && event.OperatorsResult.Matched {
+				matched = true
+			}
+		})
+		require.NoError(t, err)
+		return matched
+	}
+	offset := func(v int) *int { return &v }
+
+	tests := []struct {
+		name    string
+		matcher *matchers.Matcher
+		want    bool
+	}{
+		{"word at absolute offset", &matchers.Matcher{Type: matchers.MatcherTypeHolder{MatcherType: matchers.WordsMatcher}, Words: []string{"MZ"}, Offset: offset(10)}, true},
+		{"word at chunk relative offset", &matchers.Matcher{Type: matchers.MatcherTypeHolder{MatcherType: matchers.WordsMatcher}, Words: []string{"MZ"}, Offset: offset(0)}, false},
+		{"word inside second chunk", &matchers.Matcher{Type: matchers.MatcherTypeHolder{MatcherType: matchers.WordsMatcher}, Words: []string{"78"}, Offset: offset(7)}, true},
+		{"case insensitive word", &matchers.Matcher{Type: matchers.MatcherTypeHolder{MatcherType: matchers.WordsMatcher}, Words: []string{"mz"}, CaseInsensitive: true, Offset: offset(10)}, true},
+		{"binary at absolute offset", &matchers.Matcher{Type: matchers.MatcherTypeHolder{MatcherType: matchers.BinaryMatcher}, Binary: []string{"4d5a"}, Offset: offset(10)}, true},
+		{"regex at absolute offset", &matchers.Matcher{Type: matchers.MatcherTypeHolder{MatcherType: matchers.RegexMatcher}, Regex: []string{"M[A-Z]"}, Offset: offset(10)}, true},
+		{"regex at chunk relative offset", &matchers.Matcher{Type: matchers.MatcherTypeHolder{MatcherType: matchers.RegexMatcher}, Regex: []string{"M[A-Z]"}, Offset: offset(0)}, false},
+		{"regex inside last chunk", &matchers.Matcher{Type: matchers.MatcherTypeHolder{MatcherType: matchers.RegexMatcher}, Regex: []string{"Z[a-z]+"}, Offset: offset(11)}, true},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			require.Equal(t, tc.want, run(t, tc.matcher))
+		})
+	}
 }
