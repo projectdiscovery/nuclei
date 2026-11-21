@@ -674,6 +674,11 @@ func (request *Request) executeTurboHTTP(input *contextargs.Context, dynamicValu
 
 		select {
 		case <-input.Context().Done():
+			// The pipeline client takes no context, so a request already sent
+			// still delivers its result. Wait for it, as executeParallelHTTP
+			// does, so none reaches the callback after this returns.
+			spmHandler.Wait()
+
 			return input.Context().Err()
 		default:
 		}
