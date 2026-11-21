@@ -7,10 +7,12 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"strconv"
 	"sync"
 	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 
@@ -22,6 +24,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/hosterrorscache"
 	httpprotocol "github.com/projectdiscovery/nuclei/v3/pkg/protocols/http"
+	"github.com/projectdiscovery/ratelimit"
 )
 
 const (
@@ -276,9 +279,9 @@ func TestSkippedRequestsReportUnresponsiveAddress(t *testing.T) {
 	}
 }
 
-// The skip is reported with the requests sent before it. The requests it
-// leaves unsent count as processed, as on a stop at the first match (#7838),
-// but not as errors.
+// A skipped request does not end the block, since the requests after it can go
+// to another address. The skip is reported with the requests that were sent,
+// and every request counts as processed once (#7838), but not as an error.
 //
 //nolint:exhaustruct,exhaustruct_v5,paralleltest // fixtures keep zero-value defaults; testutils.Init state is shared
 func TestSkipAfterSentRequestReportsSkip(t *testing.T) {
@@ -294,9 +297,165 @@ func TestSkipAfterSentRequestReportsSkip(t *testing.T) {
 	_, err := executeSkippable(request, server.URL)
 
 	require.ErrorIs(t, err, hosterrorscache.ErrUnresponsiveHost)
-	require.EqualValues(t, 1, received.Load(), "only the first request is sent")
+	require.EqualValues(t, 2, received.Load(), "the requests around the skipped one are sent")
 	require.EqualValues(t, 3, progress.requests.Load(), "every request is processed")
 	require.Zero(t, progress.errors.Load())
+}
+
+// A request skipped for its address is not sent, so it does not take a
+// rate-limit token that every other template shares. The limiter here has one
+// token for an hour, and the first request takes it: a skipped request that
+// waited for another would run out the deadline.
+//
+//nolint:exhaustruct,exhaustruct_v5,paralleltest // fixtures keep zero-value defaults; testutils.Init state is shared
+func TestSkippedRequestTakesNoRateLimitToken(t *testing.T) {
+	server, received := serverCountingHits(t)
+	down := closedAddress(t)
+	request := &httpprotocol.Request{
+		ID:     "skip-takes-no-token",
+		Method: methodGet(),
+		Path:   []string{skipPathA, "http://" + down + "/1", "http://" + down + "/2", "http://" + down + "/3"},
+	}
+
+	options := testutils.DefaultOptions.Copy()
+	options.SetExecutionID(t.Name())
+	testutils.Init(options)
+	t.Cleanup(func() { testutils.Cleanup(options) })
+
+	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
+		ID:   request.ID,
+		Info: model.Info{SeverityHolder: severity.Holder{Severity: severity.Low}, Name: skipTestName},
+	})
+	progress := &skipProgress{}
+	executerOpts.Progress = progress
+	executerOpts.HostErrorsCache = newDownHostErrorsCache(false, down)
+	require.NoError(t, request.Compile(executerOpts))
+
+	executerOpts.RateLimiter.Stop()
+
+	executerOpts.RateLimiter = ratelimit.New(t.Context(), 1, time.Hour)
+	t.Cleanup(executerOpts.RateLimiter.Stop)
+
+	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
+	defer cancel()
+
+	err := request.ExecuteWithResults(contextargs.NewWithInput(ctx, server.URL),
+		make(output.InternalEvent), make(output.InternalEvent), func(*output.InternalWrappedEvent) {})
+
+	require.ErrorIs(t, err, hosterrorscache.ErrUnresponsiveHost)
+	require.EqualValues(t, 1, received.Load())
+	require.EqualValues(t, 4, progress.requests.Load(), "every request is processed")
+	require.Zero(t, progress.errors.Load())
+}
+
+// serverPort returns the port server listens on.
+func serverPort(t *testing.T, server *httptest.Server) string {
+	t.Helper()
+
+	address, err := url.Parse(server.URL)
+	require.NoError(t, err)
+
+	return address.Port()
+}
+
+// The target's own address is down, but a request to another port of the same
+// host is not. The skip of the first requests does not stop the one after
+// them (#8201).
+//
+//nolint:exhaustruct,exhaustruct_v5,paralleltest // fixtures keep zero-value defaults; testutils.Init state is shared
+func TestSkipDoesNotStopSequentialRequestToOtherPort(t *testing.T) {
+	server, received := serverCountingHits(t)
+	cache := newDownHostErrorsCache(false, schemelessAddress)
+	request := &httpprotocol.Request{
+		ID:     "skip-other-port-sequential",
+		Method: methodGet(),
+		Path:   []string{skipPathA, skipPathB, "http://{{Host}}:" + serverPort(t, server) + "/"},
+	}
+	progress := compileWithCache(t, request, cache)
+
+	events, err := executeSkippable(request, "https://"+schemelessTarget)
+
+	require.ErrorIs(t, err, hosterrorscache.ErrUnresponsiveHost)
+	require.Equal(t, 1, events)
+	require.EqualValues(t, 1, received.Load(), "the request to the open port is sent")
+	require.EqualValues(t, 3, progress.requests.Load(), "every request is processed")
+	require.Zero(t, progress.errors.Load(), "a skipped request does not count as an error")
+	require.EqualValues(t, 1, cache.recorded.Load(), "only the sent request is recorded")
+}
+
+// The payload requests go to an open port of the target while the target's own
+// port is down, as in a template that probes another port (#8201).
+//
+//nolint:exhaustruct,exhaustruct_v5,paralleltest // fixtures keep zero-value defaults; testutils.Init state is shared
+func TestParallelRequestsToOtherPortAreSent(t *testing.T) {
+	server, received := serverCountingHits(t)
+	request := &httpprotocol.Request{
+		ID:       "other-port-parallel",
+		Method:   methodGet(),
+		Path:     []string{"http://{{Host}}:" + serverPort(t, server) + "/?x={{v}}"},
+		Threads:  2,
+		Payloads: map[string]any{"v": []string{"1", "2", "3"}},
+	}
+	progress := compileWithCache(t, request, newDownHostErrorsCache(false, schemelessAddress))
+
+	_, err := executeSkippable(request, "https://"+schemelessTarget)
+
+	require.NoError(t, err)
+	require.EqualValues(t, 3, received.Load(), "every payload request is sent")
+	require.EqualValues(t, 3, progress.requests.Load())
+	require.Zero(t, progress.errors.Load())
+}
+
+// A down address skips only its own requests: the ones to the other address
+// are sent, and the skip is reported once the block ends.
+//
+//nolint:exhaustruct,exhaustruct_v5,paralleltest // fixtures keep zero-value defaults; testutils.Init state is shared
+func TestParallelSkipDoesNotStopRequestsToOtherAddress(t *testing.T) {
+	server, received := serverCountingHits(t)
+	down := closedAddress(t)
+	request := &httpprotocol.Request{
+		ID:       "skip-other-address-parallel",
+		Method:   methodGet(),
+		Path:     []string{"http://" + down + "/?x={{v}}", "{{BaseURL}}/?x={{v}}"},
+		Threads:  2,
+		Payloads: map[string]any{"v": []string{"1", "2"}},
+	}
+	progress := compileWithCache(t, request, newDownHostErrorsCache(false, down))
+
+	_, err := executeSkippable(request, server.URL)
+
+	require.ErrorIs(t, err, hosterrorscache.ErrUnresponsiveHost)
+	require.EqualValues(t, 2, received.Load(), "the requests to the live server are sent")
+	require.EqualValues(t, 4, progress.requests.Load(), "every request is processed once")
+	require.Zero(t, progress.errors.Load(), "a skipped request does not count as an error")
+}
+
+// An address that fails while the block runs skips its later requests, and the
+// requests to the other address go on. The failure is the error to report, not
+// the skips after it.
+//
+//nolint:exhaustruct,exhaustruct_v5,paralleltest // fixtures keep zero-value defaults; testutils.Init state is shared
+func TestParallelFailureDoesNotStopRequestsToOtherAddress(t *testing.T) {
+	server, received := serverCountingHits(t)
+	closed := closedAddress(t)
+	request := &httpprotocol.Request{
+		ID:     "failure-other-address-parallel",
+		Method: methodGet(),
+		Path:   []string{"http://" + closed + "/?x={{v}}", "{{BaseURL}}/?x={{v}}"},
+		// one worker, so the first failure marks the address before the next one runs
+		Threads:  1,
+		Payloads: map[string]any{"v": []string{"1", "2", "3"}},
+	}
+	progress := compileWithCache(t, request, newDownHostErrorsCache(true))
+
+	_, err := executeSkippable(request, server.URL)
+
+	require.Error(t, err)
+	require.NotErrorIs(t, err, hosterrorscache.ErrUnresponsiveHost)
+	require.Contains(t, err.Error(), closed)
+	require.EqualValues(t, 3, received.Load(), "the requests to the live server are sent")
+	require.EqualValues(t, 1, progress.errors.Load(), "only the request that failed counts as an error")
+	require.EqualValues(t, 6, progress.requests.Load(), "every request is processed once")
 }
 
 // The address can turn unresponsive while the requests run, as another
