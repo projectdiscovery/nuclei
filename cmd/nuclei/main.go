@@ -13,6 +13,7 @@ import (
 	"runtime/trace"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/projectdiscovery/gologger"
@@ -196,12 +197,15 @@ func main() {
 		defer cancel()
 		stackMonitor.RegisterCallback(func(dumpID string) error {
 			resumeFileName := types.DefaultCrashResumeFilePath(dumpID)
+			// Save before Close: Close closes the input provider while the scan
+			// still runs, and templates that start then see no targets and would be
+			// saved as completed.
+			options.Logger.Info().Msgf("Creating resume file: %s\n", resumeFileName)
+			err := nucleiRunner.SaveResumeConfig(resumeFileName)
 			if options.EnableCloudUpload {
 				options.Logger.Info().Msgf("Uploading scan results to cloud...")
 			}
 			nucleiRunner.Close()
-			options.Logger.Info().Msgf("Creating resume file: %s\n", resumeFileName)
-			err := nucleiRunner.SaveResumeConfig(resumeFileName)
 			if err != nil {
 				return errkit.Wrap(err, "couldn't create crash resume file")
 			}
@@ -214,10 +218,14 @@ func main() {
 	if options.Resume != "" {
 		resumeFileName = options.Resume
 	}
+	// interrupted tells the main goroutine, which may finish the scan while the
+	// handler below saves, to leave the exit to the handler.
+	var interrupted atomic.Bool
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt)
 	go func() {
 		<-c
+		interrupted.Store(true)
 		options.Logger.Info().Msgf("CTRL+C pressed: Exiting\n")
 		if options.DASTServer {
 			nucleiRunner.Close()
@@ -226,10 +234,9 @@ func main() {
 		}
 
 		options.Logger.Info().Msgf("Attempting graceful shutdown...")
-		if options.EnableCloudUpload {
-			options.Logger.Info().Msgf("Uploading scan results to cloud...")
-		}
-		nucleiRunner.Close()
+		// Save before Close: Close closes the input provider and the dialers
+		// while the scan goroutines still run, and templates that start then see
+		// no targets and would be saved as completed.
 		if options.ShouldSaveResume() {
 			options.Logger.Info().Msgf("Creating resume file: %s\n", resumeFileName)
 			err := nucleiRunner.SaveResumeConfig(resumeFileName)
@@ -237,6 +244,12 @@ func main() {
 				options.Logger.Error().Msgf("Couldn't create resume file: %s\n", err)
 			}
 		}
+
+		if options.EnableCloudUpload {
+			options.Logger.Info().Msgf("Uploading scan results to cloud...")
+		}
+
+		nucleiRunner.Close()
 		cleanupInlineSecretsDirs()
 		os.Exit(1)
 	}()
@@ -249,6 +262,12 @@ func main() {
 		}
 	}
 	nucleiRunner.Close()
+	// Returning now exits with status 0, possibly before the handler has written
+	// the resume file, and deleting the file would drop the progress it saved.
+	// The handler ends the process with status 1.
+	if interrupted.Load() {
+		select {}
+	}
 	// on successful execution remove the resume file in case it exists
 	if fileutil.FileExists(resumeFileName) {
 		_ = os.Remove(resumeFileName)
