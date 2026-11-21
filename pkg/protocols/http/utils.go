@@ -1,6 +1,7 @@
 package http
 
 import (
+	"bufio"
 	"bytes"
 	"crypto/sha256"
 	"encoding/hex"
@@ -13,9 +14,11 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils/httpbody"
 	"github.com/projectdiscovery/rawhttp"
+	"github.com/projectdiscovery/rawhttp/clientpipeline" //nolint:depguard // No depguard rules are configured, so its default list allows only the standard library.
 	"github.com/projectdiscovery/retryablehttp-go"
 	convUtil "github.com/projectdiscovery/utils/conversion"
 	"github.com/projectdiscovery/utils/errkit"
+	urlutil "github.com/projectdiscovery/utils/url" //nolint:depguard // No depguard rules are configured, so its default list allows only the standard library.
 )
 
 // maxCurlBodySize is the largest request body included in a curl command.
@@ -35,7 +38,12 @@ type requestDump struct {
 // first maxBody bytes of the body are kept; maxBody <= 0 keeps all of it.
 func dump(req *generatedRequest, reqURL string, maxBody int) (requestDump, error) {
 	if req.request != nil {
-		dumped, err := dumpRequest(req.request, maxBody)
+		dumper := dumpRequest
+		if req.original != nil && req.original.Pipeline {
+			dumper = dumpPipelinedRequest
+		}
+
+		dumped, err := dumper(req.request, maxBody)
 		if err != nil {
 			return requestDump{}, errkit.Wrapf(err, "could not dump request: %v", req.request.String())
 		}
@@ -98,6 +106,91 @@ func dumpRequest(req *retryablehttp.Request, maxBody int) (requestDump, error) {
 	return requestDump{data: appendTruncationMarker(data, capture.dropped), truncated: capture.dropped}, nil
 }
 
+// dumpPipelinedRequest writes req the way the rawhttp pipeline client does.
+// That client does not go through http.Transport: it writes only the method,
+// the path and query, the headers, a Host line and the body, so req.Close,
+// req.ContentLength and the Accept-Encoding that http.Transport adds do not
+// reach the wire.
+func dumpPipelinedRequest(req *retryablehttp.Request, maxBody int) (requestDump, error) {
+	body, err := httpbody.View(req)
+	if err != nil {
+		return requestDump{}, errkit.Wrapf(err, "could not read the request body")
+	}
+
+	piped, err := newPipelinedRequest(req, body)
+	if err != nil {
+		return requestDump{}, err
+	}
+
+	capture := &cappedWriter{buf: nil, headerEnd: -1, maxBody: maxBody, dropped: 0}
+	if maxBody <= 0 {
+		capture.buf = make([]byte, 0, len(body)+dumpHeaderRoom)
+	}
+
+	writer := bufio.NewWriter(capture)
+
+	err = piped.Write(writer)
+	if err != nil {
+		return requestDump{}, errkit.Wrapf(err, "could not write the pipelined request")
+	}
+
+	err = writer.Flush()
+	if err != nil {
+		return requestDump{}, errkit.Wrapf(err, "could not write the pipelined request")
+	}
+
+	return requestDump{data: appendTruncationMarker(capture.buf, capture.dropped), truncated: capture.dropped}, nil
+}
+
+// newPipelinedRequest builds what PipelineClient.Dor passes to the pipeline
+// writer for req. The request target and the Host line come from rawhttp's
+// unexported do, so a change there needs the same change here.
+// TestPipelinedRequestDumpMatchesWire fails when they drift.
+func newPipelinedRequest(req *retryablehttp.Request, body []byte) (*clientpipeline.Request, error) {
+	// req.URL is the URL that Dor parses; req.String() is its String method.
+	target, err := urlutil.ParseURL(req.String(), true)
+	if err != nil {
+		return nil, errkit.Wrapf(err, "could not parse the request URL")
+	}
+
+	path := target.Path
+	if path == "" {
+		path = "/"
+	}
+
+	if !target.Params.IsEmpty() {
+		path += "?" + target.Params.Encode()
+	}
+
+	var reader io.Reader
+	if len(body) > 0 {
+		reader = bytes.NewReader(body)
+	}
+
+	piped := clientpipeline.ToRequest(req.Method, path, nil, req.Header, reader)
+	// The client writes headers in map order. A fixed order keeps the dump
+	// the same between runs.
+	slices.SortStableFunc(piped.Headers, func(a, b clientpipeline.Header) int { return strings.Compare(a.Key, b.Key) })
+
+	if rawhttp.DefaultPipelineOptions.AutomaticHostHeader && target.Host != "" && !hasHeaderFold(req.Header, hostHeader) {
+		piped.Headers = slices.Insert(piped.Headers, 0, clientpipeline.Header{Key: hostHeader, Value: target.Host})
+	}
+
+	return piped, nil
+}
+
+// hasHeaderFold reports whether headers has key in any letter case, as the
+// pipeline client checks for a Host the caller set.
+func hasHeaderFold(headers http.Header, key string) bool {
+	for k := range headers {
+		if strings.EqualFold(k, key) {
+			return true
+		}
+	}
+
+	return false
+}
+
 func appendTruncationMarker(data []byte, truncated int) []byte {
 	if truncated <= 0 {
 		return data
@@ -126,6 +219,8 @@ func capDumpBody(dump []byte, maxBody int) []byte {
 }
 
 var headerTerminator = []byte("\r\n\r\n")
+
+const hostHeader = "Host"
 
 var acceptEncodingGzip = []byte("Accept-Encoding: gzip\r\n")
 
