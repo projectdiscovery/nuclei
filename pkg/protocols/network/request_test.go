@@ -11,7 +11,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
-	"strings"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -172,10 +171,9 @@ func serveEcho(listener net.Listener) *atomic.Int32 {
 				defer func() { _ = conn.Close() }()
 
 				_ = conn.SetDeadline(time.Now().Add(5 * time.Second))
-				buffer := make([]byte, 4096)
+				buffer := make([]byte, len("ping"))
 
-				n, err := conn.Read(buffer)
-				if err != nil || !strings.HasPrefix(string(buffer[:n]), "ping") {
+				if _, err := io.ReadFull(conn, buffer); err != nil || string(buffer) != "ping" {
 					return
 				}
 
