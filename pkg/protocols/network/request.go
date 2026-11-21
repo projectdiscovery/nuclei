@@ -139,8 +139,19 @@ func (request *Request) ExecuteWithResults(target *contextargs.Context, metadata
 		callback(event)
 	}
 
-	var skipped bool
+	var (
+		skipped  bool
+		failures error
+	)
+
 	for _, port := range ports {
+		// A cancel ends the scan. It is not a failure of this port, and every port
+		// after it would report the same one.
+		ctxErr := target.Context().Err()
+		if ctxErr != nil {
+			return errors.Wrap(ctxErr, "network scan canceled")
+		}
+
 		input := target.Clone()
 		// use network port updates input with new port requested in template file
 		// and it is ignored if input port is not standard http(s) ports like 80,8080,8081 etc
@@ -154,11 +165,26 @@ func (request *Request) ExecuteWithResults(target *contextargs.Context, metadata
 		if stderrors.Is(targetErr, hosterrorscache.ErrUnresponsiveHost) {
 			skipped = true
 		} else if targetErr != nil {
-			return targetErr
+			// Each port is its own service, so a failure on one doesn't stop the
+			// others, as in the javascript protocol. errkit joins them, as
+			// getErrorCause reads the cause of an errkit error only.
+			if failures == nil {
+				failures = targetErr
+			} else {
+				failures = errkit.Append(failures, targetErr)
+			}
 		}
 		if shouldStopAtFirstMatch && atomicBool.Load() {
 			break
 		}
+	}
+
+	// A failed port takes precedence over a skipped one, as an address does. The
+	// skip is never joined into the failures, so errors.Is(err,
+	// ErrUnresponsiveHost) still means that no port failed.
+	if failures != nil {
+		//nolint:wrapcheck // the failures are returned as they came, joined or not, so a caller sees the errors of its ports
+		return failures
 	}
 
 	if skipped {
