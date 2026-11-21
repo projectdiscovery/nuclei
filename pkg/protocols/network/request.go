@@ -585,7 +585,9 @@ func (request *Request) executeRequestWithPayloads(variables map[string]interfac
 
 	final, readErr := ConnReadNWithTimeout(conn, int64(bufferSize), request.options.Options.GetTimeouts().TcpReadTimeout)
 	if readErr != nil {
-		request.options.Output.Request(request.options.TemplatePath, address, request.Type().String(), readErr)
+		// The final read is optional (#4737), so its end is not an error. It
+		// writes no trace entry: that would put an error in -elog and in the
+		// -hps error table for a request that may have matched.
 		gologger.Verbose().Msgf("could not read more data from %s: %s", actualAddress, readErr)
 	}
 	responseBuilder.Write(final)
