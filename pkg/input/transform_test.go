@@ -99,7 +99,11 @@ func TestConvertInputToType(t *testing.T) {
 		{"google.com:443", typeHostWithOptionalPort, "google.com:443", ""},
 		// no port of its own: the request has the template port to take
 		{"https://google.com", typeHostWithOptionalPort, "https://google.com", ""},
-		{"https://google.com:443", typeHostWithOptionalPort, "google.com:443", ""},
+		// a URL with a port keeps its scheme: the request replaces a reserved
+		// port that the scheme implied, and keeps one typed after a bare host
+		{"https://google.com:443", typeHostWithOptionalPort, "https://google.com:443", ""},
+		{"http://google.com:8080", typeHostWithOptionalPort, "http://google.com:8080", ""},
+		{"http://[::1]:8080", typeHostWithOptionalPort, "http://[::1]:8080", ""},
 		// host with optional port and default port
 		{"google.com", typeHostWithOptionalPort, "google.com:443", "443"},
 		{"http://google.com", typeHostWithOptionalPort, "google.com:443", "443"},

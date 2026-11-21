@@ -154,6 +154,12 @@ func (h *Helper) convertInputToType(input string, inputType inputType, defaultPo
 		}
 	case typeHostWithPort, typeHostWithOptionalPort:
 		if hasHost && hasPort {
+			// The network request replaces a reserved port that the scheme
+			// implied, and keeps one the operator typed after a bare host. It
+			// can tell them apart only while the URL keeps its scheme.
+			if isURL && inputType == typeHostWithOptionalPort {
+				return input
+			}
 			return net.JoinHostPort(host, port)
 		}
 		// An optional port is left to the request, which knows the template
