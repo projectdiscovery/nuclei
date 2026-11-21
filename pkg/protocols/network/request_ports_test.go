@@ -8,8 +8,10 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"runtime"
 	"strings"
 	"sync/atomic"
+	"syscall"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -24,7 +26,20 @@ const (
 	okReply = "ok"
 	// readBytes makes an input read the 2-byte reply, and fail when there is none.
 	readBytes = 2
+	// wsaeconnreset is WSAECONNRESET, which the syscall package defines on Windows only.
+	wsaeconnreset = 10054
 )
+
+// resetErrno returns the errno of a connection that its peer reset. Windows
+// words it as "forcibly closed by the remote host", not as "reset by peer", and
+// its syscall.ECONNRESET is a placeholder that no network call returns.
+func resetErrno() syscall.Errno {
+	if runtime.GOOS == "windows" {
+		return syscall.Errno(wsaeconnreset)
+	}
+
+	return syscall.ECONNRESET
+}
 
 // portsOf returns the ports of host:port addresses, joined as a template's port list.
 func portsOf(t *testing.T, addresses ...string) string {
@@ -156,7 +171,7 @@ func TestFailedPortsJoinErrors(t *testing.T) {
 
 	require.Error(t, err)
 	require.Contains(t, err.Error(), `cause="EOF"`, "the cause of the first failure is the cause of the error")
-	require.Contains(t, err.Error(), "connection reset by peer")
+	require.ErrorIs(t, err, resetErrno(), "the failure of the reset port is returned too")
 }
 
 // A canceled scan stops the port loop. The ports it does not reach count as
