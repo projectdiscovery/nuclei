@@ -169,17 +169,13 @@ func (request *Request) GetID() string {
 
 // Compile compiles the protocol request for further execution.
 func (request *Request) Compile(options *protocols.ExecutorOptions) error {
-	var shouldUseTLS bool
 	var err error
 
 	request.options = options
 	for _, address := range request.Address {
 		// check if the connection should be encrypted
-		if strings.HasPrefix(address, "tls://") {
-			shouldUseTLS = true
-			address = strings.TrimPrefix(address, "tls://")
-		}
-		request.addresses = append(request.addresses, addressKV{address: address, tls: shouldUseTLS})
+		trimmed, shouldUseTLS := strings.CutPrefix(address, "tls://")
+		request.addresses = append(request.addresses, addressKV{address: trimmed, tls: shouldUseTLS})
 	}
 	// Pre-compile context-free input DSL functions before executing the request.
 	// Network helpers stay deferred so cached templates cannot retain scan results.

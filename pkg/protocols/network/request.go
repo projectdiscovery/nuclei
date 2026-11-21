@@ -636,6 +636,13 @@ func getAddress(toTest string) (string, error) {
 			return "", err
 		}
 		toTest = parsed.Host
+
+		if parsed.Scheme == "https" && parsed.Port() == "" {
+			// With no template port, an https URL reaches here without one,
+			// since Transform leaves the port to UseNetworkPort. Dial the
+			// scheme's default port.
+			toTest = net.JoinHostPort(parsed.Hostname(), "443")
+		}
 	}
 	return toTest, nil
 }
