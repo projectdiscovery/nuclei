@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"sync/atomic"
 	"testing"
 
@@ -149,6 +150,147 @@ func TestProcessedRequestsEndAtTotal(t *testing.T) {
 			}
 
 			require.Equal(t, test.sent, received.Load(), "requests sent")
+			require.Equal(t, test.total, progress.requests.Load(), "requests processed")
+			require.Zero(t, progress.errors.Load(), "requests counted as errors")
+		})
+	}
+}
+
+// numberedPayloads returns the payloads "1" to "count".
+func numberedPayloads(count int) []string {
+	payloads := make([]string, count)
+	for i := range payloads {
+		payloads[i] = strconv.Itoa(i + 1)
+	}
+
+	return payloads
+}
+
+const (
+	// buildPath makes a request fail to build for a payload that is not a number.
+	buildPath = "{{BaseURL}}/?n={{to_number(p)}}"
+	// buildMessage is what the engine writes for a request that fails to build.
+	buildMessage = "could not be converted"
+)
+
+// unbuildablePayloads returns 10 payloads whose 4th fails buildPath.
+func unbuildablePayloads() []string {
+	payloads := numberedPayloads(10)
+	payloads[3] = "x"
+
+	return payloads
+}
+
+// pipelined returns a request that sends its paths over a pipeline. Without a
+// keep-alive header, the pipeline asks the server to close the connection.
+//
+//nolint:exhaustruct,exhaustruct_v5 // fixtures keep zero-value defaults
+func pipelined(id string, payloads map[string]any, paths ...string) *httpprotocol.Request {
+	return &httpprotocol.Request{
+		ID: id, Method: methodGet(), Path: paths, Pipeline: true, Payloads: payloads,
+		Headers: map[string]string{"Connection": "keep-alive"},
+	}
+}
+
+// threadedCase is a payload block that ends early or completely, and what its
+// progress ends at.
+type threadedCase struct {
+	name    string
+	request *httpprotocol.Request
+	// input is the target, or the test server's URL when empty.
+	input string
+	// down marks the test server's address as unresponsive.
+	down bool
+	// total is the number of requests the block has.
+	total int64
+	// events is how many results the block reports.
+	events int
+	// wantErr is a part of the error the execution returns, if it returns one.
+	wantErr string
+}
+
+// threadedCases lists the ways a threaded or pipelined block ends before it
+// has taken its last request, and the two ways it ends after.
+//
+//nolint:exhaustruct,exhaustruct_v5 // fixtures keep zero-value defaults
+func threadedCases() []threadedCase {
+	numbers := func(count int) map[string]any { return map[string]any{"v": numberedPayloads(count)} }
+
+	parStop := &httpprotocol.Request{
+		ID: "par-stop", Method: methodGet(), Path: []string{skipPathPayload}, Threads: 1, Payloads: numbers(10),
+		Operators: matchStatusOK(), StopAtFirstMatch: true,
+	}
+	parDown := &httpprotocol.Request{
+		ID: "par-down", Method: methodGet(), Path: []string{skipPathPayload}, Threads: 2, Payloads: numbers(10),
+	}
+	parBuild := &httpprotocol.Request{
+		ID: "par-build", Method: methodGet(), Path: []string{buildPath}, Threads: 2,
+		Payloads: map[string]any{"p": unbuildablePayloads()}, Operators: matchStatusOK(),
+	}
+	parAll := &httpprotocol.Request{
+		ID: "par-all", Method: methodGet(), Path: []string{skipPathPayload, skipPathPayload + "&y=1"}, Threads: 2,
+		Payloads: numbers(2), Operators: matchStatusOK(),
+	}
+
+	pipeStop := pipelined("pipe-stop", numbers(200), skipPathPayload)
+	pipeStop.PipelineRequestsPerConnection = 150
+	pipeStop.Operators, pipeStop.StopAtFirstMatch = matchStatusOK(), true
+
+	pipeAll := pipelined("pipe-all", numbers(2), skipPathPayload, skipPathPayload+"&y=1")
+	pipeAll.Operators = matchStatusOK()
+
+	return []threadedCase{
+		{name: "parallel stops at first match", request: parStop, total: 10, events: 1},
+		{
+			name: "parallel target unresponsive", request: parDown, down: true, total: 10, wantErr: skipMessage,
+		},
+		{
+			name: "parallel request not built", request: parBuild, total: 10, events: 3, wantErr: buildMessage,
+		},
+		{name: "pipeline stops at first match", request: pipeStop, total: 200, events: 1},
+		{
+			name: "pipeline target unresponsive", request: pipelined("pipe-down", numbers(10), skipPathPayload),
+			down: true, total: 10, wantErr: skipMessage,
+		},
+		{
+			name: "pipeline input does not parse", request: pipelined("pipe-parse", numbers(3), skipPathPayload),
+			input: "://invalid", total: 3, wantErr: "invalid scheme",
+		},
+		{name: "parallel ends after its last request", request: parAll, total: 4, events: 4},
+		{name: "pipeline ends after its last request", request: pipeAll, total: 4, events: 4},
+	}
+}
+
+// A threaded or pipelined block counts each of its requests once, whether the
+// block sends it, stops before it, skips it, or fails to build it (#8224).
+//
+//nolint:paralleltest // testutils.Init state is shared
+func TestThreadedRequestsEndAtTotal(t *testing.T) {
+	for _, test := range threadedCases() {
+		t.Run(test.name, func(t *testing.T) {
+			server, _ := serverCountingHits(t)
+
+			var down []string
+			if test.down {
+				down = append(down, server.Listener.Addr().String())
+			}
+
+			progress := compileWithCache(t, test.request, newDownHostErrorsCache(false, down...))
+
+			input := test.input
+			if input == "" {
+				input = server.URL
+			}
+
+			events, err := executeSkippable(test.request, input)
+
+			if test.wantErr == "" {
+				require.NoError(t, err)
+			} else {
+				require.ErrorContains(t, err, test.wantErr)
+			}
+
+			require.Equal(t, test.events, events, "results reported")
 			require.Equal(t, test.total, progress.requests.Load(), "requests processed")
 			require.Zero(t, progress.errors.Load(), "requests counted as errors")
 		})

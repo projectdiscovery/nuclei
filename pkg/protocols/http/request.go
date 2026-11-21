@@ -470,11 +470,20 @@ func (request *Request) executeParallelHTTP(input *contextargs.Context, dynamicV
 
 	// iterate payloads and make requests
 	generator := request.newGenerator(false)
+	taken := 0
+
+	defer func() { request.countUntaken(generator, taken) }()
 	for {
 		inputData, payloads, ok := generator.nextValue()
 		if !ok {
 			break
 		}
+
+		// A request counts once, here, whether it is then sent, skipped or
+		// fails to build. countUntaken counts the ones the loop never takes.
+		taken++
+
+		request.options.Progress.IncrementRequests()
 
 		select {
 		case <-input.Context().Done():
@@ -517,7 +526,6 @@ func (request *Request) executeParallelHTTP(input *contextargs.Context, dynamicV
 				}
 				return context.Cause(workerCtx)
 			}
-			request.options.Progress.IncrementFailedRequestsBy(int64(generator.Total()))
 			stopWorkers()
 			return err
 		}
@@ -535,8 +543,6 @@ func (request *Request) executeParallelHTTP(input *contextargs.Context, dynamicV
 				break
 			}
 			// The next request may go to another address.
-			request.options.Progress.IncrementRequests()
-
 			continue
 		}
 		select {
@@ -564,7 +570,6 @@ func (request *Request) executeParallelHTTP(input *contextargs.Context, dynamicV
 			hasInteractMarkers: hasInteractMarkers,
 		}:
 		}
-		request.options.Progress.IncrementRequests()
 	}
 	stopWorkers()
 	spmHandler.Wait()
@@ -579,6 +584,9 @@ func (request *Request) executeParallelHTTP(input *contextargs.Context, dynamicV
 // executeTurboHTTP executes turbo http request for a URL
 func (request *Request) executeTurboHTTP(input *contextargs.Context, dynamicValues, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
 	generator := request.newGenerator(false)
+	taken := 0
+
+	defer func() { request.countUntaken(generator, taken) }()
 
 	// need to extract the target from the url
 	URL, err := urlutil.Parse(input.MetaInput.Input)
@@ -647,6 +655,12 @@ func (request *Request) executeTurboHTTP(input *contextargs.Context, dynamicValu
 			break
 		}
 
+		// A request counts once, here, whether it is then sent, skipped or
+		// fails to build. countUntaken counts the ones the loop never takes.
+		taken++
+
+		request.options.Progress.IncrementRequests()
+
 		select {
 		case <-input.Context().Done():
 			return input.Context().Err()
@@ -661,7 +675,6 @@ func (request *Request) executeTurboHTTP(input *contextargs.Context, dynamicValu
 		ctx := input.Context()
 		generatedHttpRequest, reservation, err := request.makeReserved(ctx, generator, input, inputData, payloads, dynamicValues)
 		if err != nil {
-			request.options.Progress.IncrementFailedRequestsBy(int64(generator.Total()))
 			return err
 		}
 		if input.MetaInput.Input == "" {
@@ -711,7 +724,6 @@ func (request *Request) executeTurboHTTP(input *contextargs.Context, dynamicValu
 				return
 			}
 		}(generatedHttpRequest, reservation, updatedInput, hostErrorsInput)
-		request.options.Progress.IncrementRequests()
 	}
 	spmHandler.Wait()
 	if spmHandler.FoundFirstMatch() {
@@ -720,6 +732,16 @@ func (request *Request) executeTurboHTTP(input *contextargs.Context, dynamicValu
 	}
 
 	return requestsError(spmHandler.CombinedResults(), skipped.Load())
+}
+
+// countUntaken counts the requests of generator that the loop never took, so a
+// block that stops, skips or fails to build still ends at its total (#7838).
+// Remaining() can't stand in: it leaves out @once requests, and with payloads it
+// counts an extra pass before the first take and after the generator runs out.
+func (request *Request) countUntaken(generator *requestGenerator, taken int) {
+	if untaken := generator.Total() - taken; untaken > 0 {
+		request.options.Progress.SetRequests(uint64(untaken))
+	}
 }
 
 // ExecuteWithResults executes the final request on a URL
