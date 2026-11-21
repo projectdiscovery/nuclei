@@ -173,7 +173,7 @@ TEMPLATES:
    -td, -template-display                 displays the templates content
    -tl                                    list all templates matching current filters
    -tgl                                   list all available tags
-   -sign                                  signs the templates with the private key defined in NUCLEI_SIGNATURE_PRIVATE_KEY env variable
+   -sign                                  signs the templates with the key in NUCLEI_USER_PRIVATE_KEY and NUCLEI_USER_CERTIFICATE, or in the keys folder
    -code                                  enable loading code protocol-based templates
    -dut, -disable-unsigned-templates      disable running unsigned templates or templates with mismatched signature
    -esc, -enable-self-contained           enable loading self-contained templates
