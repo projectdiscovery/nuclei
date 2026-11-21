@@ -413,3 +413,34 @@ func TestHostSprayResumeAcrossRuns(t *testing.T) {
 		assert.ElementsMatch(t, pairsOf(inputs, "fp", "gp", "t1", "t2"), got, "pairs of the resumed scan")
 	})
 }
+
+// A later host-spray run resets the entry in both maps. A resumed scan that
+// kept the entry it loaded would save it again, and a loaded completed entry
+// would stay completed in every file that scan saves.
+func TestHostSprayResumeInfoOfLaterRun(t *testing.T) {
+	t.Parallel()
+
+	cfg := types.NewResumeCfg()
+	//nolint:exhaustruct,exhaustruct_v5 // zero values are the defaults
+	cfg.ResumeFrom[hostSprayResumeID] = &types.ResumeInfo{Completed: true}
+	engine, _ := newTaskEngine(scanstrategy.HostSpray, nil, nil, cfg)
+
+	first, firstLoaded := engine.hostSprayResumeInfo()
+	first.InFlight[1] = struct{}{}
+
+	later, laterLoaded := engine.hostSprayResumeInfo()
+
+	for name, info := range map[string]*types.ResumeInfo{
+		"current":       cfg.Current[hostSprayResumeID],
+		"loaded":        cfg.ResumeFrom[hostSprayResumeID],
+		"later current": later,
+		"later loaded":  laterLoaded,
+	} {
+		assert.False(t, info.Completed, "%s completed", name)
+		assert.Empty(t, info.InFlight, "%s positions in flight", name)
+	}
+
+	assert.NotSame(t, later, cfg.Current[hostSprayResumeID], "the later run's progress is not saved")
+	assert.True(t, firstLoaded.Completed, "the first run keeps the progress it loaded")
+	assert.Equal(t, []uint32{1}, slices.Sorted(maps.Keys(first.InFlight)), "the first run keeps its positions")
+}

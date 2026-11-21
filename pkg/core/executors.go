@@ -263,9 +263,12 @@ func resumeInfoLocked(cfg *generalTypes.ResumeCfg, key string) (*generalTypes.Re
 // share one resume config. The progress of one run can't stand for the others,
 // and a finished run would mark the entry as completed for a run still going.
 // Only the first run tracks. A later run gets progress that no one saves and
-// resets the entry to an empty one, so a resumed scan starts from the first
-// target, as it did before host-spray saved progress. The entry stays, because
-// a missing one would let a third run track again.
+// resets the entry to an empty one in both maps, so a resumed scan starts from
+// the first target, as it did before host-spray saved progress. The entry in
+// Current stays, because a missing one would let a third run track again. The
+// one in ResumeFrom is reset too, because a scan that saves what it loaded for
+// the entries it left idle would otherwise save a stale loaded one, such as a
+// completed one, in every file it writes.
 func (e *Engine) hostSprayResumeInfo() (*generalTypes.ResumeInfo, *generalTypes.ResumeInfo) {
 	cfg := e.executerOpts.ResumeCfg
 	cfg.Lock()
@@ -282,6 +285,7 @@ func (e *Engine) hostSprayResumeInfo() (*generalTypes.ResumeInfo, *generalTypes.
 		return info
 	}
 	cfg.Current[hostSprayResumeID] = empty()
+	cfg.ResumeFrom[hostSprayResumeID] = empty()
 
 	return empty(), empty()
 }
