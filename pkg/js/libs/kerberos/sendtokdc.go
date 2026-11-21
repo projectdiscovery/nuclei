@@ -184,7 +184,9 @@ func sendTCP(conn *net.TCPConn, b []byte) ([]byte, error) {
 	}
 
 	sh := make([]byte, 4)
-	_, err = conn.Read(sh)
+	// A single Read may return fewer than 4 bytes when the header arrives in
+	// more than one segment, which would decode the wrong message length.
+	_, err = io.ReadFull(conn, sh)
 	if err != nil {
 		return r, fmt.Errorf("error reading response size header: %v", err)
 	}
