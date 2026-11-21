@@ -2,6 +2,7 @@ package core
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates/types"
@@ -33,14 +34,27 @@ type WorkPoolConfig struct {
 
 // NewWorkPool returns a new WorkPool instance
 func NewWorkPool(config WorkPoolConfig) *WorkPool {
-	headlessWg, _ := syncutil.New(syncutil.WithSize(config.HeadlessTypeConcurrency))
-	defaultWg, _ := syncutil.New(syncutil.WithSize(config.TypeConcurrency))
-
 	return &WorkPool{
 		config:   config,
-		Headless: headlessWg,
-		Default:  defaultWg,
+		Headless: newPool(config.HeadlessTypeConcurrency),
+		Default:  newPool(config.TypeConcurrency),
 	}
+}
+
+// newPool returns a pool of size, or of one when size is below 1.
+// syncutil.New returns a nil pool for a size below 1, which the scan would
+// dereference.
+func newPool(size int) *syncutil.AdaptiveWaitGroup {
+	size = max(size, 1)
+
+	pool, err := syncutil.New(syncutil.WithSize(size))
+	if err != nil {
+		// The size is at least 1, so this cannot happen. Stopping here beats
+		// handing the scan a nil pool.
+		panic(fmt.Sprintf("could not create work pool of size %d: %s", size, err))
+	}
+
+	return pool
 }
 
 // Wait waits for all the work pool wait groups to finish
@@ -57,8 +71,8 @@ func (w *WorkPool) InputPool(templateType types.ProtocolType) *syncutil.Adaptive
 	} else {
 		count = w.config.InputConcurrency
 	}
-	swg, _ := syncutil.New(syncutil.WithSize(count))
-	return swg
+
+	return newPool(count)
 }
 
 func (w *WorkPool) RefreshWithConfig(config WorkPoolConfig) {
@@ -82,13 +96,20 @@ func (w *WorkPool) RefreshWithConfigContext(ctx context.Context, config WorkPool
 }
 
 func (w *WorkPool) Refresh(ctx context.Context) {
-	if w.Default.Size != w.config.TypeConcurrency {
-		if err := w.Default.Resize(ctx, w.config.TypeConcurrency); err != nil {
+	// newPool sized the pools to at least 1, so compare against the same bound.
+	typeConcurrency := max(w.config.TypeConcurrency, 1)
+	headlessTypeConcurrency := max(w.config.HeadlessTypeConcurrency, 1)
+
+	if w.Default.Size != typeConcurrency {
+		err := w.Default.Resize(ctx, typeConcurrency)
+		if err != nil {
 			gologger.Warning().Msgf("Could not resize workpool: %s\n", err)
 		}
 	}
-	if w.Headless.Size != w.config.HeadlessTypeConcurrency {
-		if err := w.Headless.Resize(ctx, w.config.HeadlessTypeConcurrency); err != nil {
+
+	if w.Headless.Size != headlessTypeConcurrency {
+		err := w.Headless.Resize(ctx, headlessTypeConcurrency)
+		if err != nil {
 			gologger.Warning().Msgf("Could not resize workpool: %s\n", err)
 		}
 	}
