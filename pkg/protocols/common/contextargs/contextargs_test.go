@@ -171,6 +171,18 @@ func TestUseNetworkPort(t *testing.T) {
 
 		// --- excludePorts: replaces the default reserved set ---
 		{
+			name:         "single-label host with a scheme port is replaced",
+			input:        "https://intranet:443",
+			templatePort: "22",
+			wantInput:    "intranet:22",
+		},
+		{
+			name:         "single-label host with a non-reserved port is preserved verbatim",
+			input:        "https://intranet:9999",
+			templatePort: "22",
+			wantInput:    "https://intranet:9999",
+		},
+		{
 			name:         "scheme port in excludePorts is replaced",
 			input:        "http://example.com:9090",
 			templatePort: "22",
