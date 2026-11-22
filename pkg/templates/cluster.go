@@ -42,7 +42,7 @@ import (
 // Cases where clustering is not performed (request is considered different)
 //   - If request contains payloads,raw,body,unsafe,req-condition,name attributes
 //   - If an HTTP request sends race copies (race with a race_count above 0, outside a pipeline)
-//   - If request methods,max-redirects,disable-cookie,redirects are not equal
+//   - If request methods,max-redirects,disable-cookie,redirects,host-redirects,protocol-redirects are not equal
 //   - If request paths aren't identical.
 //   - If request headers aren't identical
 //   - Similarly for DNS, only identical DNS requests are clustered to a target.
