@@ -69,6 +69,35 @@ func TestCloseConnected(t *testing.T) {
 	closeClient(t, client)
 }
 
+// TestConnectIPv6 checks that an IPv6 host is bracketed when it is
+// joined with the port, instead of failing with "too many colons".
+func TestConnectIPv6(t *testing.T) {
+	t.Parallel()
+
+	listener, err := new(net.ListenConfig).Listen(t.Context(), "tcp", "[::1]:0")
+	if err != nil {
+		t.Skipf("IPv6 loopback is unavailable: %v", err)
+	}
+
+	host, port := serveSSH(t, listener)
+
+	t.Run("Connect", func(t *testing.T) {
+		t.Parallel()
+
+		client := new(libssh.SSHClient)
+		connect(t, client, host, port)
+		closeClient(t, client)
+	})
+	t.Run("ConnectSSHInfoMode", func(t *testing.T) {
+		t.Parallel()
+
+		_, err := new(libssh.SSHClient).ConnectSSHInfoMode(executionContext(t), host, port)
+		if err != nil {
+			t.Fatalf("ConnectSSHInfoMode() error = %v", err)
+		}
+	})
+}
+
 func connect(t *testing.T, client *libssh.SSHClient, host string, port int) {
 	t.Helper()
 
@@ -98,6 +127,18 @@ func executionContext(t *testing.T) context.Context {
 func startServer(t *testing.T) (string, int) {
 	t.Helper()
 
+	listener, err := new(net.ListenConfig).Listen(t.Context(), "tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	return serveSSH(t, listener)
+}
+
+// serveSSH serves SSH on listener and returns its host and port.
+func serveSSH(t *testing.T, listener net.Listener) (string, int) {
+	t.Helper()
+
 	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	if err != nil {
 		t.Fatal(err)
@@ -111,11 +152,6 @@ func startServer(t *testing.T) (string, int) {
 	config := new(ssh.ServerConfig)
 	config.PasswordCallback = checkPassword
 	config.AddHostKey(signer)
-
-	listener, err := new(net.ListenConfig).Listen(t.Context(), "tcp", "127.0.0.1:0")
-	if err != nil {
-		t.Fatal(err)
-	}
 
 	t.Cleanup(func() { _ = listener.Close() })
 
