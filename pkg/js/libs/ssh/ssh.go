@@ -228,7 +228,8 @@ func connectSSHInfoMode(opts *connectOptions) (*ssh.HandshakeLog, error) {
 		data.Banner = strings.TrimSpace(banner)
 		return nil
 	}
-	rhost := net.JoinHostPort(opts.Host, strconv.Itoa(opts.Port))
+	host := strings.TrimSuffix(strings.TrimPrefix(opts.Host, "["), "]")
+	rhost := net.JoinHostPort(host, strconv.Itoa(opts.Port))
 	client, err := ssh.Dial("tcp", rhost, sshConfig)
 	if err != nil {
 		return nil, err
