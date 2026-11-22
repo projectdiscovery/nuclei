@@ -991,8 +991,8 @@ github.com/projectdiscovery/uncover v1.2.1 h1:8U46T/96CLT7BPoXBgkTvWqB06lOyeTSLv
 github.com/projectdiscovery/uncover v1.2.1/go.mod h1:0p8onrWxfpXQEYs90ZDzTSpu1107gWmodX1NWqu/+z4=
 github.com/projectdiscovery/useragent v0.0.110 h1:hoKpQssbFLSSmK/Vxf/fG/a+PToEYdzLafG7HHbvCAc=
 github.com/projectdiscovery/useragent v0.0.110/go.mod h1:fOeQ2+nlOJHYuPpnWWrBz5q5dUo7efe/AmvWQdNsLUM=
-github.com/projectdiscovery/utils v0.11.15 h1:SL02AwUsTvuAt5fu+uxEzjZPwtc0Oj1MVky89GlcnR0=
-github.com/projectdiscovery/utils v0.11.15/go.mod h1:xi8KJ+NENlIk4sgfnvihJdcR+4qnEO5Z67fvN5Md33w=
+github.com/projectdiscovery/utils v0.11.16 h1:9rHdzLtBoCPQNtGY7a8WgPi1HV4fcTdbDdGJTajsYHs=
+github.com/projectdiscovery/utils v0.11.16/go.mod h1:xi8KJ+NENlIk4sgfnvihJdcR+4qnEO5Z67fvN5Md33w=
 github.com/projectdiscovery/wappalyzergo v0.3.10 h1:y7pZ+oEM9AjZc/ywXhMU2UAC42bZ7O8eUYDbbTD1KQg=
 github.com/projectdiscovery/wappalyzergo v0.3.10/go.mod h1:v6ZGfobwbT6vXOt3Cjq/KZ6rio5CFwacX5o34rnnzQw=
 github.com/projectdiscovery/yamldoc-go v1.0.9 h1:pms4u/qWaMYTMnI1R+MUKu/qRV3k/nruHG0wDj2IJmo=
