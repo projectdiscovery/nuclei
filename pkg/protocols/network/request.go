@@ -26,6 +26,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/helpers/eventcreator"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/helpers/responsehighlighter"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/hosterrorscache" //nolint:depguard // No depguard rules are configured, so its default list allows only the standard library.
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/interactsh"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/render"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/replacer"
@@ -89,6 +90,27 @@ func (request *Request) getOpenPorts(target *contextargs.Context) ([]string, err
 	return openPorts, nil
 }
 
+// countUnsent counts n requests an execution never started as processed, with
+// no error (#7838). Each request counts once, at the deepest level it reaches:
+// executeRequestWithPayloads counts each request it is given, and each loop
+// counts here the ones it doesn't start.
+func (request *Request) countUnsent(n int) {
+	if n > 0 {
+		request.options.Progress.SetRequests(uint64(n))
+	}
+}
+
+// dialKey identifies a dial in the set of visited addresses. A plain and a
+// tls:// entry for one address are different requests, so the key holds the TLS
+// flag too (#8263).
+func dialKey(address string, useTLS bool) string {
+	if useTLS {
+		return "tls://" + address
+	}
+
+	return address
+}
+
 // ExecuteWithResults executes the protocol requests and returns results instead of writing them.
 func (request *Request) ExecuteWithResults(target *contextargs.Context, metadata, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
 	visitedAddresses := make(mapsutil.Map[string, struct{}])
@@ -100,6 +122,13 @@ func (request *Request) ExecuteWithResults(target *contextargs.Context, metadata
 			return err
 		}
 	}
+
+	// The total counts every listed port, so a port the loop doesn't start counts
+	// as processed: one the port check finds closed, or one the loop doesn't reach.
+	started := 0
+	defer func() {
+		request.countUnsent((len(request.ports) - started) * len(request.addresses) * request.requestsPerAddress())
+	}()
 
 	// get open ports from list of ports provided in template
 	ports, err := request.getOpenPorts(target)
@@ -121,7 +150,19 @@ func (request *Request) ExecuteWithResults(target *contextargs.Context, metadata
 		callback(event)
 	}
 
+	var (
+		skipped  bool
+		failures error
+	)
+
 	for _, port := range ports {
+		// A cancel ends the scan. It is not a failure of this port, and every port
+		// after it would report the same one.
+		ctxErr := target.Context().Err()
+		if ctxErr != nil {
+			return errors.Wrap(ctxErr, "network scan canceled")
+		}
+
 		input := target.Clone()
 		// use network port updates input with new port requested in template file
 		// and it is ignored if input port is not standard http(s) ports like 80,8080,8081 etc
@@ -129,25 +170,51 @@ func (request *Request) ExecuteWithResults(target *contextargs.Context, metadata
 		if err := input.UseNetworkPort(port, request.ExcludePorts); err != nil {
 			gologger.Debug().Msgf("Could not network port from constants: %s\n", err)
 		}
-		if err := request.executeOnTarget(input, visitedAddresses, metadata, previous, wrappedCallback); err != nil {
-			return err
+
+		started++
+		targetErr := request.executeOnTarget(input, visitedAddresses, metadata, previous, wrappedCallback)
+		if stderrors.Is(targetErr, hosterrorscache.ErrUnresponsiveHost) {
+			skipped = true
+		} else if targetErr != nil {
+			// Each port is its own service, so a failure on one doesn't stop the
+			// others, as in the javascript protocol. errkit joins them, as
+			// getErrorCause reads the cause of an errkit error only.
+			if failures == nil {
+				failures = targetErr
+			} else {
+				failures = errkit.Append(failures, targetErr)
+			}
 		}
 		if shouldStopAtFirstMatch && atomicBool.Load() {
 			break
 		}
 	}
 
+	// A failed port takes precedence over a skipped one, as an address does. The
+	// skip is never joined into the failures, so errors.Is(err,
+	// ErrUnresponsiveHost) still means that no port failed.
+	if failures != nil {
+		//nolint:wrapcheck // the failures are returned as they came, joined or not, so a caller sees the errors of its ports
+		return failures
+	}
+
+	if skipped {
+		return hosterrorscache.ErrUnresponsiveHost
+	}
+
 	return nil
 }
 
 func (request *Request) executeOnTarget(input *contextargs.Context, visited mapsutil.Map[string, struct{}], metadata, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
+	// An address the loop doesn't start counts as processed, whether it breaks,
+	// skips a visited address or returns on a cancel or an error.
+	started := 0
+	defer func() {
+		request.countUnsent((len(request.addresses) - started) * request.requestsPerAddress())
+	}()
+
 	var address string
 	var err error
-
-	if request.isUnresponsiveAddress(input) {
-		// skip on unresponsive address no need to continue
-		return nil
-	}
 
 	if request.SelfContained {
 		address = ""
@@ -157,7 +224,8 @@ func (request *Request) executeOnTarget(input *contextargs.Context, visited maps
 
 	if err != nil {
 		request.options.Output.Request(request.options.TemplatePath, input.MetaInput.Input, request.Type().String(), err)
-		request.options.Progress.IncrementFailedRequestsBy(1)
+		// The deferred count counts the requests this input would have sent.
+		request.options.Progress.IncrementErrorsBy(1)
 		return errors.Wrap(err, "could not get address from url")
 	}
 
@@ -187,6 +255,11 @@ func (request *Request) executeOnTarget(input *contextargs.Context, visited maps
 		callback(event)
 	}
 
+	var (
+		skipped bool
+		failErr error
+	)
+
 	for _, kv := range request.addresses {
 		select {
 		case <-input.Context().Done():
@@ -196,17 +269,31 @@ func (request *Request) executeOnTarget(input *contextargs.Context, visited maps
 
 		actualAddress := replacer.Replace(kv.address, variables)
 
-		if visited.Has(actualAddress) && !request.options.Options.DisableClustering {
+		key := dialKey(actualAddress, kv.tls)
+		if visited.Has(key) && !request.options.Options.DisableClustering {
 			continue
 		}
 
-		visited.Set(actualAddress, struct{}{})
+		visited.Set(key, struct{}{})
 
-		if err = request.executeAddress(variables, actualAddress, address, input, kv.tls, previous, interactshURLs, wrappedCallback); err != nil {
+		started++
+		addressErr := request.executeAddress(variables, actualAddress, address, input, kv.tls, previous,
+			interactshURLs, wrappedCallback)
+
+		switch {
+		case stderrors.Is(addressErr, hosterrorscache.ErrUnresponsiveHost):
+			// A failed address takes precedence over the skip, which is
+			// reported below only when no address failed.
+			skipped = true
+		case addressErr != nil:
+			err = addressErr
+			failErr = addressErr
 			outputEvent := request.responseToDSLMap("", "", "", address, "")
 			gologger.Warning().Msgf("[%v] Could not make network request for (%s) : %s\n", request.options.TemplateID, actualAddress, err)
 
 			callback(&output.InternalWrappedEvent{InternalEvent: outputEvent})
+		default:
+			err = nil
 		}
 
 		if shouldStopAtFirstMatch && atomicBool.Load() {
@@ -214,18 +301,34 @@ func (request *Request) executeOnTarget(input *contextargs.Context, visited maps
 		}
 	}
 
+	if skipped {
+		if failErr != nil {
+			return failErr
+		}
+
+		return hosterrorscache.ErrUnresponsiveHost
+	}
+
 	return err
 }
 
 // executeAddress executes the request for an address
 func (request *Request) executeAddress(variables map[string]interface{}, actualAddress, address string, input *contextargs.Context, shouldUseTLS bool, previous output.InternalEvent, interactshURLs []string, callback protocols.OutputEventCallback) error {
+	// A request the loop below doesn't start counts as processed: a payload it
+	// skips, one that fails to render, and the rest after a cancel or a skip.
+	started := 0
+	defer func() {
+		request.countUnsent(request.requestsPerAddress() - started)
+	}()
+
 	variables = generators.MergeMaps(variables, map[string]interface{}{"Hostname": address})
 	payloads := generators.BuildPayloadFromOptions(request.options.Options)
 
 	if !strings.Contains(actualAddress, ":") {
 		err := errors.New("no port provided in network protocol request")
 		request.options.Output.Request(request.options.TemplatePath, address, request.Type().String(), err)
-		request.options.Progress.IncrementFailedRequestsBy(1)
+		// The deferred count counts the requests this address would have sent.
+		request.options.Progress.IncrementErrorsBy(1)
 		return err
 	}
 	updatedTarget := input.Clone()
@@ -238,6 +341,7 @@ func (request *Request) executeAddress(variables map[string]interface{}, actualA
 		iterator := request.generator.NewIterator()
 		var multiErr error
 		m := &sync.Mutex{}
+		skipped := &atomic.Bool{}
 		swg, err := syncutil.New(syncutil.WithSize(request.Threads))
 		if err != nil {
 			return err
@@ -265,8 +369,12 @@ func (request *Request) executeAddress(variables map[string]interface{}, actualA
 				}
 			}
 			if request.isUnresponsiveAddress(updatedTarget) {
-				// skip on unresponsive address no need to continue
-				return nil
+				// The remaining payloads would be skipped as well, and the
+				// deferred count counts them. Wait for the running ones, as an
+				// error of theirs takes precedence.
+				skipped.Store(true)
+
+				break payloadLoop
 			}
 
 			renderedValue, err := render.RenderMap(render.MapInput{
@@ -278,6 +386,7 @@ func (request *Request) executeAddress(variables map[string]interface{}, actualA
 				InteractURLs: interactshURLs,
 			})
 			if err != nil {
+				request.options.Progress.IncrementErrorsBy(1)
 				m.Lock()
 				multiErr = multierr.Append(multiErr, errors.Wrap(err, "could not evaluate payload helper expressions"))
 				m.Unlock()
@@ -287,15 +396,16 @@ func (request *Request) executeAddress(variables map[string]interface{}, actualA
 			if err := swg.AddWithContext(input.Context()); err != nil {
 				break payloadLoop
 			}
+
+			started++
 			go func(vars map[string]interface{}, urls []string) {
 				defer swg.Done()
 
-				if request.isUnresponsiveAddress(updatedTarget) {
-					// skip on unresponsive address no need to continue
-					return
-				}
-
-				if err := request.executeRequestWithPayloads(variables, actualAddress, address, input, shouldUseTLS, vars, previous, urls, callback); err != nil {
+				err := request.executeRequestWithPayloads(variables, actualAddress, address, input, shouldUseTLS, vars,
+					previous, urls, callback)
+				if stderrors.Is(err, hosterrorscache.ErrUnresponsiveHost) {
+					skipped.Store(true)
+				} else if err != nil {
 					m.Lock()
 					multiErr = multierr.Append(multiErr, err)
 					m.Unlock()
@@ -311,8 +421,13 @@ func (request *Request) executeAddress(variables map[string]interface{}, actualA
 		if multiErr != nil {
 			return multiErr
 		}
+
+		if skipped.Load() {
+			return hosterrorscache.ErrUnresponsiveHost
+		}
 	} else {
 		value := maps.Clone(payloads)
+		started++
 		if err := request.executeRequestWithPayloads(variables, actualAddress, address, input, shouldUseTLS, value, previous, interactshURLs, callback); err != nil {
 			return err
 		}
@@ -334,11 +449,14 @@ func (request *Request) executeRequestWithPayloads(variables map[string]interfac
 	updatedTarget.MetaInput.Input = actualAddress
 
 	if request.isUnresponsiveAddress(updatedTarget) {
-		// skip on unresponsive address no need to continue
-		return nil
+		// A skip is a processed request, not an error.
+		request.options.Progress.IncrementRequests()
+
+		return hosterrorscache.ErrUnresponsiveHost
 	}
 
 	if err := request.options.HostBackoffWait(input.Context(), actualAddress); err != nil {
+		request.options.Progress.IncrementFailedRequestsBy(1)
 		return err
 	}
 	if err := request.options.RateLimitTakeContext(input.Context(), actualAddress); err != nil {
@@ -401,6 +519,9 @@ func (request *Request) executeRequestWithPayloads(variables map[string]interfac
 
 		if err := expressions.ContainsUnresolvedVariables(data); err != nil {
 			gologger.Warning().Msgf("[%s] Could not make network request for %s: %v\n", request.options.TemplateID, actualAddress, err)
+			// Unresolved variables are a skip, not an error, as in http.
+			request.options.Progress.IncrementRequests()
+
 			return nil
 		}
 
@@ -424,6 +545,7 @@ func (request *Request) executeRequestWithPayloads(variables map[string]interfac
 		if input.Read > 0 {
 			buffer, err := ConnReadNWithTimeout(conn, int64(input.Read), request.options.Options.GetTimeouts().TcpReadTimeout)
 			if err != nil {
+				request.options.Progress.IncrementFailedRequestsBy(1)
 				return errkit.Wrap(err, "could not read response from connection")
 			}
 			stepDurations = append(stepDurations, time.Since(timeStart))
@@ -475,7 +597,9 @@ func (request *Request) executeRequestWithPayloads(variables map[string]interfac
 
 	final, readErr := ConnReadNWithTimeout(conn, int64(bufferSize), request.options.Options.GetTimeouts().TcpReadTimeout)
 	if readErr != nil {
-		request.options.Output.Request(request.options.TemplatePath, address, request.Type().String(), readErr)
+		// The final read is optional (#4737), so its end is not an error. It
+		// writes no trace entry: that would put an error in -elog and in the
+		// -hps error table for a request that may have matched.
 		gologger.Verbose().Msgf("could not read more data from %s: %s", actualAddress, readErr)
 	}
 	responseBuilder.Write(final)
@@ -593,6 +717,13 @@ func getAddress(toTest string) (string, error) {
 			return "", err
 		}
 		toTest = parsed.Host
+
+		if parsed.Scheme == "https" && parsed.Port() == "" {
+			// With no template port, an https URL reaches here without one,
+			// since Transform leaves the port to UseNetworkPort. Dial the
+			// scheme's default port.
+			toTest = net.JoinHostPort(parsed.Hostname(), "443")
+		}
 	}
 	return toTest, nil
 }

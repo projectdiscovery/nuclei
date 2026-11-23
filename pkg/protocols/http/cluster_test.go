@@ -94,6 +94,44 @@ func TestIsClusterable(t *testing.T) {
 	})
 }
 
+// A cluster sends its first member's request for every member, so a race block
+// would force its race_count on the others, or lose it to a plain one (#8280).
+//
+//nolint:exhaustruct,exhaustruct_v5 // fixtures keep zero-value defaults
+func TestIsClusterableRace(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name        string
+		race        bool
+		count       int
+		pipeline    bool
+		clusterable bool
+	}{
+		{name: "race with race_count is not clusterable", race: true, count: 5},
+		// without race_count, race runs as any other block
+		{name: "race without race_count is clusterable", race: true, clusterable: true},
+		// a pipelined block sends its request differently from a plain one
+		{name: "race with race_count in a pipeline is not clusterable", race: true, count: 5, pipeline: true},
+		{name: "pipeline is not clusterable", pipeline: true},
+		{name: "race_count without race is clusterable", count: 5, clusterable: true},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+
+			req := &Request{
+				Path:               []string{"{{BaseURL}}"},
+				Method:             HTTPMethodTypeHolder{MethodType: HTTPGet},
+				Race:               test.race,
+				RaceNumberRequests: test.count,
+				Pipeline:           test.pipeline,
+			}
+			require.Equal(t, test.clusterable, req.IsClusterable())
+		})
+	}
+}
+
 func TestTmplClusterKeyIdempotent(t *testing.T) {
 	req := &Request{
 		Path:         []string{"{{BaseURL}}/admin"},

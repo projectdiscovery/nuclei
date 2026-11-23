@@ -2106,6 +2106,48 @@ func TestExecuteParallelHTTP_GoroutineLeaks(t *testing.T) {
 		require.ErrorIs(t, err, hosterrorscache.ErrUnresponsiveHost)
 	})
 
+	// Test Case 5b: the target's own port is unresponsive, but the requests to
+	// another port are sent. Skipping a request to the target's port continues
+	// with the next one, and nothing it skips is recorded (#8201).
+	//
+	//nolint:exhaustruct,exhaustruct_v5,paralleltest // zero-value fixtures; goleak and testutils.Init state are shared
+	t.Run("UnresponsiveTargetPortSkipsAndContinues", func(t *testing.T) {
+		var received atomic.Int32
+
+		server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, _ *http.Request) {
+			received.Add(1)
+
+			_, _ = fmt.Fprintf(writer, "response")
+		}))
+		defer server.Close()
+
+		req := &Request{
+			ID:       "parallel-unresponsive-target-port",
+			Method:   HTTPMethodTypeHolder{MethodType: HTTPGet},
+			Path:     []string{"{{BaseURL}}/n?x={{v}}", server.URL + "/n?x={{v}}"},
+			Threads:  2,
+			Payloads: map[string]any{"v": []string{"1", "2"}},
+		}
+
+		executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
+			ID:   "parallel-unresponsive-target-port",
+			Info: model.Info{SeverityHolder: severity.Holder{Severity: severity.Low}, Name: "test"},
+		})
+		spy := &addressSpyHostErrorsCache{unresponsive: "127.0.0.1:443"}
+		executerOpts.HostErrorsCache = spy
+
+		err := req.Compile(executerOpts)
+		require.NoError(t, err)
+
+		ctxArgs := contextargs.NewWithInput(t.Context(), "https://127.0.0.1")
+		err = req.ExecuteWithResults(ctxArgs, make(output.InternalEvent), make(output.InternalEvent),
+			func(*output.InternalWrappedEvent) {})
+		require.ErrorIs(t, err, hosterrorscache.ErrUnresponsiveHost)
+		require.EqualValues(t, 2, received.Load(), "the requests to the open port are sent")
+		require.NotContains(t, spy.marks, "127.0.0.1:443")
+		require.NotContains(t, spy.resets, "127.0.0.1:443")
+	})
+
 	// Test Case 6: a first match cancels the workers while payloads are still
 	// being queued, and the scan can return before its stop-at-first-match
 	// handler is waited on. Only some scans take that return, so it runs 30

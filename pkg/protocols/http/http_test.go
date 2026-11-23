@@ -47,7 +47,7 @@ Accept-Encoding: gzip`},
 }
 
 // TestAnalyzeConnectionReuse guards the connection-reuse policy: requests that
-// must not reuse pooled keep-alive connections (race, pipeline, explicit
+// must not reuse pooled keep-alive connections (race, explicit
 // "Connection: close", time-based analyzers) must be flagged ReuseUnsafe, while
 // everything else stays ReuseSafe so dev's per-host pooling keeps connections alive.
 func TestAnalyzeConnectionReuse(t *testing.T) {
@@ -73,9 +73,11 @@ func TestAnalyzeConnectionReuse(t *testing.T) {
 			want:    ReuseUnsafe,
 		},
 		{
-			name:    "pipeline is unsafe",
+			// the pipeline client keeps its own connections, and a close would
+			// cut off the other requests pipelined on it
+			name:    "pipeline is safe",
 			request: &Request{Pipeline: true},
-			want:    ReuseUnsafe,
+			want:    ReuseSafe,
 		},
 		{
 			name:    "raw connection close is unsafe",
