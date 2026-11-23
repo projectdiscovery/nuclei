@@ -1,7 +1,10 @@
 package globalmatchers
 
 import (
+	"bytes"
+	"encoding/json"
 	"maps"
+	"slices"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/model"
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators"
@@ -11,6 +14,8 @@ import (
 // Storage is a struct that holds the global matchers
 type Storage struct {
 	requests []*Item
+	// operators holds the operators of every item as json, for Reads
+	operators []byte
 }
 
 // Callback is called when a global matcher is matched.
@@ -43,6 +48,17 @@ func (s *Storage) AddOperator(item *Item) {
 	}
 
 	s.requests = append(s.requests, item)
+	if data, err := json.Marshal(item.Operators); err == nil {
+		s.operators = append(s.operators, data...)
+	}
+}
+
+// Reads reports whether any global matcher may read one of parts.
+func (s *Storage) Reads(parts ...string) bool {
+	if !s.hasStorage() {
+		return false
+	}
+	return slices.ContainsFunc(parts, func(part string) bool { return bytes.Contains(s.operators, []byte(part)) })
 }
 
 // HasMatchers returns true if we have global matchers

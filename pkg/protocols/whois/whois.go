@@ -5,6 +5,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/openrdap/rdap"
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators"
@@ -24,7 +25,6 @@ import (
 	templateTypes "github.com/projectdiscovery/nuclei/v3/pkg/templates/types"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils/json"
-	"github.com/projectdiscovery/rdap"
 )
 
 // Request is a request for the WHOIS protocol
@@ -47,7 +47,7 @@ type Request struct {
 	//   Otherwise, nil enables bootstrapping
 	Server string `yaml:"server,omitempty" json:"server,omitempty" jsonschema:"title=server url to execute the WHOIS request on,description=Server contains the server url to execute the WHOIS request on"`
 	// cache any variables that may be needed for operation.
-	client          *rdap.Client
+	client          *rdapclientpool.Client
 	options         *protocols.ExecutorOptions
 	parsedServerURL *url.URL
 }
@@ -145,6 +145,15 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 	case rdap.DomainRequest:
 		// convert the rdap response to a whois style response (for domain request type only)
 		whoisResp := res.ToWhoisStyleResponse()
+		if servers, ok := whoisResp.Data["WHOIS Server"]; ok {
+			delete(whoisResp.Data, "WHOIS Server")
+			whoisResp.Data["Registrar WHOIS Server"] = servers
+			for i, key := range whoisResp.KeyDisplayOrder {
+				if key == "WHOIS Server" {
+					whoisResp.KeyDisplayOrder[i] = "Registrar WHOIS Server"
+				}
+			}
+		}
 		for k, v := range whoisResp.Data {
 			data[strings.ToLower(k)] = strings.Join(v, ",")
 		}

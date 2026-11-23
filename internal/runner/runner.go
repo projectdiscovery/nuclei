@@ -1192,10 +1192,7 @@ func (r *Runner) SaveResumeConfig(path string) error {
 		}
 	}
 
-	resumeCfgClone := r.resumeCfg.Clone()
-	resumeCfgClone.ResumeFrom = resumeCfgClone.Current
-
-	data, err := json.MarshalIndent(resumeCfgClone, "", "\t")
+	data, err := json.MarshalIndent(r.resumeCfg.Snapshot(), "", "\t")
 	if err != nil {
 		return fmt.Errorf("encode resume configuration: %w", err)
 	}

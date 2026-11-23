@@ -12,6 +12,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/projectdiscovery/fastdialer/fastdialer" //nolint:depguard // No depguard rules are configured, so its default list allows only the standard library.
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/internal/tests/testutils"
 	"github.com/projectdiscovery/nuclei/v3/pkg/model"
@@ -83,7 +84,7 @@ func TestRequestParseAnnotationsSNI(t *testing.T) {
 		require.ErrorIs(t, overrides.err, commoninteractsh.ErrInteractshClientNotInitialized)
 		require.Empty(t, overrides.interactshURLs)
 		require.Same(t, httpReq, overrides.request)
-		require.Nil(t, overrides.cancelFunc)
+		require.Zero(t, overrides.timeout)
 	})
 }
 
@@ -101,21 +102,18 @@ func TestRequestParseAnnotationsTimeout(t *testing.T) {
 		require.Nil(t, err, "could not create http request")
 
 		overrides, modified := request.parseAnnotations(rawRequest, httpReq)
-		require.NotNil(t, overrides.cancelFunc, "could not initialize valid cancel function")
 		require.True(t, modified, "could not get correct modified value")
+		require.Equal(t, 2*time.Second, overrides.timeout, "timeout value mismatch")
+		require.ErrorIs(t, overrides.timeoutCause, ErrTimeoutAnnotationDeadline)
 
-		// Verify context has deadline
-		deadline, deadlined := overrides.request.Context().Deadline()
-		require.True(t, deadlined, "could not get set request deadline")
+		// The deadline starts when the request is sent, not when it is built.
+		_, deadlined := overrides.request.Context().Deadline()
+		require.False(t, deadlined, "request deadline started before the request was sent")
 
 		// Verify the timeout value is stored in context
 		customTimeout, ok := overrides.request.Context().Value(httpclientpool.WithCustomTimeout{}).(httpclientpool.WithCustomTimeout)
 		require.True(t, ok, "custom timeout not found in context")
 		require.Equal(t, 2*time.Second, customTimeout.Timeout, "timeout value mismatch")
-
-		// Verify deadline is approximately 2 seconds from now
-		expectedDeadline := time.Now().Add(2 * time.Second)
-		require.WithinDuration(t, expectedDeadline, deadline, 100*time.Millisecond, "deadline not set correctly")
 	})
 
 	t.Run("large-timeout", func(t *testing.T) {
@@ -133,12 +131,7 @@ func TestRequestParseAnnotationsTimeout(t *testing.T) {
 		require.Nil(t, err, "could not create http request")
 
 		overrides, modified := request.parseAnnotations(rawRequest, httpReq)
-		require.NotNil(t, overrides.cancelFunc, "could not initialize valid cancel function")
 		require.True(t, modified, "could not get correct modified value")
-
-		// Verify context has deadline
-		deadline, deadlined := overrides.request.Context().Deadline()
-		require.True(t, deadlined, "could not get set request deadline")
 
 		// Verify the timeout was capped at 5 minutes (not 10 minutes)
 		customTimeout, ok := overrides.request.Context().Value(httpclientpool.WithCustomTimeout{}).(httpclientpool.WithCustomTimeout)
@@ -147,9 +140,8 @@ func TestRequestParseAnnotationsTimeout(t *testing.T) {
 		require.Equal(t, 5*time.Minute, customTimeout.Timeout, "timeout should be capped at 5 minutes")
 		require.Less(t, customTimeout.Timeout, 10*time.Minute, "timeout should be less than requested 10 minutes")
 
-		// Verify deadline matches the capped timeout
-		expectedDeadline := time.Now().Add(5 * time.Minute)
-		require.WithinDuration(t, expectedDeadline, deadline, 100*time.Millisecond, "deadline not set to capped timeout")
+		// Verify the request carries the capped timeout
+		require.Equal(t, 5*time.Minute, overrides.timeout, "request timeout not set to capped timeout")
 	})
 
 	t.Run("below-cap-timeout", func(t *testing.T) {
@@ -167,12 +159,7 @@ func TestRequestParseAnnotationsTimeout(t *testing.T) {
 		require.Nil(t, err, "could not create http request")
 
 		overrides, modified := request.parseAnnotations(rawRequest, httpReq)
-		require.NotNil(t, overrides.cancelFunc, "could not initialize valid cancel function")
 		require.True(t, modified, "could not get correct modified value")
-
-		// Verify context has deadline
-		deadline, deadlined := overrides.request.Context().Deadline()
-		require.True(t, deadlined, "could not get set request deadline")
 
 		// Verify the timeout is NOT capped - should be 2 minutes
 		customTimeout, ok := overrides.request.Context().Value(httpclientpool.WithCustomTimeout{}).(httpclientpool.WithCustomTimeout)
@@ -180,9 +167,8 @@ func TestRequestParseAnnotationsTimeout(t *testing.T) {
 
 		require.Equal(t, 2*time.Minute, customTimeout.Timeout, "timeout should be the requested 2 minutes")
 
-		// Verify deadline matches the requested timeout
-		expectedDeadline := time.Now().Add(2 * time.Minute)
-		require.WithinDuration(t, expectedDeadline, deadline, 100*time.Millisecond, "deadline not set to requested timeout")
+		// Verify the request carries the requested timeout
+		require.Equal(t, 2*time.Minute, overrides.timeout, "request timeout not set to requested timeout")
 	})
 
 	t.Run("negative", func(t *testing.T) {
@@ -197,10 +183,81 @@ func TestRequestParseAnnotationsTimeout(t *testing.T) {
 		require.Nil(t, err, "could not create http request")
 
 		newRequestWithOverrides, modified := request.parseAnnotations(rawRequest, httpReq)
-		require.Nil(t, newRequestWithOverrides.cancelFunc, "cancel function should be nil")
+		require.Zero(t, newRequestWithOverrides.timeout, "timeout should be unset")
 		require.False(t, modified, "could not get correct modified value")
 		_, deadlined := newRequestWithOverrides.request.Context().Deadline()
 		require.False(t, deadlined, "could not get set request deadline")
+	})
+
+	// Another request of the template has @timeout, which turns off the
+	// client timeout, so this one takes the default timeout instead.
+	t.Run("without-annotation", func(t *testing.T) { //nolint:paralleltest // like the other subtests
+		//nolint:exhaustruct,exhaustruct_v5 // zero values are the defaults
+		request := &Request{
+			options:           getExecuterOptions(t),
+			connConfiguration: &httpclientpool.Configuration{NoTimeout: true},
+		}
+		rawRequest := `GET / HTTP/1.1
+		Host: {{Hostname}}`
+
+		httpReq, err := retryablehttp.NewRequest(http.MethodGet, "https://example.com", nil)
+		require.NoError(t, err, "could not create http request")
+
+		overrides, modified := request.parseAnnotations(rawRequest, httpReq)
+		require.True(t, modified, "could not get correct modified value")
+		require.Equal(t, request.options.Options.GetTimeouts().HttpTimeout, overrides.timeout)
+		require.ErrorIs(t, overrides.timeoutCause, ErrRequestTimeoutDeadline)
+		_, deadlined := overrides.request.Context().Deadline()
+		require.False(t, deadlined, "request deadline started before the request was sent")
+	})
+
+	// The request keeps the scan's cancellation and the values set before the
+	// timeout, such as the SNI, with or without the annotation (#8178).
+	t.Run("keeps-request-context", func(t *testing.T) { //nolint:paralleltest // like the other subtests
+		annotations := map[string]string{
+			"annotated":       "@tls-sni: github.com\n@timeout: 2s\n",
+			"default-timeout": "@tls-sni: github.com\n",
+		}
+		for name, annotation := range annotations {
+			t.Run(name, func(t *testing.T) { //nolint:paralleltest // like the other subtests
+				//nolint:exhaustruct,exhaustruct_v5 // zero values are the defaults
+				request := &Request{
+					options:           getExecuterOptions(t),
+					connConfiguration: &httpclientpool.Configuration{NoTimeout: true},
+				}
+				scanCtx, cancelScan := context.WithCancel(t.Context())
+
+				httpReq, err := retryablehttp.NewRequestWithContext(scanCtx, http.MethodGet, "https://example.com", nil)
+				require.NoError(t, err, "could not create http request")
+
+				overrides, _ := request.parseAnnotations(annotation+"GET / HTTP/1.1\nHost: {{Hostname}}", httpReq)
+				require.Equal(t, "github.com", overrides.request.Context().Value(fastdialer.SniName))
+
+				cancelScan()
+				require.ErrorIs(t, overrides.request.Context().Err(), context.Canceled)
+			})
+		}
+	})
+
+	// A timeout that does not parse or is not positive keeps the default
+	// timeout, and the request keeps its context.
+	t.Run("invalid", func(t *testing.T) { //nolint:paralleltest // like the other subtests
+		for _, value := range []string{"0s", "-1s", "soon"} {
+			//nolint:exhaustruct,exhaustruct_v5 // zero values are the defaults
+			request := &Request{
+				options:           getExecuterOptions(t),
+				connConfiguration: &httpclientpool.Configuration{NoTimeout: true},
+			}
+			rawRequest := "@timeout: " + value + "\nGET / HTTP/1.1\nHost: {{Hostname}}"
+
+			httpReq, err := retryablehttp.NewRequest(http.MethodGet, "https://example.com", nil)
+			require.NoError(t, err, "could not create http request")
+
+			overrides, _ := request.parseAnnotations(rawRequest, httpReq)
+			require.Equal(t, request.options.Options.GetTimeouts().HttpTimeout, overrides.timeout, value)
+			require.ErrorIs(t, overrides.timeoutCause, ErrRequestTimeoutDeadline, value)
+			require.Same(t, httpReq, overrides.request, value)
+		}
 	})
 }
 

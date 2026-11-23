@@ -1,8 +1,10 @@
 package network
 
 import (
+	"bufio"
 	"context"
 	"crypto/md5"
+	"crypto/tls"
 	"encoding/hex"
 	"fmt"
 	"io"
@@ -10,6 +12,8 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -150,6 +154,100 @@ func captureNetworkRequest(t *testing.T, listener net.Listener) (<-chan string, 
 	}()
 
 	return captured, serverErr
+}
+
+// serveEcho answers "pong" to each connection whose first read starts with
+// "ping", and counts those connections. A client that dials with the wrong
+// transport sends something else, so it gets no answer and is not counted.
+func serveEcho(listener net.Listener) *atomic.Int32 {
+	var pings atomic.Int32
+
+	go func() {
+		for {
+			conn, err := listener.Accept()
+			if err != nil {
+				return
+			}
+
+			go func() {
+				defer func() { _ = conn.Close() }()
+
+				_ = conn.SetDeadline(time.Now().Add(5 * time.Second))
+				buffer := make([]byte, len("ping"))
+
+				if _, err := io.ReadFull(conn, buffer); err != nil || string(buffer) != "ping" {
+					return
+				}
+
+				pings.Add(1)
+
+				_, _ = conn.Write([]byte("pong"))
+			}()
+		}
+	}()
+
+	return &pings
+}
+
+//nolint:exhaustruct,exhaustruct_v5,paralleltest // fixtures keep zero-value defaults; the test options are global
+func TestNetworkExecuteAppliesTLSPerAddress(t *testing.T) {
+	options := testutils.DefaultOptions
+
+	testutils.Init(options)
+
+	// Borrow the self-signed certificate of an httptest server for the TLS listener.
+	certSource := httptest.NewTLSServer(http.NotFoundHandler())
+	defer certSource.Close()
+
+	var listenConfig net.ListenConfig
+
+	rawListener, err := listenConfig.Listen(context.Background(), "tcp", "127.0.0.1:0")
+	require.NoError(t, err)
+
+	tlsConfig := &tls.Config{Certificates: certSource.TLS.Certificates, MinVersion: tls.VersionTLS12}
+
+	tlsListener := tls.NewListener(rawListener, tlsConfig)
+	defer func() { _ = tlsListener.Close() }()
+
+	plainListener, err := listenConfig.Listen(context.Background(), "tcp", "127.0.0.1:0")
+	require.NoError(t, err)
+
+	defer func() { _ = plainListener.Close() }()
+
+	tlsPings := serveEcho(tlsListener)
+	plainPings := serveEcho(plainListener)
+
+	templateID := "testing-network-tls-per-address"
+	request := &Request{
+		ID:       templateID,
+		Address:  []string{"tls://" + tlsListener.Addr().String(), plainListener.Addr().String()},
+		ReadSize: 1024,
+		Inputs:   []*Input{{Data: "ping\r\n"}},
+		Matchers: []*matchers.Matcher{{
+			Part:  "data",
+			Type:  matchers.MatcherTypeHolder{MatcherType: matchers.WordsMatcher},
+			Words: []string{"pong"},
+		}},
+	}
+	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
+		ID:   templateID,
+		Info: model.Info{SeverityHolder: severity.Holder{Severity: severity.Low}, Name: "test"},
+	})
+	require.NoError(t, request.Compile(executerOpts))
+
+	matched := 0
+	ctxArgs := contextargs.NewWithInput(context.Background(), "127.0.0.1")
+	callback := func(event *output.InternalWrappedEvent) {
+		if event != nil && event.HasOperatorResult() {
+			matched++
+		}
+	}
+	metadata, previous := make(output.InternalEvent), make(output.InternalEvent)
+	require.NoError(t, request.ExecuteWithResults(ctxArgs, metadata, previous, callback))
+
+	require.Equal(t, int32(1), tlsPings.Load(), "the tls:// entry should be dialed with TLS")
+	require.Equal(t, int32(1), plainPings.Load(), "the entry after a tls:// entry should be dialed in plain text")
+	require.Equal(t, 2, matched, "both entries should match")
 }
 
 func TestNetworkGeneratorPayloadInteractshMarkerRendersBeforeInput(t *testing.T) {
@@ -323,3 +421,62 @@ var exampleBody = `<!doctype html>
 </body>
 </html>
 `
+
+// With -pc below 1 the worker pool must still be built, and one payload is
+// sent at a time, so the server sees them in iterator order.
+//
+//nolint:exhaustruct,exhaustruct_v5,paralleltest // fixtures keep zero-value defaults; the test options are global
+func TestNetworkPayloadsRunWithPayloadConcurrencyBelowOne(t *testing.T) {
+	for _, payloadConcurrency := range []int{0, -1} {
+		t.Run(fmt.Sprintf("pc=%d", payloadConcurrency), func(t *testing.T) {
+			options := testutils.DefaultOptions.Copy()
+			options.PayloadConcurrency = payloadConcurrency
+			testutils.Init(options)
+			t.Cleanup(func() { testutils.Cleanup(options) })
+
+			listener, err := (&net.ListenConfig{}).Listen(t.Context(), "tcp", "127.0.0.1:0")
+			require.NoError(t, err)
+			t.Cleanup(func() { _ = listener.Close() })
+
+			// ExecuteWithResults returns after the last reply, so every line is queued by then.
+			lines := make(chan string, 8)
+
+			go func() {
+				for {
+					conn, err := listener.Accept()
+					if err != nil {
+						return
+					}
+
+					line, _ := bufio.NewReader(conn).ReadString('\n')
+
+					lines <- strings.TrimSpace(line)
+
+					_, _ = conn.Write([]byte("pong\r\n"))
+					_ = conn.Close()
+				}
+			}()
+
+			request := &Request{
+				ID:       "network-payloads",
+				Address:  []string{"{{Hostname}}"},
+				Inputs:   []*Input{{Data: "{{word}}\r\n"}},
+				Payloads: map[string]any{"word": []string{"one", "two", "three"}},
+			}
+			executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{ID: "network-payloads"})
+			require.NoError(t, request.Compile(executerOpts))
+			require.Equal(t, 1, request.Threads, "a -pc below 1 sends one payload at a time")
+
+			input := contextargs.NewWithInput(t.Context(), listener.Addr().String())
+			err = request.ExecuteWithResults(input, nil, nil, func(*output.InternalWrappedEvent) {})
+			require.NoError(t, err)
+
+			got := make([]string, 0, len(lines))
+			for len(lines) > 0 {
+				got = append(got, <-lines)
+			}
+
+			require.Equal(t, []string{"one", "two", "three"}, got)
+		})
+	}
+}

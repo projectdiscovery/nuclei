@@ -23,6 +23,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/helpers/eventcreator"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/helpers/responsehighlighter"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/hosterrorscache" //nolint:depguard // No depguard rules are configured, so its default list allows only the standard library.
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/render"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/utils/vardump"
@@ -260,6 +261,10 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 	}
 
 	addressToDial := result.Text
+
+	if request.isUnresponsiveAddress(input, addressToDial) {
+		return hosterrorscache.ErrUnresponsiveHost
+	}
 
 	host, port, err := net.SplitHostPort(addressToDial)
 	if err != nil {
@@ -508,4 +513,17 @@ func (r *Request) UpdateOptions(opts *protocols.ExecutorOptions) {
 	}
 	r.options = r.options.Copy()
 	r.options.ApplyNewEngineOptions(opts)
+}
+
+// isUnresponsiveAddress reports whether the host errors cache marks address,
+// the one the request dials, unresponsive.
+func (request *Request) isUnresponsiveAddress(input *contextargs.Context, address string) bool {
+	if request.options.HostErrorsCache == nil {
+		return false
+	}
+
+	target := input.Clone()
+	target.MetaInput.Input = address
+
+	return request.options.HostErrorsCache.Check(request.options.ProtocolType.String(), target)
 }

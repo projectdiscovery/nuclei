@@ -154,9 +154,17 @@ func (h *Helper) convertInputToType(input string, inputType inputType, defaultPo
 		}
 	case typeHostWithPort, typeHostWithOptionalPort:
 		if hasHost && hasPort {
+			// The network request replaces a reserved port that the scheme
+			// implied, and keeps one the operator typed after a bare host. It
+			// can tell them apart only while the URL keeps its scheme.
+			if isURL && inputType == typeHostWithOptionalPort {
+				return input
+			}
 			return net.JoinHostPort(host, port)
 		}
-		if uri != nil && !hasPort && uri.Scheme == "https" {
+		// An optional port is left to the request, which knows the template
+		// port and applies the scheme default only when the template has none.
+		if uri != nil && !hasPort && uri.Scheme == "https" && inputType == typeHostWithPort {
 			// uri.Host keeps the brackets of an IPv6 literal, while
 			// JoinHostPort adds them again, yielding "[[::1]]:443".
 			return net.JoinHostPort(uri.Hostname(), "443")

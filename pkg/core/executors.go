@@ -2,6 +2,8 @@ package core
 
 import (
 	"context"
+	"slices"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -12,6 +14,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/progress"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http" //nolint:depguard // No depguard rules are configured, so its default list allows only the standard library.
 	"github.com/projectdiscovery/nuclei/v3/pkg/scan"
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates"
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates/types"
@@ -73,29 +76,13 @@ func (e *Engine) executeTemplateWithTargets(ctx context.Context, template *templ
 		e.workPool = e.GetWorkPool()
 	}
 	// Bounded worker pool using input concurrency
-	pool := e.workPool.InputPool(template.Type())
-	workerCount := 1
-	if pool != nil && pool.Size > 0 {
-		workerCount = pool.Size
-	}
+	workerCount := e.workPool.InputPool(template.Type()).Size
 
 	var (
 		index uint32
 	)
 
-	e.executerOpts.ResumeCfg.Lock()
-	currentInfo, ok := e.executerOpts.ResumeCfg.Current[template.ID]
-	if !ok {
-		currentInfo = &generalTypes.ResumeInfo{}
-		e.executerOpts.ResumeCfg.Current[template.ID] = currentInfo
-	}
-	currentInfo.InitInFlight()
-	resumeFromInfo, ok := e.executerOpts.ResumeCfg.ResumeFrom[template.ID]
-	if !ok {
-		resumeFromInfo = &generalTypes.ResumeInfo{}
-		e.executerOpts.ResumeCfg.ResumeFrom[template.ID] = resumeFromInfo
-	}
-	e.executerOpts.ResumeCfg.Unlock()
+	currentInfo, resumeFromInfo := e.resumeInfo(template.ID)
 
 	// track progression
 	cleanupInFlight := func(index uint32) {
@@ -119,7 +106,13 @@ func (e *Engine) executeTemplateWithTargets(ctx context.Context, template *templ
 			defer workersWg.Done()
 			for t := range tasks {
 				func() {
-					defer cleanupInFlight(t.index)
+					// A target that cancellation cut off didn't finish. It stays in
+					// flight, so the resumed scan runs it again.
+					defer func() {
+						if ctx.Err() == nil {
+							cleanupInFlight(t.index)
+						}
+					}()
 					select {
 					case <-ctx.Done():
 						return
@@ -170,12 +163,20 @@ func (e *Engine) executeTemplateWithTargets(ctx context.Context, template *templ
 			skip = true
 		}
 
-		currentInfo.Lock()
-		currentInfo.InFlight[index] = struct{}{}
-		currentInfo.Unlock()
+		// A skipped position never runs, so cancellation can't cut it off. Marking
+		// it would let an interrupt save it as unfinished, below the progress this
+		// scan loaded, and the next scan would repeat targets that are done.
+		if !skip {
+			currentInfo.Lock()
+			currentInfo.InFlight[index] = struct{}{}
+			currentInfo.Unlock()
+		}
 
 		// Skip if the host has had errors
-		hostDown := inScope && e.executerOpts.HostErrorsCache != nil && e.executerOpts.HostErrorsCache.Check(template.Type().String(), contextargs.NewWithMetaInput(ctx, scannedValue))
+		var hostDown bool
+		if inScope {
+			hostDown, _ = e.hostDown(ctx, template, scannedValue)
+		}
 		// in-scope pairs that never reach executeTemplateOnInput are done here:
 		// those done by the resumed scan and those of an unresponsive host
 		if inScope && (skip || hostDown) {
@@ -198,6 +199,11 @@ func (e *Engine) executeTemplateWithTargets(ctx context.Context, template *templ
 			} else if e.executerOpts.Output != nil {
 				_ = e.executerOpts.Output.Write(skipEvent)
 			}
+			// This target still occupies its resume index. Leaving the index in
+			// place would hand it to the next target, and a resumed scan would
+			// skip that target as already processed.
+			cleanupInFlight(index)
+			index++
 			return true
 		}
 
@@ -209,10 +215,80 @@ func (e *Engine) executeTemplateWithTargets(ctx context.Context, template *templ
 	close(tasks)
 	workersWg.Wait()
 
+	// A cancelled loop never took the remaining targets, so the template isn't
+	// complete.
+	if ctx.Err() != nil {
+		return
+	}
+
 	// on completion marks the template as completed
 	currentInfo.Lock()
 	currentInfo.Completed = true
 	currentInfo.Unlock()
+}
+
+// resumeInfo returns the progress under key in this scan and in the scan it
+// resumes from, and creates the ones that don't exist yet.
+func (e *Engine) resumeInfo(key string) (*generalTypes.ResumeInfo, *generalTypes.ResumeInfo) {
+	cfg := e.executerOpts.ResumeCfg
+	cfg.Lock()
+	defer cfg.Unlock()
+
+	return resumeInfoLocked(cfg, key)
+}
+
+// resumeInfoLocked is resumeInfo for a caller that holds cfg's lock.
+func resumeInfoLocked(cfg *generalTypes.ResumeCfg, key string) (*generalTypes.ResumeInfo, *generalTypes.ResumeInfo) {
+	current, exists := cfg.Current[key]
+	if !exists {
+		current = new(generalTypes.ResumeInfo)
+		cfg.Current[key] = current
+	}
+
+	current.InitInFlight()
+
+	resumeFrom, exists := cfg.ResumeFrom[key]
+	if !exists {
+		resumeFrom = new(generalTypes.ResumeInfo)
+		cfg.ResumeFrom[key] = resumeFrom
+	}
+
+	return current, resumeFrom
+}
+
+// hostSprayResumeInfo returns the progress of a host-spray run in this scan and
+// in the scan it resumes from.
+//
+// The resume file has one entry for host-spray, but an engine runs host-spray
+// once per ExecuteScanWithOpts call, as -auto-tech does, and the engines of -as
+// share one resume config. The progress of one run can't stand for the others,
+// and a finished run would mark the entry as completed for a run still going.
+// Only the first run tracks. A later run gets progress that no one saves and
+// resets the entry to an empty one in both maps, so a resumed scan starts from
+// the first target, as it did before host-spray saved progress. The entry in
+// Current stays, because a missing one would let a third run track again. The
+// one in ResumeFrom is reset too, because a scan that saves what it loaded for
+// the entries it left idle would otherwise save a stale loaded one, such as a
+// completed one, in every file it writes.
+func (e *Engine) hostSprayResumeInfo() (*generalTypes.ResumeInfo, *generalTypes.ResumeInfo) {
+	cfg := e.executerOpts.ResumeCfg
+	cfg.Lock()
+	defer cfg.Unlock()
+
+	if _, taken := cfg.Current[hostSprayResumeID]; !taken {
+		return resumeInfoLocked(cfg, hostSprayResumeID)
+	}
+
+	empty := func() *generalTypes.ResumeInfo {
+		info := new(generalTypes.ResumeInfo)
+		info.InitInFlight()
+
+		return info
+	}
+	cfg.Current[hostSprayResumeID] = empty()
+	cfg.ResumeFrom[hostSprayResumeID] = empty()
+
+	return empty(), empty()
 }
 
 // executeTemplatesOnTarget execute given templates on given single target
@@ -225,7 +301,10 @@ func (e *Engine) executeTemplatesOnTarget(ctx context.Context, alltemplates []*t
 	wp := e.GetWorkPool()
 	defer wp.Wait()
 
-	for i, tpl := range alltemplates {
+	// reported is set once a skip event stands for the target's own address
+	var reported bool
+
+	for _, tpl := range alltemplates {
 		select {
 		case <-ctx.Done():
 			return
@@ -236,10 +315,20 @@ func (e *Engine) executeTemplatesOnTarget(ctx context.Context, alltemplates []*t
 			continue
 		}
 
+		// A target whose own address is down gets one event, not one per
+		// template (#7049). That address stays down, so after the event the
+		// templates that send only to the target are skipped without one.
+		if reported && sendsOnlyToTarget(tpl) {
+			e.tasksDone(1)
+
+			continue
+		}
+
 		// Check whether the target has already been marked as permanently
 		// unresponsive by HostErrorsCache before spawning another goroutine.
-		if e.executerOpts.HostErrorsCache != nil &&
-			e.executerOpts.HostErrorsCache.Check(tpl.Type().String(), contextargs.NewWithMetaInput(ctx, target)) {
+		if down, perTemplate := e.hostDown(ctx, tpl, target); down {
+			reported = reported || !perTemplate
+
 			skipEvent := &output.ResultEvent{
 				TemplateID:    tpl.ID,
 				TemplatePath:  tpl.Path,
@@ -255,9 +344,10 @@ func (e *Engine) executeTemplatesOnTarget(ctx context.Context, alltemplates []*t
 			} else if e.executerOpts.Output != nil {
 				_ = e.executerOpts.Output.Write(skipEvent)
 			}
-			// the remaining templates are skipped for this target as well
-			e.tasksDone(int64(getSelectedCount(alltemplates[i:], e.selectionFor(target))))
-			break
+
+			e.tasksDone(1)
+
+			continue
 		}
 
 		// resize check point - nop if there are no changes
@@ -292,6 +382,60 @@ func (e *Engine) executeTemplatesOnTarget(ctx context.Context, alltemplates []*t
 			results.CompareAndSwap(false, match)
 		}(tpl, target, sg, usesSharedTemplateBudget)
 	}
+}
+
+// hostDown reports whether the host errors cache marks value unresponsive for
+// template, and whether the failure is at the address the http requests of a
+// value without a scheme go to rather than at value's own. The cache records
+// http failures at the address each request went to, which for a value without
+// a scheme is by default the URL its http probe found, or https, as
+// retryablehttp fills it in (#8180).
+//
+// Only a template that sends only to the target (sendsOnlyToTarget) is skipped.
+// The engine cannot tell which address another template dials, such as another
+// port (#8197) or another protocol (#8203), so that template runs, and its
+// http, network and ssl requests check the address each one dials.
+func (e *Engine) hostDown(
+	ctx context.Context, template *templates.Template, value *contextargs.MetaInput,
+) (bool, bool) {
+	cache := e.executerOpts.HostErrorsCache
+	if cache == nil || !sendsOnlyToTarget(template) {
+		return false, false
+	}
+
+	protoType := template.Type().String()
+	if cache.Check(protoType, contextargs.NewWithMetaInput(ctx, value)) {
+		return true, false
+	}
+
+	if strings.Contains(value.Input, "://") {
+		return false, false
+	}
+
+	target := value.Input
+	if helper := e.executerOpts.InputHelper; helper != nil {
+		target = helper.TransformPinned(target, value.CustomIP, types.HTTPProtocol)
+	}
+
+	if !strings.Contains(target, "://") {
+		target = "https://" + target
+	}
+
+	httpValue := value.Clone()
+	httpValue.Input = target
+
+	return cache.Check(protoType, contextargs.NewWithMetaInput(ctx, httpValue)), true
+}
+
+// onlyHTTP reports whether all requests of template are http.
+func onlyHTTP(template *templates.Template) bool {
+	return len(template.RequestsHTTP) > 0 && template.Requests() == len(template.RequestsHTTP)
+}
+
+// sendsOnlyToTarget reports whether the requests of template are all http and
+// none of them may go to an address other than its target's.
+func sendsOnlyToTarget(template *templates.Template) bool {
+	return onlyHTTP(template) && !slices.ContainsFunc(template.RequestsHTTP, (*http.Request).MaySendElsewhere)
 }
 
 // inScope reports whether per-target profiles select template for input.

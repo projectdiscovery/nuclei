@@ -1,12 +1,15 @@
 package flow
 
+//nolint:depguard // No depguard rules are configured, so its default list allows only the standard library.
 import (
+	"errors"
 	"fmt"
 	"sync/atomic"
 
 	"github.com/projectdiscovery/goja"
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/hosterrorscache"
 	"github.com/projectdiscovery/nuclei/v3/pkg/tmplexec/utils"
 	"github.com/projectdiscovery/utils/errkit"
 	mapsutil "github.com/projectdiscovery/utils/maps"
@@ -44,6 +47,10 @@ func (f *FlowExecutor) requestExecutor(runtime *goja.Runtime, reqMap mapsutil.Ma
 			}
 			err := req.ExecuteWithResults(inputItem, output.InternalEvent(f.options.GetTemplateCtx(f.ctx.Input.MetaInput).GetAll()), output.InternalEvent{}, f.protocolResultCallback(req, matcherStatus, opts))
 			f.executions[req].Add(1)
+
+			if f.logUnresponsiveSkip(err) {
+				continue
+			}
 			if err != nil {
 				// save all errors in a map with id as key
 				// its less likely that there will be race condition but just in case
@@ -82,6 +89,10 @@ func (f *FlowExecutor) requestExecutor(runtime *goja.Runtime, reqMap mapsutil.Ma
 		}
 		err := req.ExecuteWithResults(inputItem, output.InternalEvent(f.options.GetTemplateCtx(f.ctx.Input.MetaInput).GetAll()), output.InternalEvent{}, f.protocolResultCallback(req, matcherStatus, opts))
 		f.executions[req].Add(1)
+
+		if f.logUnresponsiveSkip(err) {
+			continue
+		}
 		if err != nil {
 			index := id
 			err = f.allErrs.Set(opts.protoName+":"+index, err)
@@ -91,6 +102,20 @@ func (f *FlowExecutor) requestExecutor(runtime *goja.Runtime, reqMap mapsutil.Ma
 		}
 	}
 	return matcherStatus.Load()
+}
+
+// logUnresponsiveSkip logs err on the scan and returns true when it says a
+// request was not sent because its address is unresponsive. That is no failure
+// of the flow: the event reports it, and the engine has no error to warn about,
+// as for a target it skips itself.
+func (f *FlowExecutor) logUnresponsiveSkip(err error) bool {
+	if !errors.Is(err, hosterrorscache.ErrUnresponsiveHost) {
+		return false
+	}
+
+	f.ctx.LogError(err)
+
+	return true
 }
 
 // protocolResultCallback returns a callback that is executed

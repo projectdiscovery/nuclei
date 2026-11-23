@@ -81,7 +81,14 @@ func (e *Extractor) ExtractKval(data map[string]interface{}) map[string]struct{}
 // ExtractXPath extracts items from text using XPath selectors
 func (e *Extractor) ExtractXPath(corpus string) map[string]struct{} {
 	if strings.HasPrefix(corpus, "<?xml") {
-		return e.ExtractXML(corpus)
+		if results, err := e.extractXML(corpus); err == nil {
+			return results
+		}
+		// The document claims to be XML but is not well-formed XML.
+		// XHTML pages routinely carry an XML declaration while using
+		// HTML5 void elements and named entities, which a strict XML
+		// parser rejects. Fall back to the HTML parser instead of
+		// returning no results.
 	}
 	return e.ExtractHTML(corpus)
 }
@@ -115,13 +122,22 @@ func (e *Extractor) ExtractHTML(corpus string) map[string]struct{} {
 	return results
 }
 
-// ExtractXML extracts items from XML using XPath selectors
+// ExtractXML extracts items from XML using XPath selectors. Documents that
+// cannot be parsed as XML yield no results.
 func (e *Extractor) ExtractXML(corpus string) map[string]struct{} {
+	results, _ := e.extractXML(corpus)
+	return results
+}
+
+// extractXML extracts items from XML using XPath selectors and reports the
+// parse error, if any, so that callers can fall back to the HTML parser for
+// documents that only claim to be XML.
+func (e *Extractor) extractXML(corpus string) (map[string]struct{}, error) {
 	results := make(map[string]struct{})
 
 	doc, err := xmlquery.Parse(strings.NewReader(corpus))
 	if err != nil {
-		return results
+		return results, err
 	}
 
 	for _, k := range e.XPath {
@@ -142,7 +158,7 @@ func (e *Extractor) ExtractXML(corpus string) map[string]struct{} {
 			}
 		}
 	}
-	return results
+	return results, nil
 }
 
 // ExtractJSON extracts text from a corpus using JQ queries and returns it

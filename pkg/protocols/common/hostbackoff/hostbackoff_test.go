@@ -142,6 +142,154 @@ func TestWaitSpacesConcurrentCallers(t *testing.T) {
 	require.GreaterOrEqual(t, time.Since(start), 2*step-10*time.Millisecond)
 }
 
+// waitHost is the host the cancellation tests wait on.
+const waitHost = "acme.test"
+
+// pacedGovernor returns a governor that has slowed waitHost to one start per
+// step.
+func pacedGovernor(step time.Duration) *Governor {
+	var cfg Config
+
+	cfg.Step, cfg.Max = step, step
+	governor := New(cfg)
+	governor.Observe(waitHost, http.StatusTooManyRequests, 0, nil)
+
+	return governor
+}
+
+// waitingCtx tells a test when Wait has started waiting on it. Wait calls
+// Done only after it has reserved its slot, so the slot is held from then on.
+type waitingCtx struct {
+	context.Context //nolint:containedctx // waitingCtx is itself a context wrapping another
+
+	once    sync.Once
+	waiting chan struct{}
+}
+
+func (c *waitingCtx) Done() <-chan struct{} {
+	c.once.Do(func() { close(c.waiting) })
+
+	return c.Context.Done()
+}
+
+// waitResult is what a background Wait returned, and when.
+type waitResult struct {
+	err error
+	at  time.Time
+}
+
+// startWait runs Wait on waitHost in the background and returns once it holds
+// its slot, with the func that cancels the wait and the channel that gets its
+// result.
+func startWait(t *testing.T, governor *Governor) (context.CancelFunc, <-chan waitResult) {
+	t.Helper()
+
+	ctx, cancel := context.WithCancel(t.Context())
+	waitCtx := &waitingCtx{Context: ctx, once: sync.Once{}, waiting: make(chan struct{})}
+	result := make(chan waitResult, 1)
+
+	go func() {
+		err := governor.Wait(waitCtx, waitHost)
+		result <- waitResult{err: err, at: time.Now()}
+	}()
+
+	select {
+	case <-waitCtx.waiting:
+	case got := <-result:
+		t.Fatalf("Wait returned %v before holding a slot", got.err)
+	}
+
+	return cancel, result
+}
+
+// A wait that is cancelled never sends its request, so its slot must not push
+// back the callers that come after it (#8163).
+func TestWaitCancelledSlotsDoNotDelayLaterCallers(t *testing.T) {
+	t.Parallel()
+
+	const step = 200 * time.Millisecond
+
+	governor := pacedGovernor(step)
+
+	for range 3 {
+		cancel, result := startWait(t, governor)
+		cancel()
+		require.ErrorIs(t, (<-result).err, context.Canceled)
+	}
+
+	// Three slots held on would put this caller 4 steps out.
+	ctx, cancel := context.WithTimeout(t.Context(), 5*step/2)
+	defer cancel()
+
+	start := time.Now()
+
+	require.NoError(t, governor.Wait(ctx, waitHost))
+	require.GreaterOrEqual(t, time.Since(start), step, "the host is still paced")
+}
+
+// Cancelled waits give back their slots in whatever order they stop, while
+// live callers keep theirs, including one queued behind a cancelled wait.
+func TestWaitCancelledSlotsKeepLiveCallersInPlace(t *testing.T) {
+	t.Parallel()
+
+	const step = 200 * time.Millisecond
+
+	governor := pacedGovernor(step)
+
+	// The slots start 1 to 5 steps from now.
+	start := time.Now()
+	_, first := startWait(t, governor)
+	cancelSecond, second := startWait(t, governor)
+	_, third := startWait(t, governor)
+	cancelFourth, fourth := startWait(t, governor)
+	cancelFifth, fifth := startWait(t, governor)
+
+	cancelSecond()
+	cancelFifth()
+	cancelFourth()
+
+	for _, result := range []<-chan waitResult{second, fourth, fifth} {
+		require.ErrorIs(t, (<-result).err, context.Canceled)
+	}
+
+	// The next free slot follows the third caller's, 4 steps in.
+	ctx, cancel := context.WithDeadline(t.Context(), start.Add(5*step))
+	defer cancel()
+
+	require.NoError(t, governor.Wait(ctx, waitHost))
+	require.GreaterOrEqual(t, time.Since(start), 4*step, "the next caller follows the last live one")
+
+	got := <-first
+	require.NoError(t, got.err)
+	require.Less(t, got.at.Sub(start), 2*step, "the first caller kept its slot")
+
+	got = <-third
+	require.NoError(t, got.err)
+	require.Less(t, got.at.Sub(start), 4*step, "the caller behind a cancelled wait kept its slot")
+}
+
+// Decay drops the slots handed out under the old delay, so a wait held from
+// before the host recovered does not push back callers once it backs off again.
+func TestDecayDropsHeldSlots(t *testing.T) {
+	t.Parallel()
+
+	const step = 300 * time.Millisecond
+
+	governor := pacedGovernor(step)
+
+	// This wait keeps its slot, which ends 2 steps from now.
+	_, _ = startWait(t, governor)
+
+	governor.Observe(waitHost, http.StatusOK, 0, nil)
+	require.Zero(t, governor.Delay(waitHost), "a healthy response clears a one-step delay")
+	governor.Observe(waitHost, http.StatusTooManyRequests, 0, nil)
+
+	start := time.Now()
+
+	require.NoError(t, governor.Wait(t.Context(), waitHost))
+	require.Less(t, time.Since(start), 3*step/2, "the next caller waits one step, not behind the earlier slot")
+}
+
 func TestForbiddenRetryAfterBacksOffImmediately(t *testing.T) {
 	g := New(Config{Step: 100 * time.Millisecond, ForbiddenStreak: 5, Max: time.Minute})
 	g.Observe("acme.test", http.StatusForbidden, 2*time.Second, nil)

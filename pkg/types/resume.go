@@ -128,6 +128,29 @@ func (resumeCfg *ResumeCfg) Clone() *ResumeCfg {
 	}
 }
 
+// Snapshot returns a copy of the progress for a resume file, which saves only
+// ResumeFrom.
+//
+// A template keeps the entry that the scan loaded when the scan did nothing
+// that supersedes it: it never started the template, or it started it but has
+// no target in flight and hasn't completed it, as when an interrupt arrives
+// while the scan still skips the targets that the loaded entry marks as done.
+// A Current entry with nothing in flight says only "run from the first target",
+// which is less than the loaded entry knows. Any other Current entry wins.
+func (resumeCfg *ResumeCfg) Snapshot() *ResumeCfg {
+	snapshot := resumeCfg.Clone()
+
+	for id, current := range snapshot.Current {
+		if _, loaded := snapshot.ResumeFrom[id]; loaded && !current.Completed && len(current.InFlight) == 0 {
+			continue
+		}
+
+		snapshot.ResumeFrom[id] = current
+	}
+
+	return snapshot
+}
+
 // Clone the resume structure
 func (resumeCfg *ResumeCfg) Compile() {
 	resumeCfg.Lock()
@@ -153,6 +176,12 @@ func (resumeCfg *ResumeCfg) Compile() {
 			resumeInfo.Repeat[index] = struct{}{}
 		}
 		resumeInfo.SkipUnder = min
+		// An interrupt can find a started template with no target in flight, such
+		// as between two targets. Then the file doesn't say how far the scan got,
+		// and skipping every target would lose the ones it never reached.
+		if len(resumeInfo.InFlight) == 0 {
+			resumeInfo.SkipUnder = 0
+		}
 		resumeInfo.DoAbove = max
 	}
 }

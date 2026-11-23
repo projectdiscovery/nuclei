@@ -74,7 +74,10 @@ func (r *Runner) initializeTemplatesHTTPInput(templateCount int64) (*hybrid.Hybr
 	}
 
 	// Probe the non-standard URLs and store them in cache
-	swg, err := syncutil.New(syncutil.WithSize(r.options.BulkSize))
+	// syncutil.New rejects a size below 1, so a -bs below 1 probes one at a time.
+	bulkSize := max(r.options.BulkSize, 1)
+
+	swg, err := syncutil.New(syncutil.WithSize(bulkSize))
 	if err != nil {
 		return nil, errors.Wrap(err, "could not create adaptive group")
 	}
