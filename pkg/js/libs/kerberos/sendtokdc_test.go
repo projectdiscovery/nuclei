@@ -14,7 +14,7 @@ func TestSendTCPReadsSplitLengthPrefix(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer listener.Close()
+	defer func() { _ = listener.Close() }()
 
 	body := []byte("kdc-reply")
 	go func() {
@@ -22,7 +22,7 @@ func TestSendTCPReadsSplitLengthPrefix(t *testing.T) {
 		if err != nil {
 			return
 		}
-		defer conn.Close()
+		defer func() { _ = conn.Close() }()
 		buf := make([]byte, 4)
 		if _, err := io.ReadFull(conn, buf); err != nil {
 			return
