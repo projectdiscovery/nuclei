@@ -141,10 +141,22 @@ func TestCompileExtractorsXPathUndeclaredVariable(t *testing.T) {
 }
 
 func TestCompileExtractorsJSONInvalidQueryError(t *testing.T) {
-	var extractor Extractor
-	require.NoError(t, yaml.Unmarshal([]byte("type: json\njson:\n  - '.['\n"), &extractor))
+	for _, tt := range []struct {
+		name     string
+		query    string
+		expected string
+	}{
+		{"parse", ".[", `could not parse json query ".[":`},
+		{"compile", "def f($x): $y; f(1)", `could not compile json query "def f($x): $y; f(1)":`},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			var extractor Extractor
+			raw := "type: json\njson:\n  - \"" + tt.query + "\"\n"
+			require.NoError(t, yaml.Unmarshal([]byte(raw), &extractor))
 
-	err := extractor.CompileExtractors()
-	require.ErrorContains(t, err, `could not parse json query ".[":`)
-	require.NotContains(t, err.Error(), "<nil>")
+			err := extractor.CompileExtractors()
+			require.ErrorContains(t, err, tt.expected)
+			require.NotContains(t, err.Error(), "<nil>")
+		})
+	}
 }
