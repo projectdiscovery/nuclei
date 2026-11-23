@@ -336,6 +336,9 @@ func (i *Integration) CreateNewIssue(event *output.ResultEvent) (*filters.Create
 		Fields: fields,
 	}
 	createdIssue, resp, err := i.jira.Issue.Create(issueData)
+	if resp != nil && resp.Body != nil {
+		defer resp.Body.Close()
+	}
 	if err != nil {
 		var data string
 		if resp != nil && resp.Body != nil {
@@ -426,9 +429,12 @@ func (i *Integration) CloseIssueByID(issueID string) error {
 		if transition.To.Name != i.options.StatusNot {
 			continue
 		}
-		_, err = i.jira.Issue.DoTransitionWithPayload(issueID, jira.CreateTransitionPayload{
+		resp, err := i.jira.Issue.DoTransitionWithPayload(issueID, jira.CreateTransitionPayload{
 			Transition: jira.TransitionPayload{ID: transition.ID},
 		})
+		if resp != nil && resp.Body != nil {
+			_ = resp.Body.Close()
+		}
 		if err != nil {
 			return fmt.Errorf("transition Jira issue %s: %w", issueID, err)
 		}
@@ -479,6 +485,9 @@ func (i *Integration) FindExistingIssue(event *output.ResultEvent, useStatus boo
 		}
 
 		resp, err := i.jira.Do(req, &searchResult)
+		if resp != nil && resp.Body != nil {
+			defer resp.Body.Close()
+		}
 		if err != nil {
 			var data string
 			if resp != nil && resp.Body != nil {
@@ -506,6 +515,9 @@ func (i *Integration) FindExistingIssue(event *output.ResultEvent, useStatus boo
 	}
 
 	issues, resp, err := i.jira.Issue.Search(jql, searchOptions)
+	if resp != nil && resp.Body != nil {
+		defer resp.Body.Close()
+	}
 	if err != nil {
 		var data string
 		if resp != nil && resp.Body != nil {

@@ -2,10 +2,12 @@ package jira
 
 import (
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"strings"
+	"sync/atomic"
 	"testing"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/model"
@@ -451,4 +453,158 @@ func TestJiraLive_SearchV2UsesJqlEndpoint(t *testing.T) {
 		}
 	}
 	require.True(t, hitSearchV2, "expected client to call /rest/api/3/search/jql, got paths: %v", rec.paths)
+}
+
+type trackingCloseBody struct {
+	io.ReadCloser
+	closed atomic.Bool
+}
+
+func (b *trackingCloseBody) Close() error {
+	b.closed.Store(true)
+	return b.ReadCloser.Close()
+}
+
+type trackingCloseTransport struct {
+	inner  http.RoundTripper
+	bodies []*trackingCloseBody
+}
+
+func (t *trackingCloseTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	inner := t.inner
+	if inner == nil {
+		inner = http.DefaultTransport
+	}
+	resp, err := inner.RoundTrip(req)
+	if err != nil || resp == nil || resp.Body == nil {
+		return resp, err
+	}
+	wrapped := &trackingCloseBody{ReadCloser: resp.Body}
+	t.bodies = append(t.bodies, wrapped)
+	resp.Body = wrapped
+	return resp, nil
+}
+
+func (t *trackingCloseTransport) allClosed() bool {
+	if len(t.bodies) == 0 {
+		return false
+	}
+	for _, b := range t.bodies {
+		if !b.closed.Load() {
+			return false
+		}
+	}
+	return true
+}
+
+func TestCloseIssueByIDClosesResponseBody(t *testing.T) {
+	transitionCalls := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.Method == http.MethodGet && strings.HasSuffix(r.URL.Path, "/issue/10001/transitions"):
+			_, _ = w.Write([]byte(`{"transitions":[{"id":"5","to":{"name":"Done"}}]}`))
+		case r.Method == http.MethodPost && strings.HasSuffix(r.URL.Path, "/issue/10001/transitions"):
+			transitionCalls++
+			w.WriteHeader(http.StatusNoContent)
+		default:
+			http.Error(w, "unexpected endpoint", http.StatusNotFound)
+		}
+	}))
+	defer server.Close()
+
+	rec := &trackingCloseTransport{}
+	rc := retryablehttp.NewClient(retryablehttp.DefaultOptionsSingle)
+	rc.HTTPClient.Transport = rec
+
+	integration, err := New(&Options{
+		URL:         server.URL,
+		AccountID:   "test",
+		Token:       "test",
+		ProjectName: "TEST",
+		StatusNot:   "Done",
+		HttpClient:  rc,
+	})
+	require.NoError(t, err)
+
+	err = integration.CloseIssueByID("10001")
+	require.NoError(t, err)
+	require.Equal(t, 1, transitionCalls)
+	require.NotEmpty(t, rec.bodies)
+	require.True(t, rec.allClosed(), "expected all response bodies to be closed")
+}
+
+func TestCreateNewIssueClosesResponseBodyOnError(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodPost && strings.HasSuffix(r.URL.Path, "/issue") {
+			w.WriteHeader(http.StatusBadRequest)
+			_, _ = w.Write([]byte(`{"errorMessages":["project is required"]}`))
+			return
+		}
+		http.Error(w, "unexpected endpoint", http.StatusNotFound)
+	}))
+	defer server.Close()
+
+	rec := &trackingCloseTransport{}
+	rc := retryablehttp.NewClient(retryablehttp.DefaultOptionsSingle)
+	rc.HTTPClient.Transport = rec
+
+	integration, err := New(&Options{
+		URL:         server.URL,
+		AccountID:   "test",
+		Token:       "test",
+		ProjectName: "TEST",
+		IssueType:   "Task",
+		HttpClient:  rc,
+	})
+	require.NoError(t, err)
+
+	event := &output.ResultEvent{
+		Host: "example.com",
+		Info: model.Info{
+			Name:           "Nuclei Test",
+			SeverityHolder: severity.Holder{Severity: severity.Low},
+		},
+	}
+	_, err = integration.CreateNewIssue(event)
+	require.Error(t, err)
+	require.NotEmpty(t, rec.bodies)
+	require.True(t, rec.allClosed(), "expected all response bodies to be closed on create error")
+}
+
+func TestFindExistingIssueCloudClosesResponseBodyOnError(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodGet && strings.HasSuffix(r.URL.Path, "/rest/api/3/search/jql") {
+			w.WriteHeader(http.StatusBadRequest)
+			_, _ = w.Write([]byte(`{"errorMessages":["invalid jql"]}`))
+			return
+		}
+		http.Error(w, "unexpected endpoint", http.StatusNotFound)
+	}))
+	defer server.Close()
+
+	rec := &trackingCloseTransport{}
+	rc := retryablehttp.NewClient(retryablehttp.DefaultOptionsSingle)
+	rc.HTTPClient.Transport = rec
+
+	integration, err := New(&Options{
+		Cloud:       true,
+		URL:         server.URL,
+		Email:       "test@example.com",
+		Token:       "test",
+		ProjectName: "TEST",
+		HttpClient:  rc,
+	})
+	require.NoError(t, err)
+
+	event := &output.ResultEvent{
+		Host: "example.com",
+		Info: model.Info{
+			Name:           "Nuclei Test",
+			SeverityHolder: severity.Holder{Severity: severity.Low},
+		},
+	}
+	_, err = integration.FindExistingIssue(event, false)
+	require.Error(t, err)
+	require.NotEmpty(t, rec.bodies)
+	require.True(t, rec.allClosed(), "expected all response bodies to be closed on search error")
 }
