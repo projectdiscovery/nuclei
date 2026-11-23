@@ -1,7 +1,9 @@
 package kerberos
 
 import (
+	"bytes"
 	"encoding/binary"
+	"io"
 	"net"
 	"testing"
 	"time"
@@ -22,14 +24,18 @@ func TestSendTCPReadsSplitLengthPrefix(t *testing.T) {
 		}
 		defer conn.Close()
 		buf := make([]byte, 4)
-		if _, err := conn.Read(buf); err != nil {
+		if _, err := io.ReadFull(conn, buf); err != nil {
 			return
 		}
 		prefix := make([]byte, 4)
 		binary.BigEndian.PutUint32(prefix, uint32(len(body)))
-		_, _ = conn.Write(prefix[:2])
+		if _, err := conn.Write(prefix[:2]); err != nil {
+			return
+		}
 		time.Sleep(20 * time.Millisecond)
-		_, _ = conn.Write(prefix[2:])
+		if _, err := conn.Write(prefix[2:]); err != nil {
+			return
+		}
 		_, _ = conn.Write(body)
 	}()
 
@@ -42,7 +48,7 @@ func TestSendTCPReadsSplitLengthPrefix(t *testing.T) {
 	if err != nil {
 		t.Fatalf("sendTCP failed: %v", err)
 	}
-	if string(got) != string(body) {
+	if !bytes.Equal(got, body) {
 		t.Fatalf("expected %q, got %q", body, got)
 	}
 }
