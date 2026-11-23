@@ -139,3 +139,12 @@ func TestCompileExtractorsXPathUndeclaredVariable(t *testing.T) {
 	require.NoError(t, yaml.Unmarshal([]byte("type: xpath\nxpath:\n  - \"******$A\"\n"), &operator))
 	require.ErrorContains(t, operator.CompileExtractors(), "undeclared variable")
 }
+
+func TestCompileExtractorsJSONInvalidQueryError(t *testing.T) {
+	var extractor Extractor
+	require.NoError(t, yaml.Unmarshal([]byte("type: json\njson:\n  - '.['\n"), &extractor))
+
+	err := extractor.CompileExtractors()
+	require.ErrorContains(t, err, `could not parse json query ".[":`)
+	require.NotContains(t, err.Error(), "<nil>")
+}
