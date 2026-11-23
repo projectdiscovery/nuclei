@@ -1,10 +1,15 @@
 package utils
 
+//nolint:depguard // No depguard rules are configured, so its default list allows only the standard library.
 import (
+	"errors"
 	"strings"
 
+	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/hosterrorscache"
+	"github.com/projectdiscovery/nuclei/v3/pkg/scan"
 	templateTypes "github.com/projectdiscovery/nuclei/v3/pkg/templates/types"
 	mapsutil "github.com/projectdiscovery/utils/maps"
 )
@@ -45,4 +50,19 @@ func HasOfflineHTTPResponse(meta *contextargs.MetaInput, proto templateTypes.Pro
 	}
 	rr := meta.ReqResp
 	return rr != nil && rr.Response != nil && strings.TrimSpace(rr.Response.Raw) != ""
+}
+
+// LogRequestError logs the error of a request on the scan and warns about it.
+// The executers return nil for it, so the engine has no error to warn about.
+// A skip for an unresponsive address gets no warning, like the engine's own
+// skip of a target.
+func LogRequestError(ctx *scan.ScanContext, templateID string, err error) {
+	ctx.LogError(err)
+
+	if errors.Is(err, hosterrorscache.ErrUnresponsiveHost) {
+		return
+	}
+
+	gologger.Warning().Msgf("[%s] Could not execute request for %s: %s\n",
+		templateID, ctx.Input.MetaInput.PrettyPrint(), err)
 }

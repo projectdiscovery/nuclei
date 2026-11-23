@@ -138,6 +138,33 @@ func TestNetworkCompileMake(t *testing.T) {
 	})
 }
 
+//nolint:exhaustruct,exhaustruct_v5,paralleltest // fixtures keep zero-value defaults; the test options are global
+func TestCompileAppliesTLSPerAddress(t *testing.T) {
+	options := testutils.DefaultOptions
+
+	testutils.Init(options)
+
+	templateID := "testing-network-tls-per-address"
+	request := &Request{
+		ID:       templateID,
+		Address:  []string{"{{Host}}:80", "tls://{{Host}}:443", "{{Host}}:8080", "tls://{{Host}}:8443"},
+		ReadSize: 1024,
+		Inputs:   []*Input{{Data: "test-data"}},
+	}
+	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
+		ID:   templateID,
+		Info: model.Info{SeverityHolder: severity.Holder{Severity: severity.Low}, Name: "test"},
+	})
+	require.NoError(t, request.Compile(executerOpts))
+
+	require.Equal(t, []addressKV{
+		{address: "{{Host}}:80", tls: false},
+		{address: "{{Host}}:443", tls: true},
+		{address: "{{Host}}:8080", tls: false},
+		{address: "{{Host}}:8443", tls: true},
+	}, request.addresses)
+}
+
 func TestCompileDoesNotPersistValueIntroducedInteractshMarker(t *testing.T) {
 	options := testutils.DefaultOptions
 

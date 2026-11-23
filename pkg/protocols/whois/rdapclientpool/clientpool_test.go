@@ -4,12 +4,13 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"sync"
 	"sync/atomic"
 	"testing"
 
+	"github.com/openrdap/rdap"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
-	"github.com/projectdiscovery/rdap"
 	"github.com/stretchr/testify/require"
 )
 
@@ -32,6 +33,7 @@ func rdapOptions(t *testing.T, executionID string, excludeTargets []string) *typ
 	require.NoError(t, protocolstate.Init(options))
 	t.Cleanup(func() { protocolstate.Close(options.ExecutionId) })
 	require.NoError(t, Init(options))
+	t.Cleanup(func() { Close(options.ExecutionId) })
 	return options
 }
 
@@ -63,4 +65,37 @@ func TestClientObeysExecutionNetworkPolicy(t *testing.T) {
 	_, err = restrictedClient.Do(domainRequest(t, server.URL))
 	require.Error(t, err)
 	require.Equal(t, int32(1), hits.Load(), "rdap request reached a denied address")
+}
+
+func TestClientDoConcurrent(t *testing.T) {
+	var hits atomic.Int32
+	server := newRdapServer(t, &hits)
+	options := rdapOptions(t, t.Name(), nil)
+	client, err := Get(options, nil)
+	require.NoError(t, err)
+	serverURL, err := url.Parse(server.URL)
+	require.NoError(t, err)
+
+	const requests = 32
+	start := make(chan struct{})
+	errs := make(chan error, requests)
+	var wg sync.WaitGroup
+	for range requests {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			<-start
+			request := rdap.NewAutoRequest("example.com")
+			request.Server = serverURL
+			_, err := client.Do(request)
+			errs <- err
+		}()
+	}
+	close(start)
+	wg.Wait()
+	close(errs)
+	for err := range errs {
+		require.NoError(t, err)
+	}
+	require.Equal(t, int32(requests), hits.Load())
 }

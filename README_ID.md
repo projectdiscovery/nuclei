@@ -143,7 +143,7 @@ TARGET:
    -l, -list string              path to file containing a list of target URLs/hosts to scan (one per line)
    -targets-inline string        inline multiline target list (for use in template profiles)
    -eh, -exclude-hosts string[]  hosts to exclude to scan from the input list (ip, cidr, hostname)
-   -resume string                resume scan from and save to specified file (clustering will be disabled)
+   -resume string                resume scan from and save to specified file
    -sa, -scan-all-ips            scan all the IP's associated with dns record
    -iv, -ip-version string[]     IP version to scan of hostname (4,6) - (default 4)
 
@@ -171,7 +171,7 @@ TEMPLATES:
    -td, -template-display                 displays the templates content
    -tl                                    list all templates matching current filters
    -tgl                                   list all available tags
-   -sign                                  signs the templates with the private key defined in NUCLEI_SIGNATURE_PRIVATE_KEY env variable
+   -sign                                  signs the templates with the key in NUCLEI_USER_PRIVATE_KEY and NUCLEI_USER_CERTIFICATE, or in the keys folder
    -code                                  enable loading code protocol-based templates
    -dut, -disable-unsigned-templates      disable running unsigned templates or templates with mismatched signature
    -esc, -enable-self-contained           enable loading self-contained templates
@@ -315,7 +315,7 @@ OPTIMIZATIONS:
    -timeout int                     time to wait in seconds before timeout (default 10)
    -retries int                     number of times to retry a failed request (default 1)
    -ldp, -leave-default-ports       leave default HTTP/HTTPS ports (eg. host:80,host:443)
-   -mhe, -max-host-error int        max errors for a host before skipping from scan (default 30)
+   -mhe, -max-host-error int        max http errors for a host:port before skipping requests to it (default 30)
    -te, -track-error string[]       adds given error to max-host-error watchlist (standard, file)
    -nmhe, -no-mhe                   disable skipping host from scan based on errors
    -project                         use a project folder to avoid sending same request multiple times

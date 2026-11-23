@@ -1,6 +1,8 @@
 package templates
 
+//nolint:depguard // No depguard rules are configured, so its default list allows only the standard library.
 import (
+	"errors"
 	"fmt"
 	"slices"
 	"sort"
@@ -15,6 +17,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/helpers/writer"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/hosterrorscache"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/catchall"
 	protocolUtils "github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils"
@@ -38,6 +41,7 @@ import (
 //
 // Cases where clustering is not performed (request is considered different)
 //   - If request contains payloads,raw,body,unsafe,req-condition,name attributes
+//   - If an HTTP request sends race copies (race with a race_count above 0, outside a pipeline)
 //   - If request methods,max-redirects,disable-cookie,redirects are not equal
 //   - If request paths aren't identical.
 //   - If request headers aren't identical
@@ -163,13 +167,14 @@ func ClusterTemplates(templatesList []*Template, options *protocols.ExecutorOpti
 				req.Options().TemplateID = clusterID
 			}
 			executerOpts.TemplateID = clusterID
+			executer := NewClusterExecuter(cluster, executerOpts)
 			finalTemplatesList = append(finalTemplatesList, &Template{
 				ID:            clusterID,
 				RequestsDNS:   cluster[0].RequestsDNS,
 				RequestsHTTP:  cluster[0].RequestsHTTP,
 				RequestsSSL:   cluster[0].RequestsSSL,
-				Executer:      NewClusterExecuter(cluster, executerOpts),
-				TotalRequests: len(cluster[0].RequestsHTTP) + len(cluster[0].RequestsDNS),
+				Executer:      executer,
+				TotalRequests: executer.Requests(),
 			})
 			clusterCount += len(cluster)
 		} else {
@@ -424,8 +429,10 @@ func (e *ClusterExecuter) Execute(ctx *scan.ScanContext) (bool, error) {
 		}
 	}
 
-	if e.options.HostErrorsCache != nil && e.templateType != types.HTTPProtocol {
-		e.options.HostErrorsCache.MarkFailedOrRemove(e.templateType.String(), ctx.Input, err)
+	// A skip is reported like the engine's own skip of a target: in the
+	// failure event, without a warning.
+	if errors.Is(err, hosterrorscache.ErrUnresponsiveHost) {
+		err = nil
 	}
 	return results, err
 }
@@ -467,8 +474,10 @@ func (e *ClusterExecuter) ExecuteWithResults(ctx *scan.ScanContext) ([]*output.R
 		ctx.LogError(err)
 	}
 
-	if e.options.HostErrorsCache != nil && e.templateType != types.HTTPProtocol {
-		e.options.HostErrorsCache.MarkFailedOrRemove(e.templateType.String(), ctx.Input, err)
+	// The skip is logged on ctx above, so the caller does not warn about it as
+	// it would about a failed request.
+	if errors.Is(err, hosterrorscache.ErrUnresponsiveHost) {
+		err = nil
 	}
 	return scanCtx.GenerateResult(), err
 }

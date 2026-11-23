@@ -12,6 +12,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/projectdiscovery/fastdialer/fastdialer" //nolint:depguard // No depguard rules are configured, so its default list allows only the standard library.
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/internal/tests/testutils"
 	"github.com/projectdiscovery/nuclei/v3/pkg/model"
@@ -208,6 +209,34 @@ func TestRequestParseAnnotationsTimeout(t *testing.T) {
 		require.ErrorIs(t, overrides.timeoutCause, ErrRequestTimeoutDeadline)
 		_, deadlined := overrides.request.Context().Deadline()
 		require.False(t, deadlined, "request deadline started before the request was sent")
+	})
+
+	// The request keeps the scan's cancellation and the values set before the
+	// timeout, such as the SNI, with or without the annotation (#8178).
+	t.Run("keeps-request-context", func(t *testing.T) { //nolint:paralleltest // like the other subtests
+		annotations := map[string]string{
+			"annotated":       "@tls-sni: github.com\n@timeout: 2s\n",
+			"default-timeout": "@tls-sni: github.com\n",
+		}
+		for name, annotation := range annotations {
+			t.Run(name, func(t *testing.T) { //nolint:paralleltest // like the other subtests
+				//nolint:exhaustruct,exhaustruct_v5 // zero values are the defaults
+				request := &Request{
+					options:           getExecuterOptions(t),
+					connConfiguration: &httpclientpool.Configuration{NoTimeout: true},
+				}
+				scanCtx, cancelScan := context.WithCancel(t.Context())
+
+				httpReq, err := retryablehttp.NewRequestWithContext(scanCtx, http.MethodGet, "https://example.com", nil)
+				require.NoError(t, err, "could not create http request")
+
+				overrides, _ := request.parseAnnotations(annotation+"GET / HTTP/1.1\nHost: {{Hostname}}", httpReq)
+				require.Equal(t, "github.com", overrides.request.Context().Value(fastdialer.SniName))
+
+				cancelScan()
+				require.ErrorIs(t, overrides.request.Context().Err(), context.Canceled)
+			})
+		}
 	})
 
 	// A timeout that does not parse or is not positive keeps the default

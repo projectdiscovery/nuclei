@@ -126,3 +126,37 @@ func TestGetHTTPProjectCacheScope_HashesTruncatedBody(t *testing.T) {
 	second := getHTTPProjectCacheScope(dumped, []byte("AAAACCCC"), "http", "example.com")
 	require.NotEqual(t, first, second, "bodies differing after the cap must get different keys")
 }
+
+func TestDumpPipelinedRequestWritesWhatTheClientSends(t *testing.T) {
+	t.Parallel()
+
+	body := strings.Repeat("A", 32)
+	req, err := retryablehttp.NewRequest(http.MethodPost, "https://example.com:8443/a?x=1&y=2", nil)
+	require.NoError(t, err)
+	httpbody.SetString(req, body)
+	req.Close = true
+	req.Header.Set("Z-Last", "1")
+	req.Header.Add("A-First", "1")
+	req.Header.Add("A-First", "2")
+
+	full, err := dumpPipelinedRequest(req, 0)
+	require.NoError(t, err)
+	require.Zero(t, full.truncated)
+	require.Equal(t,
+		"POST /a?x=1&y=2 HTTP/1.1\r\nHost: example.com:8443\r\nA-First: 1\r\nA-First: 2\r\nZ-Last: 1\r\n\r\n"+body,
+		string(full.data),
+		"no Connection, Content-Length or Accept-Encoding line: the client writes none")
+
+	capped, err := dumpPipelinedRequest(req, 10)
+	require.NoError(t, err)
+	require.Equal(t, len(body)-10, capped.truncated)
+	require.True(t, strings.HasSuffix(string(capped.data),
+		"\r\n\r\n"+strings.Repeat("A", 10)+"\n...[truncated 22 bytes]"))
+
+	req.Header["host"] = []string{"virtual.example"}
+	custom, err := dumpPipelinedRequest(req, 0)
+	require.NoError(t, err)
+	require.NotContains(t, string(custom.data), "Host: example.com:8443",
+		"a Host the caller set replaces the automatic one")
+	require.Contains(t, string(custom.data), "host: virtual.example\r\n")
+}

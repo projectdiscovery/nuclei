@@ -114,7 +114,7 @@ func TestRawBodyKeepsTheBytesAsReceived(t *testing.T) {
 }
 
 func TestReadsRawResponse(t *testing.T) {
-	readsRaw := func(request *Request, flow string) bool { return reads(request, flow, "raw_body", "raw_response") }
+	readsRaw := func(request *Request, flow string) bool { return reads(request, flow, rawParts...) }
 	require.False(t, readsRaw(&Request{Operators: operators.Operators{Matchers: []*matchers.Matcher{{Words: []string{"admin"}}}}}, ""))
 	require.True(t, readsRaw(&Request{Operators: operators.Operators{Matchers: []*matchers.Matcher{{Part: "raw_body"}}}}, ""))
 	require.True(t, readsRaw(&Request{Operators: operators.Operators{Extractors: []*extractors.Extractor{{DSL: []string{"gzip_mtime(raw_body)"}}}}}, ""))
@@ -122,4 +122,52 @@ func TestReadsRawResponse(t *testing.T) {
 	require.True(t, readsRaw(&Request{}, "http(1) && template.raw_body != ''"))
 
 	require.False(t, (&Request{readsRawResponse: true}).IsClusterable(), "a cluster runs on one member's response")
+}
+
+func TestKeepRawResponsesCoversEveryRequestOfTheTemplate(t *testing.T) {
+	newRequests := func() []*Request {
+		return []*Request{
+			{ID: "first"},
+			{Operators: operators.Operators{Extractors: []*extractors.Extractor{{DSL: []string{"gzip_mtime(first_raw_body)"}}}}},
+		}
+	}
+
+	requests := newRequests()
+	KeepRawResponses(requests, "")
+	require.True(t, requests[0].readsRawResponse, "a later request reads the raw body of the first")
+	require.True(t, requests[1].readsRawResponse)
+
+	requests = []*Request{{ID: "first"}, {ID: "second"}}
+	KeepRawResponses(requests, "http(1) && http(2)")
+	require.False(t, requests[0].readsRawResponse)
+	require.False(t, requests[1].readsRawResponse)
+}
+
+func TestKeepRawResponsesSeesRequestConstruction(t *testing.T) {
+	marked := []*Request{
+		{ID: "first"},
+		{Body: "{{first_raw_body}}"},
+	}
+	KeepRawResponses(marked, "")
+	require.True(t, marked[0].readsRawResponse, "the next request's body reads the raw body")
+	require.True(t, marked[1].readsRawResponse)
+
+	for _, request := range []*Request{
+		{Path: []string{"{{BaseURL}}/{{http_1_raw_response}}"}},
+		{Raw: []string{"GET / HTTP/1.1\r\nHost: {{Hostname}}\r\n\r\n{{http_1_raw_body}}"}},
+		{Headers: map[string]string{"X-Raw": "{{http_1_raw_body}}"}},
+	} {
+		requests := []*Request{{ID: "first"}, request}
+		KeepRawResponses(requests, "")
+		require.True(t, requests[0].readsRawResponse)
+		require.True(t, requests[1].readsRawResponse)
+	}
+
+	unmarked := []*Request{
+		{ID: "first", Body: "hello", Path: []string{"{{BaseURL}}/"}},
+		{Headers: map[string]string{"Accept": "text/plain"}},
+	}
+	KeepRawResponses(unmarked, "")
+	require.False(t, unmarked[0].readsRawResponse)
+	require.False(t, unmarked[1].readsRawResponse)
 }

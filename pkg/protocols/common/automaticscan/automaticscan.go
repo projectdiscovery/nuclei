@@ -130,7 +130,10 @@ func (s *Service) Execute(ctx context.Context) error {
 		s.opts.Progress.AddToTotal(int64(getRequestCount(s.techTemplates)) * s.target.Count())
 	}
 	// setup host concurrency
-	sg, err := syncutil.New(syncutil.WithSize(s.opts.Options.BulkSize))
+	// syncutil.New rejects a size below 1, so a -bs below 1 scans one host at a time.
+	bulkSize := max(s.opts.Options.BulkSize, 1)
+
+	sg, err := syncutil.New(syncutil.WithSize(bulkSize)) //nolint:varnamelen // sg names the group throughout
 	if err != nil {
 		return err
 	}
@@ -269,7 +272,15 @@ func (s *Service) getTagsUsingDetectionTemplates(ctx context.Context, input *con
 	// execute tech detection templates on target
 	tags := map[string]struct{}{}
 	m := &sync.Mutex{}
-	sg, _ := syncutil.New(syncutil.WithSize(s.opts.Options.TemplateThreads))
+	// syncutil.New rejects a size below 1, so a -c below 1 runs one template at a time.
+	templateThreads := max(s.opts.Options.TemplateThreads, 1)
+
+	sg, err := syncutil.New(syncutil.WithSize(templateThreads)) //nolint:varnamelen // sg names the group throughout
+	if err != nil {
+		gologger.Error().Msgf("Could not create detection template group for %v: %s\n", input.Input, err)
+
+		return nil, 0
+	}
 	counter := atomic.Uint32{}
 
 	for _, t := range s.techTemplates {
