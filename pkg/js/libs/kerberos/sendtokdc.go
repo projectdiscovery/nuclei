@@ -184,7 +184,7 @@ func sendTCP(conn *net.TCPConn, b []byte) ([]byte, error) {
 	}
 
 	sh := make([]byte, 4)
-	_, err = conn.Read(sh)
+	_, err = io.ReadFull(conn, sh)
 	if err != nil {
 		return r, fmt.Errorf("error reading response size header: %v", err)
 	}
