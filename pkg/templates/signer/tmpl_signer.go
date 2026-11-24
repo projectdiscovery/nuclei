@@ -280,6 +280,10 @@ func NewTemplateSigner(cert, privateKey []byte) (*TemplateSigner, error) {
 		}
 	}
 
+	if errors.Is(err, ErrFileTooLarge) {
+		return nil, err
+	}
+
 	if err != nil && !SkipGeneratingKeys {
 		if err != ErrNoCertificate && err != ErrNoPrivateKey {
 			gologger.Info().Msgf("Invalid user cert found : %s\n", err)

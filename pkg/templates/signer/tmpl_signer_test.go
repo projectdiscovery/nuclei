@@ -7,11 +7,13 @@ import (
 	"crypto/elliptic"
 	"crypto/md5"
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
 
+	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -234,4 +236,27 @@ func TestTemplateSignerRejectsResigningJavascriptWithForeignSigner(t *testing.T)
 
 	_, err := signer.Sign(templateData, tmpl)
 	require.ErrorContains(t, err, "re-signing executable templates are not allowed")
+}
+
+func TestNewTemplateSignerOversizeDoesNotRegenerateKeys(t *testing.T) {
+	origLimit := MaxFileSize
+	MaxFileSize = 64
+	defer func() {
+		MaxFileSize = origLimit
+	}()
+
+	tmpDir := t.TempDir()
+	keysDir := filepath.Join(tmpDir, "keys")
+	require.NoError(t, os.MkdirAll(keysDir, 0755))
+	certFile := filepath.Join(keysDir, CertFilename)
+	err := os.WriteFile(certFile, bytes.Repeat([]byte("A"), 128), 0644)
+	require.NoError(t, err)
+
+	origConfigDir := config.DefaultConfig.GetKeysDir()
+	config.DefaultConfig.SetConfigDir(tmpDir)
+	defer config.DefaultConfig.SetConfigDir(filepath.Dir(origConfigDir))
+
+	_, err = NewTemplateSigner(nil, nil)
+	require.Error(t, err)
+	require.True(t, errors.Is(err, ErrFileTooLarge))
 }
