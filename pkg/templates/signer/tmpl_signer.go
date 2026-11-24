@@ -225,7 +225,7 @@ func templateContentWithImports(content []byte, tmpl SignableTemplate) (*bytes.B
 	}
 
 	for _, file := range imports {
-		bin, err := os.ReadFile(file)
+		bin, err := ReadLimitedFile(file, MaxFileSize)
 		if err != nil {
 			return nil, err
 		}
@@ -312,12 +312,12 @@ func NewTemplateSigner(cert, privateKey []byte) (*TemplateSigner, error) {
 
 // NewTemplateSignerFromFiles creates a new signer for signing templates
 func NewTemplateSignerFromFiles(cert, privKey string) (*TemplateSigner, error) {
-	certData, err := os.ReadFile(cert)
+	certData, err := ReadLimitedFile(cert, MaxFileSize)
 	if err != nil {
 		return nil, err
 	}
 
-	privKeyData, err := os.ReadFile(privKey)
+	privKeyData, err := ReadLimitedFile(privKey, MaxFileSize)
 	if err != nil {
 		return nil, err
 	}

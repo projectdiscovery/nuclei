@@ -8,7 +8,9 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/pem"
+	"errors"
 	"fmt"
+	"io"
 	"math/big"
 	"os"
 	"path/filepath"
@@ -30,11 +32,39 @@ const (
 )
 
 var (
+	MaxFileSize        int64 = 8 * 1024 * 1024 // 8MB limit for certificate and private key files
 	ErrNoCertificate   = fmt.Errorf("nuclei user certificate not found")
 	ErrNoPrivateKey    = fmt.Errorf("nuclei user private key not found")
+	ErrFileTooLarge    = fmt.Errorf("file size exceeds maximum allowed limit")
 	SkipGeneratingKeys = false
 	noUserPassphrase   = false
 )
+
+// ReadLimitedFile reads at most maxSize bytes from the file at path.
+// If the file exceeds maxSize, it returns an error without buffering the entire file.
+func ReadLimitedFile(path string, maxSize int64) ([]byte, error) {
+	info, err := os.Stat(path)
+	if err != nil {
+		return nil, err
+	}
+	if info.Size() > maxSize {
+		return nil, fmt.Errorf("file %q exceeds maximum allowed size (%d bytes): %w", path, maxSize, ErrFileTooLarge)
+	}
+	f, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+
+	data, err := io.ReadAll(io.LimitReader(f, maxSize+1))
+	if err != nil {
+		return nil, err
+	}
+	if int64(len(data)) > maxSize {
+		return nil, fmt.Errorf("file %q exceeds maximum allowed size (%d bytes): %w", path, maxSize, ErrFileTooLarge)
+	}
+	return data, nil
+}
 
 // KeyHandler handles the key generation and management
 // of signer public and private keys
@@ -54,9 +84,12 @@ func (k *KeyHandler) ReadCert(envName, dir string) error {
 		return nil
 	}
 	// read from disk
-	if cert, err := os.ReadFile(filepath.Join(dir, CertFilename)); err == nil {
+	certFile := filepath.Join(dir, CertFilename)
+	if cert, err := ReadLimitedFile(certFile, MaxFileSize); err == nil {
 		k.UserCert = cert
 		return nil
+	} else if errors.Is(err, ErrFileTooLarge) {
+		return err
 	}
 	return ErrNoCertificate
 }
@@ -69,9 +102,12 @@ func (k *KeyHandler) ReadPrivateKey(envName, dir string) error {
 		return nil
 	}
 	// read from disk
-	if privateKey, err := os.ReadFile(filepath.Join(dir, PrivateKeyFilename)); err == nil {
+	keyFile := filepath.Join(dir, PrivateKeyFilename)
+	if privateKey, err := ReadLimitedFile(keyFile, MaxFileSize); err == nil {
 		k.PrivateKey = privateKey
 		return nil
+	} else if errors.Is(err, ErrFileTooLarge) {
+		return err
 	}
 	return ErrNoPrivateKey
 }
@@ -189,7 +225,7 @@ func (k *KeyHandler) getEnvContent(name string) []byte {
 		return nil
 	}
 	if fileutil.FileExists(val) {
-		data, err := os.ReadFile(val)
+		data, err := ReadLimitedFile(val, MaxFileSize)
 		if err != nil {
 			gologger.Fatal().Msgf("failed to read file: %s", err)
 		}

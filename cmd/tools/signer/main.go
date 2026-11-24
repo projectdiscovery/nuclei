@@ -52,7 +52,7 @@ func main() {
 	if err != nil {
 		gologger.Fatal().Msgf("failed to create signer: %s", err)
 	}
-	certData, err := os.ReadFile(cert)
+	certData, err := signer.ReadLimitedFile(cert, signer.MaxFileSize)
 	if err != nil {
 		gologger.Fatal().Msgf("failed to read certificate file %s: %s", cert, err)
 	}

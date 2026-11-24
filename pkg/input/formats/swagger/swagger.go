@@ -1,6 +1,7 @@
 package swagger
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"maps"
@@ -43,16 +44,16 @@ func (j *SwaggerFormat) SetOptions(options formats.InputFormatOptions) {
 func (j *SwaggerFormat) Parse(input io.Reader, resultsCb formats.ParseReqRespCallback, filePath string) error {
 	schemav2 := &openapi2.T{}
 	ext := path.Ext(filePath)
-	var err error
+
+	data, err := formats.ReadLimited(input, formats.MaxSpecFileSize)
+	if err != nil {
+		return errors.Wrap(err, "could not read data file")
+	}
+
 	if ext == ".yaml" || ext == ".yml" {
-		var data []byte
-		data, err = io.ReadAll(input)
-		if err != nil {
-			return errors.Wrap(err, "could not read data file")
-		}
 		err = decodeYAML(data, schemav2)
 	} else {
-		err = json.NewDecoder(input).Decode(schemav2)
+		err = json.NewDecoder(bytes.NewReader(data)).Decode(schemav2)
 	}
 	if err != nil {
 		return errors.Wrap(err, "could not decode openapi 2.0 schema")

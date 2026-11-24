@@ -2,6 +2,7 @@ package formats
 
 import (
 	"errors"
+	"fmt"
 	"io"
 	"os"
 	"strings"
@@ -61,7 +62,49 @@ type SpecDownloader interface {
 var (
 	DefaultVarDumpFileName = "required_openapi_params.yaml"
 	ErrNoVarsDumpFile      = errors.New("no required params file found")
+	MaxVarDumpFileSize     int64 = 8 * 1024 * 1024 // 8MB limit for dump file
+	MaxSpecFileSize        int64 = 8 * 1024 * 1024 // 8MB limit for spec files
+	ErrFileTooLarge        = errors.New("file size exceeds maximum allowed limit")
 )
+
+// ReadLimitedFile reads at most maxSize bytes from the file at path.
+// If the file exceeds maxSize, it returns an error without buffering the entire file.
+func ReadLimitedFile(path string, maxSize int64) ([]byte, error) {
+	info, err := os.Stat(path)
+	if err != nil {
+		return nil, err
+	}
+	if info.Size() > maxSize {
+		return nil, fmt.Errorf("file %q exceeds maximum allowed size (%d bytes): %w", path, maxSize, ErrFileTooLarge)
+	}
+	f, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+
+	data, err := io.ReadAll(io.LimitReader(f, maxSize+1))
+	if err != nil {
+		return nil, err
+	}
+	if int64(len(data)) > maxSize {
+		return nil, fmt.Errorf("file %q exceeds maximum allowed size (%d bytes): %w", path, maxSize, ErrFileTooLarge)
+	}
+	return data, nil
+}
+
+// ReadLimited reads at most maxSize bytes from r.
+// If r provides more than maxSize bytes, it returns an error.
+func ReadLimited(r io.Reader, maxSize int64) ([]byte, error) {
+	data, err := io.ReadAll(io.LimitReader(r, maxSize+1))
+	if err != nil {
+		return nil, err
+	}
+	if int64(len(data)) > maxSize {
+		return nil, fmt.Errorf("input exceeds maximum allowed size (%d bytes): %w", maxSize, ErrFileTooLarge)
+	}
+	return data, nil
+}
 
 // == OpenAPIParamsCfgFile ==
 // this file is meant to be used in CLI mode
@@ -80,7 +123,7 @@ func ReadOpenAPIVarDumpFile() (*OpenAPIParamsCfgFile, error) {
 	if !fileutil.FileExists(DefaultVarDumpFileName) {
 		return nil, ErrNoVarsDumpFile
 	}
-	bin, err := os.ReadFile(DefaultVarDumpFileName)
+	bin, err := ReadLimitedFile(DefaultVarDumpFileName, MaxVarDumpFileSize)
 	if err != nil {
 		return nil, err
 	}

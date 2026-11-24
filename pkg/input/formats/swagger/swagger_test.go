@@ -5,6 +5,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/projectdiscovery/nuclei/v3/pkg/input/formats"
 	"github.com/projectdiscovery/nuclei/v3/pkg/input/types"
 	"github.com/stretchr/testify/require"
 )
@@ -105,4 +106,19 @@ paths:
 			}
 		})
 	}
+}
+
+func TestSwaggerParseOversizeInput(t *testing.T) {
+	origLimit := formats.MaxSpecFileSize
+	formats.MaxSpecFileSize = 64
+	defer func() {
+		formats.MaxSpecFileSize = origLimit
+	}()
+
+	oversizedYAML := strings.Repeat("# padding comments\n", 10) + "swagger: \"2.0\"\ninfo: {title: t, version: \"1\"}\n"
+	err := New().Parse(strings.NewReader(oversizedYAML), func(request *types.RequestResponse) bool {
+		return false
+	}, "spec.yaml")
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "exceeds maximum allowed limit")
 }
