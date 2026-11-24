@@ -69,8 +69,6 @@ func TestCloseConnected(t *testing.T) {
 	closeClient(t, client)
 }
 
-// TestConnectIPv6 checks that an IPv6 host is bracketed when it is
-// joined with the port, instead of failing with "too many colons".
 func TestConnectIPv6(t *testing.T) {
 	t.Parallel()
 
@@ -79,23 +77,25 @@ func TestConnectIPv6(t *testing.T) {
 		t.Skipf("IPv6 loopback is unavailable: %v", err)
 	}
 
-	host, port := serveSSH(t, listener)
+	ip, port := serveSSH(t, listener)
 
-	t.Run("Connect", func(t *testing.T) {
-		t.Parallel()
+	for _, host := range []string{ip, "[" + ip + "]"} {
+		t.Run("Connect/"+host, func(t *testing.T) {
+			t.Parallel()
 
-		client := new(libssh.SSHClient)
-		connect(t, client, host, port)
-		closeClient(t, client)
-	})
-	t.Run("ConnectSSHInfoMode", func(t *testing.T) {
-		t.Parallel()
+			client := new(libssh.SSHClient)
+			connect(t, client, host, port)
+			closeClient(t, client)
+		})
+		t.Run("ConnectSSHInfoMode/"+host, func(t *testing.T) {
+			t.Parallel()
 
-		_, err := new(libssh.SSHClient).ConnectSSHInfoMode(executionContext(t), host, port)
-		if err != nil {
-			t.Fatalf("ConnectSSHInfoMode() error = %v", err)
-		}
-	})
+			_, err := new(libssh.SSHClient).ConnectSSHInfoMode(executionContext(t), host, port)
+			if err != nil {
+				t.Fatalf("ConnectSSHInfoMode() error = %v", err)
+			}
+		})
+	}
 }
 
 func connect(t *testing.T, client *libssh.SSHClient, host string, port int) {

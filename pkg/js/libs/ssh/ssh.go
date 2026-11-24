@@ -283,7 +283,8 @@ func connect(opts *connectOptions) (*ssh.Client, error) {
 		conf.Auth = append(conf.Auth, ssh.PublicKeys(signer))
 	}
 
-	client, err := ssh.Dial("tcp", net.JoinHostPort(opts.Host, strconv.Itoa(opts.Port)), conf)
+	host := strings.TrimSuffix(strings.TrimPrefix(opts.Host, "["), "]")
+	client, err := ssh.Dial("tcp", net.JoinHostPort(host, strconv.Itoa(opts.Port)), conf)
 	if err != nil {
 		return nil, err
 	}
