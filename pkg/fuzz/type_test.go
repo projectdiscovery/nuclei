@@ -34,3 +34,20 @@ func TestSliceOrMapSliceUnmarshalYAMLMapPreservesOrder(t *testing.T) {
 	require.Equal(t, []string{"first", "second", "third"}, keys)
 	require.Equal(t, []string{"one", "two", "three"}, values)
 }
+
+func TestSliceOrMapSliceUnmarshalYAMLNonStringEntries(t *testing.T) {
+	for _, data := range []string{"a: 1\n", "1: x\n", "a: [x]\n", "a: true\n"} {
+		var value SliceOrMapSlice
+		require.NotPanics(t, func() {
+			err := yaml.Unmarshal([]byte(data), &value)
+			require.Error(t, err, "non-string entry should be rejected: %q", data)
+			require.Contains(t, err.Error(), "must be strings")
+		})
+		require.Nil(t, value.KV)
+	}
+
+	// quoted values are strings and keep working
+	var value SliceOrMapSlice
+	require.NoError(t, yaml.Unmarshal([]byte("a: \"1\"\n\"2\": b\n"), &value))
+	require.NotNil(t, value.KV)
+}
