@@ -31,6 +31,25 @@ export function OpenTLS(protocol: string): NetConn | null {
 
 
 /**
+ * OpenTLSWithOptions opens a new TLS connection to the address using the
+ * given ALPN protocols, TLS version range and SNI.
+ * Use NegotiatedProtocol, TLSVersion and CipherSuite on the returned
+ * connection to inspect what the server selected.
+ * supported protocols: tcp, udp
+ * @example
+ * ```javascript
+ * const net = require('nuclei/net');
+ * const conn = net.OpenTLSWithOptions('tcp', 'acme.com:443', {ALPN: ['h2', 'http/1.1']});
+ * if (conn.NegotiatedProtocol() === 'h2') { log('server speaks HTTP/2'); }
+ * ```
+ */
+export function OpenTLSWithOptions(protocol: string, address: string, opts: TLSOptions): NetConn | null {
+    return null;
+}
+
+
+
+/**
  * NetConn is a connection to a remote host.
  * this is returned/create by Open and OpenTLS functions.
  * @example
@@ -44,6 +63,53 @@ export class NetConn {
 
     // Constructor of NetConn
     constructor() {}
+    /**
+    * NegotiatedProtocol returns the ALPN protocol the server selected (e.g.
+    * h2 or http/1.1), or an empty string when none was negotiated or the
+    * connection is not TLS.
+    * @example
+    * ```javascript
+    * const net = require('nuclei/net');
+    * const conn = net.OpenTLSWithOptions('tcp', 'acme.com:443', {ALPN: ['h2', 'http/1.1']});
+    * log(conn.NegotiatedProtocol());
+    * ```
+    */
+    public NegotiatedProtocol(): string {
+        return "";
+    }
+    
+
+    /**
+    * TLSVersion returns the negotiated TLS version (e.g. "TLS 1.3"), or an
+    * empty string when the connection is not TLS.
+    * @example
+    * ```javascript
+    * const net = require('nuclei/net');
+    * const conn = net.OpenTLS('tcp', 'acme.com:443');
+    * log(conn.TLSVersion());
+    * ```
+    */
+    public TLSVersion(): string {
+        return "";
+    }
+    
+
+    /**
+    * CipherSuite returns the negotiated cipher suite name (e.g.
+    * "TLS_AES_128_GCM_SHA256"), or an empty string when the connection is not
+    * TLS.
+    * @example
+    * ```javascript
+    * const net = require('nuclei/net');
+    * const conn = net.OpenTLS('tcp', 'acme.com:443');
+    * log(conn.CipherSuite());
+    * ```
+    */
+    public CipherSuite(): string {
+        return "";
+    }
+    
+
     /**
     * Close closes the connection.
     * Close does nothing if no connection is open.
@@ -216,5 +282,43 @@ export class NetConn {
     }
     
 
+}
+
+
+
+/**
+ * TLSOptions configures OpenTLSWithOptions. All fields are optional.
+ * @example
+ * ```javascript
+ * const net = require('nuclei/net');
+ * const conn = net.OpenTLSWithOptions('tcp', 'acme.com:443', {ALPN: ['h2'], MaxVersion: 'tls12'});
+ * log(conn.NegotiatedProtocol());
+ * ```
+ */
+export interface TLSOptions {
+    
+    /**
+    * ALPN is the list of protocols offered in the ALPN extension, in
+    * order of preference (e.g. ['h2', 'http/1.1']). Empty sends no ALPN.
+    */
+    ALPN?: string[],
+    
+    /**
+    * MinVersion is the lowest TLS version to accept: tls10, tls11,
+    * tls12 or tls13. Empty defaults to tls10.
+    */
+    MinVersion?: string,
+    
+    /**
+    * MaxVersion is the highest TLS version to offer: tls10, tls11,
+    * tls12 or tls13. Empty uses the Go default (tls13).
+    */
+    MaxVersion?: string,
+    
+    /**
+    * ServerName overrides the SNI sent in the ClientHello. Empty uses
+    * the host part of the address.
+    */
+    ServerName?: string,
 }
 

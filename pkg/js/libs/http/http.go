@@ -53,6 +53,9 @@ type (
 		DisableRedirects bool
 		// DisableCookie disables the per-client cookie jar.
 		DisableCookie bool
+		// DisableHTTP2 offers only http/1.1 in ALPN so HTTPS requests use
+		// HTTP/1.1 (HTTP/2 is negotiated by default when the server supports it).
+		DisableHTTP2 bool
 	}
 )
 
@@ -71,6 +74,7 @@ type (
 		MaxRedirects    int
 		MaxBodyBytes    int
 		DisableCookie   bool
+		DisableHTTP2    bool
 
 		nj      *utils.NucleiJS
 		headers http.Header
@@ -110,6 +114,7 @@ func NewClient(call goja.ConstructorCall, runtime *goja.Runtime) *goja.Object {
 			c.MaxRedirects = 0
 		}
 		c.DisableCookie = opts.DisableCookie
+		c.DisableHTTP2 = opts.DisableHTTP2
 	}
 
 	return runtime.ToValue(c).ToObject(runtime)
@@ -282,6 +287,13 @@ func (c *Client) do(ctx context.Context, method, rawURL, body string) (*Response
 	if host != "" {
 		tlsConfig.ServerName = host
 	}
+	// Set ALPN explicitly rather than relying on http.Transport adding h2 to
+	// the shared config, since DialTLSContext dials with tlsConfig directly.
+	if c.DisableHTTP2 {
+		tlsConfig.NextProtos = []string{"http/1.1"}
+	} else {
+		tlsConfig.NextProtos = []string{"h2", "http/1.1"}
+	}
 
 	proxy, err := proxyFromContext(ctx)
 	if err != nil {
@@ -296,7 +308,7 @@ func (c *Client) do(ctx context.Context, method, rawURL, body string) (*Response
 			return dialers.Fastdialer.DialTLSWithConfig(ctx, network, addr, tlsConfig)
 		},
 		TLSClientConfig:       tlsConfig,
-		ForceAttemptHTTP2:     true,
+		ForceAttemptHTTP2:     !c.DisableHTTP2,
 		MaxIdleConns:          4,
 		MaxIdleConnsPerHost:   4,
 		IdleConnTimeout:       30 * time.Second,
@@ -366,6 +378,7 @@ func (c *Client) do(ctx context.Context, method, rawURL, body string) (*Response
 
 	out := &Response{
 		StatusCode: resp.StatusCode,
+		Proto:      resp.Proto,
 		URL:        resp.Request.URL.String(),
 		Body:       string(raw),
 		Headers:    flattenHeaders(resp.Header),

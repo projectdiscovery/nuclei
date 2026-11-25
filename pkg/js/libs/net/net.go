@@ -11,12 +11,15 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"strings"
 	"time"
 
+	"github.com/projectdiscovery/fastdialer/fastdialer"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	"github.com/projectdiscovery/utils/errkit"
 	"github.com/projectdiscovery/utils/reader"
+	ztls "github.com/zmap/zcrypto/tls"
 )
 
 var (
@@ -228,13 +231,106 @@ func Open(ctx context.Context, protocol, address string) (*NetConn, error) {
 // const conn = net.OpenTLS('tcp', 'acme.com:443');
 // ```
 func OpenTLS(ctx context.Context, protocol, address string) (*NetConn, error) {
+	return openTLS(ctx, protocol, address, TLSOptions{})
+}
+
+type (
+	// TLSOptions configures OpenTLSWithOptions. All fields are optional.
+	// @example
+	// ```javascript
+	// const net = require('nuclei/net');
+	// const conn = net.OpenTLSWithOptions('tcp', 'acme.com:443', {ALPN: ['h2'], MaxVersion: 'tls12'});
+	// log(conn.NegotiatedProtocol());
+	// ```
+	TLSOptions struct {
+		// ALPN is the list of protocols offered in the ALPN extension, in
+		// order of preference (e.g. ['h2', 'http/1.1']). Empty sends no ALPN.
+		ALPN []string
+		// MinVersion is the lowest TLS version to accept: tls10, tls11,
+		// tls12 or tls13. Empty defaults to tls10.
+		MinVersion string
+		// MaxVersion is the highest TLS version to offer: tls10, tls11,
+		// tls12 or tls13. Empty uses the Go default (tls13).
+		MaxVersion string
+		// ServerName overrides the SNI sent in the ClientHello. Empty uses
+		// the host part of the address.
+		ServerName string
+	}
+)
+
+// OpenTLSWithOptions opens a new TLS connection to the address using the
+// given ALPN protocols, TLS version range and SNI.
+// Use NegotiatedProtocol, TLSVersion and CipherSuite on the returned
+// connection to inspect what the server selected.
+// supported protocols: tcp, udp
+// @example
+// ```javascript
+// const net = require('nuclei/net');
+// const conn = net.OpenTLSWithOptions('tcp', 'acme.com:443', {ALPN: ['h2', 'http/1.1']});
+// if (conn.NegotiatedProtocol() === 'h2') { log('server speaks HTTP/2'); }
+// ```
+func OpenTLSWithOptions(ctx context.Context, protocol, address string, opts TLSOptions) (*NetConn, error) {
+	return openTLS(ctx, protocol, address, opts)
+}
+
+// tlsVersions maps TLSOptions version names to crypto/tls versions.
+var tlsVersions = map[string]uint16{
+	"tls10": tls.VersionTLS10,
+	"tls11": tls.VersionTLS11,
+	"tls12": tls.VersionTLS12,
+	"tls13": tls.VersionTLS13,
+}
+
+// parseTLSVersion returns the crypto/tls version for name, or 0 when name is
+// empty.
+func parseTLSVersion(name string) (uint16, error) {
+	if name == "" {
+		return 0, nil
+	}
+	v, ok := tlsVersions[strings.ToLower(strings.TrimSpace(name))]
+	if !ok {
+		return 0, fmt.Errorf("invalid TLS version %q (expected tls10, tls11, tls12 or tls13)", name)
+	}
+	return v, nil
+}
+
+// tlsConfigFromOptions builds the client config for address from opts.
+func tlsConfigFromOptions(address string, opts TLSOptions) (*tls.Config, error) {
+	minVersion, err := parseTLSVersion(opts.MinVersion)
+	if err != nil {
+		return nil, err
+	}
+	maxVersion, err := parseTLSVersion(opts.MaxVersion)
+	if err != nil {
+		return nil, err
+	}
+	if minVersion == 0 {
+		minVersion = tls.VersionTLS10
+	}
+	if maxVersion != 0 && maxVersion < minVersion {
+		return nil, fmt.Errorf("TLS MaxVersion %s is lower than MinVersion %s", opts.MaxVersion, opts.MinVersion)
+	}
+
+	config := &tls.Config{
+		InsecureSkipVerify: true,
+		MinVersion:         minVersion,
+		MaxVersion:         maxVersion,
+	}
+	if len(opts.ALPN) > 0 {
+		config.NextProtos = append([]string(nil), opts.ALPN...)
+	}
+	config.ServerName = opts.ServerName
+	if config.ServerName == "" {
+		config.ServerName = dialTargetHost(address)
+	}
+	return config, nil
+}
+
+func openTLS(ctx context.Context, protocol, address string, opts TLSOptions) (*NetConn, error) {
 	timeout := getTimeoutFromContext(ctx)
-	config := &tls.Config{InsecureSkipVerify: true, MinVersion: tls.VersionTLS10}
-	host, _, _ := net.SplitHostPort(address)
-	if host != "" {
-		c := config.Clone()
-		c.ServerName = host
-		config = c
+	config, err := tlsConfigFromOptions(address, opts)
+	if err != nil {
+		return nil, err
 	}
 
 	if proxyURLFromContext(ctx) != "" {
@@ -247,7 +343,7 @@ func OpenTLS(ctx context.Context, protocol, address string) (*NetConn, error) {
 			_ = conn.Close()
 			return nil, fmt.Errorf("TLS handshake failed: %w", err)
 		}
-		return &NetConn{conn: tlsConn, timeout: timeout}, nil
+		return newTLSNetConn(tlsConn, timeout), nil
 	}
 
 	executionId, err := executionIDFromContext(ctx)
@@ -258,11 +354,46 @@ func OpenTLS(ctx context.Context, protocol, address string) (*NetConn, error) {
 	if dialer == nil {
 		return nil, fmt.Errorf("dialers not initialized for %s", executionId)
 	}
+	// Fastdialer replaces config.ServerName with the dialed hostname unless
+	// the SNI comes from the context, so pass an explicit SNI that way.
+	if opts.ServerName != "" {
+		ctx = context.WithValue(ctx, fastdialer.SniName, opts.ServerName)
+	}
 	conn, err := dialer.Fastdialer.DialTLSWithConfig(ctx, protocol, address, config)
 	if err != nil {
 		return nil, err
 	}
-	return &NetConn{conn: conn, timeout: timeout}, nil
+	return newTLSNetConn(conn, timeout), nil
+}
+
+// newTLSNetConn wraps a TLS connection and records its handshake result.
+func newTLSNetConn(conn net.Conn, timeout time.Duration) *NetConn {
+	c := &NetConn{conn: conn, timeout: timeout}
+	switch tc := conn.(type) {
+	case *tls.Conn:
+		state := tc.ConnectionState()
+		c.tlsState = &tlsState{
+			negotiatedProtocol: state.NegotiatedProtocol,
+			version:            state.Version,
+			cipherSuite:        state.CipherSuite,
+		}
+	case *ztls.Conn:
+		// fastdialer can fall back to zcrypto when crypto/tls fails
+		state := tc.ConnectionState()
+		c.tlsState = &tlsState{
+			negotiatedProtocol: state.NegotiatedProtocol,
+			version:            state.Version,
+			cipherSuite:        state.CipherSuite,
+		}
+	}
+	return c
+}
+
+// tlsState is the handshake result of a TLS NetConn.
+type tlsState struct {
+	negotiatedProtocol string
+	version            uint16
+	cipherSuite        uint16
 }
 
 type (
@@ -277,8 +408,60 @@ type (
 		// conn is nil when no connection is open.
 		conn    net.Conn
 		timeout time.Duration
+		// tlsState is nil for plain connections.
+		tlsState *tlsState
+		// pendingErr is a read error that arrived together with data in Recv.
+		// The data is returned first and the error on the next Recv.
+		pendingErr error
 	}
 )
+
+// NegotiatedProtocol returns the ALPN protocol the server selected (e.g.
+// h2 or http/1.1), or an empty string when none was negotiated or the
+// connection is not TLS.
+// @example
+// ```javascript
+// const net = require('nuclei/net');
+// const conn = net.OpenTLSWithOptions('tcp', 'acme.com:443', {ALPN: ['h2', 'http/1.1']});
+// log(conn.NegotiatedProtocol());
+// ```
+func (c *NetConn) NegotiatedProtocol() string {
+	if c.tlsState == nil {
+		return ""
+	}
+	return c.tlsState.negotiatedProtocol
+}
+
+// TLSVersion returns the negotiated TLS version (e.g. "TLS 1.3"), or an
+// empty string when the connection is not TLS.
+// @example
+// ```javascript
+// const net = require('nuclei/net');
+// const conn = net.OpenTLS('tcp', 'acme.com:443');
+// log(conn.TLSVersion());
+// ```
+func (c *NetConn) TLSVersion() string {
+	if c.tlsState == nil {
+		return ""
+	}
+	return tls.VersionName(c.tlsState.version)
+}
+
+// CipherSuite returns the negotiated cipher suite name (e.g.
+// "TLS_AES_128_GCM_SHA256"), or an empty string when the connection is not
+// TLS.
+// @example
+// ```javascript
+// const net = require('nuclei/net');
+// const conn = net.OpenTLS('tcp', 'acme.com:443');
+// log(conn.CipherSuite());
+// ```
+func (c *NetConn) CipherSuite() string {
+	if c.tlsState == nil {
+		return ""
+	}
+	return tls.CipherSuiteName(c.tlsState.cipherSuite)
+}
 
 // Close closes the connection.
 // Close does nothing if no connection is open.
@@ -295,6 +478,7 @@ func (c *NetConn) Close() error {
 
 	err := c.conn.Close()
 	c.conn = nil
+	c.pendingErr = nil
 
 	return err
 }
@@ -444,15 +628,27 @@ func (c *NetConn) Recv(N int) ([]byte, error) {
 	if c.conn == nil {
 		return []byte{}, errNoConnection
 	}
-
-	c.setDeadLine()
-	defer c.unsetDeadLine()
 	if N == 0 {
 		N = 4096
 	}
+	if err := c.pendingErr; err != nil {
+		c.pendingErr = nil
+		return []byte{}, errkit.Wrapf(err, "failed to read %d bytes", N)
+	}
+
+	c.setDeadLine()
+	defer c.unsetDeadLine()
 	b := make([]byte, N)
 	n, err := c.conn.Read(b)
 	if err != nil {
+		if n > 0 {
+			// A Read can return data and an error together, e.g. crypto/tls
+			// returns the last record's plaintext with io.EOF when the
+			// server's close_notify arrives in the same segment. Return the
+			// data now and the error on the next call so it isn't lost.
+			c.pendingErr = err
+			return b[:n], nil
+		}
 		return []byte{}, errkit.Wrapf(err, "failed to read %d bytes", N)
 	}
 	return b[:n], nil

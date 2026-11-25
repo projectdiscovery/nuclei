@@ -15,13 +15,15 @@ func init() {
 	module.Set(
 		gojs.Objects{
 			// Functions
-			"Open":    lib_net.Open,
-			"OpenTLS": lib_net.OpenTLS,
+			"Open":               lib_net.Open,
+			"OpenTLS":            lib_net.OpenTLS,
+			"OpenTLSWithOptions": lib_net.OpenTLSWithOptions,
 
 			// Var and consts
 
 			// Objects / Classes
-			"NetConn": gojs.GetClassConstructor[lib_net.NetConn](&lib_net.NetConn{}),
+			"NetConn":    gojs.GetClassConstructor[lib_net.NetConn](&lib_net.NetConn{}),
+			"TLSOptions": gojs.GetClassConstructor[lib_net.TLSOptions](&lib_net.TLSOptions{}),
 		},
 	).Register()
 }

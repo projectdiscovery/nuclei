@@ -13,12 +13,15 @@ type (
 	// const resp = http.Get('https://example.com');
 	// log(resp.StatusCode);
 	// log(resp.GetHeader('Content-Type'));
+	// log(resp.Proto);
 	// ```
 	Response struct {
 		StatusCode int
-		URL        string
-		Body       string
-		Headers    map[string]string
+		// Proto is the protocol of the response, e.g. "HTTP/1.1" or "HTTP/2.0".
+		Proto   string
+		URL     string
+		Body    string
+		Headers map[string]string
 
 		header http.Header
 	}

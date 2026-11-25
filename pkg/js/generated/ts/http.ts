@@ -27,6 +27,9 @@ export class Client {
     public DisableCookie?: boolean;
     
 
+    public DisableHTTP2?: boolean;
+    
+
     // Constructor of Client
     constructor(options?: Options) {}
     /**
@@ -261,6 +264,9 @@ export class Options {
     public DisableCookie?: boolean;
     
 
+    public DisableHTTP2?: boolean;
+    
+
     // Constructor of Options
     constructor() {}
 }
@@ -274,12 +280,16 @@ export class Options {
  * const resp = http.Get('https://example.com');
  * log(resp.StatusCode);
  * log(resp.GetHeader('Content-Type'));
+ * log(resp.Proto);
  * ```
  */
 export class Response {
     
 
     public StatusCode?: number;
+    
+
+    public Proto?: string;
     
 
     public URL?: string;
