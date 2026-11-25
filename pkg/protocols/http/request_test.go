@@ -1280,7 +1280,9 @@ func TestReqURLPattern(t *testing.T) {
 		ID:   templateID,
 		Info: model.Info{SeverityHolder: severity.Holder{Severity: severity.Low}, Name: "test"},
 	})
-	client, _ := interactsh.New(interactsh.DefaultOptions(executerOpts.Output, nil, executerOpts.Progress))
+	interactshOpts := interactsh.DefaultOptions(executerOpts.Output, nil, executerOpts.Progress)
+	interactshOpts.ServerURL, interactshOpts.HTTPClient = testutils.NewInteractshServer(t)
+	client, _ := interactsh.New(interactshOpts)
 	executerOpts.Interactsh = client
 	defer client.Close()
 	executerOpts.ExportReqURLPattern = true

@@ -305,8 +305,10 @@ func TestMakeRequestFromModelUniqueInteractsh(t *testing.T) {
 
 	generator := request.newGenerator(false)
 
+	serverURL, httpClient := testutils.NewInteractshServer(t)
 	generator.options.Interactsh, err = interactsh.New(&interactsh.Options{
-		ServerURL:           options.InteractshURL,
+		ServerURL:           serverURL,
+		HTTPClient:          httpClient,
 		CacheSize:           options.InteractionsCacheSize,
 		Eviction:            time.Duration(options.InteractionsEviction) * time.Second,
 		CooldownPeriod:      time.Duration(options.InteractionsCoolDownPeriod) * time.Second,
@@ -346,8 +348,13 @@ func TestMakeSelfContainedRequestRendersPayloadInteractshMarker(t *testing.T) {
 		ID:   templateID,
 		Info: model.Info{SeverityHolder: severity.Holder{Severity: severity.Low}, Name: "test"},
 	})
+	serverURL, httpClient := testutils.NewInteractshServer(t)
+	// the network policy resolves a self-contained host, so the generated URLs
+	// need a domain that resolves
+	serverURL = "http://oast.fun"
 	client, err := interactsh.New(&interactsh.Options{
-		ServerURL:           options.InteractshURL,
+		ServerURL:           serverURL,
+		HTTPClient:          httpClient,
 		CacheSize:           options.InteractionsCacheSize,
 		Eviction:            time.Duration(options.InteractionsEviction) * time.Second,
 		CooldownPeriod:      time.Duration(options.InteractionsCoolDownPeriod) * time.Second,

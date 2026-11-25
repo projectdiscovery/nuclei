@@ -281,8 +281,10 @@ func TestNetworkGeneratorPayloadInteractshMarkerRendersBeforeInput(t *testing.T)
 	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
 		ID: "network-payload-interactsh",
 	})
+	serverURL, httpClient := testutils.NewInteractshServer(t)
 	client, err := interactsh.New(&interactsh.Options{
-		ServerURL:           options.InteractshURL,
+		ServerURL:           serverURL,
+		HTTPClient:          httpClient,
 		CacheSize:           options.InteractionsCacheSize,
 		Eviction:            time.Duration(options.InteractionsEviction) * time.Second,
 		CooldownPeriod:      time.Duration(options.InteractionsCoolDownPeriod) * time.Second,
@@ -341,8 +343,10 @@ func TestNetworkCompileDefersInteractshMarkerHelpersToRuntime(t *testing.T) {
 	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
 		ID: "network-runtime-interactsh-helper",
 	})
+	serverURL, httpClient := testutils.NewInteractshServer(t)
 	client, err := interactsh.New(&interactsh.Options{
-		ServerURL:           options.InteractshURL,
+		ServerURL:           serverURL,
+		HTTPClient:          httpClient,
 		CacheSize:           options.InteractionsCacheSize,
 		Eviction:            time.Duration(options.InteractionsEviction) * time.Second,
 		CooldownPeriod:      time.Duration(options.InteractionsCoolDownPeriod) * time.Second,
