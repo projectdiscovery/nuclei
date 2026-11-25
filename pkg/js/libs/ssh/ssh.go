@@ -216,6 +216,8 @@ func (c *connectOptions) validate() error {
 // errSSHInfoCacheMiss allows cache lookups without sharing an in-flight handshake.
 var errSSHInfoCacheMiss = errors.New("SSH info cache miss")
 
+// memoizedconnectSSHInfoMode reuses completed successes while keeping each
+// uncached handshake independently cancellable. Cache publication is best effort.
 func memoizedconnectSSHInfoMode(ctx context.Context, opts *connectOptions) (*ssh.HandshakeLog, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, err
@@ -244,6 +246,8 @@ func memoizedconnectSSHInfoMode(ctx context.Context, opts *connectOptions) (*ssh
 	return data, nil
 }
 
+// connectSSHInfoMode collects handshake information and closes its connection
+// when the caller cancels or the configured network timeout expires.
 func connectSSHInfoMode(ctx context.Context, opts *connectOptions) (*ssh.HandshakeLog, error) {
 	if err := opts.validate(); err != nil {
 		return nil, err
@@ -259,7 +263,11 @@ func connectSSHInfoMode(ctx context.Context, opts *connectOptions) (*ssh.Handsha
 		data.Banner = strings.TrimSpace(banner)
 		return nil
 	}
-	rhost := net.JoinHostPort(opts.Host, fmt.Sprint(opts.Port))
+	host := opts.Host
+	if strings.HasPrefix(host, "[") && strings.HasSuffix(host, "]") {
+		host = host[1 : len(host)-1]
+	}
+	rhost := net.JoinHostPort(host, fmt.Sprint(opts.Port))
 	conn, err := (&net.Dialer{Timeout: sshConfig.Timeout}).DialContext(ctx, "tcp", rhost)
 	if err != nil {
 		return nil, err

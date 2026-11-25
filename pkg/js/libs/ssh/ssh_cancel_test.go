@@ -101,7 +101,7 @@ func TestSSHInfoCancellation(t *testing.T) {
 		}
 		t.Run(name, func(t *testing.T) {
 			peer := newSilentSSHPeer(t)
-			ctx, cancel := context.WithCancel(context.WithValue(t.Context(), "executionId", t.Name()))
+			ctx, cancel := context.WithCancel(executionContext(t))
 			defer cancel()
 			done := make(chan error, 1)
 			go func() {
