@@ -316,6 +316,9 @@ func TestMakeRequestFromModelUniqueInteractsh(t *testing.T) {
 		DisableHttpFallback: true,
 	})
 	require.Nil(t, err, "could not create interactsh client")
+	t.Cleanup(func() {
+		generator.options.Interactsh.Close()
+	})
 
 	inputData, payloads, _ := generator.nextValue()
 	got, err := generator.Make(context.Background(), contextargs.NewWithInput(context.Background(), "https://example.com"), inputData, payloads, map[string]interface{}{})
