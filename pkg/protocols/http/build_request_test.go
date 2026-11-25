@@ -348,12 +348,11 @@ func TestMakeSelfContainedRequestRendersPayloadInteractshMarker(t *testing.T) {
 		ID:   templateID,
 		Info: model.Info{SeverityHolder: severity.Holder{Severity: severity.Low}, Name: "test"},
 	})
-	serverURL, httpClient := testutils.NewInteractshServer(t)
-	// the network policy resolves a self-contained host, so the generated URLs
-	// need a domain that resolves
-	serverURL = "http://oast.fun"
+	_, httpClient := testutils.NewInteractshServer(t)
 	client, err := interactsh.New(&interactsh.Options{
-		ServerURL:           serverURL,
+		// the network policy resolves a self-contained host, so the generated
+		// URLs need a domain that resolves
+		ServerURL:           "http://oast.fun",
 		HTTPClient:          httpClient,
 		CacheSize:           options.InteractionsCacheSize,
 		Eviction:            time.Duration(options.InteractionsEviction) * time.Second,
