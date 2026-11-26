@@ -15,7 +15,7 @@ func TestMemGuardianGoroutineLeak(t *testing.T) {
 	defer goleak.VerifyNone(t,
 		goleak.IgnoreAnyContainingPkg("go.opencensus.io/stats/view"),
 		goleak.IgnoreAnyContainingPkg("github.com/syndtr/goleveldb"),
-		goleak.IgnoreAnyContainingPkg("github.com/go-rod/rod"),
+		goleak.IgnoreAnyContainingPkg("github.com/projectdiscovery/rod"),
 		goleak.IgnoreAnyContainingPkg("github.com/projectdiscovery/interactsh/pkg/server"),
 		goleak.IgnoreAnyContainingPkg("github.com/projectdiscovery/ratelimit"),
 		// expirable LRU cache creates a background goroutine for TTL expiration that persists
@@ -104,7 +104,7 @@ func TestMemGuardianReset(t *testing.T) {
 	defer goleak.VerifyNone(t,
 		goleak.IgnoreAnyContainingPkg("go.opencensus.io/stats/view"),
 		goleak.IgnoreAnyContainingPkg("github.com/syndtr/goleveldb"),
-		goleak.IgnoreAnyContainingPkg("github.com/go-rod/rod"),
+		goleak.IgnoreAnyContainingPkg("github.com/projectdiscovery/rod"),
 		goleak.IgnoreAnyContainingPkg("github.com/projectdiscovery/interactsh/pkg/server"),
 		goleak.IgnoreAnyContainingPkg("github.com/projectdiscovery/ratelimit"),
 		// expirable LRU cache creates a background goroutine for TTL expiration that persists

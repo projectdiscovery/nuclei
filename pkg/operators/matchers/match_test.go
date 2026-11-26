@@ -442,3 +442,48 @@ func TestMatcher_MatchDSL_ErrorHandling(t *testing.T) {
 	ok := m.MatchDSL(map[string]interface{}{})
 	require.True(t, ok)
 }
+
+// TestMatcher_MatchXPath_XMLPrologHTMLFallback covers documents that declare
+// themselves as XML while carrying HTML5 syntax a strict XML parser rejects.
+// Before the fallback such a document was routed to the XML parser, failed to
+// parse, and matched nothing - indistinguishable from a genuine non-match.
+func TestMatcher_MatchXPath_XMLPrologHTMLFallback(t *testing.T) {
+	body := `<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head><title>a&nbsp;b</title></head>
+<body><h1 id="h">Admin</h1><br></body>
+</html>`
+
+	m := &Matcher{Type: MatcherTypeHolder{MatcherType: XPathMatcher}, XPath: []string{"//h1[contains(text(), 'Admin')]"}}
+	err := m.CompileMatchers()
+	require.Nil(t, err)
+
+	isMatched := m.MatchXPath(body)
+	require.True(t, isMatched, "Could not match an XHTML document that declares itself as XML")
+
+	// The XML-only entry point keeps its documented behaviour: a document that
+	// is not well-formed XML never matches.
+	require.False(t, m.MatchXML(body), "MatchXML must not match a document that is not well-formed XML")
+}
+
+// TestMatcher_MatchXPath_XMLPrologNoFallbackOnMiss guards the fallback so it is
+// used only for documents that fail to parse, never for well-formed XML whose
+// query found nothing.
+func TestMatcher_MatchXPath_XMLPrologNoFallbackOnMiss(t *testing.T) {
+	body := `<?xml version="1.0" encoding="utf-8"?><Root><Item>x</Item></Root>`
+
+	m := &Matcher{Type: MatcherTypeHolder{MatcherType: XPathMatcher}, XPath: []string{"//Item"}}
+	err := m.CompileMatchers()
+	require.Nil(t, err)
+
+	isMatched := m.MatchXPath(body)
+	require.True(t, isMatched, "Could not match valid XML with a case-sensitive XPath")
+
+	m = &Matcher{Type: MatcherTypeHolder{MatcherType: XPathMatcher}, XPath: []string{"//item"}}
+	err = m.CompileMatchers()
+	require.Nil(t, err)
+
+	isMatched = m.MatchXPath(body)
+	require.False(t, isMatched, "Well-formed XML must not be searched again with the case-folding HTML parser")
+}

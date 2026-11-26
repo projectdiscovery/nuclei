@@ -1,6 +1,7 @@
 package extractors
 
 import (
+	"errors"
 	"fmt"
 	"testing"
 
@@ -138,4 +139,27 @@ func TestCompileExtractorsXPathUndeclaredVariable(t *testing.T) {
 	var operator Extractor
 	require.NoError(t, yaml.Unmarshal([]byte("type: xpath\nxpath:\n  - \"******$A\"\n"), &operator))
 	require.ErrorContains(t, operator.CompileExtractors(), "undeclared variable")
+}
+
+func TestCompileExtractorsReportsInvalidJSONQuery(t *testing.T) {
+	tests := []struct {
+		name  string
+		query string
+		want  string
+	}{
+		{"parse error", ".[", `could not parse json query ".["`},
+		{"compile error", "undefined_func(1)", `could not compile json query "undefined_func(1)"`},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			e := &Extractor{
+				Type: ExtractorTypeHolder{ExtractorType: JSONExtractor},
+				JSON: []string{tt.query},
+			}
+			err := e.CompileExtractors()
+			require.ErrorContains(t, err, tt.want)
+			require.NotContains(t, err.Error(), "<nil>")
+			require.NotNil(t, errors.Unwrap(err), "the gojq error should be wrapped")
+		})
+	}
 }

@@ -95,6 +95,13 @@ const (
 func (h *Helper) convertInputToType(input string, inputType inputType, defaultPort string) string {
 	isURL := strings.Contains(input, "://")
 	uri, _ := urlutil.Parse(input)
+	// Parse treats a single-label host such as "intranet" as a relative path
+	// and clears Host. The input is already absolute, so parse it as one.
+	if isURL {
+		if abs, err := urlutil.ParseAbsoluteURL(input, false); err == nil {
+			uri = abs
+		}
+	}
 
 	var host, port string
 	if isURL && uri != nil {
@@ -147,12 +154,29 @@ func (h *Helper) convertInputToType(input string, inputType inputType, defaultPo
 		}
 	case typeHostWithPort, typeHostWithOptionalPort:
 		if hasHost && hasPort {
+			// The network request replaces a reserved port that the scheme
+			// implied, and keeps one the operator typed after a bare host. It
+			// can tell them apart only while the URL keeps its scheme.
+			if isURL && inputType == typeHostWithOptionalPort {
+				return input
+			}
 			return net.JoinHostPort(host, port)
 		}
-		if uri != nil && !hasPort && uri.Scheme == "https" {
-			return net.JoinHostPort(uri.Host, "443")
+		// An optional port is left to the request, which knows the template
+		// port and applies the scheme default only when the template has none.
+		if uri != nil && !hasPort && uri.Scheme == "https" && inputType == typeHostWithPort {
+			// uri.Host keeps the brackets of an IPv6 literal, while
+			// JoinHostPort adds them again, yielding "[[::1]]:443".
+			return net.JoinHostPort(uri.Hostname(), "443")
 		}
 		if hasDefaultPort {
+			// For a URL input the host is the parsed hostname, not the raw
+			// input: JoinHostPort(input, defaultPort) brackets the raw string
+			// (a scheme carries a colon), producing e.g. "[http://example.com]:443",
+			// which is not a usable host:port.
+			if isURL && uri != nil && !hasPort && uri.Hostname() != "" {
+				return net.JoinHostPort(uri.Hostname(), defaultPort)
+			}
 			return net.JoinHostPort(input, defaultPort)
 		}
 		if inputType == typeHostWithOptionalPort {

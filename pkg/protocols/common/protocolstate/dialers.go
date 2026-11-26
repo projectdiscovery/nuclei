@@ -10,7 +10,10 @@ import (
 )
 
 type Dialers struct {
-	Fastdialer                 *fastdialer.Dialer
+	Fastdialer *fastdialer.Dialer
+	// HTTPProxyTunnelFastdialer reaches targets through the http -proxy with
+	// CONNECT. It is nil unless an http proxy is in use.
+	HTTPProxyTunnelFastdialer  *fastdialer.Dialer
 	RawHTTPClient              *rawhttp.Client
 	DefaultHTTPClient          *retryablehttp.Client
 	HTTPClientPool             *HTTPPool

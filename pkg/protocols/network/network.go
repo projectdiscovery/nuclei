@@ -169,17 +169,13 @@ func (request *Request) GetID() string {
 
 // Compile compiles the protocol request for further execution.
 func (request *Request) Compile(options *protocols.ExecutorOptions) error {
-	var shouldUseTLS bool
 	var err error
 
 	request.options = options
 	for _, address := range request.Address {
 		// check if the connection should be encrypted
-		if strings.HasPrefix(address, "tls://") {
-			shouldUseTLS = true
-			address = strings.TrimPrefix(address, "tls://")
-		}
-		request.addresses = append(request.addresses, addressKV{address: address, tls: shouldUseTLS})
+		trimmed, shouldUseTLS := strings.CutPrefix(address, "tls://")
+		request.addresses = append(request.addresses, addressKV{address: trimmed, tls: shouldUseTLS})
 	}
 	// Pre-compile context-free input DSL functions before executing the request.
 	// Network helpers stay deferred so cached templates cannot retain scan results.
@@ -254,7 +250,9 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 			return errors.Wrap(err, "could not parse payloads")
 		}
 		// if we have payloads, adjust threads if none specified
-		request.Threads = options.GetThreadsForNPayloadRequests(request.Requests(), request.Threads)
+		// syncutil.New rejects a pool size below 1, so a -pc below 1 sends one
+		// payload at a time, as http and javascript requests do.
+		request.Threads = max(options.GetThreadsForNPayloadRequests(request.Requests(), request.Threads), 1)
 	}
 
 	// Create a client for the class
@@ -287,10 +285,8 @@ func (request *Request) Requests() int {
 	if len(request.ports) > 0 {
 		requests *= len(request.ports)
 	}
-	if request.generator != nil {
-		requests *= request.generator.NewIterator().Total()
-	}
-	return requests
+
+	return requests * request.requestsPerAddress()
 }
 
 func (request *Request) SetDialer(dialer *fastdialer.Dialer) {
@@ -309,4 +305,14 @@ func (r *Request) UpdateOptions(opts *protocols.ExecutorOptions) {
 	}
 	r.options = r.options.Copy()
 	r.options.ApplyNewEngineOptions(opts)
+}
+
+// requestsPerAddress returns the requests sent to each address: one per payload
+// combination, or one.
+func (request *Request) requestsPerAddress() int {
+	if request.generator == nil {
+		return 1
+	}
+
+	return request.generator.NewIterator().Total()
 }

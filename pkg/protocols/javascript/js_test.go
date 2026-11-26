@@ -2,6 +2,7 @@ package javascript_test
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"sync/atomic"
 	"testing"
@@ -11,10 +12,12 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/disk"
 	"github.com/projectdiscovery/nuclei/v3/pkg/loader/workflow"
+	"github.com/projectdiscovery/nuclei/v3/pkg/operators/matchers" //nolint:depguard // No depguard rules are configured, so its default list allows only the standard library.
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	"github.com/projectdiscovery/nuclei/v3/pkg/progress"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/helpers/writer" //nolint:depguard // No depguard rules are configured, so its default list allows only the standard library.
 	javascript "github.com/projectdiscovery/nuclei/v3/pkg/protocols/javascript"
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates"
 	"github.com/projectdiscovery/ratelimit"
@@ -228,10 +231,12 @@ type countingProgress struct {
 	testutils.MockProgressClient
 	requests atomic.Int64
 	errors   atomic.Int64
+	matched  atomic.Int64
 }
 
 func (p *countingProgress) IncrementRequests()        { p.requests.Add(1) }
 func (p *countingProgress) SetRequests(count uint64)  { p.requests.Add(int64(count)) }
+func (p *countingProgress) IncrementMatched()         { p.matched.Add(1) }
 func (p *countingProgress) IncrementErrorsBy(n int64) { p.errors.Add(n) }
 func (p *countingProgress) IncrementFailedRequestsBy(n int64) {
 	p.requests.Add(n)
@@ -284,6 +289,52 @@ func TestPreConditionRequestsAreCounted(t *testing.T) {
 
 			require.Equal(t, int64(request.Requests()), progress.requests.Load())
 			require.Equal(t, tt.wantErrors, progress.errors.Load())
+		})
+	}
+}
+
+//nolint:exhaustruct,exhaustruct_v5,paralleltest // fixtures keep zero-value defaults; the test options are global
+func TestMatchedCountsEachPayloadResultOnce(t *testing.T) {
+	options := testutils.DefaultOptions.Copy()
+	testutils.Init(options)
+	t.Cleanup(func() {
+		testutils.Cleanup(options)
+	})
+
+	// 1 thread sends the payloads one at a time, 3 sends them in parallel.
+	for _, threads := range []int{1, 3} {
+		t.Run(fmt.Sprintf("threads %d", threads), func(t *testing.T) {
+			executorOptions := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{ID: "matched-count"})
+			executorOptions.JsCompiler = templates.GetJsCompiler()
+			executorOptions.Verified = true
+			progress := &countingProgress{}
+			executorOptions.Progress = progress
+
+			request := &javascript.Request{
+				Args:     map[string]any{},
+				Threads:  threads,
+				Payloads: map[string]any{"word": []any{"one", "two", "three"}},
+				Code:     "function run() { return { success: true, response: \"pong\" }; }\nrun();",
+				Matchers: []*matchers.Matcher{{
+					Type: matchers.MatcherTypeHolder{MatcherType: matchers.DSLMatcher},
+					DSL:  []string{`contains(response, "pong")`},
+				}},
+			}
+			require.NoError(t, request.Compile(executorOptions))
+
+			// The executer writes each result through writer.WriteResult, which
+			// counts it. The request must not count it again.
+			var written atomic.Int64
+
+			target := contextargs.NewWithInput(context.Background(), "127.0.0.1:1")
+			require.NoError(t, request.ExecuteWithResults(target, nil, nil, func(event *output.InternalWrappedEvent) {
+				if writer.WriteResult(event, executorOptions.Output, progress, nil) {
+					written.Add(1)
+				}
+			}))
+
+			require.Equal(t, int64(3), written.Load())
+			require.Equal(t, int64(3), progress.matched.Load())
 		})
 	}
 }

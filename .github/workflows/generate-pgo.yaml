@@ -4,12 +4,14 @@ on:
   workflow_dispatch: {}
   workflow_call: {}
 
+permissions: {}
+
 jobs:
   pgo:
     runs-on: ubuntu-latest
     if: github.repository == 'projectdiscovery/nuclei'
     permissions:
-      contents: write
+      contents: read
     env:
       GITHUB_TOKEN: "${{ github.token }}"
       PGO_FILE: "cmd/nuclei/default.pgo"
@@ -18,9 +20,11 @@ jobs:
       TARGET_LIST: "/tmp/targets.txt"
       PROFILE_MEM: "/tmp/nuclei-profile"
     steps:
-      - uses: actions/checkout@v7.0.1
-      - uses: projectdiscovery/actions/setup/go@v1
-      - uses: projectdiscovery/nuclei-action/cache@v3
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: projectdiscovery/actions/setup/go@3037fcdc8e8ea0807b5bce596eabc6f919d9e3c5 # v1
+      - uses: projectdiscovery/nuclei-action/cache@b5cad2ce0285c9d0c60402ee5972e40c08b3a47c # v3
       - run: |
           for i in {1..${{ env.TARGET_COUNT }}}; do
               echo "${{ env.TARGET }}/-/?_=${i}" >> "${{ env.TARGET_LIST }}";
@@ -43,7 +47,7 @@ jobs:
         env:
           DISABLE_STDOUT: "1"
       - run: mv "${PROFILE_MEM}.cpu" "${PGO_FILE}"
-      - uses: actions/upload-artifact@v7
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: "pgo"
           path: "${{ env.PGO_FILE }}"

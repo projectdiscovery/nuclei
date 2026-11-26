@@ -78,3 +78,50 @@ func TestClusterTemplates(t *testing.T) {
 		require.ElementsMatch(t, got, expected)
 	})
 }
+
+// A cluster sends its first member's request for every member, so a race block
+// would force its race_count on the others, or lose it to a plain one (#8280).
+//
+//nolint:exhaustruct,exhaustruct_v5,paralleltest // fixtures keep zero-value defaults; testutils state is shared
+func TestClusterTemplatesRaceBlocksRunOnTheirOwn(t *testing.T) {
+	execOptions := testutils.NewMockExecuterOptions(testutils.DefaultOptions, &testutils.TemplateInfo{
+		ID:   "templateID",
+		Info: model.Info{SeverityHolder: severity.Holder{Severity: severity.Low}, Name: "test"},
+	})
+	member := func(path string, race bool, count int) *Template {
+		tmpl := &Template{Path: path, RequestsHTTP: []*http.Request{{
+			Path:               []string{"{{BaseURL}}/same"},
+			Race:               race,
+			RaceNumberRequests: count,
+		}}}
+		tmpl.Options = execOptions
+
+		return tmpl
+	}
+	plain, otherPlain := member("a-plain.yaml", false, 0), member("b-plain.yaml", false, 0)
+	race, otherRace := member("c-race.yaml", true, 5), member("d-race.yaml", true, 3)
+	// without race_count the block runs as any other
+	raceOnly := member("e-race-only.yaml", true, 0)
+	// clusters lists each cluster's template paths, so a failure prints names
+	// and not whole templates
+	clusters := func(members ...*Template) [][]string {
+		clustered := Cluster(members)
+		got := make([][]string, 0, len(clustered))
+
+		for _, cluster := range clustered {
+			paths := make([]string, 0, len(cluster))
+			for _, tmpl := range cluster {
+				paths = append(paths, tmpl.Path)
+			}
+
+			got = append(got, paths)
+		}
+
+		return got
+	}
+
+	require.ElementsMatch(t, [][]string{{race.Path}, {plain.Path}}, clusters(race, plain), "race with plain")
+	require.ElementsMatch(t, [][]string{{race.Path}, {otherRace.Path}}, clusters(race, otherRace), "two race")
+	require.ElementsMatch(t, [][]string{{plain.Path, otherPlain.Path}}, clusters(plain, otherPlain), "two plain")
+	require.ElementsMatch(t, [][]string{{plain.Path, raceOnly.Path}}, clusters(plain, raceOnly), "no race_count")
+}

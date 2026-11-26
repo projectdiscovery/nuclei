@@ -5,9 +5,11 @@ import (
 	"fmt"
 	"io"
 	"reflect"
+	"slices"
 	"sync"
 	"sync/atomic"
 
+	lru "github.com/hashicorp/golang-lru/v2"
 	"github.com/logrusorgru/aurora/v4"
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils/yaml"
@@ -20,6 +22,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/globalmatchers"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/offlinehttp"
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates/signer"
 	templateTypes "github.com/projectdiscovery/nuclei/v3/pkg/templates/types"
@@ -570,6 +573,7 @@ func (template *Template) compileProtocolRequests(options *protocols.ExecutorOpt
 	if options.Options.OfflineHTTP {
 		return template.compileOfflineHTTPRequest(options)
 	}
+	http.KeepRawResponses(template.RequestsHTTP, options.Flow)
 
 	var requests []protocols.Request
 	caps := CapabilitiesFromOptions(options.Options)
@@ -912,28 +916,20 @@ func applyTemplateVerification(template *Template, data []byte) {
 	}
 
 	options := template.Options
-	verificationDigest, _ := templateVerificationDigest(data, template)
+	verificationDigest, digestErr := templateVerificationDigest(data, template)
 	template.verificationDigest = verificationDigest
 
 	// index.gob is an unauthenticated local file. A forged entry can pair
 	// Verified=true with a trusted fingerprint and a digest of the
-	// unsigned payload, so never copy a cached verdict. Always verify
-	// against DefaultTemplateVerifiers. Unsigned templates still
+	// unsigned payload, so never copy a cached verdict from it. Only
+	// verdicts this process computed are reused. Unsigned templates still
 	// short-circuit in ExtractSignatureAndContent with no ECDSA.
+	verifier := templateVerifier(template, data, verificationDigest, digestErr == nil)
 
-	var verifier *signer.TemplateSigner
-
-	for _, verifier = range signer.DefaultTemplateVerifiers {
-		template.Verified, _ = verifier.Verify(data, template)
-		if config.DefaultConfig.LogAllEvents {
-			gologger.Verbose().Msgf("template %v verified by %s : %v", template.ID, verifier.Identifier(), template.Verified)
-		}
-
-		if template.Verified {
-			template.TemplateVerifier = verifier.Identifier()
-			template.verifierFingerprint = verifier.Fingerprint()
-			break
-		}
+	template.Verified = verifier != nil
+	if template.Verified {
+		template.TemplateVerifier = verifier.Identifier()
+		template.verifierFingerprint = verifier.Fingerprint()
 	}
 
 	options.TemplateVerifier = template.TemplateVerifier
@@ -944,6 +940,48 @@ func applyTemplateVerification(template *Template, data []byte) {
 	if !(template.Verified && verifier.Identifier() == "projectdiscovery/nuclei-templates") {
 		template.Options.RawTemplate = data
 	}
+}
+
+// verifiedTemplatesCacheSize stays above the number of signed templates in
+// nuclei-templates so loading the whole set again does not evict its own
+// entries.
+const verifiedTemplatesCacheSize = 1 << 15
+
+// verifiedTemplates maps the verification digest of a template that passed
+// signature verification in this process to the verifier that accepted it.
+// It lets a process that loads the same templates several times (for example
+// one SDK engine per scan) run the ECDSA check once per content. It is
+// memory-only, so a verdict can never come from a file on disk. lru.New only
+// fails for a non-positive size.
+var verifiedTemplates, _ = lru.New[[sha256.Size]byte, *signer.TemplateSigner](verifiedTemplatesCacheSize)
+
+// templateVerifier returns the default verifier that accepts data, or nil when
+// none does. Only successful verifications are cached: a verifier added later
+// may accept a template that failed before.
+func templateVerifier(template *Template, data []byte, digest [sha256.Size]byte, cacheable bool) *signer.TemplateSigner {
+	if cacheable {
+		// The verifier list can change at runtime, so a verdict from a
+		// verifier that is no longer listed does not count.
+		if verifier, ok := verifiedTemplates.Get(digest); ok && slices.Contains(signer.DefaultTemplateVerifiers, verifier) {
+			return verifier
+		}
+	}
+
+	for _, verifier := range signer.DefaultTemplateVerifiers {
+		verified, _ := verifier.Verify(data, template)
+		if config.DefaultConfig.LogAllEvents {
+			gologger.Verbose().Msgf("template %v verified by %s : %v", template.ID, verifier.Identifier(), verified)
+		}
+
+		if verified {
+			if cacheable {
+				verifiedTemplates.Add(digest, verifier)
+			}
+			return verifier
+		}
+	}
+
+	return nil
 }
 
 // ContentDigest returns the digest used to bind cached signature

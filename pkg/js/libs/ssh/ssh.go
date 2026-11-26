@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -263,11 +264,8 @@ func connectSSHInfoMode(ctx context.Context, opts *connectOptions) (*ssh.Handsha
 		data.Banner = strings.TrimSpace(banner)
 		return nil
 	}
-	host := opts.Host
-	if strings.HasPrefix(host, "[") && strings.HasSuffix(host, "]") {
-		host = host[1 : len(host)-1]
-	}
-	rhost := net.JoinHostPort(host, fmt.Sprint(opts.Port))
+	host := strings.TrimSuffix(strings.TrimPrefix(opts.Host, "["), "]")
+	rhost := net.JoinHostPort(host, strconv.Itoa(opts.Port))
 	conn, err := (&net.Dialer{Timeout: sshConfig.Timeout}).DialContext(ctx, "tcp", rhost)
 	if err != nil {
 		return nil, err
@@ -335,7 +333,8 @@ func connect(opts *connectOptions) (*ssh.Client, error) {
 		conf.Auth = append(conf.Auth, ssh.PublicKeys(signer))
 	}
 
-	client, err := ssh.Dial("tcp", fmt.Sprintf("%s:%d", opts.Host, opts.Port), conf)
+	host := strings.TrimSuffix(strings.TrimPrefix(opts.Host, "["), "]")
+	client, err := ssh.Dial("tcp", net.JoinHostPort(host, strconv.Itoa(opts.Port)), conf)
 	if err != nil {
 		return nil, err
 	}

@@ -103,3 +103,9 @@ func TestValidateOptionsIPVersionPreference(t *testing.T) {
 	}
 	require.ErrorContains(t, ValidateOptions(&types.Options{IPVersion: goflags.StringSlice{"7"}}), "unsupported ip version")
 }
+
+func TestValidateOptionsAutoTech(t *testing.T) {
+	require.NoError(t, ValidateOptions(&types.Options{AutoTech: true}))
+	require.ErrorContains(t, ValidateOptions(&types.Options{AutoTech: true, AutomaticScan: true}), "-automatic-scan")
+	require.ErrorContains(t, ValidateOptions(&types.Options{AutoTech: true, Resume: "resume.cfg"}), "-resume")
+}

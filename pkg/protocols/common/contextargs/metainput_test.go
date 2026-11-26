@@ -55,3 +55,33 @@ func TestGetCopyIfHostOutdated(t *testing.T) {
 		require.Equal(t, "example.com:443", updated.MetaInput.Address())
 	})
 }
+
+func TestGetCopyIfAddressOutdated(t *testing.T) {
+	t.Parallel()
+
+	t.Run("scheme-less input with https url resolves to 443", func(t *testing.T) {
+		t.Parallel()
+
+		ctx := NewWithInput(context.Background(), "127.0.0.1")
+		updated := GetCopyIfAddressOutdated(ctx, "https://127.0.0.1/n1")
+		require.NotSame(t, ctx, updated)
+		require.Equal(t, "https://127.0.0.1", updated.MetaInput.Input)
+		require.Equal(t, "127.0.0.1:443", updated.MetaInput.Address())
+		require.Equal(t, "127.0.0.1", ctx.MetaInput.Input)
+	})
+
+	t.Run("host copy keeps a scheme-less input", func(t *testing.T) {
+		t.Parallel()
+
+		// Requests run with this copy, and their events report its input.
+		ctx := NewWithInput(context.Background(), "127.0.0.1")
+		require.Same(t, ctx, GetCopyIfHostOutdated(ctx, "https://127.0.0.1/n1"))
+	})
+
+	t.Run("same scheme and host returns original context", func(t *testing.T) {
+		t.Parallel()
+
+		ctx := NewWithInput(context.Background(), "https://127.0.0.1")
+		require.Same(t, ctx, GetCopyIfAddressOutdated(ctx, "https://127.0.0.1/n1"))
+	})
+}

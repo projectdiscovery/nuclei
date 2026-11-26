@@ -483,6 +483,9 @@ func (r *Runner) runStandardEnumeration(executerOpts *protocols.ExecutorOptions,
 	if r.options.AutomaticScan {
 		return r.executeSmartWorkflowInput(executerOpts, store, engine)
 	}
+	if r.options.AutoTech {
+		return r.executeWithDetectedTech(executerOpts, store, engine)
+	}
 
 	return r.executeTemplatesInput(store, engine)
 }
@@ -861,6 +864,9 @@ func (r *Runner) RunEnumeration() error {
 			return errors.Wrap(err, "could not read plan")
 		}
 		r.Logger.Info().Msgf("Running %d plan entries from %s, %d already finished", len(run.entries), r.options.RunPlanFile, run.resumed)
+		run.follow(planFollowInterval, func(err error) {
+			r.Logger.Error().Msgf("Could not follow plan: %s", err)
+		})
 		executorEngine.SetPlanRun(run)
 		defer r.finishPlanRun(run)
 	}
@@ -905,7 +911,7 @@ func (r *Runner) RunEnumeration() error {
 	// are used, and if inputs are non-http to pre-perform probing
 	// of urls and storing them for execution.
 	if !r.options.DisableHTTPProbe && loader.IsHTTPBasedProtocolUsed(store) && r.isInputNonHTTP() {
-		inputHelpers, err := r.initializeTemplatesHTTPInput()
+		inputHelpers, err := r.initializeTemplatesHTTPInput(int64(len(store.Templates()) + len(store.Workflows())))
 		if err != nil {
 			return errors.Wrap(err, "could not probe http input")
 		}
@@ -1186,10 +1192,7 @@ func (r *Runner) SaveResumeConfig(path string) error {
 		}
 	}
 
-	resumeCfgClone := r.resumeCfg.Clone()
-	resumeCfgClone.ResumeFrom = resumeCfgClone.Current
-
-	data, err := json.MarshalIndent(resumeCfgClone, "", "\t")
+	data, err := json.MarshalIndent(r.resumeCfg.Snapshot(), "", "\t")
 	if err != nil {
 		return fmt.Errorf("encode resume configuration: %w", err)
 	}

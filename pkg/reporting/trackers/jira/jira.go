@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
-	"sync"
 	"text/template"
 
 	"github.com/andygrunwald/go-jira"
@@ -171,9 +170,6 @@ type Integration struct {
 	Formatter
 	jira    *jira.Client
 	options *Options
-
-	once         *sync.Once
-	transitionID string
 }
 
 // Options contains the configuration options for jira client
@@ -256,7 +252,6 @@ func New(options *Options) (*Integration, error) {
 	integration := &Integration{
 		jira:    jiraClient,
 		options: options,
-		once:    &sync.Once{},
 	}
 	return integration, nil
 }
@@ -342,12 +337,7 @@ func (i *Integration) CreateNewIssue(event *output.ResultEvent) (*filters.Create
 	}
 	createdIssue, resp, err := i.jira.Issue.Create(issueData)
 	if err != nil {
-		var data string
-		if resp != nil && resp.Body != nil {
-			d, _ := io.ReadAll(resp.Body)
-			data = string(d)
-		}
-		return nil, fmt.Errorf("%w => %s", err, data)
+		return nil, fmt.Errorf("%w => %s", err, readAndCloseBody(resp))
 	}
 	return i.getIssueResponseFromJira(createdIssue)
 }
@@ -404,40 +394,53 @@ func (i *Integration) CloseIssue(event *output.ResultEvent) error {
 		return nil
 	}
 
-	issue, err := i.FindExistingIssue(event, false)
+	issue, err := i.FindExistingIssue(event, true)
 	if err != nil {
 		return err
-	} else if issue.ID != "" {
-		// Lazy load the transitions ID in case it's not set.
-		// StatusNot is a target status name (matches JQL usage below and the
-		// field's semantics); find the transition that moves to that status.
-		i.once.Do(func() {
-			transitions, _, err := i.jira.Issue.GetTransitions(issue.ID)
-			if err != nil {
-				return
-			}
-			for _, transition := range transitions {
-				if transition.To.Name == i.options.StatusNot {
-					i.transitionID = transition.ID
-					break
-				}
-			}
-		})
-		if i.transitionID == "" {
-			return nil
-		}
-		transition := jira.CreateTransitionPayload{
-			Transition: jira.TransitionPayload{
-				ID: i.transitionID,
-			},
-		}
-
-		_, err = i.jira.Issue.DoTransitionWithPayload(issue.ID, transition)
-		if err != nil {
-			return err
-		}
 	}
-	return nil
+	if issue.ID == "" {
+		return nil
+	}
+	return i.CloseIssueByID(issue.ID)
+}
+
+// CloseIssueByID transitions a known Jira issue to the configured target status.
+func (i *Integration) CloseIssueByID(issueID string) error {
+	if i.options.StatusNot == "" {
+		return nil
+	}
+	if issueID == "" {
+		return fmt.Errorf("jira issue ID is required")
+	}
+
+	transitions, _, err := i.jira.Issue.GetTransitions(issueID)
+	if err != nil {
+		return fmt.Errorf("get Jira issue %s transitions: %w", issueID, err)
+	}
+	for _, transition := range transitions {
+		if transition.To.Name != i.options.StatusNot {
+			continue
+		}
+		resp, err := i.jira.Issue.DoTransitionWithPayload(issueID, jira.CreateTransitionPayload{
+			Transition: jira.TransitionPayload{ID: transition.ID},
+		})
+		// go-jira does not decode the transition response, so it leaves the
+		// body open on success. Close it so the connection can be reused.
+		closeBody(resp)
+		if err != nil {
+			return fmt.Errorf("transition Jira issue %s: %w", issueID, err)
+		}
+		return nil
+	}
+
+	currentIssue, _, err := i.jira.Issue.Get(issueID, nil)
+	if err != nil {
+		return fmt.Errorf("get Jira issue %s status: %w", issueID, err)
+	}
+	if currentIssue.Fields != nil && currentIssue.Fields.Status != nil && currentIssue.Fields.Status.Name == i.options.StatusNot {
+		return nil
+	}
+	return fmt.Errorf("jira issue %s has no transition to %q", issueID, i.options.StatusNot)
 }
 
 // FindExistingIssue checks if the issue already exists and returns its ID
@@ -475,12 +478,7 @@ func (i *Integration) FindExistingIssue(event *output.ResultEvent, useStatus boo
 
 		resp, err := i.jira.Do(req, &searchResult)
 		if err != nil {
-			var data string
-			if resp != nil && resp.Body != nil {
-				d, _ := io.ReadAll(resp.Body)
-				data = string(d)
-			}
-			return jira.Issue{}, fmt.Errorf("%w => %s", err, data)
+			return jira.Issue{}, fmt.Errorf("%w => %s", err, readAndCloseBody(resp))
 		}
 
 		if len(searchResult.Issues) == 0 {
@@ -495,12 +493,12 @@ func (i *Integration) FindExistingIssue(event *output.ResultEvent, useStatus boo
 		}, nil
 	}
 
-	searchOptions := &jira.SearchOptionsV2{
+	searchOptions := &jira.SearchOptions{
 		MaxResults: 1, // if any issue exists, then we won't create a new one
 		Fields:     []string{"summary", "description", "issuetype", "status", "priority", "project"},
 	}
 
-	issues, resp, err := i.jira.Issue.SearchV2JQL(jql, searchOptions)
+	issues, resp, err := i.jira.Issue.Search(jql, searchOptions)
 	if err != nil {
 		var data string
 		if resp != nil && resp.Body != nil {
@@ -510,7 +508,7 @@ func (i *Integration) FindExistingIssue(event *output.ResultEvent, useStatus boo
 		return jira.Issue{}, fmt.Errorf("%w => %s", err, data)
 	}
 
-	switch resp.Total {
+	switch len(issues) {
 	case 0:
 		return jira.Issue{}, nil
 	case 1:
@@ -532,4 +530,26 @@ func (i *Integration) ShouldFilter(event *output.ResultEvent) bool {
 	}
 
 	return true
+}
+
+// readAndCloseBody returns the body of a failed go-jira response and closes it.
+// go-jira hands the response back unread on some error paths, so the caller
+// has to close it.
+func readAndCloseBody(resp *jira.Response) string {
+	if resp == nil || resp.Response == nil || resp.Body == nil {
+		return ""
+	}
+	defer closeBody(resp)
+	data, _ := io.ReadAll(resp.Body)
+	return string(data)
+}
+
+// closeBody closes a go-jira response body. It does not drain it: a server
+// that stalls mid-body would otherwise block the caller, and an empty
+// response, which is what go-jira leaves open, returns to the pool on close.
+func closeBody(resp *jira.Response) {
+	if resp == nil || resp.Response == nil || resp.Body == nil {
+		return
+	}
+	_ = resp.Body.Close()
 }

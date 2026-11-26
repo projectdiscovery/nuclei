@@ -143,7 +143,7 @@ TARGET:
    -l, -list string              path to file containing a list of target URLs/hosts to scan (one per line)
    -targets-inline string        inline multiline target list (for use in template profiles)
    -eh, -exclude-hosts string[]  hosts to exclude to scan from the input list (ip, cidr, hostname)
-   -resume string                resume scan from and save to specified file (clustering will be disabled)
+   -resume string                resume scan from and save to specified file
    -sa, -scan-all-ips            scan all the IP's associated with dns record
    -iv, -ip-version string[]     IP version to scan of hostname (4,6); default uses dialer fallback, -sa scans all addresses
    -dun, -disable-url-normalization  keep targets exactly as supplied instead of collapsing urls that address the same resource
@@ -160,6 +160,7 @@ TEMPLATES:
    -nt, -new-templates                    run only new templates added in latest nuclei-templates release
    -ntv, -new-templates-version string[]  run new templates added in specific version
    -as, -automatic-scan                   automatic web scan using wappalyzer technology detection to tags mapping
+   -auto-tech                             run the tech templates first, then skip templates bound to products they did not detect on the target
    -t, -templates string[]                list of template or template directory to run (comma-separated, file)
    -turl, -template-url string[]          template url or list containing template urls to run (comma-separated, file)
    -ai, -prompt string                    generate and run template using ai prompt
@@ -167,12 +168,12 @@ TEMPLATES:
    -wurl, -workflow-url string[]          workflow url or list containing workflow urls to run (comma-separated, file)
    -validate                              validate the passed templates to nuclei
    -plan string                           write the work a scan would do with its estimated cost to a jsonl file, then exit without sending requests to any target
-   -run-plan string                       run only the entries of a -plan file, logging finished ones to <file>.done so running it again resumes
+   -run-plan string                       run only the entries of a -plan file, logging finished ones to <file>.done so running it again resumes, and following entries appended to it and ids appended to <file>.cancel
    -nss, -no-strict-syntax                disable strict syntax check on templates
    -td, -template-display                 displays the templates content
    -tl                                    list all templates matching current filters
    -tgl                                   list all available tags
-   -sign                                  signs the templates with the private key defined in NUCLEI_SIGNATURE_PRIVATE_KEY env variable
+   -sign                                  signs the templates with the key in NUCLEI_USER_PRIVATE_KEY and NUCLEI_USER_CERTIFICATE, or in the keys folder
    -code                                  enable loading code protocol-based templates
    -dut, -disable-unsigned-templates      disable running unsigned templates or templates with mismatched signature
    -esc, -enable-self-contained           enable loading self-contained templates
@@ -321,7 +322,7 @@ OPTIMIZATIONS:
    -timeout int                     time to wait in seconds before timeout (default 10)
    -retries int                     number of times to retry a failed request (default 1)
    -ldp, -leave-default-ports       leave default HTTP/HTTPS ports (eg. host:80,host:443)
-   -mhe, -max-host-error int        max errors for a host before skipping from scan (default 30)
+   -mhe, -max-host-error int        max http errors for a host:port before skipping requests to it (default 30)
    -te, -track-error string[]       adds given error to max-host-error watchlist (standard, file)
    -nmhe, -no-mhe                   disable skipping host from scan based on errors
    -project                         use a project folder to avoid sending same request multiple times
@@ -415,11 +416,11 @@ Run nuclei with a JSON output:
 Run nuclei with sorted Markdown outputs (with environment variables):
 	$ MARKDOWN_EXPORT_SORT_MODE=template nuclei -target example.com -markdown-export nuclei_report/
 
-Additional documentation is available at: https://docs.projectdiscovery.io/getting-started/running
+Additional documentation is available at: https://docs.projectdiscovery.io/tools/nuclei/running
 
 ```
 
-Additional documentation is available at: [**`docs.projectdiscovery.io/getting-started/running`**](https://docs.projectdiscovery.io/getting-started/running?utm_source=github&utm_medium=web&utm_campaign=nuclei_readme)
+Additional documentation is available at: [**`docs.projectdiscovery.io/tools/nuclei/running`**](https://docs.projectdiscovery.io/tools/nuclei/running?utm_source=github&utm_medium=web&utm_campaign=nuclei_readme)
 
 </details>
 

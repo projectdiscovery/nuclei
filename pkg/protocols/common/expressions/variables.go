@@ -14,11 +14,20 @@ var (
 	unresolvedVariablesRegex = regexp.MustCompile(`(?:%7[B|b]|\{){2}([^}]+)(?:%7[D|d]|\}){2}["'\)\}]*`)
 )
 
+func findVariableMatches(data string) [][]string {
+	// An opening marker starts with two raw braces or includes a %7 escape.
+	// The latter also covers markers that mix raw and encoded braces.
+	if !strings.Contains(data, "{{") && !strings.Contains(data, "%7") {
+		return nil
+	}
+	return unresolvedVariablesRegex.FindAllStringSubmatch(data, -1)
+}
+
 // ContainsUnresolvedVariables returns an error with variable names if the passed
 // input contains unresolved {{<pattern-here>}} variables.
 func ContainsUnresolvedVariables(items ...string) error {
 	for _, data := range items {
-		matches := unresolvedVariablesRegex.FindAllStringSubmatch(data, -1)
+		matches := findVariableMatches(data)
 		if len(matches) == 0 {
 			return nil
 		}
@@ -49,7 +58,7 @@ func ContainsUnresolvedVariables(items ...string) error {
 // input contains unresolved {{<pattern-here>}} variables within the provided list
 func ContainsVariablesWithNames(names map[string]interface{}, items ...string) error {
 	for _, data := range items {
-		matches := unresolvedVariablesRegex.FindAllStringSubmatch(data, -1)
+		matches := findVariableMatches(data)
 		if len(matches) == 0 {
 			return nil
 		}
@@ -84,7 +93,7 @@ func ContainsVariablesWithNames(names map[string]interface{}, items ...string) e
 func ContainsVariablesWithIgnoreList(skipNames map[string]interface{}, items ...string) error {
 	var unresolvedVariables []string
 	for _, data := range items {
-		matches := unresolvedVariablesRegex.FindAllStringSubmatch(data, -1)
+		matches := findVariableMatches(data)
 		if len(matches) == 0 {
 			return nil
 		}
@@ -119,7 +128,7 @@ func ContainsVariablesWithIgnoreList(skipNames map[string]interface{}, items ...
 // refers to a variable in names, either alone or inside an expression. It
 // parses the marker but does not evaluate it.
 func ReferencesVariables(data string, names map[string]interface{}) bool {
-	for _, match := range unresolvedVariablesRegex.FindAllStringSubmatch(data, -1) {
+	for _, match := range findVariableMatches(data) {
 		expr, err := govaluate.NewEvaluableExpressionWithFunctions(match[1], dsl.HelperFunctions)
 		if err != nil {
 			continue

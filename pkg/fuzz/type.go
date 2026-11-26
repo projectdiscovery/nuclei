@@ -103,7 +103,12 @@ func (v *SliceOrMapSlice) UnmarshalYAML(callback func(interface{}) error) error 
 		tmpx := mapsutil.NewOrderedMap[string, string]()
 		// preserve order
 		for _, v := range node {
-			tmpx.Set(v.Key.(string), v.Value.(string))
+			key, keyOK := v.Key.(string)
+			value, valueOK := v.Value.(string)
+			if !keyOK || !valueOK {
+				return fmt.Errorf("invalid fuzz entry %v: %v (%T: %T): keys and values must be strings, quote them to use them as strings", v.Key, v.Value, v.Key, v.Value)
+			}
+			tmpx.Set(key, value)
 		}
 		v.KV = &tmpx
 		return nil

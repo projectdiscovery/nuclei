@@ -61,7 +61,10 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata,
 		return nil
 	}
 
-	wg, err := syncutil.New(syncutil.WithSize(request.options.Options.BulkSize))
+	// syncutil.New rejects a size below 1, so a -bs below 1 reads one file at a time.
+	bulkSize := max(request.options.Options.BulkSize, 1)
+
+	wg, err := syncutil.New(syncutil.WithSize(bulkSize)) //nolint:varnamelen // wg names the group throughout
 	if err != nil {
 		return err
 	}

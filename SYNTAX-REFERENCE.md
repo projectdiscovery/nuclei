@@ -1021,6 +1021,8 @@ Part Definitions:
 - <code>response</code> - HTTP response received from server
 - <code>status_code</code> - Status Code received from the Server
 - <code>body</code> - HTTP response body received from server (default)
+- <code>raw_body</code> - HTTP response body as received, before content decoding
+- <code>raw_response</code> - HTTP response headers followed by raw_body
 - <code>content_length</code> - HTTP Response content length
 - <code>header,all_headers</code> - HTTP response headers
 - <code>duration</code> - HTTP request time duration

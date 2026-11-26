@@ -2,6 +2,7 @@ package core
 
 import (
 	"context"
+	"errors"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -12,6 +13,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/progress"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/hosterrorscache" //nolint:depguard // No depguard rules are configured, so its default list allows only the standard library.
 	"github.com/projectdiscovery/nuclei/v3/pkg/scan"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	"github.com/projectdiscovery/nuclei/v3/pkg/workflows"
@@ -439,6 +441,57 @@ func TestWorkflowSubtemplatesUnblockCancelledAcquire(t *testing.T) {
 		t.Fatal("workflow stayed blocked after cancel")
 	}
 	require.False(t, waitingStarted.Load(), "third subtemplate must not start while slots are held")
+}
+
+// errHeaderTimeout is the error of a request to a host that accepts
+// connections and never answers.
+var errHeaderTimeout = errors.New("net/http: timeout awaiting response headers")
+
+// TestWorkflowStepsKeepHostErrors runs steps whose requests time out, as they
+// do against a host that accepts connections and never answers. Each request
+// records its failure, and the step itself returns nil, as a template step can
+// when its requests fail. The step after the last allowed failure must find the
+// host unresponsive (#8177).
+//
+//nolint:exhaustruct,exhaustruct_v5 // fixtures keep zero-value defaults
+func TestWorkflowStepsKeepHostErrors(t *testing.T) {
+	t.Parallel()
+
+	const maxHostError = 3
+
+	cache := hosterrorscache.New(maxHostError, hosterrorscache.DefaultMaxHostsCount, nil)
+	t.Cleanup(cache.Close)
+
+	progressBar, _ := progress.NewStatsTicker(0, false, false, false, 0)
+	stepOptions := &protocols.ExecutorOptions{Progress: progressBar}
+
+	steps := make([]*workflows.WorkflowTemplate, 0, maxHostError+1)
+	for range maxHostError {
+		steps = append(steps, &workflows.WorkflowTemplate{Executers: []*workflows.ProtocolExecuterPair{{
+			Executer: &mockExecuter{executeScanHook: func(ctx *scan.ScanContext) {
+				cache.MarkFailedOrRemove("http", ctx.Input, errHeaderTimeout)
+			}},
+			Options: stepOptions,
+		}}})
+	}
+
+	var unresponsive bool
+
+	steps = append(steps, &workflows.WorkflowTemplate{Executers: []*workflows.ProtocolExecuterPair{{
+		Executer: &mockExecuter{executeScanHook: func(ctx *scan.ScanContext) {
+			unresponsive = cache.Check("http", ctx.Input)
+		}},
+		Options: stepOptions,
+	}}})
+
+	workflow := &workflows.Workflow{
+		Options:   &protocols.ExecutorOptions{Options: &types.Options{TemplateThreads: 1}, HostErrorsCache: cache},
+		Workflows: steps,
+	}
+	input := contextargs.NewWithInput(t.Context(), "http://127.0.0.1:47321")
+	(&Engine{}).executeWorkflow(scan.NewScanContext(t.Context(), input), workflow)
+
+	require.True(t, unresponsive, "the host errors recorded by earlier steps must not be reset")
 }
 
 type mockExecuter struct {

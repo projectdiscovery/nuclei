@@ -4,7 +4,6 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptest"
-	"strings"
 	"sync/atomic"
 	"testing"
 
@@ -17,7 +16,16 @@ import (
 // newDohServer answers every DoH query with a TXT record and counts the hits.
 func newDohServer(t *testing.T, hits *atomic.Int32) *httptest.Server {
 	t.Helper()
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	return newDohServerOn(t, hits, "127.0.0.1:0")
+}
+
+// newDohServerOn is newDohServer bound to address, so a test can separate an
+// allowed redirector from a denied target.
+func newDohServerOn(t *testing.T, hits *atomic.Int32, address string) *httptest.Server {
+	t.Helper()
+	listener, err := net.Listen("tcp", address)
+	require.NoError(t, err)
+	server := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		hits.Add(1)
 		m := new(dns.Msg)
 		m.SetQuestion("example.com.", dns.TypeTXT)
@@ -30,6 +38,8 @@ func newDohServer(t *testing.T, hits *atomic.Int32) *httptest.Server {
 		w.Header().Set("Content-Type", "application/dns-message")
 		_, _ = w.Write(packed)
 	}))
+	server.Listener = listener
+	server.Start()
 	t.Cleanup(server.Close)
 	return server
 }
@@ -65,18 +75,19 @@ func TestDohResolverObeysNetworkPolicy(t *testing.T) {
 
 	t.Run("redirect to denied address", func(t *testing.T) {
 		var hits atomic.Int32
-		internal := newDohServer(t, &hits)
+		// The target listens on ::1, which is denied. The redirector stays on
+		// 127.0.0.1. localhost cannot be the allowed hop: denying 127.0.0.1
+		// denies localhost too, because that name resolves to 127.0.0.1.
+		internal := newDohServerOn(t, &hits, "[::1]:0")
 		redirector := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			http.Redirect(w, r, internal.URL+"/internal", http.StatusFound)
 		}))
 		t.Cleanup(redirector.Close)
-		// localhost passes the resolver check through ::1, while 127.0.0.1 is denied
-		_, port, err := net.SplitHostPort(strings.TrimPrefix(redirector.URL, "http://"))
-		require.NoError(t, err)
-		options := dohOptions(t, []string{"127.0.0.1"})
-		require.True(t, protocolstate.IsHostAllowed(options.ExecutionId, "localhost"))
+		options := dohOptions(t, []string{"::1"})
+		require.True(t, protocolstate.IsHostAllowed(options.ExecutionId, "127.0.0.1"))
+		require.False(t, protocolstate.IsHostAllowed(options.ExecutionId, "::1"))
 
-		client, err := Get(options, &Configuration{Retries: 1, Resolvers: []string{"doh:http://localhost:" + port + "/dns-query:get"}})
+		client, err := Get(options, &Configuration{Retries: 1, Resolvers: []string{"doh:" + redirector.URL + "/dns-query:get"}})
 		require.NoError(t, err)
 		_, _ = client.Do(txtQuery())
 		require.Zero(t, hits.Load(), "DoH redirect reached a denied address")

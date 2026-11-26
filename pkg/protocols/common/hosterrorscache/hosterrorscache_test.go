@@ -331,3 +331,56 @@ func TestGetKeyFromContextPinnedTarget(t *testing.T) {
 	idnErr := errkit.WithAttr(errkit.New("connection refused"), slog.String("address", "xn--bcher-kva.example:443"))
 	require.Equal(t, "192.0.2.10:443", cache.GetKeyFromContext(idn, idnErr))
 }
+
+// A target without a scheme is sent to https, so the transport reports its
+// failures at port 443. The http request paths check, mark and reset the host
+// through GetCopyIfAddressOutdated for each request URL (#8175).
+func TestSchemelessTargetIsKeyedByRequestPort(t *testing.T) {
+	t.Parallel()
+
+	target := contextargs.NewWithInput(context.Background(), "127.0.0.1")
+	requestInput := func(path string) *contextargs.Context {
+		return contextargs.GetCopyIfAddressOutdated(target, "https://127.0.0.1"+path)
+	}
+	refused := errkit.WithAttr(
+		errkit.New("connection refused").SetKind(errkit.ErrKindNetworkPermanent),
+		slog.String("address", "127.0.0.1:443"),
+	)
+	timeout := errkit.WithAttr(
+		errkit.New("i/o timeout").SetKind(errkit.ErrKindNetworkTemporary),
+		slog.String("address", "127.0.0.1:443"),
+	)
+
+	t.Run("permanent error skips the next request", func(t *testing.T) {
+		t.Parallel()
+
+		cache := New(30, DefaultMaxHostsCount, nil)
+		cache.MarkFailedOrRemove(protoType, requestInput("/n1"), refused)
+		require.True(t, cache.Check(protoType, requestInput("/n2")))
+	})
+
+	t.Run("temporary errors skip after max host errors", func(t *testing.T) {
+		t.Parallel()
+
+		cache := New(3, DefaultMaxHostsCount, nil)
+
+		for i := range 3 {
+			require.Falsef(t, cache.Check(protoType, requestInput("/n")), "skipped before error %d", i+1)
+			cache.MarkFailedOrRemove(protoType, requestInput("/n"), timeout)
+		}
+
+		require.True(t, cache.Check(protoType, requestInput("/n")))
+	})
+
+	t.Run("success resets the host", func(t *testing.T) {
+		t.Parallel()
+
+		cache := New(3, DefaultMaxHostsCount, nil)
+		cache.MarkFailedOrRemove(protoType, requestInput("/n1"), timeout)
+		cache.MarkFailedOrRemove(protoType, requestInput("/n2"), timeout)
+		cache.MarkFailedOrRemove(protoType, requestInput("/n3"), nil)
+		cache.MarkFailedOrRemove(protoType, requestInput("/n4"), timeout)
+		// The https form of the target reads the same 443 entry.
+		require.False(t, cache.Check(protoType, newCtxArgs("https://127.0.0.1")))
+	})
+}
