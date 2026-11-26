@@ -7,6 +7,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators"
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators/extractors"
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators/matchers"
+	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/interactsh"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	"github.com/stretchr/testify/require"
@@ -144,4 +145,15 @@ func TestExecutorOptionsApplyNewEngineOptionsReplacesInteractshScope(t *testing.
 	})
 
 	require.Same(t, next, reused.InteractshScope)
+}
+
+func TestIsOutOfBandConfirmedNeedsInteractshMatchers(t *testing.T) {
+	event := output.InternalEvent{"interactsh_protocol": "dns"}
+	bodyOnly := &operators.Operators{Matchers: []*matchers.Matcher{{Part: "body", Words: []string{"hi"}}}}
+	oob := &operators.Operators{Matchers: []*matchers.Matcher{{Part: "interactsh_protocol", Words: []string{"dns"}}}}
+
+	// a response header named Interactsh-Protocol sets the same key
+	require.False(t, isOutOfBandConfirmed(bodyOnly, event))
+	require.True(t, isOutOfBandConfirmed(oob, event))
+	require.False(t, isOutOfBandConfirmed(oob, output.InternalEvent{}))
 }

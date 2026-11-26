@@ -1,6 +1,7 @@
 package output
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 	"testing"
@@ -54,6 +55,48 @@ func TestStandardWriterRequest(t *testing.T) {
 
 		require.Equal(t, `{"template":"misconfiguration/tcpconfig.yaml","type":"http","input":"https://example.com/tcpconfig.html","address":"example.com:443","error":"cause=\"context deadline exceeded (Client.Timeout exceeded while awaiting headers)\"","kind":"unknown-error"}`, errorWriter.String())
 	})
+}
+
+func TestFormatScreenIncludesConfidenceScore(t *testing.T) {
+	w, err := NewStandardWriter(&types.Options{NoColor: true})
+	require.NoError(t, err)
+	t.Cleanup(func() { w.Close() })
+
+	formatted := string(w.formatScreen(&ResultEvent{
+		TemplateID:      "test-template",
+		Type:            "http",
+		Host:            "example.com",
+		Confidence:      "low",
+		ConfidenceScore: 0,
+	}))
+	require.Contains(t, formatted, "[low (0)]")
+}
+
+func TestResultEventSerializesZeroConfidenceScore(t *testing.T) {
+	data, err := json.Marshal(&ResultEvent{Confidence: "low", ConfidenceScore: 0})
+	require.NoError(t, err)
+	require.Contains(t, string(data), `"confidence-score":0`)
+}
+
+func TestWriteFailureReportsNoConfidence(t *testing.T) {
+	w, err := NewStandardWriter(&types.Options{JSONL: true, MatcherStatus: true})
+	require.NoError(t, err)
+	out := &testWriteCloser{}
+	w.outputFile = out
+	w.DisableStdout = true
+
+	err = w.WriteFailure(&InternalWrappedEvent{InternalEvent: InternalEvent{
+		"template-id": "failed-template",
+		"host":        "https://example.com",
+		"type":        "http",
+	}})
+	require.NoError(t, err)
+
+	var event map[string]interface{}
+	require.NoError(t, json.Unmarshal([]byte(strings.TrimSpace(out.String())), &event))
+	require.Equal(t, false, event["matcher-status"])
+	require.Equal(t, ConfidenceNone, event["confidence"])
+	require.Equal(t, float64(0), event["confidence-score"])
 }
 
 // Only the fields filled from a response are redacted; text the template wrote
