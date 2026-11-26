@@ -6,7 +6,9 @@ import (
 	"maps"
 	"os"
 	"path/filepath"
+	"runtime"
 	"sync"
+	"time"
 
 	"github.com/maypok86/otter/v2"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
@@ -209,6 +211,37 @@ func (i *Index) Clear() {
 	i.dirty = true
 }
 
+// cacheFileLocks serializes saves to one cache file across the Index values
+// of this process. Each Index has its own mutex, so two of them over one file
+// would otherwise rename over each other.
+var cacheFileLocks sync.Map // map[string]*sync.Mutex
+
+func lockCacheFile(path string) func() {
+	v, _ := cacheFileLocks.LoadOrStore(path, &sync.Mutex{})
+	m := v.(*sync.Mutex)
+	m.Lock()
+	return m.Unlock
+}
+
+// renameReplace moves src over dst. Windows can refuse the replace while
+// another handle or rename holds dst, so it retries briefly there.
+func renameReplace(src, dst string) error {
+	attempts := 1
+	if runtime.GOOS == "windows" {
+		attempts = 10
+	}
+	var err error
+	for attempt := range attempts {
+		if err = os.Rename(src, dst); err == nil {
+			return nil
+		}
+		if attempt < attempts-1 {
+			time.Sleep(time.Duration(attempt+1) * 10 * time.Millisecond)
+		}
+	}
+	return err
+}
+
 // Save persists the cache to disk using gob encoding.
 func (i *Index) Save() error {
 	i.mu.Lock()
@@ -217,6 +250,9 @@ func (i *Index) Save() error {
 	if !i.dirty {
 		return nil
 	}
+
+	unlock := lockCacheFile(i.cacheFile)
+	defer unlock()
 
 	snapshot := &cacheSnapshot{
 		Version: i.version,
@@ -253,7 +289,7 @@ func (i *Index) Save() error {
 		return err
 	}
 
-	if err := os.Rename(tmpFile, i.cacheFile); err != nil {
+	if err := renameReplace(tmpFile, i.cacheFile); err != nil {
 		_ = os.Remove(tmpFile)
 
 		return err
