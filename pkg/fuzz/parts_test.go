@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/projectdiscovery/nuclei/v3/internal/tests/testutils"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/interactsh"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/variables"
@@ -16,8 +17,10 @@ import (
 func newFuzzTestInteractshClient(t *testing.T) interactsh.IClient {
 	t.Helper()
 
+	serverURL, httpClient := testutils.NewInteractshServer(t)
 	client, err := interactsh.New(&interactsh.Options{
-		ServerURL:           "oast.fun",
+		ServerURL:           serverURL,
+		HTTPClient:          httpClient,
 		CacheSize:           100,
 		Eviction:            60 * time.Second,
 		CooldownPeriod:      0,

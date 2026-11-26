@@ -223,8 +223,10 @@ func executeCodeProtocolWithCallbackOverride(t *testing.T, configure func(*types
 	}
 	executerOpts.Variables.Set("callback", "{{interactsh-url}}")
 
+	serverURL, httpClient := testutils.NewInteractshServer(t)
 	client, err := interactsh.New(&interactsh.Options{
-		ServerURL:           options.InteractshURL,
+		ServerURL:           serverURL,
+		HTTPClient:          httpClient,
 		CacheSize:           options.InteractionsCacheSize,
 		Eviction:            time.Duration(options.InteractionsEviction) * time.Second,
 		CooldownPeriod:      time.Duration(options.InteractionsCoolDownPeriod) * time.Second,
