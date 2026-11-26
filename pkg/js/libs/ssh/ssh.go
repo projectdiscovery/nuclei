@@ -2,8 +2,9 @@ package ssh
 
 import (
 	"context"
-	"fmt"
+	"net"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -227,7 +228,8 @@ func connectSSHInfoMode(opts *connectOptions) (*ssh.HandshakeLog, error) {
 		data.Banner = strings.TrimSpace(banner)
 		return nil
 	}
-	rhost := fmt.Sprintf("%s:%d", opts.Host, opts.Port)
+	host := strings.TrimSuffix(strings.TrimPrefix(opts.Host, "["), "]")
+	rhost := net.JoinHostPort(host, strconv.Itoa(opts.Port))
 	client, err := ssh.Dial("tcp", rhost, sshConfig)
 	if err != nil {
 		return nil, err
@@ -281,7 +283,8 @@ func connect(opts *connectOptions) (*ssh.Client, error) {
 		conf.Auth = append(conf.Auth, ssh.PublicKeys(signer))
 	}
 
-	client, err := ssh.Dial("tcp", fmt.Sprintf("%s:%d", opts.Host, opts.Port), conf)
+	host := strings.TrimSuffix(strings.TrimPrefix(opts.Host, "["), "]")
+	client, err := ssh.Dial("tcp", net.JoinHostPort(host, strconv.Itoa(opts.Port)), conf)
 	if err != nil {
 		return nil, err
 	}
