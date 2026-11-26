@@ -189,6 +189,12 @@ func TestTmplClusterKeyDiffersOnProtocolRedirects(t *testing.T) {
 	require.NotEqual(t, base.TmplClusterKey(), withProto.TmplClusterKey())
 }
 
+func TestTmplClusterKeyDiffersOnHostRedirects(t *testing.T) {
+	base := &Request{Path: []string{"{{BaseURL}}"}, Method: HTTPMethodTypeHolder{MethodType: HTTPGet}}
+	withHost := &Request{Path: []string{"{{BaseURL}}"}, Method: HTTPMethodTypeHolder{MethodType: HTTPGet}, HostRedirects: true}
+	require.NotEqual(t, base.TmplClusterKey(), withHost.TmplClusterKey())
+}
+
 func TestTmplClusterKeyDiffersOnPath(t *testing.T) {
 	base := &Request{Path: []string{"{{BaseURL}}/a"}, Method: HTTPMethodTypeHolder{MethodType: HTTPGet}}
 	other := &Request{Path: []string{"{{BaseURL}}/b"}, Method: HTTPMethodTypeHolder{MethodType: HTTPGet}}
