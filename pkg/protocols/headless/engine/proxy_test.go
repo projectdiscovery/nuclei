@@ -260,7 +260,9 @@ func TestHeadlessProxy_RealChromeWebSocketEndToEnd(t *testing.T) {
 
 	res, err := page.Eval(script)
 	require.NoError(t, err)
-	require.Equal(t, "ERROR", res.Value.String())
+	// ERROR and TIMEOUT both mean the socket never opened. Slow runners such as
+	// Windows can exceed the 3s in-page timer, so only OPEN is a failure here.
+	require.NotEqual(t, "OPEN", res.Value.String(), "blocked WebSocket must not open")
 	require.Zero(t, blockedHits.Load(), "blocked WebSocket server must never receive connections from Chrome")
 }
 
