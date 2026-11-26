@@ -98,9 +98,12 @@ type Request struct {
 	TLSCipherTypes []string `yaml:"tls_cipher_types,omitempty" json:"tls_cipher_types,omitempty" jsonschema:"title=TLS Cipher Types,description=TLS Cipher Types to enumerate,enum=weak,enum=secure,enum=insecure,enum=all"`
 
 	// cache any variables that may be needed for operation.
-	dialer  *fastdialer.Dialer
-	tlsx    *tlsx.Service
-	options *protocols.ExecutorOptions
+	dialer *fastdialer.Dialer
+	tlsx   *tlsx.Service
+	// tlsxFallback is tried when tlsx fails behind a proxy, where auto mode is
+	// replaced by a ctls to ztls chain because openssl cannot use the proxy.
+	tlsxFallback *tlsx.Service
+	options      *protocols.ExecutorOptions
 }
 
 // TmplClusterKey generates a unique key for the request
@@ -174,6 +177,20 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 		TLsCipherLevel:    request.TLSCipherTypes,
 	}
 
+	proxied := options.Options.AliveHttpProxy != "" || options.Options.AliveSocksProxy != ""
+	if proxied && request.ScanMode == "auto" {
+		// auto mode would also try openssl, whose s_client dials the target
+		// directly and bypasses -proxy, so use the Go TLS backends only
+		fallbackOptions := *tlsxOptions
+		fallbackOptions.ScanMode = "ztls"
+		tlsxOptions.ScanMode = "ctls"
+		fallbackService, err := tlsx.New(&fallbackOptions)
+		if err != nil {
+			return errkit.New("could not create tlsx service")
+		}
+		request.tlsxFallback = fallbackService
+	}
+
 	tlsxService, err := tlsx.New(tlsxOptions)
 	if err != nil {
 		return errkit.New("could not create tlsx service")
@@ -223,6 +240,20 @@ func (request *Request) allowedAddress(host string) (string, error) {
 		}
 	}
 	return "", protocolstate.ErrHostDenied.Msgf(host)
+}
+
+// connect grabs the tls response, retrying with the fallback backend when one
+// is configured.
+func (request *Request) connect(host, ip, port string) (*clients.Response, error) {
+	response, err := request.tlsx.Connect(host, ip, port)
+	if err == nil || request.tlsxFallback == nil {
+		return response, err
+	}
+	fallbackResponse, fallbackErr := request.tlsxFallback.Connect(host, ip, port)
+	if fallbackErr != nil {
+		return nil, fmt.Errorf("%w; fallback: %w", err, fallbackErr)
+	}
+	return fallbackResponse, nil
 }
 
 // ExecuteWithResults executes the protocol requests and returns results instead of writing them.
@@ -306,7 +337,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 	}
 
 	timeStart := time.Now()
-	response, err := request.tlsx.Connect(host, hostIp, port)
+	response, err := request.connect(host, hostIp, port)
 	duration := time.Since(timeStart)
 	request.options.HostBackoffObserveDial(addressToDial, err)
 	if err != nil {

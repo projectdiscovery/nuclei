@@ -3,10 +3,13 @@ package protocolstate
 import (
 	"bufio"
 	"context"
+	"crypto/tls"
+	"crypto/x509"
 	"fmt"
 	"io"
 	"net"
 	"net/http"
+	"net/http/httptest"
 	"sync"
 	"testing"
 	"time"
@@ -146,4 +149,84 @@ func TestHTTPConnectDialerRejectsInvalid(t *testing.T) {
 	require.NoError(t, err)
 	_, err = d.DialContext(context.Background(), "udp", "127.0.0.1:53")
 	require.Error(t, err)
+}
+
+// startTLSConnectProxy runs a CONNECT proxy behind a self-signed certificate.
+func startTLSConnectProxy(t *testing.T) *httptest.Server {
+	t.Helper()
+	srv := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodConnect {
+			http.Error(w, "connect only", http.StatusMethodNotAllowed)
+			return
+		}
+		upstream, err := net.Dial("tcp", r.Host)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadGateway)
+			return
+		}
+		defer func() { _ = upstream.Close() }()
+		client, rw, err := w.(http.Hijacker).Hijack()
+		if err != nil {
+			return
+		}
+		defer func() { _ = client.Close() }()
+		_, _ = io.WriteString(rw, "HTTP/1.1 200 Connection established\r\n\r\n")
+		_ = rw.Flush()
+		done := make(chan struct{})
+		go func() {
+			_, _ = io.Copy(upstream, client)
+			_ = upstream.Close()
+			close(done)
+		}()
+		_, _ = io.Copy(client, upstream)
+		_ = client.Close()
+		<-done
+	}))
+	t.Cleanup(srv.Close)
+	return srv
+}
+
+func TestHTTPConnectDialerVerifiesProxyCertificate(t *testing.T) {
+	proxy := startTLSConnectProxy(t)
+	target := startEchoServer(t)
+
+	// the self-signed proxy certificate is not trusted, so no credentials are sent
+	d, err := newHTTPConnectDialer("https://user:pass@"+proxy.Listener.Addr().String(), &net.Dialer{}, 5*time.Second)
+	require.NoError(t, err)
+	_, err = d.DialContext(context.Background(), "tcp", target)
+	require.ErrorContains(t, err, "could not establish TLS with proxy")
+
+	// trusting the proxy certificate lets the tunnel through
+	roots := x509.NewCertPool()
+	roots.AddCert(proxy.Certificate())
+	d.tlsConfig = &tls.Config{RootCAs: roots}
+	conn, err := d.DialContext(context.Background(), "tcp", target)
+	require.NoError(t, err)
+	defer func() { _ = conn.Close() }()
+
+	_, err = conn.Write([]byte("ping"))
+	require.NoError(t, err)
+	buf := make([]byte, 4)
+	_, err = io.ReadFull(conn, buf)
+	require.NoError(t, err)
+	require.Equal(t, "ping", string(buf))
+}
+
+func TestHTTPConnectDialerReportsTargetAddress(t *testing.T) {
+	proxyAddr, _ := startConnectProxy(t, http.StatusOK)
+	target := startEchoServer(t)
+
+	d, err := newHTTPConnectDialer("http://"+proxyAddr, &net.Dialer{}, 5*time.Second)
+	require.NoError(t, err)
+	conn, err := d.DialContext(context.Background(), "tcp", target)
+	require.NoError(t, err)
+	defer func() { _ = conn.Close() }()
+
+	require.Equal(t, target, conn.RemoteAddr().String())
+	require.NotEqual(t, proxyAddr, conn.RemoteAddr().String())
+	host, _, err := net.SplitHostPort(conn.RemoteAddr().String())
+	require.NoError(t, err)
+	require.Equal(t, "127.0.0.1", host)
+
+	require.Equal(t, "example.com:443", tunnelAddr("example.com:443").String())
 }

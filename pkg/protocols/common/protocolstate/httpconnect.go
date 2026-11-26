@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"net/netip"
 	"net/url"
 	"time"
 
@@ -20,6 +21,9 @@ type httpConnectDialer struct {
 	proxyURL *url.URL
 	forward  proxy.ContextDialer
 	timeout  time.Duration
+	// tlsConfig overrides the TLS settings used to talk to an https proxy. It
+	// is nil outside tests, which verifies the proxy against the system roots.
+	tlsConfig *tls.Config
 }
 
 var (
@@ -78,11 +82,13 @@ func (d *httpConnectDialer) DialContext(ctx context.Context, network, address st
 	}
 
 	if d.proxyURL.Scheme == "https" {
-		tlsConn := tls.Client(conn, &tls.Config{
-			ServerName:         d.proxyURL.Hostname(),
-			InsecureSkipVerify: true,
-			MinVersion:         tls.VersionTLS10,
-		})
+		// verify the proxy: Proxy-Authorization is sent over this connection
+		cfg := &tls.Config{MinVersion: tls.VersionTLS12}
+		if d.tlsConfig != nil {
+			cfg = d.tlsConfig.Clone()
+		}
+		cfg.ServerName = d.proxyURL.Hostname()
+		tlsConn := tls.Client(conn, cfg)
 		if err := tlsConn.HandshakeContext(ctx); err != nil {
 			_ = conn.Close()
 			return nil, fmt.Errorf("could not establish TLS with proxy %s: %w", proxyAddr, err)
@@ -118,18 +124,42 @@ func (d *httpConnectDialer) DialContext(ctx context.Context, network, address st
 	}
 
 	_ = conn.SetDeadline(time.Time{})
+	tunnel := &tunnelConn{Conn: conn, remote: tunnelAddr(address)}
 	if br.Buffered() > 0 {
-		return &bufferedConn{Conn: conn, reader: br}, nil
+		// keep bytes the proxy sent right after the CONNECT response
+		tunnel.reader = br
 	}
-	return conn, nil
+	return tunnel, nil
 }
 
-// bufferedConn keeps bytes the proxy sent right after the CONNECT response.
-type bufferedConn struct {
+// tunnelAddr turns a dial address into the net.Addr of the tunneled target.
+func tunnelAddr(address string) net.Addr {
+	if addrPort, err := netip.ParseAddrPort(address); err == nil {
+		return net.TCPAddrFromAddrPort(addrPort)
+	}
+	return hostAddr(address)
+}
+
+// hostAddr is a target given by name, which is not resolved here.
+type hostAddr string
+
+func (hostAddr) Network() string  { return "tcp" }
+func (a hostAddr) String() string { return string(a) }
+
+// tunnelConn reports the tunneled target, not the proxy, as the remote
+// address, so callers that record it (dial history, tls results) see the host
+// they asked for. It also replays bytes buffered after the CONNECT response.
+type tunnelConn struct {
 	net.Conn
+	remote net.Addr
 	reader *bufio.Reader
 }
 
-func (c *bufferedConn) Read(p []byte) (int, error) {
-	return c.reader.Read(p)
+func (c *tunnelConn) RemoteAddr() net.Addr { return c.remote }
+
+func (c *tunnelConn) Read(p []byte) (int, error) {
+	if c.reader != nil {
+		return c.reader.Read(p)
+	}
+	return c.Conn.Read(p)
 }
