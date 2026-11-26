@@ -1716,7 +1716,7 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 		return err
 	}
 
-	if request.options.HostErrorsCache != nil && httpcache.ContactedOrigin(sent, resp) {
+	if request.options.HostErrorsCache != nil && sent {
 		request.resetRedirectHostResults(contextargs.GetCopyIfAddressOutdated(input, generatedRequest.URL()), resp)
 	}
 
@@ -2249,15 +2249,16 @@ func (request *Request) recordHostResult(input *contextargs.Context, err error) 
 }
 
 // resetRedirectHostResults clears host-error cache entries for any redirect
-// destinations in resp's chain that answered with a response, keeping failure
-// tracking consecutive for redirect targets as well as the origin.
+// destinations in resp's chain that answered from the network, keeping failure
+// tracking consecutive for live redirect targets without clearing entries when
+// a hop was served from the HTTP cache.
 func (request *Request) resetRedirectHostResults(originInput *contextargs.Context, resp *http.Response) {
 	if request.options.HostErrorsCache == nil || resp == nil {
 		return
 	}
 	var seen map[string]struct{}
 	for cur := resp; cur != nil; {
-		if cur.Request != nil && cur.Request.URL != nil {
+		if !httpcache.ServedFromCache(cur) && cur.Request != nil && cur.Request.URL != nil {
 			target := hosterrorscache.TargetContextForURL(originInput, cur.Request.URL.String())
 			if target != originInput {
 				addr := target.MetaInput.Address()

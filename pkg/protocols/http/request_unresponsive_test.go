@@ -810,4 +810,78 @@ func TestRedirectFailureDoesNotDropOriginalTarget(t *testing.T) {
 		cache.MarkFailedOrRemove("http", destCtx, timeoutErr)
 		require.False(t, cache.Check("http", destCtx))
 	})
+
+	t.Run("cached redirect hop does not clear prior failure on uncontacted host", func(t *testing.T) {
+		var cHits atomic.Int32
+		serverC := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			cHits.Add(1)
+			w.Header().Set("Cache-Control", "no-store")
+			_, _ = fmt.Fprint(w, skipOK)
+		}))
+		t.Cleanup(serverC.Close)
+
+		var bHits atomic.Int32
+		serverB := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			bHits.Add(1)
+			w.Header().Set("Cache-Control", "max-age=60")
+			http.Redirect(w, r, serverC.URL+"/ok", http.StatusFound)
+		}))
+		t.Cleanup(serverB.Close)
+
+		serverA := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Cache-Control", "no-store")
+			http.Redirect(w, r, serverB.URL+"/hop", http.StatusFound)
+		}))
+		t.Cleanup(serverA.Close)
+
+		options := testutils.DefaultOptions.Copy()
+		options.SetExecutionID(t.Name())
+		options.EnableHTTPCache = true
+		testutils.Init(options)
+		t.Cleanup(func() { testutils.Cleanup(options) })
+
+		cache := hosterrorscache.New(2, hosterrorscache.DefaultMaxHostsCount, nil)
+		request := &httpprotocol.Request{
+			ID:           "redirect-mixed-cached-live",
+			Method:       methodGet(),
+			Path:         []string{"{{BaseURL}}/start"},
+			Redirects:    true,
+			MaxRedirects: 3,
+			Operators:    status200,
+		}
+		executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
+			ID:   request.ID,
+			Info: model.Info{SeverityHolder: severity.Holder{Severity: severity.Low}, Name: skipTestName},
+		})
+		t.Cleanup(executerOpts.RateLimiter.Stop)
+		executerOpts.ProtocolType = templateTypes.HTTPProtocol
+		executerOpts.HostErrorsCache = cache
+		require.NoError(t, request.Compile(executerOpts))
+
+		// First request primes the HTTP cache for serverB's 302 redirect.
+		_, err := executeSkippable(request, serverA.URL)
+		require.NoError(t, err)
+		require.EqualValues(t, 1, bHits.Load())
+		require.EqualValues(t, 1, cHits.Load())
+
+		// Record one transient failure against both B and C.
+		ctxB := contextargs.NewWithInput(t.Context(), serverB.URL)
+		ctxC := contextargs.NewWithInput(t.Context(), serverC.URL)
+		timeoutErr := errkit.New("i/o timeout").SetKind(errkit.ErrKindNetworkTemporary)
+		cache.MarkFailedOrRemove("http", ctxB, timeoutErr)
+		cache.MarkFailedOrRemove("http", ctxC, timeoutErr)
+
+		// Second request gets A (live) -> B (cached 302) -> C (live 200).
+		_, err = executeSkippable(request, serverA.URL)
+		require.NoError(t, err)
+		require.EqualValues(t, 1, bHits.Load(), "serverB must be served from HTTP cache")
+		require.EqualValues(t, 2, cHits.Load(), "serverC must be contacted live")
+
+		// A single subsequent failure must clear-skip check differently:
+		// C was contacted live so its count reset; B was cached so its count kept accumulating.
+		cache.MarkFailedOrRemove("http", ctxB, timeoutErr)
+		cache.MarkFailedOrRemove("http", ctxC, timeoutErr)
+		require.True(t, cache.Check("http", ctxB), "cached hop B must retain its prior failure count")
+		require.False(t, cache.Check("http", ctxC), "live hop C must have its prior failure count cleared")
+	})
 }
