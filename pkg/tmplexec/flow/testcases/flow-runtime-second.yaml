@@ -1,0 +1,23 @@
+id: flow-runtime-second
+
+info:
+  name: Flow that uses the builtins of its runtime
+  author: test
+  severity: info
+
+flow: |
+  if (typeof leftover === 'undefined') {
+    for (let path of iterate(["second"])) {
+      http(1);
+    }
+  }
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/second"
+
+    matchers:
+      - type: word
+        words:
+          - "second-ok"
