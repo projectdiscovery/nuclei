@@ -17,6 +17,11 @@ import (
 const (
 	pdtmNucleiVersionEndpoint    = "https://api.pdtm.sh/api/v1/tools/nuclei"
 	pdtmNucleiIgnoreFileEndpoint = "https://api.pdtm.sh/api/v1/tools/nuclei/ignore"
+
+	// maxVersionCheckResponseSize limits the response body size for version checks to 1 MiB.
+	maxVersionCheckResponseSize = 1024 * 1024
+	// maxIgnoreFileResponseSize limits the response body size for ignore file downloads to 4 MiB.
+	maxIgnoreFileResponseSize = 4 * 1024 * 1024
 )
 
 // defaultHttpClient is http client that is only meant to be used for version check
@@ -75,9 +80,12 @@ func UpdateIgnoreFile() error {
 		return fmt.Errorf("download .nuclei-ignore file: unexpected HTTP status %s", resp.Status)
 	}
 
-	bin, err := io.ReadAll(resp.Body)
+	bin, err := io.ReadAll(io.LimitReader(resp.Body, maxIgnoreFileResponseSize+1))
 	if err != nil {
 		return err
+	}
+	if int64(len(bin)) > maxIgnoreFileResponseSize {
+		return fmt.Errorf("download .nuclei-ignore file: response exceeded maximum size limit of %d bytes", maxIgnoreFileResponseSize)
 	}
 
 	if err := config.DefaultConfig.WriteActiveIgnoreFile(bin); err != nil {
@@ -100,9 +108,12 @@ func doVersionCheck(isSDK bool) (string, error) {
 	defer func() {
 		_ = resp.Body.Close()
 	}()
-	bin, err := io.ReadAll(resp.Body)
+	bin, err := io.ReadAll(io.LimitReader(resp.Body, maxVersionCheckResponseSize+1))
 	if err != nil {
 		return "", err
+	}
+	if int64(len(bin)) > maxVersionCheckResponseSize {
+		return "", fmt.Errorf("version check response exceeded maximum size limit of %d bytes", maxVersionCheckResponseSize)
 	}
 	var pdtmResp PdtmAPIResponse
 	if err := json.Unmarshal(bin, &pdtmResp); err != nil {

@@ -1,11 +1,11 @@
 package installer
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"net/http"
 	"os"
-	"strings"
 	"testing"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
@@ -86,7 +86,45 @@ func TestUpdateIgnoreFileRejectsUnexpectedStatus(t *testing.T) {
 	require.ErrorIs(t, statErr, os.ErrNotExist)
 }
 
-func withIgnoreDownload(t *testing.T, status int, body []byte) {
+func TestUpdateIgnoreFileRejectsOversizedResponse(t *testing.T) {
+	oversized := bytes.Repeat([]byte("a"), maxIgnoreFileResponseSize+100)
+	withIgnoreDownload(t, http.StatusOK, oversized)
+
+	cfg := config.DefaultConfig
+	root := t.TempDir()
+	previous := cfg.TemplatesDirectory
+	t.Cleanup(func() { cfg.SetTemplatesDir(previous) })
+	cfg.SetTemplatesDir(root)
+
+	err := UpdateIgnoreFile()
+	require.Error(t, err)
+	require.Contains(t, err.Error(), fmt.Sprintf("exceeded maximum size limit of %d bytes", maxIgnoreFileResponseSize))
+	_, statErr := os.Stat(cfg.GetActiveIgnoreFilePath())
+	require.ErrorIs(t, statErr, os.ErrNotExist)
+}
+
+func TestDoVersionCheckRejectsOversizedResponse(t *testing.T) {
+	// valid JSON padded past the limit, so only the size check can reject it
+	padding := bytes.Repeat([]byte("a"), maxVersionCheckResponseSize)
+	oversized := []byte(`{"tools":[{"name":"nuclei","version":"9.9.9"},{"name":"nuclei-templates","version":"9.9.9"}],"pad":"` + string(padding) + `"}`)
+	withVersionDownload(t, http.StatusOK, oversized)
+
+	cfg := config.DefaultConfig
+	previousNuclei := cfg.LatestNucleiVersion
+	previousTemplates := cfg.LatestNucleiTemplatesVersion
+	t.Cleanup(func() {
+		cfg.LatestNucleiVersion = previousNuclei
+		cfg.LatestNucleiTemplatesVersion = previousTemplates
+	})
+
+	_, err := doVersionCheck(false)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), fmt.Sprintf("exceeded maximum size limit of %d bytes", maxVersionCheckResponseSize))
+	require.Equal(t, previousNuclei, cfg.LatestNucleiVersion)
+	require.Equal(t, previousTemplates, cfg.LatestNucleiTemplatesVersion)
+}
+
+func withMockDownload(t *testing.T, status int, contentType string, body []byte) {
 	t.Helper()
 
 	previous := retryableHttpClient
@@ -97,11 +135,11 @@ func withIgnoreDownload(t *testing.T, status int, body []byte) {
 		HttpClient: &http.Client{
 			Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
 				header := make(http.Header)
-				header.Set("Content-Type", "text/plain")
+				header.Set("Content-Type", contentType)
 				return &http.Response{
 					StatusCode: status,
 					Status:     http.StatusText(status),
-					Body:       io.NopCloser(strings.NewReader(string(body))),
+					Body:       io.NopCloser(bytes.NewReader(body)),
 					Header:     header,
 					Request:    req,
 					Proto:      "HTTP/1.1",
@@ -111,4 +149,14 @@ func withIgnoreDownload(t *testing.T, status int, body []byte) {
 			}),
 		},
 	})
+}
+
+func withIgnoreDownload(t *testing.T, status int, body []byte) {
+	t.Helper()
+	withMockDownload(t, status, "text/plain", body)
+}
+
+func withVersionDownload(t *testing.T, status int, body []byte) {
+	t.Helper()
+	withMockDownload(t, status, "application/json", body)
 }
