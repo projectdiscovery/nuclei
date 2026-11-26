@@ -1,0 +1,29 @@
+id: analyzer-sqli
+
+info:
+  name: Error-based SQLi via analyzer
+  author: pdteam
+  severity: high
+  description: |
+    Drives the built-in sqli_error analyzer through the real fuzzing pipeline.
+    The analyzer injects syntax-breaking tokens and fingerprints DBMS errors; a
+    finding is raised only when the analyzer confirms the injection.
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}"
+    fuzzing:
+      - part: query
+        type: replace
+        mode: single
+        keys:
+          - "q"
+        fuzz:
+          - "1337"
+    analyzer:
+      name: sqli_error
+    matchers:
+      - type: dsl
+        dsl:
+          - "analyzer == true"
