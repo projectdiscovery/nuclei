@@ -166,6 +166,11 @@ func (t *connTrackingTransport) RoundTrip(req *http.Request) (*http.Response, er
 	return resp, err
 }
 
+// Unwrap returns the underlying transport.
+func (t *connTrackingTransport) Unwrap() http.RoundTripper {
+	return t.base
+}
+
 func (t *connTrackingTransport) CloseIdleConnections() {
 	type closeIdler interface{ CloseIdleConnections() }
 	if ci, ok := t.base.(closeIdler); ok {
