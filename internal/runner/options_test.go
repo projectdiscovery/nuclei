@@ -109,3 +109,50 @@ func TestValidateOptionsAutoTech(t *testing.T) {
 	require.ErrorContains(t, ValidateOptions(&types.Options{AutoTech: true, AutomaticScan: true}), "-automatic-scan")
 	require.ErrorContains(t, ValidateOptions(&types.Options{AutoTech: true, Resume: "resume.cfg"}), "-resume")
 }
+
+// TestValidateOptionsInteractshFeed checks that feed mode needs all three of
+// its flags and rejects the flags that pick or disable an interactsh server.
+func TestValidateOptionsInteractshFeed(t *testing.T) {
+	feed := func() *types.Options {
+		return &types.Options{
+			InteractshCorrelationID: "c0ffee00c0ffee00c0ff",
+			InteractshDomain:        "oob.example",
+			InteractshFeed:          "feed.jsonl",
+		}
+	}
+	require.NoError(t, ValidateOptions(feed()))
+
+	for name, clear := range map[string]func(*types.Options){
+		"correlation id": func(o *types.Options) { o.InteractshCorrelationID = "" },
+		"domain":         func(o *types.Options) { o.InteractshDomain = "" },
+		"feed":           func(o *types.Options) { o.InteractshFeed = "" },
+	} {
+		options := feed()
+		clear(options)
+		require.ErrorContains(t, ValidateOptions(options), "must be set together", "without the %s", name)
+	}
+
+	options := feed()
+	options.NoInteractsh = true
+	require.ErrorContains(t, ValidateOptions(options), "-no-interactsh")
+
+	options = feed()
+	options.InteractshURL = "https://oast.example"
+	require.ErrorContains(t, ValidateOptions(options), "-interactsh-server")
+
+	options = feed()
+	options.InteractshToken = "token"
+	require.ErrorContains(t, ValidateOptions(options), "-interactsh-token")
+
+	options = feed()
+	options.InteractshCorrelationID = "not-an-id"
+	require.ErrorContains(t, ValidateOptions(options), "-interactsh-correlation-id must be")
+
+	options = feed()
+	options.InteractshDomain = "https://oob.example"
+	require.ErrorContains(t, ValidateOptions(options), "-interactsh-domain must be")
+
+	// Server flags alone are untouched by feed validation.
+	require.NoError(t, ValidateOptions(&types.Options{InteractshURL: "https://oast.example", InteractshToken: "token"}))
+	require.NoError(t, ValidateOptions(&types.Options{NoInteractsh: true}))
+}

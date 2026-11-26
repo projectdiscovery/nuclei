@@ -21,6 +21,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/internal/server/proxy"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v3/pkg/installer"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/interactsh"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolinit"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/utils/vardump"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/headless/engine"
@@ -176,6 +177,9 @@ func ValidateOptions(options *types.Options) error {
 	}
 	if options.Verbose && options.Silent {
 		return errors.New("both verbose and silent mode specified")
+	}
+	if err := validateInteractshFeedOptions(options); err != nil {
+		return err
 	}
 
 	if (options.HeadlessOptionalArguments != nil || options.ShowBrowser || options.UseInstalledChrome) && !options.Headless {
@@ -559,6 +563,21 @@ func readEnvInputVars(options *types.Options) {
 func getBoolEnvValue(key string) bool {
 	value := os.Getenv(key)
 	return strings.EqualFold(value, "true")
+}
+
+// validateInteractshFeedOptions checks feed mode: all three of its flags,
+// and none of the flags that pick or disable an interactsh server.
+func validateInteractshFeedOptions(options *types.Options) error {
+	if options.InteractshFeed == "" && options.InteractshCorrelationID == "" && options.InteractshDomain == "" {
+		return nil
+	}
+	if options.NoInteractsh {
+		return errors.New("-no-interactsh cannot be used with -interactsh-feed")
+	}
+	if options.InteractshURL != "" || options.InteractshToken != "" {
+		return errors.New("-interactsh-server and -interactsh-token cannot be used with -interactsh-feed")
+	}
+	return interactsh.ValidateFeedOptions(options.InteractshCorrelationID, options.InteractshDomain, options.InteractshFeed)
 }
 
 // validatePlanOptions rejects options that change the templates or targets
