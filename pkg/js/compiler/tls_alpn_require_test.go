@@ -63,3 +63,63 @@ func TestNetOpenTLSWithOptionsRequire(t *testing.T) {
 	require.Equal(t, "h2", result["viaClass"])
 	require.Equal(t, "HTTP/2.0", result["proto"])
 }
+
+// TestNetHTTP2PingOverTLSRequire proves a JS template can speak raw HTTP/2
+// frames over TLS after negotiating ALPN h2: it sends the connection preface,
+// SETTINGS and a PING, then reads frames until the server ACKs the PING.
+func TestNetHTTP2PingOverTLSRequire(t *testing.T) {
+	srv := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
+	srv.EnableHTTP2 = true
+	srv.StartTLS()
+	t.Cleanup(srv.Close)
+
+	executionID := "h2-ping-require-" + strings.NewReplacer("/", "-", " ", "-").Replace(t.Name())
+	require.NoError(t, protocolstate.Init(&types.Options{ExecutionId: executionID}))
+	t.Cleanup(func() { protocolstate.Close(executionID) })
+
+	script := fmt.Sprintf(`
+		const net = require('nuclei/net');
+		const conn = net.OpenTLSWithOptions('tcp', %q, {ALPN: ['h2']});
+		ExportAs('alpn', conn.NegotiatedProtocol());
+
+		const preface = '505249202a20485454502f322e300d0a0d0a534d0d0a0d0a';
+		const settings = '000000040000000000';
+		const pingPayload = [0x6e, 0x75, 0x63, 0x6c, 0x65, 0x69, 0x32, 0x30]; // "nuclei20"
+		const ping = '000008060000000000' + pingPayload.map(b => b.toString(16).padStart(2, '0')).join('');
+		conn.SendHex(preface + settings + ping);
+
+		// RecvFull returns raw bytes; RecvFullHex returns a hex.Dump, not plain hex.
+		let acked = false;
+		const seen = [];
+		for (let i = 0; i < 10 && !acked; i++) {
+			const header = new Uint8Array(conn.RecvFull(9));
+			const length = (header[0] << 16) | (header[1] << 8) | header[2];
+			const type = header[3];
+			const flags = header[4];
+			const payload = length > 0 ? new Uint8Array(conn.RecvFull(length)) : new Uint8Array(0);
+			seen.push(type + ':' + flags);
+			if (type === 6 && (flags & 1) === 1 && payload.length === 8 &&
+				pingPayload.every((v, idx) => payload[idx] === v)) {
+				acked = true;
+			}
+		}
+		conn.Close();
+		ExportAs('acked', acked);
+		ExportAs('seen', seen.join(','));
+		true;
+	`, srv.Listener.Addr().String())
+
+	compiled, err := SourceAutoMode(script, false)
+	require.NoError(t, err)
+
+	result, err := New().ExecuteWithOptions(t.Context(), compiled, NewExecuteArgs(), &ExecuteOptions{
+		ExecutionId: executionID,
+		Source:      &script,
+		TimeoutVariants: &types.Timeouts{
+			JsCompilerExecutionTimeout: 10 * time.Second,
+		},
+	})
+	require.NoError(t, err)
+	require.Equal(t, "h2", result["alpn"])
+	require.Equal(t, "true", fmt.Sprint(result["acked"]), "frames seen (type:flags): %v", result["seen"])
+}
