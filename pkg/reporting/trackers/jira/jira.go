@@ -544,16 +544,12 @@ func readAndCloseBody(resp *jira.Response) string {
 	return string(data)
 }
 
-// maxDrainBytes bounds how much of an unread body closeBody drains, so a
-// server that stalls mid-body cannot block the caller.
-const maxDrainBytes = 64 << 10
-
-// closeBody drains up to maxDrainBytes of a go-jira response body, so the
-// connection can be reused, and closes it.
+// closeBody closes a go-jira response body. It does not drain it: a server
+// that stalls mid-body would otherwise block the caller, and an empty
+// response, which is what go-jira leaves open, returns to the pool on close.
 func closeBody(resp *jira.Response) {
 	if resp == nil || resp.Response == nil || resp.Body == nil {
 		return
 	}
-	_, _ = io.CopyN(io.Discard, resp.Body, maxDrainBytes)
 	_ = resp.Body.Close()
 }
