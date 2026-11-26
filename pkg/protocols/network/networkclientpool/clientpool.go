@@ -16,6 +16,9 @@ func Init(options *types.Options) error {
 // Configuration contains the custom configuration options for a client
 type Configuration struct {
 	CustomDialer *fastdialer.Dialer
+	// TunnelHTTPProxy routes connections through the http -proxy with CONNECT
+	// for protocols that do not speak to the proxy on their own.
+	TunnelHTTPProxy bool
 }
 
 // Hash returns the hash of the configuration to allow client pooling
@@ -31,6 +34,9 @@ func Get(options *types.Options, configuration *Configuration /*TODO review unus
 	dialers := protocolstate.GetDialersWithId(options.ExecutionId)
 	if dialers == nil {
 		return nil, fmt.Errorf("dialers not initialized for %s", options.ExecutionId)
+	}
+	if configuration != nil && configuration.TunnelHTTPProxy && dialers.HTTPProxyTunnelFastdialer != nil {
+		return dialers.HTTPProxyTunnelFastdialer, nil
 	}
 	return dialers.Fastdialer, nil
 }

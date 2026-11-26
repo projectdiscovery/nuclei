@@ -124,6 +124,12 @@ func (t *sharingTransport) RoundTrip(req *http.Request) (*http.Response, error) 
 	return entry.response.copyFor(req), nil
 }
 
+// Unwrap returns the underlying transport, so reporting clients that need TLS
+// verification reach the scan transport and never share responses.
+func (t *sharingTransport) Unwrap() http.RoundTripper {
+	return t.base
+}
+
 func (t *sharingTransport) CloseIdleConnections() {
 	type closeIdler interface{ CloseIdleConnections() }
 	if ci, ok := t.base.(closeIdler); ok {
@@ -153,7 +159,14 @@ func (t *sharingTransport) send(req *http.Request, entry *sharedEntry) (*http.Re
 		return resp, nil
 	}
 	_ = resp.Body.Close()
-	entry.response = &storedResponse{response: resp, body: body}
+	// The closed Body still reaches the connection that served it, through its
+	// bufio.Reader, and the Request reaches it through the trace hooks of
+	// connTrackingTransport. copyFor sets both, so the entry keeps neither and
+	// a closed connection can be freed.
+	kept := *resp
+	kept.Body = nil
+	kept.Request = nil
+	entry.response = &storedResponse{response: &kept, body: body}
 	t.store(entry)
 	return entry.response.copyFor(req), nil
 }

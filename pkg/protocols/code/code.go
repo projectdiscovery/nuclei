@@ -225,6 +225,10 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 		// the raw value is preserved in allvars for downstream templating.
 		metaSrc.AddVariable(gozerotypes.Variable{Name: name, Value: sanitizeEnvValue(v)})
 	}
+	// added after template variables so -proxy wins, and kept out of the
+	// result event so proxy credentials never reach the output
+	templateVarCount := len(metaSrc.Variables)
+	metaSrc.AddVariable(proxyEnvVariables(request.options.Options)...)
 
 	if request.PreCondition != "" {
 		if request.options.Options.Debug || request.options.Options.DebugRequests {
@@ -245,6 +249,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 			&compiler.ExecuteOptions{
 				ExecutionId:     request.options.Options.ExecutionId,
 				TimeoutVariants: request.options.Options.GetTimeouts(),
+				ProxyURL:        request.options.Options.AliveHttpProxy,
 				Source:          &request.PreCondition,
 				Callback:        registerPreConditionFunctions,
 				Cleanup:         cleanUpPreConditionFunctions,
@@ -323,7 +328,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 
 	data := make(output.InternalEvent)
 	// also include all request variables in result event
-	for _, value := range metaSrc.Variables {
+	for _, value := range metaSrc.Variables[:templateVarCount] {
 		data[value.Name] = value.Value
 	}
 
@@ -507,6 +512,37 @@ func (r *Request) UpdateOptions(opts *protocols.ExecutorOptions) {
 
 func (r *Request) useSandbox() bool {
 	return r.Sandbox != nil && r.Sandbox.Image != ""
+}
+
+// proxyEnvNames are the variables common HTTP clients (curl, python, go,
+// java via wrappers) read a proxy from.
+var proxyEnvNames = []string{
+	"HTTP_PROXY",
+	"HTTPS_PROXY",
+	"ALL_PROXY",
+	"http_proxy",
+	"https_proxy",
+	"all_proxy",
+}
+
+// proxyEnvVariables returns the proxy selected with -proxy as environment
+// variables for the code subprocess, or nil when no proxy is in use.
+func proxyEnvVariables(options *types.Options) []gozerotypes.Variable {
+	if options == nil {
+		return nil
+	}
+	proxyURL := options.AliveHttpProxy
+	if proxyURL == "" {
+		proxyURL = options.AliveSocksProxy
+	}
+	if proxyURL == "" {
+		return nil
+	}
+	vars := make([]gozerotypes.Variable, 0, len(proxyEnvNames))
+	for _, name := range proxyEnvNames {
+		vars = append(vars, gozerotypes.Variable{Name: name, Value: sanitizeEnvValue(proxyURL)})
+	}
+	return vars
 }
 
 // sanitizeEnvValue removes NUL bytes, which are invalid in a subprocess

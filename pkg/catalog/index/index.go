@@ -225,11 +225,13 @@ func (i *Index) Save() error {
 	maps.Insert(snapshot.Data, i.cache.All())
 
 	// NOTE(dwisiswant0): write to temp for atomic op.
-	tmpFile := i.cacheFile + ".tmp"
-	file, err := os.OpenFile(tmpFile, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0o600)
+	// The temp file is this save's own: the mutex is per Index, so two indexes
+	// over one cache file would otherwise truncate and rename the same path.
+	file, err := os.CreateTemp(filepath.Dir(i.cacheFile), filepath.Base(i.cacheFile)+".*.tmp")
 	if err != nil {
 		return err
 	}
+	tmpFile := file.Name()
 	if err := file.Chmod(0o600); err != nil {
 		_ = file.Close()
 		_ = os.Remove(tmpFile)

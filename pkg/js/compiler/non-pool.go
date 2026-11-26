@@ -17,11 +17,16 @@ var (
 
 func executeWithoutPooling(ctx context.Context, p *goja.Program, args *ExecuteArgs, opts *ExecuteOptions) (result goja.Value, err error) {
 	lazyFixedSgInit()
-	// Acquire a pool slot, respecting the execution deadline. Returns
-	// immediately if the context has already expired.
-	if err := ephemeraljsc.AddWithContext(ctx); err != nil {
+	// Bound admission separately so queue time does not consume execution time.
+	queueCtx, cancelQueue := executionTimeout(ctx, opts)
+	defer cancelQueue()
+	if err := ephemeraljsc.AddWithContext(queueCtx); err != nil {
 		return nil, err
 	}
+
+	cancelQueue()
+	ctx, cancel := executionTimeout(ctx, opts)
+	defer cancel()
 
 	runtime := createNewRuntime()
 	session := newSession(sessionConfig{

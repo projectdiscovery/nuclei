@@ -1,6 +1,7 @@
 package httpcache
 
 import (
+	"crypto/tls"
 	"errors"
 	"fmt"
 	"io"
@@ -11,6 +12,7 @@ import (
 	"sync/atomic"
 	"testing"
 
+	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/tlsverify"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils/httpbody"
 	"go.dw1.io/x/net/http/cache"
 )
@@ -381,4 +383,25 @@ func bodyOf(t *testing.T, resp *http.Response) string {
 		t.Fatal(err)
 	}
 	return string(body)
+}
+
+// Reporting clients send tokens, so tlsverify must reach the scan transport
+// under the cache wrapper and turn certificate verification on.
+func TestTransportWrapperUnwrapsForTLSVerification(t *testing.T) {
+	c, err := cache.New(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	base := &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}}
+	var wrapped http.RoundTripper = newCachingTransport(c, base)
+	u, ok := wrapped.(interface{ Unwrap() http.RoundTripper })
+	if !ok || u.Unwrap() != base {
+		t.Fatal("the cache wrapper does not unwrap to the scan transport")
+	}
+
+	got, ok := tlsverify.Client(&http.Client{Transport: wrapped}).Transport.(*http.Transport)
+	if !ok || got.TLSClientConfig.InsecureSkipVerify {
+		t.Fatal("tlsverify did not turn verification on under the cache wrapper")
+	}
 }

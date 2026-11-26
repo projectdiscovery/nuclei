@@ -6,7 +6,7 @@ import (
 	"runtime"
 	"testing"
 
-	"github.com/go-rod/rod/lib/launcher/flags"
+	"github.com/projectdiscovery/rod/lib/launcher/flags"
 	"github.com/stretchr/testify/require"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
