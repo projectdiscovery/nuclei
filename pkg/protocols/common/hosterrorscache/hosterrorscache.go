@@ -324,16 +324,124 @@ func (c *Cache) GetKeyFromContext(ctx *contextargs.Context, err error) string {
 		if v := errkit.GetAttrValue(err, "address"); v.Any() != nil {
 			address = v.String()
 		}
+		if address == "" {
+			if _, host, port, ok := parseURLErrorTarget(err); ok {
+				address = net.JoinHostPort(host, port)
+			}
+		}
 	}
 
 	if address == "" {
 		address = ctx.MetaInput.Address()
-	} else if ctx.MetaInput.CustomIP != "" {
+	} else if ctx != nil && ctx.MetaInput != nil && ctx.MetaInput.CustomIP != "" {
 		address = pinnedAddress(ctx.MetaInput, address)
 	}
 
 	finalValue := c.NormalizeCacheValue(address)
 	return finalValue
+}
+
+// TargetContextForError returns a context whose target matches the endpoint
+// carried by err (the "address" attribute if set, otherwise a wrapped
+// *url.Error) when it points to a different address than ctx. This keeps
+// custom CacheInterface implementations that read ctx.MetaInput.Address()
+// directly from attributing redirect dial failures to the original target.
+func TargetContextForError(ctx *contextargs.Context, err error) *contextargs.Context {
+	if err == nil || ctx == nil || ctx.MetaInput == nil {
+		return ctx
+	}
+
+	scheme, host, port, ok := resolveErrorTarget(err)
+	if !ok {
+		return ctx
+	}
+
+	return targetContextForEndpoint(ctx, scheme, host, port)
+}
+
+// TargetContextForURL returns a context whose target matches rawURL when it
+// points to a different HTTP/HTTPS endpoint than ctx.
+func TargetContextForURL(ctx *contextargs.Context, rawURL string) *contextargs.Context {
+	if ctx == nil || ctx.MetaInput == nil || rawURL == "" {
+		return ctx
+	}
+
+	scheme, host, port, ok := parseHTTPURLTarget(rawURL)
+	if !ok {
+		return ctx
+	}
+
+	return targetContextForEndpoint(ctx, scheme, host, port)
+}
+
+func targetContextForEndpoint(ctx *contextargs.Context, scheme, host, port string) *contextargs.Context {
+	addr := net.JoinHostPort(host, port)
+	sameHost := strings.EqualFold(asciiHost(host), asciiHost(ctx.MetaInput.Hostname()))
+	if ctx.MetaInput.CustomIP != "" && sameHost {
+		addr = net.JoinHostPort(ctx.MetaInput.CustomIP, port)
+	}
+	if addr == ctx.MetaInput.Address() {
+		return ctx
+	}
+
+	meta := contextargs.NewMetaInput()
+	meta.Input = scheme + "://" + net.JoinHostPort(host, port)
+	if sameHost {
+		meta.CustomIP = ctx.MetaInput.CustomIP
+	}
+	return contextargs.NewWithMetaInput(ctx.Context(), meta)
+}
+
+// resolveErrorTarget extracts the authoritative endpoint from err, giving the
+// transport's "address" attribute precedence over any wrapped *url.Error.
+func resolveErrorTarget(err error) (scheme, host, port string, ok bool) {
+	if v := errkit.GetAttrValue(err, "address"); v.Any() != nil {
+		if addr := v.String(); addr != "" {
+			if h, p, splitErr := net.SplitHostPort(addr); splitErr == nil && h != "" && p != "" {
+				s := "http"
+				if p == "443" {
+					s = "https"
+				}
+				return s, h, p, true
+			}
+		}
+	}
+
+	return parseURLErrorTarget(err)
+}
+
+// parseURLErrorTarget extracts scheme, hostname, and port from a wrapped
+// *url.Error when it identifies an HTTP/HTTPS endpoint.
+func parseURLErrorTarget(err error) (scheme, host, port string, ok bool) {
+	var urlErr *url.Error
+	if !errors.As(err, &urlErr) || urlErr.URL == "" {
+		return "", "", "", false
+	}
+
+	return parseHTTPURLTarget(urlErr.URL)
+}
+
+func parseHTTPURLTarget(rawURL string) (scheme, host, port string, ok bool) {
+	parsed, parseErr := url.Parse(rawURL)
+	if parseErr != nil || (parsed.Scheme != "http" && parsed.Scheme != "https") {
+		return "", "", "", false
+	}
+
+	host = parsed.Hostname()
+	if host == "" {
+		return "", "", "", false
+	}
+
+	port = parsed.Port()
+	if port == "" {
+		if parsed.Scheme == "https" {
+			port = "443"
+		} else {
+			port = "80"
+		}
+	}
+
+	return parsed.Scheme, host, port, true
 }
 
 // pinnedAddress maps the address of a failed dial to a pinned target, which

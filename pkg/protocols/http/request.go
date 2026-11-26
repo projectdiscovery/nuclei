@@ -1716,6 +1716,10 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 		return err
 	}
 
+	if request.options.HostErrorsCache != nil && sent {
+		request.resetRedirectHostResults(contextargs.GetCopyIfAddressOutdated(input, generatedRequest.URL()), resp)
+	}
+
 	var curlCommand string
 	if !request.Unsafe && resp != nil && generatedRequest.request != nil && resp.Request != nil && !request.Race {
 		body := generatedRequest.body()
@@ -2239,7 +2243,38 @@ func (request *Request) pruneSignatureInternalValues(maps ...map[string]interfac
 // with no success in between can mark a host unresponsive.
 func (request *Request) recordHostResult(input *contextargs.Context, err error) {
 	if request.options.HostErrorsCache != nil {
-		request.options.HostErrorsCache.MarkFailedOrRemove(request.options.ProtocolType.String(), input, err)
+		target := hosterrorscache.TargetContextForError(input, err)
+		request.options.HostErrorsCache.MarkFailedOrRemove(request.options.ProtocolType.String(), target, err)
+	}
+}
+
+// resetRedirectHostResults clears host-error cache entries for any redirect
+// destinations in resp's chain that answered from the network, keeping failure
+// tracking consecutive for live redirect targets without clearing entries when
+// a hop was served from the HTTP cache.
+func (request *Request) resetRedirectHostResults(originInput *contextargs.Context, resp *http.Response) {
+	if request.options.HostErrorsCache == nil || resp == nil {
+		return
+	}
+	var seen map[string]struct{}
+	for cur := resp; cur != nil; {
+		if !httpcache.ServedFromCache(cur) && cur.Request != nil && cur.Request.URL != nil {
+			target := hosterrorscache.TargetContextForURL(originInput, cur.Request.URL.String())
+			if target != originInput {
+				addr := target.MetaInput.Address()
+				if _, ok := seen[addr]; !ok {
+					if seen == nil {
+						seen = make(map[string]struct{}, 2)
+					}
+					seen[addr] = struct{}{}
+					request.options.HostErrorsCache.MarkFailedOrRemove(request.options.ProtocolType.String(), target, nil)
+				}
+			}
+		}
+		if cur.Request == nil {
+			break
+		}
+		cur = cur.Request.Response
 	}
 }
 
