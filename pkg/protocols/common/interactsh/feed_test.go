@@ -108,6 +108,27 @@ func TestFeedReadsCompleteLinesOfItsRegistration(t *testing.T) {
 	require.Len(t, got.ids(), 1, "nothing new, nothing passed on")
 }
 
+// TestFeedReadStopsAtTheSizeItStartedWith checks that a feed the owner keeps
+// appending to while it is read does not keep one read going forever.
+func TestFeedReadStopsAtTheSizeItStartedWith(t *testing.T) {
+	path := newFeedFile(t)
+	feed, err := newFeedSource(path, feedTestID, "oob.example")
+	require.NoError(t, err)
+	line := feedLine(t, serverint.Interaction{Protocol: "dns", UniqueID: feedTestID + "aaaaaaaaaaaaa"})
+	appendFeed(t, path, line)
+
+	got := &collected{}
+	appendEach := func(i *serverint.Interaction) {
+		got.add(i)
+		appendFeed(t, path, line)
+	}
+	require.NoError(t, feed.read(appendEach))
+	require.Len(t, got.ids(), 1, "the line appended during the read waits for the next one")
+
+	require.NoError(t, feed.read(got.add))
+	require.Len(t, got.ids(), 2)
+}
+
 func TestFeedSkipsIDsWithAMalformedNonce(t *testing.T) {
 	path := newFeedFile(t)
 	feed, err := newFeedSource(path, feedTestID, "oob.example")

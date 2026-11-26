@@ -215,7 +215,10 @@ func (s *feedSource) read(callback client.InteractionCallback) error {
 		return err
 	}
 
-	reader := bufio.NewReaderSize(file, 32*1024)
+	// Read only what the file held when this read began: a feed that grows as
+	// fast as it is read would otherwise keep the read, and StopPolling, from
+	// ever returning. Later lines wait for the next read.
+	reader := bufio.NewReaderSize(io.LimitReader(file, info.Size()-s.offset), 32*1024)
 	for {
 		data, readErr := reader.ReadSlice('\n')
 		s.offset += int64(len(data))
