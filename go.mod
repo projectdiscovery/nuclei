@@ -78,7 +78,7 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/praetorian-inc/fingerprintx v1.1.15
 	github.com/projectdiscovery/clistats v0.1.10
-	github.com/projectdiscovery/dsl v0.9.3
+	github.com/projectdiscovery/dsl v0.9.4
 	github.com/projectdiscovery/fastdialer v0.6.3
 	github.com/projectdiscovery/fasttemplate v0.0.2
 	github.com/projectdiscovery/gcache v0.0.0-20241015120333-12546c6e3f4c
