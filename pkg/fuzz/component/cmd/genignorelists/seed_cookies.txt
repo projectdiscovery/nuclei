@@ -1,0 +1,42 @@
+# Source of truth for cookies the fuzzer never mutates: third-party analytics, A/B testing, CDN and load balancer cookies that do not carry application input.
+# Session, login and CSRF cookies are real fuzz targets: the generator drops any name that matches its session cookie rule.
+# A trailing * makes the entry a prefix match (for vendor cookies with a per-site suffix, such as _ga_<container-id>).
+# Edit this file, then run `make fuzz-ignorelists` (or `go generate ./pkg/fuzz/component`) and commit ignorelists.gen.go.
+awsELB
+AWSALB
+AWSALBCORS
+__utma
+__utmb
+__utmc
+__utmt
+__utmz
+_ga
+_ga_*
+_gat
+_gid
+_gcl_au
+_fbp
+fr
+__hstc
+hubspotutk
+__hssc
+__hssrc
+mp_mixpanel__c
+NREUM
+_pk_id
+_pk_ref
+_pk_ses
+_pk_cvar
+_pk_hsr
+_hjIncludedInSample
+__cfduid
+cf_use_ob
+cf_ob_info
+optimizelyEndUserId
+optimizelySegments
+optimizelyBuckets
+optimizelyPendingLogEvents
+YSC
+VISITOR_INFO1_LIVE
+PREF
+GPS
