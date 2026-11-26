@@ -443,7 +443,6 @@ func (e *ClusterExecuter) ExecuteWithResults(ctx *scan.ScanContext) ([]*output.R
 	if len(clusterOperators) == 0 {
 		return nil, nil
 	}
-	scanCtx := scan.NewScanContext(ctx.Context(), ctx.Input)
 	dynamicValues := make(map[string]interface{})
 
 	inputItem := ctx.Input.Clone()
@@ -452,6 +451,10 @@ func (e *ClusterExecuter) ExecuteWithResults(ctx *scan.ScanContext) ([]*output.R
 			return nil, nil
 		}
 	}
+	// Events are logged on the caller's context so its OnResult callback fires,
+	// exactly as a single template's executer does. A workflow step drives its
+	// subtemplates through that callback, so logging to a private context would
+	// silently drop every subtemplate of a clustered step.
 	err := e.requests.ExecuteWithResults(inputItem, dynamicValues, nil, func(event *output.InternalWrappedEvent) {
 		for _, operator := range clusterOperators {
 			clonedEvent := event.CloneShallow()
@@ -466,7 +469,7 @@ func (e *ClusterExecuter) ExecuteWithResults(ctx *scan.ScanContext) ([]*output.R
 				clonedEvent.InternalEvent["template-path"] = operator.templatePath
 				clonedEvent.InternalEvent["template-info"] = operator.templateInfo
 				clonedEvent.Results = e.requests.MakeResultEvent(clonedEvent)
-				scanCtx.LogEvent(clonedEvent)
+				ctx.LogEvent(clonedEvent)
 			}
 		}
 	})
@@ -479,5 +482,5 @@ func (e *ClusterExecuter) ExecuteWithResults(ctx *scan.ScanContext) ([]*output.R
 	if errors.Is(err, hosterrorscache.ErrUnresponsiveHost) {
 		err = nil
 	}
-	return scanCtx.GenerateResult(), err
+	return ctx.GenerateResult(), err
 }
