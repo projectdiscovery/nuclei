@@ -127,7 +127,14 @@ func executionContext(t *testing.T) context.Context {
 func startServer(t *testing.T) (string, int) {
 	t.Helper()
 
-	listener, err := new(net.ListenConfig).Listen(t.Context(), "tcp", "127.0.0.1:0")
+	return startServerOn(t, "127.0.0.1:0")
+}
+
+// startServerOn serves SSH at the requested loopback address and rejects channels.
+func startServerOn(t *testing.T, address string) (string, int) {
+	t.Helper()
+
+	listener, err := new(net.ListenConfig).Listen(t.Context(), "tcp", address)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -194,5 +201,27 @@ func serve(conn net.Conn, config *ssh.ServerConfig) {
 
 	for ch := range chans {
 		_ = ch.Reject(ssh.Prohibited, "test server")
+	}
+}
+
+// TestSSHInfoIPv6Hosts checks real handshakes for both accepted IPv6 host forms.
+func TestSSHInfoIPv6Hosts(t *testing.T) {
+	probe, err := net.Listen("tcp", "[::1]:0")
+	if err != nil {
+		t.Skipf("IPv6 loopback unavailable: %v", err)
+	}
+	_ = probe.Close()
+
+	host, port := startServerOn(t, "[::1]:0")
+	for _, target := range []string{host, "[" + host + "]"} {
+		t.Run(target, func(t *testing.T) {
+			info, err := new(libssh.SSHClient).ConnectSSHInfoMode(executionContext(t), target, port)
+			if err != nil {
+				t.Fatalf("ConnectSSHInfoMode(%q) error = %v", target, err)
+			}
+			if info == nil || info.ServerID == nil || info.ServerID.Raw == "" {
+				t.Fatalf("missing SSH server information: %+v", info)
+			}
+		})
 	}
 }
