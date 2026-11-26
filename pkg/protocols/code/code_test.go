@@ -4,6 +4,7 @@ package code
 
 import (
 	"context"
+	"strings"
 	"testing"
 	"time"
 
@@ -105,6 +106,42 @@ func TestCodeProtocolInheritsProxy(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestCodeProtocolProxyOverridesTemplateVariable(t *testing.T) {
+	const proxy = "http://user:pass@127.0.0.1:8080"
+	const fromTemplate = "http://template.invalid:1"
+
+	for _, name := range proxyEnvNames {
+		t.Setenv(name, "inherited.invalid")
+	}
+
+	options := testutils.DefaultOptions.Copy()
+	options.EnableCodeTemplates = true
+	options.AliveHttpProxy = proxy
+	testutils.Init(options)
+
+	request, info := newTestRequest(t, []string{"sh"}, `echo "$HTTP_PROXY"`)
+	executerOpts := testutils.NewMockExecuterOptions(options, info)
+	executerOpts.Verified = true
+	executerOpts.Variables = variables.Variable{
+		InsertionOrderedStringMap: *utils.NewEmptyInsertionOrderedStringMap(1),
+	}
+	executerOpts.Variables.Set("HTTP_PROXY", fromTemplate)
+	require.NoError(t, request.Compile(executerOpts))
+
+	var gotEvent output.InternalEvent
+	ctxArgs := contextargs.NewWithInput(context.Background(), "")
+	err := request.ExecuteWithResults(ctxArgs, nil, nil, func(event *output.InternalWrappedEvent) {
+		gotEvent = event.InternalEvent
+	})
+	require.NoError(t, err)
+
+	// -proxy wins over the inherited environment and the template variable
+	require.Equal(t, proxy, strings.TrimSpace(gotEvent["response"].(string)))
+	// the template variable stays visible to the template, the proxy value does not
+	require.Equal(t, fromTemplate, gotEvent["HTTP_PROXY"])
+	require.NotContains(t, gotEvent, "https_proxy")
 }
 
 func TestCodeProtocolSuccessResponse(t *testing.T) {
