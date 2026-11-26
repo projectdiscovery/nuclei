@@ -207,8 +207,14 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 }
 
 func matchAnyMimeTypes(data []byte, mimeTypes []string) bool {
+	// filetype.Is expects a file extension, not a mime type, so detect the type
+	// once and compare its mime value against the configured entries
+	kind, err := filetype.Match(data)
+	if err != nil || kind == filetype.Unknown {
+		return false
+	}
 	for _, mimeType := range mimeTypes {
-		if filetype.Is(data, mimeType) {
+		if kind.MIME.Value == mimeType {
 			return true
 		}
 	}
