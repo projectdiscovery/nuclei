@@ -44,7 +44,7 @@ func newSilentSSHPeer(t *testing.T) *silentSSHPeer {
 		if err != nil {
 			return
 		}
-		defer conn.Close()
+		defer func() { _ = conn.Close() }()
 		peer.accepted <- conn
 
 		// Read the client banner without replying; EOF proves the client closed TCP.
@@ -142,7 +142,8 @@ func TestSSHInfoCancellation(t *testing.T) {
 			peer.close()
 			if !returned {
 				select {
-				case <-done:
+				case err := <-done:
+					_ = err
 				case <-time.After(3 * time.Second):
 					t.Error("SSH call did not stop after peer cleanup")
 				}
@@ -175,7 +176,8 @@ func TestJSDeadlineClosesSSHConnection(t *testing.T) {
 	case <-time.After(4 * time.Second):
 		peer.close()
 		select {
-		case <-done:
+		case err := <-done:
+			_ = err
 		case <-time.After(3 * time.Second):
 			t.Error("JS call did not stop after peer cleanup")
 		}
@@ -270,7 +272,7 @@ func TestSSHInfoConcurrentCancellation(t *testing.T) {
 		peer.close()
 		t.Fatal("second caller did not get an independent connection:", err)
 	}
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 	cancel()
 	select {
 	case err := <-first:
@@ -285,7 +287,7 @@ func TestSSHInfoConcurrentCancellation(t *testing.T) {
 		t.Fatalf("other caller returned on first cancellation: %v", err)
 	case <-time.After(30 * time.Millisecond):
 	}
-	conn.Close()
+	_ = conn.Close()
 	select {
 	case err := <-second:
 		if err == nil || errors.Is(err, context.Canceled) {
@@ -312,7 +314,7 @@ func TestSSHInfoRetriesAfterError(t *testing.T) {
 			if cancelFirst {
 				cancel()
 			} else {
-				conn.Close()
+				_ = conn.Close()
 			}
 			select {
 			case err := <-done:
@@ -338,16 +340,16 @@ func TestSSHInfoRetriesAfterError(t *testing.T) {
 				if err != nil {
 					return
 				}
-				defer inbound.Close()
+				defer func() { _ = inbound.Close() }()
 				outbound, err := net.Dial("tcp", net.JoinHostPort(host, fmt.Sprint(port)))
 				if err != nil {
 					return
 				}
-				defer outbound.Close()
+				defer func() { _ = outbound.Close() }()
 				copied := make(chan struct{})
-				go func() { _, _ = io.Copy(outbound, inbound); outbound.Close(); close(copied) }()
+				go func() { _, _ = io.Copy(outbound, inbound); _ = outbound.Close(); close(copied) }()
 				_, _ = io.Copy(inbound, outbound)
-				inbound.Close()
+				_ = inbound.Close()
 				<-copied
 			}()
 			retryCtx, retryCancel := context.WithTimeout(ctx, time.Second)

@@ -272,7 +272,7 @@ func connectSSHInfoMode(ctx context.Context, opts *connectOptions) (*ssh.Handsha
 	if err != nil {
 		return nil, err
 	}
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 	stop := context.AfterFunc(ctx, func() { _ = conn.Close() })
 	defer stop()
 	if err := conn.SetDeadline(time.Now().Add(sshConfig.Timeout)); err != nil {
@@ -288,7 +288,7 @@ func connectSSHInfoMode(ctx context.Context, opts *connectOptions) (*ssh.Handsha
 	if err != nil {
 		return nil, err
 	}
-	defer sshConn.Close()
+	defer func() { _ = sshConn.Close() }()
 
 	return data, nil
 }
