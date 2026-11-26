@@ -45,3 +45,48 @@ func TestIsSandboxLaunchError(t *testing.T) {
 	require.False(t, isSandboxLaunchError(errors.New("the chrome browser is not installed")))
 	require.False(t, isSandboxLaunchError(nil))
 }
+
+func stubBrowserDiscovery(t *testing.T, windowsARM64 bool, path string, found bool) {
+	t.Helper()
+	oldLookPath, oldWindowsARM64 := lookPath, isWindowsARM64
+	t.Cleanup(func() { lookPath, isWindowsARM64 = oldLookPath, oldWindowsARM64 })
+	isWindowsARM64 = windowsARM64
+	lookPath = func() (string, bool) { return path, found }
+}
+
+func TestNewChromeLauncherWindowsARM64Bin(t *testing.T) {
+	const installed = `C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe`
+
+	t.Run("sets the installed browser when found", func(t *testing.T) {
+		stubBrowserDiscovery(t, true, installed, true)
+		l, err := newChromeLauncher(&types.Options{}, t.TempDir(), "127.0.0.1:1", false)
+		require.NoError(t, err)
+		require.Equal(t, installed, l.Get(flags.Bin))
+	})
+
+	t.Run("rod-bin option wins", func(t *testing.T) {
+		stubBrowserDiscovery(t, true, installed, true)
+		options := &types.Options{HeadlessOptionalArguments: []string{"rod-bin=custom-browser"}}
+		l, err := newChromeLauncher(options, t.TempDir(), "127.0.0.1:1", false)
+		require.NoError(t, err)
+		require.Equal(t, "custom-browser", l.Get(flags.Bin))
+	})
+
+	t.Run("not found keeps the previous behavior", func(t *testing.T) {
+		stubBrowserDiscovery(t, true, "", false)
+		l, err := newChromeLauncher(&types.Options{}, t.TempDir(), "127.0.0.1:1", false)
+		require.NoError(t, err)
+		require.Empty(t, l.Get(flags.Bin), "bin must stay unset so rod resolves it as before")
+	})
+
+	t.Run("other platforms never look up the browser", func(t *testing.T) {
+		stubBrowserDiscovery(t, false, installed, true)
+		lookPath = func() (string, bool) {
+			t.Fatal("browser discovery must not run on other platforms")
+			return "", false
+		}
+		l, err := newChromeLauncher(&types.Options{}, t.TempDir(), "127.0.0.1:1", false)
+		require.NoError(t, err)
+		require.Empty(t, l.Get(flags.Bin))
+	})
+}
