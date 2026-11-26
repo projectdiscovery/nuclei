@@ -462,6 +462,9 @@ type compiledRedaction struct {
 	headers []*regexp.Regexp
 	cookies []*regexp.Regexp
 	queries []*regexp.Regexp
+	// keysLower is the lowercase form of each key, parallel to the three
+	// pattern slices, for the literal-presence fast path in redactWithSet.
+	keysLower []string
 }
 
 func (c compiledRedaction) empty() bool {
@@ -476,6 +479,7 @@ func compileRedactPatterns(keys []string) compiledRedaction {
 		set.headers = append(set.headers, regexp.MustCompile(fmt.Sprintf(`(?i)(%s\s*:\s*["']?)([^"'&\r\n]+)(["'\r\n]|$)`, quoted)))
 		set.cookies = append(set.cookies, regexp.MustCompile(fmt.Sprintf(`(?i)(%s\s*=\s*["']?)([^"'&\r\n\s]*?)(;\s*[\w.-]+(?:=|;|\r|\n|$)|["'&\r\n\s]|$)`, quoted)))
 		set.queries = append(set.queries, regexp.MustCompile(fmt.Sprintf(`(?i)(%s\s*=\s*["']?)([^"'&\r\n\s]*)(["'&\r\n\s]|$)`, quoted)))
+		set.keysLower = append(set.keysLower, strings.ToLower(key))
 	}
 	return set
 }
@@ -502,17 +506,48 @@ func redactWithSet(data string, set compiledRedaction) string {
 	if data == "" || set.empty() {
 		return data
 	}
-	data = applyRedact(data, set.headers)
-	if len(set.cookies) > 0 {
+	// Fast path: every redaction match begins with the key's literal text, so
+	// a key whose lowercase form is absent from the lowercased data can never
+	// match, and its regexes do not have to scan at all. One lowercase pass
+	// plus a strings.Contains per key runs at memcpy speed, while each
+	// case-insensitive regex pass costs ~3ms per 60KB of response, so a
+	// response without credential-shaped text — nearly all of them — skips
+	// essentially all redaction work. The only Unicode simple-fold pair whose
+	// lowercase forms differ is U+017F (ſ) with 's': ToLower leaves ſ as is,
+	// so a key containing 's' is treated as present whenever ſ appears.
+	lower := strings.ToLower(data)
+	longS := strings.ContainsRune(lower, 'ſ')
+	present := make([]bool, len(set.keysLower))
+	any := false
+	for i, key := range set.keysLower {
+		present[i] = strings.Contains(lower, key) || (longS && strings.ContainsRune(key, 's'))
+		any = any || present[i]
+	}
+	if !any {
+		return data
+	}
+	data = applyRedact(data, filterPresent(set.headers, present))
+	if cookiePatterns := filterPresent(set.cookies, present); len(cookiePatterns) > 0 {
 		data = cookieHeaderValue.ReplaceAllStringFunc(data, func(match string) string {
 			parts := cookieHeaderValue.FindStringSubmatch(match)
 			if len(parts) != 3 {
 				return match
 			}
-			return parts[1] + applyRedact(parts[2], set.cookies)
+			return parts[1] + applyRedact(parts[2], cookiePatterns)
 		})
 	}
-	return redactOutsideCookieValues(data, set.queries)
+	return redactOutsideCookieValues(data, filterPresent(set.queries, present))
+}
+
+// filterPresent drops the patterns whose keys the fast path proved absent.
+func filterPresent(patterns []*regexp.Regexp, present []bool) []*regexp.Regexp {
+	var out []*regexp.Regexp
+	for i, pattern := range patterns {
+		if present[i] {
+			out = append(out, pattern)
+		}
+	}
+	return out
 }
 
 func redactOutsideCookieValues(data string, patterns []*regexp.Regexp) string {
