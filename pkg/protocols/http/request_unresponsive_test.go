@@ -29,6 +29,7 @@ import (
 	templateTypes "github.com/projectdiscovery/nuclei/v3/pkg/templates/types"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils/httpbody"
 	"github.com/projectdiscovery/ratelimit"
+	"github.com/projectdiscovery/utils/errkit"
 )
 
 const (
@@ -769,5 +770,44 @@ func TestRedirectFailureDoesNotDropOriginalTarget(t *testing.T) {
 		events, err = executeSkippable(next, target)
 		require.ErrorIs(t, err, hosterrorscache.ErrUnresponsiveHost)
 		require.Zero(t, events)
+	})
+
+	t.Run("successful followed redirect resets prior redirect failure", func(t *testing.T) {
+		dest, destHits := serverCountingHits(t)
+		origin := redirectServer(t, dest.URL+"/ok")
+
+		cache := hosterrorscache.New(2, hosterrorscache.DefaultMaxHostsCount, nil)
+		destCtx := contextargs.NewWithInput(t.Context(), dest.URL)
+		timeoutErr := errkit.New("i/o timeout").SetKind(errkit.ErrKindNetworkTemporary)
+
+		// Simulate an earlier transient failure recorded against the redirect destination.
+		cache.MarkFailedOrRemove("http", destCtx, timeoutErr)
+
+		request := &httpprotocol.Request{
+			ID:           "redirect-success-resets-dest",
+			Method:       methodGet(),
+			Path:         []string{"{{BaseURL}}/admin"},
+			Redirects:    true,
+			MaxRedirects: 2,
+			Operators:    status200,
+		}
+		compileWithRealCache(t, request, cache)
+
+		var matched atomic.Int32
+		err := request.ExecuteWithResults(contextargs.NewWithInput(t.Context(), origin.URL),
+			make(output.InternalEvent), make(output.InternalEvent),
+			func(event *output.InternalWrappedEvent) {
+				if event.HasResults() {
+					matched.Add(1)
+				}
+			})
+		require.NoError(t, err)
+		require.EqualValues(t, 1, destHits.Load())
+		require.EqualValues(t, 1, matched.Load())
+
+		// A single subsequent failure must not reach MaxHostError (2) because the
+		// successful followed redirect cleared the destination's prior failure count.
+		cache.MarkFailedOrRemove("http", destCtx, timeoutErr)
+		require.False(t, cache.Check("http", destCtx))
 	})
 }

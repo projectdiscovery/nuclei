@@ -1716,6 +1716,10 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 		return err
 	}
 
+	if request.options.HostErrorsCache != nil && httpcache.ContactedOrigin(sent, resp) {
+		request.resetRedirectHostResults(contextargs.GetCopyIfAddressOutdated(input, generatedRequest.URL()), resp)
+	}
+
 	var curlCommand string
 	if !request.Unsafe && resp != nil && generatedRequest.request != nil && resp.Request != nil && !request.Race {
 		body := generatedRequest.body()
@@ -2241,6 +2245,35 @@ func (request *Request) recordHostResult(input *contextargs.Context, err error) 
 	if request.options.HostErrorsCache != nil {
 		target := hosterrorscache.TargetContextForError(input, err)
 		request.options.HostErrorsCache.MarkFailedOrRemove(request.options.ProtocolType.String(), target, err)
+	}
+}
+
+// resetRedirectHostResults clears host-error cache entries for any redirect
+// destinations in resp's chain that answered with a response, keeping failure
+// tracking consecutive for redirect targets as well as the origin.
+func (request *Request) resetRedirectHostResults(originInput *contextargs.Context, resp *http.Response) {
+	if request.options.HostErrorsCache == nil || resp == nil {
+		return
+	}
+	var seen map[string]struct{}
+	for cur := resp; cur != nil; {
+		if cur.Request != nil && cur.Request.URL != nil {
+			target := hosterrorscache.TargetContextForURL(originInput, cur.Request.URL.String())
+			if target != originInput {
+				addr := target.MetaInput.Address()
+				if _, ok := seen[addr]; !ok {
+					if seen == nil {
+						seen = make(map[string]struct{}, 2)
+					}
+					seen[addr] = struct{}{}
+					request.options.HostErrorsCache.MarkFailedOrRemove(request.options.ProtocolType.String(), target, nil)
+				}
+			}
+		}
+		if cur.Request == nil {
+			break
+		}
+		cur = cur.Request.Response
 	}
 }
 

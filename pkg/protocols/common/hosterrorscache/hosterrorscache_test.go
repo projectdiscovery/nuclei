@@ -507,6 +507,45 @@ func TestTargetContextForError(t *testing.T) {
 	pinnedOtherPort := TargetContextForError(pinned, &url.Error{Op: "Get", URL: "http://a.example:8080/login", Err: noAddrErr})
 	require.Equal(t, "192.0.2.10", pinnedOtherPort.MetaInput.CustomIP)
 	require.Equal(t, "192.0.2.10:8080", pinnedOtherPort.MetaInput.Address())
+
+	// An explicit address attribute takes precedence over url.Error.URL.
+	pinnedAddrErr := &url.Error{
+		Op:  "Get",
+		URL: "http://b.example/login",
+		Err: errkit.WithAttr(errkit.New("connection refused"), slog.String("address", "a.example:443")),
+	}
+	require.Same(t, pinned, TargetContextForError(pinned, pinnedAddrErr))
+
+	otherAddrErr := &url.Error{
+		Op:  "Get",
+		URL: "http://a.example/login",
+		Err: errkit.WithAttr(errkit.New("connection refused"), slog.String("address", "b.example:8443")),
+	}
+	otherAddrCtx := TargetContextForError(pinned, otherAddrErr)
+	require.Empty(t, otherAddrCtx.MetaInput.CustomIP)
+	require.Equal(t, "b.example:8443", otherAddrCtx.MetaInput.Address())
+}
+
+func TestTargetContextForURL(t *testing.T) {
+	t.Parallel()
+
+	target := newCtxArgs("http://127.0.0.1:18422")
+	require.Same(t, target, TargetContextForURL(target, ""))
+	require.Same(t, target, TargetContextForURL(target, "http://127.0.0.1:18422/ok"))
+
+	redirectCtx := TargetContextForURL(target, "https://b.example/done")
+	require.NotSame(t, target, redirectCtx)
+	require.Equal(t, "b.example:443", redirectCtx.MetaInput.Address())
+
+	pinned := contextargs.NewWithMetaInput(context.Background(), &contextargs.MetaInput{
+		Input:    "https://a.example",
+		CustomIP: "192.0.2.10",
+	})
+	require.Same(t, pinned, TargetContextForURL(pinned, "https://a.example/ok"))
+
+	pinnedOther := TargetContextForURL(pinned, "http://b.example/ok")
+	require.Empty(t, pinnedOther.MetaInput.CustomIP)
+	require.Equal(t, "b.example:80", pinnedOther.MetaInput.Address())
 }
 
 func TestRedirectFailureDoesNotMarkOriginalTarget(t *testing.T) {

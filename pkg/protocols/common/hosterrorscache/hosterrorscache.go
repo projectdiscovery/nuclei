@@ -341,21 +341,40 @@ func (c *Cache) GetKeyFromContext(ctx *contextargs.Context, err error) string {
 	return finalValue
 }
 
-// TargetContextForError returns a context whose target matches the URL carried
-// by a wrapped *url.Error when it points to a different address than ctx (for
-// example, a followed redirect). This keeps custom CacheInterface
-// implementations that read ctx.MetaInput.Address() directly from attributing
-// redirect dial failures to the original target.
+// TargetContextForError returns a context whose target matches the endpoint
+// carried by err (the "address" attribute if set, otherwise a wrapped
+// *url.Error) when it points to a different address than ctx. This keeps
+// custom CacheInterface implementations that read ctx.MetaInput.Address()
+// directly from attributing redirect dial failures to the original target.
 func TargetContextForError(ctx *contextargs.Context, err error) *contextargs.Context {
 	if err == nil || ctx == nil || ctx.MetaInput == nil {
 		return ctx
 	}
 
-	scheme, host, port, ok := parseURLErrorTarget(err)
+	scheme, host, port, ok := resolveErrorTarget(err)
 	if !ok {
 		return ctx
 	}
 
+	return targetContextForEndpoint(ctx, scheme, host, port)
+}
+
+// TargetContextForURL returns a context whose target matches rawURL when it
+// points to a different HTTP/HTTPS endpoint than ctx.
+func TargetContextForURL(ctx *contextargs.Context, rawURL string) *contextargs.Context {
+	if ctx == nil || ctx.MetaInput == nil || rawURL == "" {
+		return ctx
+	}
+
+	scheme, host, port, ok := parseHTTPURLTarget(rawURL)
+	if !ok {
+		return ctx
+	}
+
+	return targetContextForEndpoint(ctx, scheme, host, port)
+}
+
+func targetContextForEndpoint(ctx *contextargs.Context, scheme, host, port string) *contextargs.Context {
 	addr := net.JoinHostPort(host, port)
 	sameHost := strings.EqualFold(asciiHost(host), asciiHost(ctx.MetaInput.Hostname()))
 	if ctx.MetaInput.CustomIP != "" && sameHost {
@@ -373,6 +392,24 @@ func TargetContextForError(ctx *contextargs.Context, err error) *contextargs.Con
 	return contextargs.NewWithMetaInput(ctx.Context(), meta)
 }
 
+// resolveErrorTarget extracts the authoritative endpoint from err, giving the
+// transport's "address" attribute precedence over any wrapped *url.Error.
+func resolveErrorTarget(err error) (scheme, host, port string, ok bool) {
+	if v := errkit.GetAttrValue(err, "address"); v.Any() != nil {
+		if addr := v.String(); addr != "" {
+			if h, p, splitErr := net.SplitHostPort(addr); splitErr == nil && h != "" && p != "" {
+				s := "http"
+				if p == "443" {
+					s = "https"
+				}
+				return s, h, p, true
+			}
+		}
+	}
+
+	return parseURLErrorTarget(err)
+}
+
 // parseURLErrorTarget extracts scheme, hostname, and port from a wrapped
 // *url.Error when it identifies an HTTP/HTTPS endpoint.
 func parseURLErrorTarget(err error) (scheme, host, port string, ok bool) {
@@ -381,7 +418,11 @@ func parseURLErrorTarget(err error) (scheme, host, port string, ok bool) {
 		return "", "", "", false
 	}
 
-	parsed, parseErr := url.Parse(urlErr.URL)
+	return parseHTTPURLTarget(urlErr.URL)
+}
+
+func parseHTTPURLTarget(rawURL string) (scheme, host, port string, ok bool) {
+	parsed, parseErr := url.Parse(rawURL)
 	if parseErr != nil || (parsed.Scheme != "http" && parsed.Scheme != "https") {
 		return "", "", "", false
 	}
