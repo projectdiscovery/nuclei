@@ -20,10 +20,13 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/fuzz"
 	"github.com/projectdiscovery/nuclei/v3/pkg/model"
 	"github.com/projectdiscovery/nuclei/v3/pkg/model/types/severity"
+	"github.com/projectdiscovery/nuclei/v3/pkg/operators"
+	"github.com/projectdiscovery/nuclei/v3/pkg/operators/matchers"
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/hosterrorscache"
 	httpprotocol "github.com/projectdiscovery/nuclei/v3/pkg/protocols/http"
+	templateTypes "github.com/projectdiscovery/nuclei/v3/pkg/templates/types"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils/httpbody"
 	"github.com/projectdiscovery/ratelimit"
 )
@@ -568,5 +571,203 @@ func TestRequestErrorWinsOverSkip(t *testing.T) {
 		require.Error(t, err)
 		require.NotErrorIs(t, err, hosterrorscache.ErrUnresponsiveHost)
 		require.Contains(t, err.Error(), closed)
+	})
+}
+
+// A redirect to a denied or unresolvable host fails fastdialer without an
+// address attribute on the error, yet must be keyed to the redirect host so
+// the original live target is not dropped as permanently unresponsive (#8190).
+//
+//nolint:exhaustruct,exhaustruct_v5,paralleltest // fixtures keep zero-value defaults; testutils.Init state is shared
+func TestRedirectFailureDoesNotDropOriginalTarget(t *testing.T) {
+	const deniedRedirectHost = "denied-redirect.invalid"
+
+	redirectServer := func(t *testing.T, location string) *httptest.Server {
+		t.Helper()
+
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.URL.Path == "/admin" {
+				http.Redirect(w, r, location, http.StatusFound)
+				return
+			}
+			_, _ = fmt.Fprint(w, skipOK)
+		}))
+		t.Cleanup(server.Close)
+
+		return server
+	}
+
+	status200 := operators.Operators{
+		Matchers: []*matchers.Matcher{{
+			Type:   matchers.MatcherTypeHolder{MatcherType: matchers.StatusMatcher},
+			Status: []int{http.StatusOK},
+		}},
+	}
+
+	compileWithRealCache := func(t *testing.T, request *httpprotocol.Request, cache hosterrorscache.CacheInterface) {
+		t.Helper()
+
+		options := testutils.DefaultOptions.Copy()
+		options.SetExecutionID(t.Name())
+		options.ExcludeTargets = []string{deniedRedirectHost}
+		testutils.Init(options)
+		t.Cleanup(func() { testutils.Cleanup(options) })
+
+		executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
+			ID:   request.ID,
+			Info: model.Info{SeverityHolder: severity.Holder{Severity: severity.Low}, Name: skipTestName},
+		})
+		t.Cleanup(executerOpts.RateLimiter.Stop)
+		executerOpts.ProtocolType = templateTypes.HTTPProtocol
+		executerOpts.HostErrorsCache = cache
+
+		require.NoError(t, request.Compile(executerOpts))
+	}
+
+	t.Run("sequential same block", func(t *testing.T) {
+		server := redirectServer(t, "http://"+deniedRedirectHost+"/login")
+		cache := hosterrorscache.New(30, hosterrorscache.DefaultMaxHostsCount, nil)
+		request := &httpprotocol.Request{
+			ID:           "redirect-seq",
+			Method:       methodGet(),
+			Path:         []string{"{{BaseURL}}/admin", "{{BaseURL}}/ok", "{{BaseURL}}/also-ok"},
+			Redirects:    true,
+			MaxRedirects: 2,
+			Operators:    status200,
+		}
+		compileWithRealCache(t, request, cache)
+
+		events, err := executeSkippable(request, server.URL)
+
+		require.Error(t, err)
+		require.NotErrorIs(t, err, hosterrorscache.ErrUnresponsiveHost)
+		require.Equal(t, 2, events, "requests after the failed redirect must still execute and match")
+		require.False(t, cache.Check("http", contextargs.NewWithInput(t.Context(), server.URL)))
+		require.True(t, cache.Check("http", contextargs.NewWithInput(t.Context(), "http://"+deniedRedirectHost)))
+	})
+
+	t.Run("separate template after redirect failure", func(t *testing.T) {
+		server := redirectServer(t, "http://"+deniedRedirectHost+"/login")
+		cache := hosterrorscache.New(30, hosterrorscache.DefaultMaxHostsCount, nil)
+
+		req1 := &httpprotocol.Request{
+			ID:           "redirect-tpl-1",
+			Method:       methodGet(),
+			Path:         []string{"{{BaseURL}}/admin"},
+			Redirects:    true,
+			MaxRedirects: 2,
+		}
+		compileWithRealCache(t, req1, cache)
+		_, err := executeSkippable(req1, server.URL)
+		require.Error(t, err)
+
+		req2 := &httpprotocol.Request{
+			ID:        "redirect-tpl-2",
+			Method:    methodGet(),
+			Path:      []string{"{{BaseURL}}/ok"},
+			Operators: status200,
+		}
+		compileWithRealCache(t, req2, cache)
+		events, err := executeSkippable(req2, server.URL)
+
+		require.NoError(t, err)
+		require.Equal(t, 1, events, "later templates against the live target must not be skipped")
+	})
+
+	t.Run("parallel same block", func(t *testing.T) {
+		server := redirectServer(t, "http://"+deniedRedirectHost+"/login")
+		cache := hosterrorscache.New(30, hosterrorscache.DefaultMaxHostsCount, nil)
+		request := &httpprotocol.Request{
+			ID:           "redirect-parallel",
+			Method:       methodGet(),
+			Path:         []string{"{{BaseURL}}/{{p}}"},
+			Threads:      2,
+			Payloads:     map[string]any{"p": []string{"admin", "ok", "also-ok"}},
+			Redirects:    true,
+			MaxRedirects: 2,
+			Operators:    status200,
+		}
+		compileWithRealCache(t, request, cache)
+
+		events, err := executeSkippable(request, server.URL)
+
+		require.Error(t, err)
+		require.NotErrorIs(t, err, hosterrorscache.ErrUnresponsiveHost)
+		require.Equal(t, 2, events, "sibling parallel requests must not be cancelled or skipped")
+		require.False(t, cache.Check("http", contextargs.NewWithInput(t.Context(), server.URL)))
+	})
+
+	t.Run("redirect to closed port on same host", func(t *testing.T) {
+		closed := closedAddress(t)
+		server := redirectServer(t, "http://"+closed+"/login")
+		cache := hosterrorscache.New(30, hosterrorscache.DefaultMaxHostsCount, nil)
+		request := &httpprotocol.Request{
+			ID:           "redirect-closed-port",
+			Method:       methodGet(),
+			Path:         []string{"{{BaseURL}}/admin", "{{BaseURL}}/ok"},
+			Redirects:    true,
+			MaxRedirects: 2,
+			Operators:    status200,
+		}
+		compileWithRealCache(t, request, cache)
+
+		events, err := executeSkippable(request, server.URL)
+
+		require.Error(t, err)
+		require.Equal(t, 1, events)
+		require.False(t, cache.Check("http", contextargs.NewWithInput(t.Context(), server.URL)))
+		require.True(t, cache.Check("http", contextargs.NewWithInput(t.Context(), "http://"+closed)))
+	})
+
+	t.Run("custom CacheInterface receives redirect target", func(t *testing.T) {
+		server := redirectServer(t, "http://"+deniedRedirectHost+"/login")
+		cache := newDownHostErrorsCache(true)
+		request := &httpprotocol.Request{
+			ID:           "redirect-custom-cache",
+			Method:       methodGet(),
+			Path:         []string{"{{BaseURL}}/admin", "{{BaseURL}}/ok"},
+			Redirects:    true,
+			MaxRedirects: 2,
+			Operators:    status200,
+		}
+		compileWithRealCache(t, request, cache)
+
+		events, err := executeSkippable(request, server.URL)
+
+		require.Error(t, err)
+		require.Equal(t, 1, events)
+		require.False(t, cache.Check("http", contextargs.NewWithInput(t.Context(), server.URL)))
+		require.True(t, cache.Check("http", contextargs.NewWithInput(t.Context(), "http://"+deniedRedirectHost)))
+	})
+
+	t.Run("denied original target is still skipped", func(t *testing.T) {
+		cache := hosterrorscache.New(30, hosterrorscache.DefaultMaxHostsCount, nil)
+		request := &httpprotocol.Request{
+			ID:     "denied-original-target",
+			Method: methodGet(),
+			Path:   []string{"{{BaseURL}}/ok", "{{BaseURL}}/also-ok"},
+		}
+		compileWithRealCache(t, request, cache)
+
+		target := "http://" + deniedRedirectHost
+		events, err := executeSkippable(request, target)
+
+		require.Error(t, err)
+		require.NotErrorIs(t, err, hosterrorscache.ErrUnresponsiveHost)
+		require.Contains(t, err.Error(), "/ok")
+		require.NotContains(t, err.Error(), "/also-ok", "second request must be skipped once target is marked")
+		require.Zero(t, events)
+		require.True(t, cache.Check("http", contextargs.NewWithInput(t.Context(), target)))
+
+		next := &httpprotocol.Request{
+			ID:     "denied-original-target-next",
+			Method: methodGet(),
+			Path:   []string{"{{BaseURL}}/ok"},
+		}
+		compileWithRealCache(t, next, cache)
+
+		events, err = executeSkippable(next, target)
+		require.ErrorIs(t, err, hosterrorscache.ErrUnresponsiveHost)
+		require.Zero(t, events)
 	})
 }

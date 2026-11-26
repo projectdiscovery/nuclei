@@ -3,7 +3,9 @@ package hosterrorscache
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
+	"net/url"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -383,4 +385,145 @@ func TestSchemelessTargetIsKeyedByRequestPort(t *testing.T) {
 		// The https form of the target reads the same 443 entry.
 		require.False(t, cache.Check(protoType, newCtxArgs("https://127.0.0.1")))
 	})
+}
+
+func TestGetKeyFromContextURLError(t *testing.T) {
+	t.Parallel()
+
+	cache := New(30, DefaultMaxHostsCount, nil)
+	target := newCtxArgs("http://127.0.0.1:18422")
+	noAddrErr := errkit.New("no address found for host").SetKind(errkit.ErrKindNetworkPermanent)
+
+	tests := []struct {
+		name string
+		ctx  *contextargs.Context
+		err  error
+		want string
+	}{
+		{
+			name: "redirect url.Error without address attr keys by redirect host",
+			ctx:  target,
+			err:  &url.Error{Op: "Get", URL: "http://nx-repro.invalid/login", Err: noAddrErr},
+			want: "nx-repro.invalid:80",
+		},
+		{
+			name: "wrapped retryablehttp url.Error keys by redirect host",
+			ctx:  target,
+			err:  fmt.Errorf("GET http://127.0.0.1:18422/admin giving up after 1 attempts: %w", &url.Error{Op: "Get", URL: "https://nx-repro.invalid/login", Err: noAddrErr}),
+			want: "nx-repro.invalid:443",
+		},
+		{
+			name: "explicit port in redirect url.Error",
+			ctx:  target,
+			err:  &url.Error{Op: "Get", URL: "http://nx-repro.invalid:8080/login", Err: noAddrErr},
+			want: "nx-repro.invalid:8080",
+		},
+		{
+			name: "ipv6 redirect url.Error without port",
+			ctx:  target,
+			err:  &url.Error{Op: "Get", URL: "http://[::1]/login", Err: noAddrErr},
+			want: "[::1]:80",
+		},
+		{
+			name: "ipv6 redirect url.Error with port",
+			ctx:  target,
+			err:  &url.Error{Op: "Get", URL: "https://[::1]:8443/login", Err: noAddrErr},
+			want: "[::1]:8443",
+		},
+		{
+			name: "address attr takes precedence over url.Error",
+			ctx:  target,
+			err: &url.Error{
+				Op:  "Get",
+				URL: "http://nx-repro.invalid/login",
+				Err: errkit.WithAttr(errkit.New("connection refused"), slog.String("address", "127.0.0.1:8888")),
+			},
+			want: "127.0.0.1:8888",
+		},
+		{
+			name: "relative url.Error falls back to target",
+			ctx:  target,
+			err:  &url.Error{Op: "Get", URL: "/relative", Err: noAddrErr},
+			want: "127.0.0.1:18422",
+		},
+		{
+			name: "non-http url.Error falls back to target",
+			ctx:  target,
+			err:  &url.Error{Op: "Get", URL: "ftp://other.invalid/file", Err: noAddrErr},
+			want: "127.0.0.1:18422",
+		},
+		{
+			name: "pinned target error maps to CustomIP",
+			ctx: contextargs.NewWithMetaInput(context.Background(), &contextargs.MetaInput{
+				Input:    "https://a.example",
+				CustomIP: "192.0.2.10",
+			}),
+			err:  &url.Error{Op: "Get", URL: "https://a.example/admin", Err: noAddrErr},
+			want: "192.0.2.10:443",
+		},
+		{
+			name: "pinned target redirect keeps redirect host",
+			ctx: contextargs.NewWithMetaInput(context.Background(), &contextargs.MetaInput{
+				Input:    "https://a.example",
+				CustomIP: "192.0.2.10",
+			}),
+			err:  &url.Error{Op: "Get", URL: "http://nx-repro.invalid/login", Err: noAddrErr},
+			want: "nx-repro.invalid:80",
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			require.Equal(t, test.want, cache.GetKeyFromContext(test.ctx, test.err))
+		})
+	}
+}
+
+func TestTargetContextForError(t *testing.T) {
+	t.Parallel()
+
+	target := newCtxArgs("http://127.0.0.1:18422")
+	noAddrErr := errkit.New("no address found for host").SetKind(errkit.ErrKindNetworkPermanent)
+
+	require.Same(t, target, TargetContextForError(target, nil))
+	require.Same(t, target, TargetContextForError(target, noAddrErr))
+	require.Same(t, target, TargetContextForError(target, &url.Error{Op: "Get", URL: "http://127.0.0.1:18422/ok", Err: noAddrErr}))
+
+	redirectCtx := TargetContextForError(target, &url.Error{Op: "Get", URL: "http://nx-repro.invalid/login", Err: noAddrErr})
+	require.NotSame(t, target, redirectCtx)
+	require.Equal(t, "nx-repro.invalid:80", redirectCtx.MetaInput.Address())
+
+	pinned := contextargs.NewWithMetaInput(context.Background(), &contextargs.MetaInput{
+		Input:    "https://a.example",
+		CustomIP: "192.0.2.10",
+	})
+	require.Same(t, pinned, TargetContextForError(pinned, &url.Error{Op: "Get", URL: "https://a.example/ok", Err: noAddrErr}))
+
+	pinnedRedirect := TargetContextForError(pinned, &url.Error{Op: "Get", URL: "http://nx-repro.invalid/login", Err: noAddrErr})
+	require.Empty(t, pinnedRedirect.MetaInput.CustomIP)
+	require.Equal(t, "nx-repro.invalid:80", pinnedRedirect.MetaInput.Address())
+
+	pinnedOtherPort := TargetContextForError(pinned, &url.Error{Op: "Get", URL: "http://a.example:8080/login", Err: noAddrErr})
+	require.Equal(t, "192.0.2.10", pinnedOtherPort.MetaInput.CustomIP)
+	require.Equal(t, "192.0.2.10:8080", pinnedOtherPort.MetaInput.Address())
+}
+
+func TestRedirectFailureDoesNotMarkOriginalTarget(t *testing.T) {
+	t.Parallel()
+
+	cache := New(30, DefaultMaxHostsCount, nil)
+	target := newCtxArgs("http://127.0.0.1:18422")
+	redirect := newCtxArgs("http://nx-repro.invalid")
+
+	redirectErr := &url.Error{
+		Op:  "Get",
+		URL: "http://nx-repro.invalid/login",
+		Err: errkit.New("no address found for host").SetKind(errkit.ErrKindNetworkPermanent),
+	}
+
+	cache.MarkFailedOrRemove(protoType, TargetContextForError(target, redirectErr), redirectErr)
+
+	require.False(t, cache.Check(protoType, target), "redirect failure must not mark original target unresponsive")
+	require.True(t, cache.Check(protoType, redirect), "redirect failure must be keyed to redirect host")
 }

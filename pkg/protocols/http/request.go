@@ -2239,7 +2239,8 @@ func (request *Request) pruneSignatureInternalValues(maps ...map[string]interfac
 // with no success in between can mark a host unresponsive.
 func (request *Request) recordHostResult(input *contextargs.Context, err error) {
 	if request.options.HostErrorsCache != nil {
-		request.options.HostErrorsCache.MarkFailedOrRemove(request.options.ProtocolType.String(), input, err)
+		target := hosterrorscache.TargetContextForError(input, err)
+		request.options.HostErrorsCache.MarkFailedOrRemove(request.options.ProtocolType.String(), target, err)
 	}
 }
 

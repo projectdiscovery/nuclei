@@ -324,16 +324,83 @@ func (c *Cache) GetKeyFromContext(ctx *contextargs.Context, err error) string {
 		if v := errkit.GetAttrValue(err, "address"); v.Any() != nil {
 			address = v.String()
 		}
+		if address == "" {
+			if _, host, port, ok := parseURLErrorTarget(err); ok {
+				address = net.JoinHostPort(host, port)
+			}
+		}
 	}
 
 	if address == "" {
 		address = ctx.MetaInput.Address()
-	} else if ctx.MetaInput.CustomIP != "" {
+	} else if ctx != nil && ctx.MetaInput != nil && ctx.MetaInput.CustomIP != "" {
 		address = pinnedAddress(ctx.MetaInput, address)
 	}
 
 	finalValue := c.NormalizeCacheValue(address)
 	return finalValue
+}
+
+// TargetContextForError returns a context whose target matches the URL carried
+// by a wrapped *url.Error when it points to a different address than ctx (for
+// example, a followed redirect). This keeps custom CacheInterface
+// implementations that read ctx.MetaInput.Address() directly from attributing
+// redirect dial failures to the original target.
+func TargetContextForError(ctx *contextargs.Context, err error) *contextargs.Context {
+	if err == nil || ctx == nil || ctx.MetaInput == nil {
+		return ctx
+	}
+
+	scheme, host, port, ok := parseURLErrorTarget(err)
+	if !ok {
+		return ctx
+	}
+
+	addr := net.JoinHostPort(host, port)
+	sameHost := strings.EqualFold(asciiHost(host), asciiHost(ctx.MetaInput.Hostname()))
+	if ctx.MetaInput.CustomIP != "" && sameHost {
+		addr = net.JoinHostPort(ctx.MetaInput.CustomIP, port)
+	}
+	if addr == ctx.MetaInput.Address() {
+		return ctx
+	}
+
+	meta := contextargs.NewMetaInput()
+	meta.Input = scheme + "://" + net.JoinHostPort(host, port)
+	if sameHost {
+		meta.CustomIP = ctx.MetaInput.CustomIP
+	}
+	return contextargs.NewWithMetaInput(ctx.Context(), meta)
+}
+
+// parseURLErrorTarget extracts scheme, hostname, and port from a wrapped
+// *url.Error when it identifies an HTTP/HTTPS endpoint.
+func parseURLErrorTarget(err error) (scheme, host, port string, ok bool) {
+	var urlErr *url.Error
+	if !errors.As(err, &urlErr) || urlErr.URL == "" {
+		return "", "", "", false
+	}
+
+	parsed, parseErr := url.Parse(urlErr.URL)
+	if parseErr != nil || (parsed.Scheme != "http" && parsed.Scheme != "https") {
+		return "", "", "", false
+	}
+
+	host = parsed.Hostname()
+	if host == "" {
+		return "", "", "", false
+	}
+
+	port = parsed.Port()
+	if port == "" {
+		if parsed.Scheme == "https" {
+			port = "443"
+		} else {
+			port = "80"
+		}
+	}
+
+	return parsed.Scheme, host, port, true
 }
 
 // pinnedAddress maps the address of a failed dial to a pinned target, which

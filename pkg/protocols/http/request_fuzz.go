@@ -254,9 +254,7 @@ func (request *Request) executeGeneratedFuzzingRequest(gr fuzz.GeneratedRequest,
 	if requestErr != nil {
 		gologger.Verbose().Msgf("[%s] Error occurred in request: %s\n", request.options.TemplateID, requestErr)
 	}
-	if request.options.HostErrorsCache != nil {
-		request.options.HostErrorsCache.MarkFailedOrRemove(request.options.ProtocolType.String(), input, requestErr)
-	}
+	request.recordHostResult(input, requestErr)
 	// Requests() cannot count fuzzing requests up front since they depend on the
 	// input's parameters, so the total grows with each request actually sent.
 	request.options.Progress.AddToTotal(1)
