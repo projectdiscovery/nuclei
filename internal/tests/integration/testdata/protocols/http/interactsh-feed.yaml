@@ -1,0 +1,25 @@
+id: interactsh-feed-integration-test
+
+info:
+  name: Interactsh Feed Integration Test
+  author: pdteam
+  severity: info
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}"
+    headers:
+      url: 'http://{{interactsh-url}}'
+
+    matchers-condition: and
+    matchers:
+      - type: word
+        part: interactsh_protocol
+        words:
+          - "http"
+
+      - type: word
+        part: interactsh_request
+        words:
+          - "X-Feed-Owner: integration"

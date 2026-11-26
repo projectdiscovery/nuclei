@@ -18,6 +18,13 @@ type Options struct {
 	ServerURL string
 	// Authorization is the Authorization header value
 	Authorization string
+	// FeedPath, CorrelationID and Domain select feed mode: interaction URLs
+	// are built from a registration another program owns, and its
+	// interactions are read from the file at FeedPath (one JSON object per
+	// line) instead of polling an interactsh server.
+	FeedPath      string
+	CorrelationID string
+	Domain        string
 	// CacheSize is the numbers of requests to keep track of at a time.
 	// Older items are discarded in LRU manner in favor of new requests.
 	CacheSize int

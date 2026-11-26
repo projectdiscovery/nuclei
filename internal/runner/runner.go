@@ -432,6 +432,9 @@ func New(options *types.Options) (*Runner, error) {
 		opts.ServerURL = options.InteractshURL
 	}
 	opts.Authorization = options.InteractshToken
+	opts.FeedPath = options.InteractshFeed
+	opts.CorrelationID = options.InteractshCorrelationID
+	opts.Domain = options.InteractshDomain
 	opts.CacheSize = options.InteractionsCacheSize
 	opts.Eviction = time.Duration(options.InteractionsEviction) * time.Second
 	opts.CooldownPeriod = time.Duration(options.InteractionsCoolDownPeriod) * time.Second

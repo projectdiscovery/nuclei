@@ -38,8 +38,9 @@ type Client struct {
 
 	options *Options
 
-	// interactsh is a client for interactsh server.
-	interactsh *client.Client
+	// interactsh issues interaction URLs and delivers their interactions: an
+	// interactsh server registration, or a feed (see Options.FeedPath).
+	interactsh oastSource
 	// requests is a stored cache for interactsh-url->request-event data.
 	requests gcache.Cache[string, *RequestData]
 	// interactions is a stored cache for interactsh-interaction->interactsh-url data
@@ -205,22 +206,20 @@ func (c *Client) poll() error {
 		return ErrInteractshClientNotInitialized
 	}
 	c.initializeCaches()
-	interactsh, err := client.New(&client.Options{
-		ServerURL:           c.options.ServerURL,
-		Token:               c.options.Authorization,
-		DisableHTTPFallback: c.options.DisableHttpFallback,
-		HTTPClient:          c.options.HTTPClient,
-		KeepAliveInterval:   time.Minute,
-	})
+	interactsh, err := c.newSource()
 	if err != nil {
-		return errkit.Wrap(err, "could not create client")
+		return err
 	}
 
 	c.interactsh = interactsh
 
 	interactURL := interactsh.URL()
 	interactDomain := interactURL[strings.Index(interactURL, ".")+1:]
-	gologger.Info().Msgf("Using Interactsh Server: %s", interactDomain)
+	if c.options.FeedPath != "" {
+		gologger.Info().Msgf("Using Interactsh feed %s for %s", c.options.FeedPath, interactDomain)
+	} else {
+		gologger.Info().Msgf("Using Interactsh Server: %s", interactDomain)
+	}
 
 	c.setHostname(interactDomain)
 
@@ -264,6 +263,38 @@ func (c *Client) poll() error {
 		return errkit.Wrap(err, "could not perform interactsh polling")
 	}
 	return nil
+}
+
+// newSource registers with the interactsh server, or opens the feed in feed mode.
+func (c *Client) newSource() (oastSource, error) {
+	if c.options.FeedPath == "" {
+		interactsh, err := client.New(&client.Options{
+			ServerURL:           c.options.ServerURL,
+			Token:               c.options.Authorization,
+			DisableHTTPFallback: c.options.DisableHttpFallback,
+			HTTPClient:          c.options.HTTPClient,
+			KeepAliveInterval:   time.Minute,
+		})
+		if err != nil {
+			return nil, errkit.Wrap(err, "could not create client")
+		}
+
+		return interactsh, nil
+	}
+
+	if err := ValidateFeedOptions(
+		c.options.CorrelationID,
+		c.options.Domain,
+		c.options.FeedPath,
+	); err != nil {
+		return nil, err
+	}
+
+	return newFeedSource(
+		c.options.FeedPath,
+		c.options.CorrelationID,
+		c.options.Domain,
+	)
 }
 
 // requestShouldStopAtFirstMatch checks if further interactions should be stopped

@@ -87,6 +87,13 @@ type Options struct {
 	InteractshURL string
 	// Interactsh Authorization header value for self-hosted servers
 	InteractshToken string
+	// InteractshCorrelationID, InteractshDomain and InteractshFeed select feed
+	// mode: interaction URLs come from a registration another program owns
+	// (its correlation id, under its domain) and its interactions are read from
+	// the feed file that program appends to, so nuclei registers with no server.
+	InteractshCorrelationID string
+	InteractshDomain        string
+	InteractshFeed          string
 	// Target URLs/Domains to scan using a template
 	Targets goflags.StringSlice
 	// ExcludeTargets URLs/Domains to exclude from scanning
@@ -657,6 +664,9 @@ func (options *Options) Copy() *Options {
 		ProjectPath:                    options.ProjectPath,
 		InteractshURL:                  options.InteractshURL,
 		InteractshToken:                options.InteractshToken,
+		InteractshCorrelationID:        options.InteractshCorrelationID,
+		InteractshDomain:               options.InteractshDomain,
+		InteractshFeed:                 options.InteractshFeed,
 		Targets:                        options.Targets,
 		ExcludeTargets:                 options.ExcludeTargets,
 		TargetsFilePath:                options.TargetsFilePath,
