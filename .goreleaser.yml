@@ -20,8 +20,6 @@ builds:
         goarch: '386'
       - goos: windows
         goarch: arm
-      - goos: windows
-        goarch: arm64
     flags:
       - -trimpath
       - -pgo=auto

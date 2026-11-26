@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"runtime"
 	"strings"
 	"sync"
 
@@ -137,6 +138,13 @@ func mustDisableSandbox(linux bool, euid int) bool {
 	return linux && euid == 0
 }
 
+// lookPath and isWindowsARM64 are variables so tests can stub browser discovery
+// and the platform check.
+var (
+	lookPath       = launcher.LookPath
+	isWindowsARM64 = runtime.GOOS == "windows" && runtime.GOARCH == "arm64"
+)
+
 // newChromeLauncher returns the launcher for a local browser. User headless
 // options are applied last, so "-headless-options no-sandbox" still works.
 func newChromeLauncher(options *types.Options, dataStore, proxyAddr string, noSandbox bool) (*launcher.Launcher, error) {
@@ -169,6 +177,12 @@ func newChromeLauncher(options *types.Options, dataStore, proxyAddr string, noSa
 			chromeLauncher.Bin(chromePath)
 		} else {
 			return nil, errors.New("the chrome browser is not installed")
+		}
+	} else if isWindowsARM64 {
+		// go-rod has no chromium download for windows/arm64, so prefer the installed chrome/edge;
+		// an explicit rod-bin in -headless-options still overrides it below
+		if chromePath, hasChrome := lookPath(); hasChrome {
+			chromeLauncher.Bin(chromePath)
 		}
 	}
 
