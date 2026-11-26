@@ -170,6 +170,12 @@ func serve(conn net.Conn, config *ssh.ServerConfig) {
 
 // TestSSHInfoIPv6Hosts checks real handshakes for both accepted IPv6 host forms.
 func TestSSHInfoIPv6Hosts(t *testing.T) {
+	probe, err := net.Listen("tcp", "[::1]:0")
+	if err != nil {
+		t.Skipf("IPv6 loopback unavailable: %v", err)
+	}
+	_ = probe.Close()
+
 	host, port := startServerOn(t, "[::1]:0")
 	for _, target := range []string{host, "[" + host + "]"} {
 		t.Run(target, func(t *testing.T) {
