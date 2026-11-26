@@ -1,10 +1,13 @@
 package index
 
 import (
+	"encoding/gob"
 	"fmt"
 	"os"
 	"path/filepath"
+	"reflect"
 	"runtime"
+	"slices"
 	"testing"
 	"time"
 
@@ -188,9 +191,9 @@ func TestCachePersistence(t *testing.T) {
 		require.NoError(t, err)
 
 		// Verify no .tmp file left behind
-		tmpFile := filepath.Join(tmpDir, IndexFileName+".tmp")
-		_, err = os.Stat(tmpFile)
-		require.True(t, os.IsNotExist(err), "Temporary file should not exist after save")
+		tmpFiles, err := filepath.Glob(filepath.Join(tmpDir, IndexFileName+".*.tmp"))
+		require.NoError(t, err)
+		require.Empty(t, tmpFiles, "Temporary file should not exist after save")
 
 		// Verify actual cache file exists
 		cacheFile := filepath.Join(tmpDir, IndexFileName)
@@ -662,6 +665,64 @@ func TestCacheConcurrency(t *testing.T) {
 	})
 }
 
+// Two indexes over one cache directory, as two SDK engines in one process
+// have, each hold their own mutex, so their saves can run at the same time.
+func TestCacheConcurrentSaveAcrossIndexes(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	const (
+		rounds  = 20
+		indexes = 2
+		entries = 2000
+	)
+
+	// What each index of the last round set, by index.
+	var written []map[string]*Metadata
+	for round := range rounds {
+		written = make([]map[string]*Metadata, indexes)
+		errs := make(chan error, indexes)
+		for id := range indexes {
+			own := make(map[string]*Metadata, entries)
+			written[id] = own
+			go func() {
+				cache, err := NewIndex(tmpDir)
+				if err != nil {
+					errs <- err
+					return
+				}
+				for n := range entries {
+					path := filepath.Join("/tmp", fmt.Sprintf("%d-%d-%d.yaml", round, id, n))
+					own[path] = &Metadata{ID: fmt.Sprintf("t-%d", n), FilePath: path}
+					cache.Set(path, own[path])
+				}
+				errs <- cache.Save()
+			}()
+		}
+
+		for range indexes {
+			require.NoError(t, <-errs, "Concurrent saves of two indexes should both succeed")
+		}
+	}
+
+	tmpFiles, err := filepath.Glob(filepath.Join(tmpDir, IndexFileName+".*.tmp"))
+	require.NoError(t, err)
+	require.Empty(t, tmpFiles, "Temporary files should not exist after the saves")
+
+	// The file left in place is one index's whole snapshot of the last round,
+	// never a mix of the two.
+	file, err := os.Open(filepath.Join(tmpDir, IndexFileName))
+	require.NoError(t, err)
+	defer func() { _ = file.Close() }()
+
+	var snapshot cacheSnapshot
+	require.NoError(t, gob.NewDecoder(file).Decode(&snapshot))
+	require.Len(t, snapshot.Data, entries)
+	whole := slices.ContainsFunc(written, func(own map[string]*Metadata) bool {
+		return reflect.DeepEqual(own, snapshot.Data)
+	})
+	require.True(t, whole, "The cache file should hold exactly what one index of the last round set")
+}
+
 func TestCacheSize(t *testing.T) {
 	tmpDir := t.TempDir()
 	cache, err := NewIndex(tmpDir)
@@ -730,11 +791,9 @@ func TestCacheSaveErrorHandling(t *testing.T) {
 	}
 	cache.Set(metadata.FilePath, metadata)
 
-	// Create a directory where the temp file would be created to force an error
-	// The Save method creates a file at cacheFile + ".tmp"
-	conflictPath := filepath.Join(tmpDir, IndexFileName+".tmp")
-	err = os.Mkdir(conflictPath, 0755)
-	require.NoError(t, err)
+	// Remove the cache directory to force an error: Save creates its temp
+	// file beside the cache file.
+	require.NoError(t, os.RemoveAll(tmpDir))
 
 	err = cache.Save()
 	require.Error(t, err, "Save should fail when temp file cannot be created")
