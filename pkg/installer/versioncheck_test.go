@@ -104,12 +104,24 @@ func TestUpdateIgnoreFileRejectsOversizedResponse(t *testing.T) {
 }
 
 func TestDoVersionCheckRejectsOversizedResponse(t *testing.T) {
-	oversized := bytes.Repeat([]byte("a"), maxVersionCheckResponseSize+100)
+	// valid JSON padded past the limit, so only the size check can reject it
+	padding := bytes.Repeat([]byte("a"), maxVersionCheckResponseSize)
+	oversized := []byte(`{"tools":[{"name":"nuclei","version":"9.9.9"},{"name":"nuclei-templates","version":"9.9.9"}],"pad":"` + string(padding) + `"}`)
 	withVersionDownload(t, http.StatusOK, oversized)
+
+	cfg := config.DefaultConfig
+	previousNuclei := cfg.LatestNucleiVersion
+	previousTemplates := cfg.LatestNucleiTemplatesVersion
+	t.Cleanup(func() {
+		cfg.LatestNucleiVersion = previousNuclei
+		cfg.LatestNucleiTemplatesVersion = previousTemplates
+	})
 
 	_, err := doVersionCheck(false)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), fmt.Sprintf("exceeded maximum size limit of %d bytes", maxVersionCheckResponseSize))
+	require.Equal(t, previousNuclei, cfg.LatestNucleiVersion)
+	require.Equal(t, previousTemplates, cfg.LatestNucleiTemplatesVersion)
 }
 
 func withMockDownload(t *testing.T, status int, contentType string, body []byte) {
