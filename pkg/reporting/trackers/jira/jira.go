@@ -337,12 +337,7 @@ func (i *Integration) CreateNewIssue(event *output.ResultEvent) (*filters.Create
 	}
 	createdIssue, resp, err := i.jira.Issue.Create(issueData)
 	if err != nil {
-		var data string
-		if resp != nil && resp.Body != nil {
-			d, _ := io.ReadAll(resp.Body)
-			data = string(d)
-		}
-		return nil, fmt.Errorf("%w => %s", err, data)
+		return nil, fmt.Errorf("%w => %s", err, readAndCloseBody(resp))
 	}
 	return i.getIssueResponseFromJira(createdIssue)
 }
@@ -426,9 +421,12 @@ func (i *Integration) CloseIssueByID(issueID string) error {
 		if transition.To.Name != i.options.StatusNot {
 			continue
 		}
-		_, err = i.jira.Issue.DoTransitionWithPayload(issueID, jira.CreateTransitionPayload{
+		resp, err := i.jira.Issue.DoTransitionWithPayload(issueID, jira.CreateTransitionPayload{
 			Transition: jira.TransitionPayload{ID: transition.ID},
 		})
+		// go-jira does not decode the transition response, so it leaves the
+		// body open on success. Close it so the connection can be reused.
+		closeBody(resp)
 		if err != nil {
 			return fmt.Errorf("transition Jira issue %s: %w", issueID, err)
 		}
@@ -480,12 +478,7 @@ func (i *Integration) FindExistingIssue(event *output.ResultEvent, useStatus boo
 
 		resp, err := i.jira.Do(req, &searchResult)
 		if err != nil {
-			var data string
-			if resp != nil && resp.Body != nil {
-				d, _ := io.ReadAll(resp.Body)
-				data = string(d)
-			}
-			return jira.Issue{}, fmt.Errorf("%w => %s", err, data)
+			return jira.Issue{}, fmt.Errorf("%w => %s", err, readAndCloseBody(resp))
 		}
 
 		if len(searchResult.Issues) == 0 {
@@ -537,4 +530,26 @@ func (i *Integration) ShouldFilter(event *output.ResultEvent) bool {
 	}
 
 	return true
+}
+
+// readAndCloseBody returns the body of a failed go-jira response and closes it.
+// go-jira hands the response back unread on some error paths, so the caller
+// has to close it.
+func readAndCloseBody(resp *jira.Response) string {
+	if resp == nil || resp.Response == nil || resp.Body == nil {
+		return ""
+	}
+	defer closeBody(resp)
+	data, _ := io.ReadAll(resp.Body)
+	return string(data)
+}
+
+// closeBody closes a go-jira response body. It does not drain it: a server
+// that stalls mid-body would otherwise block the caller, and an empty
+// response, which is what go-jira leaves open, returns to the pool on close.
+func closeBody(resp *jira.Response) {
+	if resp == nil || resp.Response == nil || resp.Body == nil {
+		return
+	}
+	_ = resp.Body.Close()
 }
