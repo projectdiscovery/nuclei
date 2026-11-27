@@ -475,3 +475,37 @@ func TestMissingExecutionID(t *testing.T) {
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "executionId")
 }
+
+func newH2Server(t *testing.T) *httptest.Server {
+	t.Helper()
+	srv := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = io.WriteString(w, r.Proto)
+	}))
+	srv.EnableHTTP2 = true
+	srv.StartTLS()
+	t.Cleanup(srv.Close)
+	return srv
+}
+
+func TestClientNegotiatesHTTP2(t *testing.T) {
+	srv := newH2Server(t)
+	executionID := initExec(t, &types.Options{})
+	client := newRuntimeClient(t, executionID, Options{})
+
+	resp, err := client.Get(withExec(executionID), srv.URL+"/")
+	require.NoError(t, err)
+	require.Equal(t, "HTTP/2.0", resp.Proto)
+	require.Equal(t, "HTTP/2.0", resp.Body)
+}
+
+func TestClientDisableHTTP2(t *testing.T) {
+	srv := newH2Server(t)
+	executionID := initExec(t, &types.Options{})
+	client := newRuntimeClient(t, executionID, Options{DisableHTTP2: true})
+	require.True(t, client.DisableHTTP2)
+
+	resp, err := client.Get(withExec(executionID), srv.URL+"/")
+	require.NoError(t, err)
+	require.Equal(t, "HTTP/1.1", resp.Proto)
+	require.Equal(t, "HTTP/1.1", resp.Body)
+}

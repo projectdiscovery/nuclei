@@ -122,6 +122,7 @@ require (
 	github.com/tarunKoyalwar/goleak v0.0.0-20240429141123-0efa90dbdcf9
 	github.com/trivago/tgo v1.0.7
 	github.com/yassinebenaid/godump v0.11.1
+	github.com/zmap/zcrypto v0.0.0-20261015050653-aa1de3126e87
 	github.com/zmap/zgrab2 v0.1.8
 	gitlab.com/gitlab-org/api/client-go v1.9.1
 	go.dw1.io/x/net/http/cache v0.2.0
@@ -431,7 +432,6 @@ require (
 	github.com/yusufpapurcu/wmi v1.2.4 // indirect
 	github.com/zcalusic/sysinfo v1.1.3 // indirect
 	github.com/zeebo/blake3 v0.2.4 // indirect
-	github.com/zmap/zcrypto v0.0.0-20261015050653-aa1de3126e87 // indirect
 	go.dw1.io/fastcache v0.6.1 // indirect
 	go.dw1.io/rapidhash v0.3.0 // indirect
 	go.etcd.io/bbolt v1.4.3 // indirect
