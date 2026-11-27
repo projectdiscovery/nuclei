@@ -72,7 +72,9 @@ func testRDPModuleDials(t *testing.T, listenAddr, host string) {
 		select {
 		case <-accepted:
 			cancel()
-			<-done
+			if err := <-done; err != nil {
+				t.Logf("%s: %v", name, err)
+			}
 		case err := <-done:
 			cancel()
 			if err != nil {
