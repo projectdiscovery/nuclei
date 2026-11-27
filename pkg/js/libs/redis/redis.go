@@ -34,7 +34,7 @@ func getServerInfo(ctx context.Context, executionId string, host string, port in
 		return "", protocolstate.ErrHostDenied.Msgf(host)
 	}
 	// create a new client
-	client := newClient(fmt.Sprintf("%s:%d", host, port), "")
+	client := newClient(net.JoinHostPort(host, strconv.Itoa(port)), "")
 	defer func() {
 		_ = client.Close()
 	}()
@@ -72,7 +72,7 @@ func connect(ctx context.Context, executionId string, host string, port int, pas
 		return false, protocolstate.ErrHostDenied.Msgf(host)
 	}
 	// create a new client
-	client := newClient(fmt.Sprintf("%s:%d", host, port), password)
+	client := newClient(net.JoinHostPort(host, strconv.Itoa(port)), password)
 	defer func() {
 		_ = client.Close()
 	}()
@@ -108,7 +108,7 @@ func getServerInfoAuth(ctx context.Context, executionId string, host string, por
 		return "", protocolstate.ErrHostDenied.Msgf(host)
 	}
 	// create a new client
-	client := newClient(fmt.Sprintf("%s:%d", host, port), password)
+	client := newClient(net.JoinHostPort(host, strconv.Itoa(port)), password)
 	defer func() {
 		_ = client.Close()
 	}()
@@ -148,7 +148,7 @@ func isAuthenticated(ctx context.Context, executionId string, host string, port 
 		return false, fmt.Errorf("dialers not initialized for %s", executionId)
 	}
 
-	conn, err := dialer.Fastdialer.Dial(ctx, "tcp", fmt.Sprintf("%s:%d", host, port))
+	conn, err := dialer.Fastdialer.Dial(ctx, "tcp", net.JoinHostPort(host, strconv.Itoa(port)))
 	if err != nil {
 		return false, err
 	}
@@ -179,7 +179,7 @@ func RunLuaScript(ctx context.Context, host string, port int, password string, s
 		return false, protocolstate.ErrHostDenied.Msgf(host)
 	}
 	// create a new client
-	client := newClient(fmt.Sprintf("%s:%d", host, port), password)
+	client := newClient(net.JoinHostPort(host, strconv.Itoa(port)), password)
 	defer func() {
 		_ = client.Close()
 	}()

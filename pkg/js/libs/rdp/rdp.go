@@ -52,7 +52,7 @@ func isRDP(ctx context.Context, executionId string, host string, port int) (IsRD
 	}
 
 	timeout := 5 * time.Second
-	conn, err := dialer.Fastdialer.Dial(ctx, "tcp", fmt.Sprintf("%s:%d", host, port))
+	conn, err := dialer.Fastdialer.Dial(ctx, "tcp", net.JoinHostPort(host, strconv.Itoa(port)))
 	if err != nil {
 		return resp, err
 	}
@@ -110,7 +110,7 @@ func checkRDPAuth(ctx context.Context, executionId string, host string, port int
 		return CheckRDPAuthResponse{}, fmt.Errorf("dialers not initialized for %s", executionId)
 	}
 	timeout := 5 * time.Second
-	conn, err := dialer.Fastdialer.Dial(ctx, "tcp", fmt.Sprintf("%s:%d", host, port))
+	conn, err := dialer.Fastdialer.Dial(ctx, "tcp", net.JoinHostPort(host, strconv.Itoa(port)))
 	if err != nil {
 		return resp, err
 	}
