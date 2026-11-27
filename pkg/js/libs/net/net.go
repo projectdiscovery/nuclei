@@ -312,7 +312,7 @@ func tlsConfigFromOptions(address string, opts TLSOptions) (*tls.Config, error) 
 	}
 
 	config := &tls.Config{
-		InsecureSkipVerify: true,
+		InsecureSkipVerify: true, // codeql[go/disabled-certificate-check]
 		MinVersion:         minVersion,
 		MaxVersion:         maxVersion,
 	}
