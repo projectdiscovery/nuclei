@@ -64,7 +64,7 @@ func testRedisModuleDials(t *testing.T, listenAddr, host string) {
 			return err
 		},
 		"RunLuaScript": func(ctx context.Context) error {
-			ctx = context.WithValue(ctx, "executionId", executionID)
+			ctx = context.WithValue(ctx, "executionId", executionID) //nolint:staticcheck
 			_, err := RunLuaScript(ctx, host, port, "x", "return 1", nil, nil)
 			return err
 		},
@@ -81,7 +81,9 @@ func testRedisModuleDials(t *testing.T, listenAddr, host string) {
 		select {
 		case <-accepted:
 			cancel()
-			<-done
+			if err := <-done; err != nil {
+				t.Logf("%s: %v", name, err)
+			}
 		case err := <-done:
 			cancel()
 			if err != nil {
