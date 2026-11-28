@@ -32,8 +32,10 @@ func TestGeneratorPayloadInteractshMarkerRendersBeforeArgs(t *testing.T) {
 	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
 		ID: "javascript-payload-interactsh",
 	})
+	serverURL, httpClient := testutils.NewInteractshServer(t)
 	client, err := interactsh.New(&interactsh.Options{
-		ServerURL:           options.InteractshURL,
+		ServerURL:           serverURL,
+		HTTPClient:          httpClient,
 		CacheSize:           options.InteractionsCacheSize,
 		Eviction:            time.Duration(options.InteractionsEviction) * time.Second,
 		CooldownPeriod:      time.Duration(options.InteractionsCoolDownPeriod) * time.Second,

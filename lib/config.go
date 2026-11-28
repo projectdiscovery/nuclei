@@ -545,7 +545,12 @@ func DisableUpdateCheck() NucleiSDKOptions {
 	}
 }
 
-// WithResumeFile allows setting a resume file
+// WithResumeFile sets the resume file. The engine skips the work the file marks
+// as done, and ExecuteCallbackWithCtx saves the scan's progress to it when its
+// context is cancelled. Every call resumes from the file as the engine loaded it
+// and saves only its own progress. A scan that finishes leaves the file
+// unchanged, so pass a new path for a fresh scan. ThreadSafeNucleiEngine ignores
+// the file.
 func WithResumeFile(file string) NucleiSDKOptions {
 	return func(e *NucleiEngine) error {
 		e.opts.Resume = file

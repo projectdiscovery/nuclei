@@ -1,6 +1,6 @@
 module github.com/projectdiscovery/nuclei/v3
 
-go 1.27.3
+go 1.27.4
 
 require (
 	carvel.dev/ytt v0.52.0
@@ -46,7 +46,6 @@ require (
 	github.com/go-pdf/fpdf v0.9.0
 	github.com/go-pg/pg/v10 v10.15.0
 	github.com/go-playground/validator/v10 v10.26.0
-	github.com/go-rod/rod v0.116.2
 	github.com/go-sql-driver/mysql v1.10.0
 	github.com/gobwas/ws v1.4.0
 	github.com/goccy/go-json v0.10.5
@@ -79,34 +78,35 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/praetorian-inc/fingerprintx v1.1.15
 	github.com/projectdiscovery/clistats v0.1.10
-	github.com/projectdiscovery/dsl v0.9.3
+	github.com/projectdiscovery/dsl v0.9.4
 	github.com/projectdiscovery/fastdialer v0.6.3
 	github.com/projectdiscovery/fasttemplate v0.0.2
 	github.com/projectdiscovery/gcache v0.0.0-20241015120333-12546c6e3f4c
 	github.com/projectdiscovery/goflags v0.2.1
 	github.com/projectdiscovery/goimpacket v0.1.1-0.20261007205806-6042a8213eeb
-	github.com/projectdiscovery/goja v0.0.0-20261012075649-9b78f2e05b9c
+	github.com/projectdiscovery/goja v0.0.0-20261105204359-4285f3c977ed
 	github.com/projectdiscovery/goja_nodejs v0.0.0-20260618132410-8519f75f703d
-	github.com/projectdiscovery/gologger v1.1.75
+	github.com/projectdiscovery/gologger v1.1.76
 	github.com/projectdiscovery/gostruct v0.0.2
 	github.com/projectdiscovery/govaluate v0.0.0-20261102102118-9294133b15a2
 	github.com/projectdiscovery/gozero v0.1.1
-	github.com/projectdiscovery/hmap v0.0.104
+	github.com/projectdiscovery/hmap v0.0.105
 	github.com/projectdiscovery/httpx v1.12.0
 	github.com/projectdiscovery/interactsh v1.4.1
 	github.com/projectdiscovery/mapcidr v1.1.97
 	github.com/projectdiscovery/n3iwf v0.0.0-20230523120440-b8cd232ff1f5
-	github.com/projectdiscovery/networkpolicy v0.1.58
+	github.com/projectdiscovery/networkpolicy v0.1.59
 	github.com/projectdiscovery/ratelimit v0.0.95
 	github.com/projectdiscovery/rawhttp v0.3.1
-	github.com/projectdiscovery/retryabledns v1.0.118
-	github.com/projectdiscovery/retryablehttp-go v1.3.34
+	github.com/projectdiscovery/retryabledns v1.0.119
+	github.com/projectdiscovery/retryablehttp-go v1.3.35
+	github.com/projectdiscovery/rod v0.116.3-0.20261113214723-dd0abeca2a24
 	github.com/projectdiscovery/sarif v0.1.0
-	github.com/projectdiscovery/tlsx v1.4.3-0.20261020052910-acb80c2c7c75
+	github.com/projectdiscovery/tlsx v1.5.0
 	github.com/projectdiscovery/uncover v1.2.1
 	github.com/projectdiscovery/useragent v0.0.110
-	github.com/projectdiscovery/utils v0.11.13
-	github.com/projectdiscovery/wappalyzergo v0.3.8
+	github.com/projectdiscovery/utils v0.11.16
+	github.com/projectdiscovery/wappalyzergo v0.3.10
 	github.com/projectdiscovery/yamldoc-go v1.0.9
 	github.com/redis/go-redis/v9 v9.19.0
 	github.com/remeh/sizedwaitgroup v1.0.0
@@ -220,7 +220,7 @@ require (
 	github.com/charmbracelet/x/term v0.2.1 // indirect
 	github.com/cheggaaa/pb/v3 v3.1.7 // indirect
 	github.com/chzyer/readline v1.5.1 // indirect
-	github.com/cloudflare/cfssl v1.6.5 // indirect
+	github.com/cloudflare/cfssl v1.7.1 // indirect
 	github.com/cloudflare/circl v1.6.3 // indirect
 	github.com/cloudwego/base64x v0.1.6 // indirect
 	github.com/cncf/xds/go v0.0.0-20260202195803-dba9d589def2 // indirect
@@ -234,7 +234,7 @@ require (
 	github.com/dimchansky/utfbom v1.1.1 // indirect
 	github.com/distribution/reference v0.6.0 // indirect
 	github.com/djherbis/times v1.6.0 // indirect
-	github.com/dlclark/regexp2/v2 v2.2.1 // indirect
+	github.com/dlclark/regexp2/v2 v2.11.0 // indirect
 	github.com/docker/cli v29.2.0+incompatible // indirect
 	github.com/docker/go-connections v0.7.0 // indirect
 	github.com/dop251/goja v0.0.0-20260311135729-065cd970411c // indirect
@@ -281,7 +281,7 @@ require (
 	github.com/golang/groupcache v0.0.0-20241129210726-2c02b8208cf8 // indirect
 	github.com/golang/protobuf v1.5.4 // indirect
 	github.com/golang/snappy v1.0.0 // indirect
-	github.com/google/certificate-transparency-go v1.3.3 // indirect
+	github.com/google/certificate-transparency-go v1.4.0 // indirect
 	github.com/google/go-cmp v0.7.0 // indirect
 	github.com/google/go-querystring v1.2.0 // indirect
 	github.com/google/pprof v0.0.0-20240727154555-813a5fbdbec8 // indirect
@@ -370,7 +370,7 @@ require (
 	github.com/planetscale/vtprotobuf v0.6.1-0.20240319094008-0393e58bdf10 // indirect
 	github.com/power-devops/perfstat v0.0.0-20240221224432-82ca36839d55 // indirect
 	github.com/projectdiscovery/asnmap v1.2.0 // indirect
-	github.com/projectdiscovery/blackrock v0.0.2 // indirect
+	github.com/projectdiscovery/blackrock v0.0.4 // indirect
 	github.com/projectdiscovery/cdncheck v1.4.0 // indirect
 	github.com/projectdiscovery/freeport v0.0.8 // indirect
 	github.com/projectdiscovery/jarm-go v0.0.0-20260910160638-430e2bae86f6 // indirect
@@ -425,11 +425,7 @@ require (
 	github.com/xhit/go-str2duration/v2 v2.1.0 // indirect
 	github.com/xo/terminfo v0.0.0-20220910002029-abceb7e1c41e // indirect
 	github.com/youmark/pkcs8 v0.0.0-20240726163527-a2c0da244d78 // indirect
-	github.com/ysmood/fetchup v0.2.3 // indirect
-	github.com/ysmood/goob v0.4.0 // indirect
-	github.com/ysmood/got v0.40.0 // indirect
 	github.com/ysmood/gson v0.7.3 // indirect
-	github.com/ysmood/leakless v0.9.0 // indirect
 	github.com/yuin/goldmark v1.8.6 // indirect
 	github.com/yuin/goldmark-emoji v1.0.6 // indirect
 	github.com/yusufpapurcu/wmi v1.2.4 // indirect

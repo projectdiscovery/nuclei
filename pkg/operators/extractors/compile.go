@@ -77,14 +77,14 @@ func (e *Extractor) CompileExtractors() error {
 		e.KVal[i] = strings.ToLower(kval)
 	}
 
-	for _, query := range e.JSON {
-		query, err := gojq.Parse(query)
+	for _, rawQuery := range e.JSON {
+		query, err := gojq.Parse(rawQuery)
 		if err != nil {
-			return fmt.Errorf("could not parse json: %s", query)
+			return fmt.Errorf("could not parse json query %q: %w", rawQuery, err)
 		}
 		compiled, err := gojq.Compile(query)
 		if err != nil {
-			return fmt.Errorf("could not compile json: %s", query)
+			return fmt.Errorf("could not compile json query %q: %w", rawQuery, err)
 		}
 		e.jsonCompiled = append(e.jsonCompiled, compiled)
 	}

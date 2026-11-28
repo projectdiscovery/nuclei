@@ -23,6 +23,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/helpers/eventcreator"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/helpers/responsehighlighter"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/hosterrorscache" //nolint:depguard // No depguard rules are configured, so its default list allows only the standard library.
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/render"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/utils/vardump"
@@ -98,9 +99,12 @@ type Request struct {
 	TLSCipherTypes []string `yaml:"tls_cipher_types,omitempty" json:"tls_cipher_types,omitempty" jsonschema:"title=TLS Cipher Types,description=TLS Cipher Types to enumerate,enum=weak,enum=secure,enum=insecure,enum=all"`
 
 	// cache any variables that may be needed for operation.
-	dialer  *fastdialer.Dialer
-	tlsx    *tlsx.Service
-	options *protocols.ExecutorOptions
+	dialer *fastdialer.Dialer
+	tlsx   *tlsx.Service
+	// tlsxFallback is tried when tlsx fails behind a proxy, where auto mode is
+	// replaced by a ctls to ztls chain because openssl cannot use the proxy.
+	tlsxFallback *tlsx.Service
+	options      *protocols.ExecutorOptions
 }
 
 // TmplClusterKey generates a unique key for the request
@@ -120,7 +124,8 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 	request.options = options
 
 	client, err := networkclientpool.Get(options.Options, &networkclientpool.Configuration{
-		CustomDialer: options.CustomFastdialer,
+		CustomDialer:    options.CustomFastdialer,
+		TunnelHTTPProxy: true,
 	})
 	if err != nil {
 		return errkit.Wrap(err, "could not get network client")
@@ -136,6 +141,11 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 
 	case request.ScanMode == "openssl" && !openssl.IsAvailable():
 		// if openssl is not installed instead of failing "auto" scanmode is used
+		request.ScanMode = "auto"
+
+	case request.ScanMode == "openssl" && (options.Options.AliveHttpProxy != "" || options.Options.AliveSocksProxy != ""):
+		// openssl mode runs s_client, which would connect to the target
+		// directly and bypass -proxy
 		request.ScanMode = "auto"
 	}
 	if request.TLSCiphersEnum {
@@ -166,6 +176,20 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 		TlsVersionsEnum:   request.TLSVersionsEnum,
 		TlsCiphersEnum:    request.TLSCiphersEnum,
 		TLsCipherLevel:    request.TLSCipherTypes,
+	}
+
+	proxied := options.Options.AliveHttpProxy != "" || options.Options.AliveSocksProxy != ""
+	if proxied && request.ScanMode == "auto" {
+		// auto mode would also try openssl, whose s_client dials the target
+		// directly and bypasses -proxy, so use the Go TLS backends only
+		fallbackOptions := *tlsxOptions
+		fallbackOptions.ScanMode = "ztls"
+		tlsxOptions.ScanMode = "ctls"
+		fallbackService, err := tlsx.New(&fallbackOptions)
+		if err != nil {
+			return errkit.New("could not create tlsx service")
+		}
+		request.tlsxFallback = fallbackService
 	}
 
 	tlsxService, err := tlsx.New(tlsxOptions)
@@ -219,6 +243,20 @@ func (request *Request) allowedAddress(host string) (string, error) {
 	return "", protocolstate.ErrHostDenied.Msgf(host)
 }
 
+// connect grabs the tls response, retrying with the fallback backend when one
+// is configured.
+func (request *Request) connect(host, ip, port string) (*clients.Response, error) {
+	response, err := request.tlsx.Connect(host, ip, port)
+	if err == nil || request.tlsxFallback == nil {
+		return response, err
+	}
+	fallbackResponse, fallbackErr := request.tlsxFallback.Connect(host, ip, port)
+	if fallbackErr != nil {
+		return nil, fmt.Errorf("%w; fallback: %w", err, fallbackErr)
+	}
+	return fallbackResponse, nil
+}
+
 // ExecuteWithResults executes the protocol requests and returns results instead of writing them.
 func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicValues, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
 	hostPort := input.MetaInput.Input
@@ -261,6 +299,10 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 
 	addressToDial := result.Text
 
+	if request.isUnresponsiveAddress(input, addressToDial) {
+		return hosterrorscache.ErrUnresponsiveHost
+	}
+
 	host, port, err := net.SplitHostPort(addressToDial)
 	if err != nil {
 		return errkit.Wrap(err, "could not split input host port")
@@ -300,7 +342,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 	}
 
 	timeStart := time.Now()
-	response, err := request.tlsx.Connect(host, hostIp, port)
+	response, err := request.connect(host, hostIp, port)
 	duration := time.Since(timeStart)
 	request.options.HostBackoffObserveDial(addressToDial, err)
 	if err != nil {
@@ -508,4 +550,17 @@ func (r *Request) UpdateOptions(opts *protocols.ExecutorOptions) {
 	}
 	r.options = r.options.Copy()
 	r.options.ApplyNewEngineOptions(opts)
+}
+
+// isUnresponsiveAddress reports whether the host errors cache marks address,
+// the one the request dials, unresponsive.
+func (request *Request) isUnresponsiveAddress(input *contextargs.Context, address string) bool {
+	if request.options.HostErrorsCache == nil {
+		return false
+	}
+
+	target := input.Clone()
+	target.MetaInput.Input = address
+
+	return request.options.HostErrorsCache.Check(request.options.ProtocolType.String(), target)
 }

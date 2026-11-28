@@ -482,3 +482,20 @@ func parseURL(t *testing.T, inputurl string) *urlutil.URL {
 	}
 	return urlx
 }
+
+func TestUnsafeRequestLineWithoutPathIsKept(t *testing.T) {
+	const request = "GET\r\nHost: example.com\r\n\r\n"
+
+	var req *Request
+	require.NotPanics(t, func() {
+		var err error
+		req, err = Parse(request, parseURL(t, "https://example.com"), true, false)
+		require.NoError(t, err)
+	})
+	require.Equal(t, "GET", req.Method)
+	require.Equal(t, "", req.Path)
+	require.Equal(t, request, string(req.UnsafeRawBytes))
+
+	_, err := Parse(request, parseURL(t, "https://example.com"), false, false)
+	require.Error(t, err, "a safe request must still need a full request line")
+}

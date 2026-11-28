@@ -13,6 +13,7 @@ import (
 	"runtime/trace"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/projectdiscovery/gologger"
@@ -54,6 +55,9 @@ var (
 	inlineSecretsTempDir string
 	inlineSecretsTempMu  sync.Mutex
 )
+
+// defaultMaxHostError is the default of -max-host-error.
+const defaultMaxHostError = 30
 
 // normalizeHeaderValue trims a -H value and drops it when the whole line is a
 // "#" comment. The goflags default strips inline comments, which cut values
@@ -196,12 +200,15 @@ func main() {
 		defer cancel()
 		stackMonitor.RegisterCallback(func(dumpID string) error {
 			resumeFileName := types.DefaultCrashResumeFilePath(dumpID)
+			// Save before Close: Close closes the input provider while the scan
+			// still runs, and templates that start then see no targets and would be
+			// saved as completed.
+			options.Logger.Info().Msgf("Creating resume file: %s\n", resumeFileName)
+			err := nucleiRunner.SaveResumeConfig(resumeFileName)
 			if options.EnableCloudUpload {
 				options.Logger.Info().Msgf("Uploading scan results to cloud...")
 			}
 			nucleiRunner.Close()
-			options.Logger.Info().Msgf("Creating resume file: %s\n", resumeFileName)
-			err := nucleiRunner.SaveResumeConfig(resumeFileName)
 			if err != nil {
 				return errkit.Wrap(err, "couldn't create crash resume file")
 			}
@@ -214,10 +221,14 @@ func main() {
 	if options.Resume != "" {
 		resumeFileName = options.Resume
 	}
+	// interrupted tells the main goroutine, which may finish the scan while the
+	// handler below saves, to leave the exit to the handler.
+	var interrupted atomic.Bool
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt)
 	go func() {
 		<-c
+		interrupted.Store(true)
 		options.Logger.Info().Msgf("CTRL+C pressed: Exiting\n")
 		if options.DASTServer {
 			nucleiRunner.Close()
@@ -226,10 +237,9 @@ func main() {
 		}
 
 		options.Logger.Info().Msgf("Attempting graceful shutdown...")
-		if options.EnableCloudUpload {
-			options.Logger.Info().Msgf("Uploading scan results to cloud...")
-		}
-		nucleiRunner.Close()
+		// Save before Close: Close closes the input provider and the dialers
+		// while the scan goroutines still run, and templates that start then see
+		// no targets and would be saved as completed.
 		if options.ShouldSaveResume() {
 			options.Logger.Info().Msgf("Creating resume file: %s\n", resumeFileName)
 			err := nucleiRunner.SaveResumeConfig(resumeFileName)
@@ -237,6 +247,12 @@ func main() {
 				options.Logger.Error().Msgf("Couldn't create resume file: %s\n", err)
 			}
 		}
+
+		if options.EnableCloudUpload {
+			options.Logger.Info().Msgf("Uploading scan results to cloud...")
+		}
+
+		nucleiRunner.Close()
 		cleanupInlineSecretsDirs()
 		os.Exit(1)
 	}()
@@ -249,6 +265,12 @@ func main() {
 		}
 	}
 	nucleiRunner.Close()
+	// Returning now exits with status 0, possibly before the handler has written
+	// the resume file, and deleting the file would drop the progress it saved.
+	// The handler ends the process with status 1.
+	if interrupted.Load() {
+		select {}
+	}
 	// on successful execution remove the resume file in case it exists
 	if fileutil.FileExists(resumeFileName) {
 		_ = os.Remove(resumeFileName)
@@ -288,7 +310,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.StringVarP(&options.TargetsFilePath, "list", "l", "", "path to file containing a list of target URLs/hosts to scan (one per line)"),
 		flagSet.StringVarP(&options.InlineTargetsList, "targets-inline", "", "", "inline multiline target list (for use in template profiles)"),
 		flagSet.StringSliceVarP(&options.ExcludeTargets, "exclude-hosts", "eh", nil, "hosts to exclude to scan from the input list (ip, cidr, hostname)", goflags.FileNormalizedOriginalStringSliceOptions),
-		flagSet.StringVar(&options.Resume, "resume", "", "resume scan from and save to specified file (clustering will be disabled)"),
+		flagSet.StringVar(&options.Resume, "resume", "", "resume scan from and save to specified file"),
 		flagSet.BoolVarP(&options.ScanAllIPs, "scan-all-ips", "sa", false, "scan all the IP's associated with dns record"),
 		flagSet.StringSliceVarP(&options.IPVersion, "ip-version", "iv", nil, "IP version to scan of hostname (4,6); default uses dialer fallback, -sa scans all addresses", goflags.CommaSeparatedStringSliceOptions),
 		flagSet.BoolVarP(&options.DisableURLNormalization, "disable-url-normalization", "dun", false, "keep targets exactly as supplied instead of collapsing urls that address the same resource"),
@@ -321,7 +343,8 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.BoolVar(&options.TemplateList, "tl", false, "list all templates matching current filters"),
 		flagSet.BoolVar(&options.TagList, "tgl", false, "list all available tags"),
 		flagSet.StringSliceVarConfigOnly(&options.RemoteTemplateDomainList, "remote-template-domain", []string{"cloud.projectdiscovery.io"}, "allowed domain list to load remote templates from"),
-		flagSet.BoolVar(&options.SignTemplates, "sign", false, "signs the templates with the private key defined in NUCLEI_SIGNATURE_PRIVATE_KEY env variable"),
+		flagSet.BoolVar(&options.SignTemplates, "sign", false,
+			"signs the templates with the key in NUCLEI_USER_PRIVATE_KEY and NUCLEI_USER_CERTIFICATE, or in the keys folder"),
 		flagSet.BoolVar(&options.EnableCodeTemplates, "code", false, "enable loading code protocol-based templates"),
 		flagSet.BoolVarP(&options.DisableUnsignedTemplates, "disable-unsigned-templates", "dut", false, "disable running unsigned templates or templates with mismatched signature"),
 		flagSet.BoolVarP(&options.EnableSelfContainedTemplates, "enable-self-contained", "esc", false, "enable loading self-contained templates"),
@@ -477,7 +500,10 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.IntVar(&options.Timeout, "timeout", 10, "time to wait in seconds before timeout"),
 		flagSet.IntVar(&options.Retries, "retries", 1, "number of times to retry a failed request"),
 		flagSet.BoolVarP(&options.LeaveDefaultPorts, "leave-default-ports", "ldp", false, "leave default HTTP/HTTPS ports (eg. host:80,host:443)"),
-		flagSet.IntVarP(&options.MaxHostError, "max-host-error", "mhe", 30, "max errors for a host before skipping from scan"),
+		flagSet.IntVarP(
+			&options.MaxHostError, "max-host-error", "mhe", defaultMaxHostError,
+			"max http errors for a host:port before skipping requests to it",
+		),
 		flagSet.StringSliceVarP(&options.TrackError, "track-error", "te", nil, "adds given error to max-host-error watchlist (standard, file)", goflags.FileStringSliceOptions),
 		flagSet.BoolVarP(&options.NoHostErrors, "no-mhe", "nmhe", false, "disable skipping host from scan based on errors"),
 		flagSet.BoolVar(&options.Project, "project", false, "use a project folder to avoid sending same request multiple times"),

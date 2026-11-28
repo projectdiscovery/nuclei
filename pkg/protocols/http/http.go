@@ -614,8 +614,9 @@ func (e *Request) MaySendElsewhere() bool {
 
 // sendsElsewhere reports whether any request of the block may go to an address
 // other than its target's. A false positive only moves the skip of a request to
-// a down target from the engine to the request path, so every form that is not
-// known to stay at the target counts. That is a
+// a down target from the engine to the request path, which then skips each
+// request to that address instead of ending the block, so every form that is
+// not known to stay at the target counts. That is a
 // self-contained request, which names its own destination, a path that does
 // not start with {{BaseURL}} or {{RootURL}}, or that continues them with
 // anything but a path, query or fragment, such as a port, and a raw request
@@ -712,6 +713,11 @@ func (request *Request) RebuildGenerator() error {
 
 // Requests returns the total number of requests the YAML rule will perform
 func (request *Request) Requests() int {
+	// a race block sends race_count copies of its first request, however many
+	// entries it has, and it does so before it looks at fuzzing rules
+	if request.sendsRaceCopies() {
+		return request.RaceNumberRequests
+	}
 	// fuzzing requests depend on each input's parameters and add themselves to
 	// the total as they are sent; any path or raw is not sent as such
 	if len(request.Fuzzing) > 0 {
@@ -778,11 +784,16 @@ func shouldDisableKeepAliveForHTTPProxy(request *Request, options *protocols.Exe
 // user enables it, since the pooled transport sets custom dial hooks). It only
 // affects the time_delay analyzer decision below.
 func (r *Request) AnalyzeConnectionReuse(forceHTTP2 bool) ConnectionReusePolicy {
-	// Priority 0: race and pipeline requests need dedicated connections. Race
-	// uses a one-shot synced body gate that breaks if a connection is reused and
-	// the body is re-read, and reusing a single keep-alive connection would also
+	// Priority 0: race requests need dedicated connections. Race uses a
+	// one-shot synced body gate that breaks if a connection is reused and the
+	// body is re-read, and reusing a single keep-alive connection would also
 	// serialize the requests and defeat the race.
-	if r.Race || r.Pipeline {
+	//
+	// Pipelined requests are not listed: the pipeline client dials its own
+	// connections, so the pool never serves them. ReuseUnsafe would only add
+	// "Connection: close" to each request, and the server would then close the
+	// connection that the block's other requests are waiting on.
+	if r.Race {
 		return ReuseUnsafe
 	}
 
@@ -873,6 +884,13 @@ func (request *Request) IsOriginScoped() bool {
 		}
 	}
 	return true
+}
+
+// sendsRaceCopies reports whether the block sends race_count copies of its
+// first request at once. Without race_count, or in a pipeline, a block with
+// race set runs as any other.
+func (e *Request) sendsRaceCopies() bool {
+	return e.Race && !e.Pipeline && e.RaceNumberRequests > 0
 }
 
 // carriesTargetPath reports whether a value interpolates the target's own path.
