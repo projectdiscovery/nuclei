@@ -86,5 +86,11 @@ func UnmarshalSQLRows(rows *sql.Rows) (*SQLResult, error) {
 		}
 		result.Rows = append(result.Rows, masterData)
 	}
+	// rows.Next returns false on an iteration error too, such as a dropped
+	// connection or an expired context. Report it rather than returning the
+	// rows read so far as a complete result.
+	if err := rows.Err(); err != nil {
+		return result, err
+	}
 	return result, nil
 }
