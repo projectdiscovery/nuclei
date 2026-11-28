@@ -20,7 +20,7 @@ func TestStripTelnetCommands(t *testing.T) {
 		{"subnegotiation", []byte{IAC, SB, 0x18, 0x01, IAC, SE, 'o', 'k'}, "ok"},
 		{"escaped IAC", []byte{'a', IAC, IAC, 'b'}, "a\xffb"},
 		{"two-byte command", []byte{IAC, 241, 'x'}, "x"},
-		{"non-ASCII text", []byte("caf\xc3\xa9"), "café"},
+		{"non-ASCII text", []byte("\xe6\x9d\xb1\xe4\xba\xac"), "東京"},
 		{"truncated command", []byte{'a', IAC}, "a"},
 	}
 	for _, tt := range tests {
@@ -47,11 +47,11 @@ func TestDetectEncryptionBannerExcludesNegotiation(t *testing.T) {
 		}
 		_ = server.SetWriteDeadline(time.Now().Add(2 * time.Second))
 		_, _ = server.Write([]byte{IAC, DO, 0x18, IAC, WILL, 0x01, IAC, SB, 0x18, 0x01, IAC, SE})
-		_, _ = server.Write([]byte("Ubuntu 26.04 caf\xc3\xa9\r\nlogin: "))
+		_, _ = server.Write([]byte("Ubuntu 26.04 \xe6\x9d\xb1\xe4\xba\xac\r\nlogin: "))
 	}()
 
 	info, err := DetectEncryption(client, 2*time.Second)
 	require.NoError(t, err)
-	require.Equal(t, "Ubuntu 26.04 caf\xc3\xa9\r\nlogin: ", info.Banner)
+	require.Equal(t, "Ubuntu 26.04 東京\r\nlogin: ", info.Banner)
 	require.Contains(t, info.Options, 0x18)
 }
