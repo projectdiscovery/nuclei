@@ -107,7 +107,7 @@ func DetectEncryption(conn net.Conn, timeout time.Duration) (*EncryptionInfo, er
 	// Process server responses
 	options := make(map[int][]int)
 	supportsEncryption := false
-	banner := ""
+	var banner []byte
 
 	// Read responses until we get encryption info or timeout
 	for {
@@ -121,12 +121,8 @@ func DetectEncryption(conn net.Conn, timeout time.Duration) (*EncryptionInfo, er
 
 		if n > 0 {
 			data := buffer[:n]
-			// Check if this contains banner text (non-IAC bytes)
-			for _, b := range data {
-				if b != IAC {
-					banner += string(b)
-				}
-			}
+			// Keep only the text, without the option negotiation around it
+			banner = append(banner, stripTelnetCommands(data)...)
 
 			// Process telnet options
 			encrypted, opts := processTelnetOptions(data)
@@ -156,9 +152,46 @@ func DetectEncryption(conn net.Conn, timeout time.Duration) (*EncryptionInfo, er
 
 	return &EncryptionInfo{
 		SupportsEncryption: supportsEncryption,
-		Banner:             banner,
+		Banner:             string(banner),
 		Options:            options,
 	}, nil
+}
+
+// stripTelnetCommands returns data without telnet commands: IAC with its
+// command and option bytes, and IAC SB ... IAC SE subnegotiations. An escaped
+// IAC IAC is kept as one 0xFF data byte. Other bytes are copied unchanged.
+func stripTelnetCommands(data []byte) []byte {
+	out := make([]byte, 0, len(data))
+	for i := 0; i < len(data); i++ {
+		if data[i] != IAC {
+			out = append(out, data[i])
+			continue
+		}
+		if i+1 >= len(data) {
+			break
+		}
+		switch cmd := data[i+1]; {
+		case cmd == IAC:
+			out = append(out, IAC)
+			i++
+		case cmd == SB:
+			// Skip until IAC SE, or the end of the data.
+			j := i + 2
+			for ; j+1 < len(data); j++ {
+				if data[j] == IAC && data[j+1] == SE {
+					break
+				}
+			}
+			i = j + 1
+		case cmd >= WILL:
+			// WILL, WONT, DO and DONT carry one option byte.
+			i += 2
+		default:
+			// Two-byte commands such as NOP or GA.
+			i++
+		}
+	}
+	return out
 }
 
 // processTelnetOptions processes telnet protocol options and returns encryption support status
