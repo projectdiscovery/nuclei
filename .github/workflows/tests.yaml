@@ -21,7 +21,6 @@ jobs:
   # in parallel once it passes instead of queueing behind the unit tests
   lint:
     name: "Lint"
-    if: ${{ !endsWith(github.actor, '[bot]') }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7.0.1

@@ -50,7 +50,10 @@ var errEmptyResult = errors.New("Empty result")
 
 // ExecuteWithResults executes the protocol requests and returns results instead of writing them.
 func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
-	wg, err := syncutil.New(syncutil.WithSize(request.options.Options.BulkSize))
+	// syncutil.New rejects a size below 1, so a -bs below 1 reads one file at a time.
+	bulkSize := max(request.options.Options.BulkSize, 1)
+
+	wg, err := syncutil.New(syncutil.WithSize(bulkSize)) //nolint:varnamelen // wg names the group throughout
 	if err != nil {
 		return err
 	}
@@ -242,7 +245,7 @@ func (request *Request) processFile(filePath string, input *contextargs.Context,
 	if err != nil {
 		return nil, nil, errors.Errorf("Could not stat file path %s: %s\n", filePath, err)
 	}
-	if stat.Size() >= request.maxSize {
+	if request.maxSize >= 0 && stat.Size() >= request.maxSize {
 		maxSizeString := units.HumanSize(float64(request.maxSize))
 		gologger.Verbose().Msgf("Limiting %s processed data to %s bytes: exceeded max size\n", filePath, maxSizeString)
 	}
@@ -251,7 +254,10 @@ func (request *Request) processFile(filePath string, input *contextargs.Context,
 }
 
 func (request *Request) processReader(reader io.Reader, filePath string, input *contextargs.Context, totalBytes int64, previousInternalEvent output.InternalEvent) (*output.InternalWrappedEvent, []FileMatch, error) {
-	fileReader := io.LimitReader(reader, request.maxSize)
+	fileReader := reader
+	if request.maxSize >= 0 { // max-size: no (-1) reads the whole file
+		fileReader = io.LimitReader(reader, request.maxSize)
+	}
 	fileMatches, opResult := request.findMatchesWithReader(fileReader, input, filePath, totalBytes, previousInternalEvent)
 	if opResult == nil && len(fileMatches) == 0 {
 		return nil, nil, errEmptyResult

@@ -3,17 +3,21 @@ package httpclientpool
 import (
 	"container/list"
 	"context"
+	"crypto/tls"
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"net/http/httptest"
+	"runtime"
 	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
 
+	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/tlsverify"
 	"github.com/projectdiscovery/retryablehttp-go"
 	"github.com/projectdiscovery/useragent"
 	"github.com/stretchr/testify/require"
@@ -89,6 +93,33 @@ func TestSharedResponsesSendEachRequestOncePerScan(t *testing.T) {
 		_ = resp.Body.Close()
 	}
 	require.EqualValues(t, 8, hits.Load(), "a request with a body is always sent")
+}
+
+func TestSharedResponsesReleaseTheConnection(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Connection", "close")
+		_, _ = io.WriteString(w, r.URL.Path)
+	}))
+	defer server.Close()
+
+	var released atomic.Bool
+	var dialer net.Dialer
+	base := &http.Transport{DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
+		conn, err := dialer.DialContext(ctx, network, addr)
+		if tcp, ok := conn.(*net.TCPConn); ok {
+			runtime.AddCleanup(tcp, func(struct{}) { released.Store(true) }, struct{}{})
+		}
+		return conn, err
+	}}
+	transport := newSharingTransport(base)
+
+	require.Equal(t, "/a", sharedGet(t, transport, http.MethodGet, server.URL+"/a", "one", nil))
+	require.Len(t, transport.shared.entries, 1)
+	require.Eventually(t, func() bool {
+		runtime.GC()
+		return released.Load()
+	}, 5*time.Second, 10*time.Millisecond, "the stored response keeps the closed connection it came from")
+	require.Equal(t, "/a", sharedGet(t, transport, http.MethodGet, server.URL+"/a", "two", nil), "the entry is still served")
 }
 
 func TestSharedResponsesWaitForTheRequestInFlight(t *testing.T) {
@@ -305,4 +336,15 @@ func TestSharedResponsesDoNotKeepShortReads(t *testing.T) {
 	second := send("two")
 	_ = second.Body.Close()
 	require.EqualValues(t, 2, base.hits.Load(), "a short read is not reused")
+}
+
+// Reporting clients send tokens, so tlsverify must reach the scan transport
+// under the sharing wrapper and turn certificate verification on.
+func TestSharingTransportUnwrapsForTLSVerification(t *testing.T) {
+	base := &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}}
+	wrapped := newSharingTransport(&connTrackingTransport{base: base})
+
+	got, ok := tlsverify.Client(&http.Client{Transport: wrapped}).Transport.(*http.Transport)
+	require.True(t, ok, "tlsverify did not reach the scan transport under the sharing wrapper")
+	require.False(t, got.TLSClientConfig.InsecureSkipVerify)
 }

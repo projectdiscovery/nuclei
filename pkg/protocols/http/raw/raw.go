@@ -225,7 +225,9 @@ func readRawRequest(request string, unsafe bool) (*Request, error) {
 		}
 
 		// relative path
-		rawRequest.Path = parts[1]
+		if len(parts) > 1 {
+			rawRequest.Path = parts[1]
+		}
 		// Note: raw request does not URL Encode if needed `+` should be used
 		// this can be also be implemented
 	}

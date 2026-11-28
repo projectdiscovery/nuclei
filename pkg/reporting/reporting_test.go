@@ -21,6 +21,40 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// Every exporter is handed the same event, so omit-raw on one exporter must not
+// clear the raw request and response for the exporters after it.
+func TestReportingOmitRawIsPerExporter(t *testing.T) {
+	dir := t.TempDir()
+	jsonPath := filepath.Join(dir, "report.json")
+	jsonlPath := filepath.Join(dir, "report.jsonl")
+	client, err := New(&Options{
+		JSONExporter:  &jsonexporter.Options{File: jsonPath, OmitRaw: true},
+		JSONLExporter: &jsonl.Options{File: jsonlPath},
+	}, "", false)
+	require.NoError(t, err)
+
+	event := output.ResultEvent{TemplateID: "raw", Type: "http", Host: "example.com", URL: "http://example.com", Matched: "http://example.com", Request: "GET / HTTP/1.1", Response: "HTTP/1.1 200 OK"}
+	event.Info.SeverityHolder.Severity = severity.Info
+	require.NoError(t, client.CreateIssue(&event))
+	client.Close()
+
+	data, err := os.ReadFile(jsonPath)
+	require.NoError(t, err)
+	var rows []output.ResultEvent
+	require.NoError(t, json.Unmarshal(data, &rows))
+	require.Len(t, rows, 1)
+	require.Empty(t, rows[0].Request)
+	require.Empty(t, rows[0].Response)
+
+	data, err = os.ReadFile(jsonlPath)
+	require.NoError(t, err)
+	var row output.ResultEvent
+	require.NoError(t, json.Unmarshal(bytes.TrimSpace(data), &row))
+	require.Equal(t, "GET / HTTP/1.1", row.Request)
+	require.Equal(t, "HTTP/1.1 200 OK", row.Response)
+	require.Equal(t, "GET / HTTP/1.1", event.Request, "the caller's event must not be modified")
+}
+
 func TestReportingDedupeRedirectedInputs(t *testing.T) {
 	for _, concurrent := range []bool{false, true} {
 		name := "sequential"

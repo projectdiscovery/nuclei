@@ -41,7 +41,8 @@ import (
 //
 // Cases where clustering is not performed (request is considered different)
 //   - If request contains payloads,raw,body,unsafe,req-condition,name attributes
-//   - If request methods,max-redirects,disable-cookie,redirects are not equal
+//   - If an HTTP request sends race copies (race with a race_count above 0, outside a pipeline)
+//   - If request methods,max-redirects,disable-cookie,redirects,host-redirects,protocol-redirects are not equal
 //   - If request paths aren't identical.
 //   - If request headers aren't identical
 //   - Similarly for DNS, only identical DNS requests are clustered to a target.
@@ -166,13 +167,14 @@ func ClusterTemplates(templatesList []*Template, options *protocols.ExecutorOpti
 				req.Options().TemplateID = clusterID
 			}
 			executerOpts.TemplateID = clusterID
+			executer := NewClusterExecuter(cluster, executerOpts)
 			finalTemplatesList = append(finalTemplatesList, &Template{
 				ID:            clusterID,
 				RequestsDNS:   cluster[0].RequestsDNS,
 				RequestsHTTP:  cluster[0].RequestsHTTP,
 				RequestsSSL:   cluster[0].RequestsSSL,
-				Executer:      NewClusterExecuter(cluster, executerOpts),
-				TotalRequests: len(cluster[0].RequestsHTTP) + len(cluster[0].RequestsDNS),
+				Executer:      executer,
+				TotalRequests: executer.Requests(),
 			})
 			clusterCount += len(cluster)
 		} else {
@@ -427,9 +429,6 @@ func (e *ClusterExecuter) Execute(ctx *scan.ScanContext) (bool, error) {
 		}
 	}
 
-	if e.options.HostErrorsCache != nil && e.templateType != types.HTTPProtocol {
-		e.options.HostErrorsCache.MarkFailedOrRemove(e.templateType.String(), ctx.Input, err)
-	}
 	// A skip is reported like the engine's own skip of a target: in the
 	// failure event, without a warning.
 	if errors.Is(err, hosterrorscache.ErrUnresponsiveHost) {
@@ -444,7 +443,6 @@ func (e *ClusterExecuter) ExecuteWithResults(ctx *scan.ScanContext) ([]*output.R
 	if len(clusterOperators) == 0 {
 		return nil, nil
 	}
-	scanCtx := scan.NewScanContext(ctx.Context(), ctx.Input)
 	dynamicValues := make(map[string]interface{})
 
 	inputItem := ctx.Input.Clone()
@@ -453,6 +451,10 @@ func (e *ClusterExecuter) ExecuteWithResults(ctx *scan.ScanContext) ([]*output.R
 			return nil, nil
 		}
 	}
+	// Events are logged on the caller's context so its OnResult callback fires,
+	// exactly as a single template's executer does. A workflow step drives its
+	// subtemplates through that callback, so logging to a private context would
+	// silently drop every subtemplate of a clustered step.
 	err := e.requests.ExecuteWithResults(inputItem, dynamicValues, nil, func(event *output.InternalWrappedEvent) {
 		for _, operator := range clusterOperators {
 			clonedEvent := event.CloneShallow()
@@ -467,7 +469,7 @@ func (e *ClusterExecuter) ExecuteWithResults(ctx *scan.ScanContext) ([]*output.R
 				clonedEvent.InternalEvent["template-path"] = operator.templatePath
 				clonedEvent.InternalEvent["template-info"] = operator.templateInfo
 				clonedEvent.Results = e.requests.MakeResultEvent(clonedEvent)
-				scanCtx.LogEvent(clonedEvent)
+				ctx.LogEvent(clonedEvent)
 			}
 		}
 	})
@@ -475,13 +477,10 @@ func (e *ClusterExecuter) ExecuteWithResults(ctx *scan.ScanContext) ([]*output.R
 		ctx.LogError(err)
 	}
 
-	if e.options.HostErrorsCache != nil && e.templateType != types.HTTPProtocol {
-		e.options.HostErrorsCache.MarkFailedOrRemove(e.templateType.String(), ctx.Input, err)
-	}
 	// The skip is logged on ctx above, so the caller does not warn about it as
 	// it would about a failed request.
 	if errors.Is(err, hosterrorscache.ErrUnresponsiveHost) {
 		err = nil
 	}
-	return scanCtx.GenerateResult(), err
+	return ctx.GenerateResult(), err
 }

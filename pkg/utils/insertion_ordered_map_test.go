@@ -22,3 +22,23 @@ a3: new`
 	})
 	require.Equal(t, []string{"a1", "a2", "a3"}, items, "could not get ordered keys")
 }
+
+func TestUnmarshalInsertionOrderedMapYAMLNonStringKeys(t *testing.T) {
+	for _, data := range []string{"1: one\nfoo: bar", "true: one", "1.5: one"} {
+		var value InsertionOrderedStringMap
+		require.NotPanics(t, func() {
+			err := yaml.Unmarshal([]byte(data), &value)
+			require.Error(t, err, "non-string key should be rejected: %q", data)
+			require.Contains(t, err.Error(), "keys must be strings")
+		})
+	}
+
+	// quoted keys are strings and keep working
+	var value InsertionOrderedStringMap
+	require.NoError(t, yaml.Unmarshal([]byte("\"1\": one\nfoo: bar"), &value))
+	var keys []string
+	value.ForEach(func(key string, _ interface{}) {
+		keys = append(keys, key)
+	})
+	require.Equal(t, []string{"1", "foo"}, keys)
+}

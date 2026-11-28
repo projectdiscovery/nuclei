@@ -122,6 +122,12 @@ func newCachingTransport(base *cache.Transport, next http.RoundTripper) *transpo
 	return &transport{cache: base.WithNext(originMarker{next: next}), next: next}
 }
 
+// Unwrap returns the transport the cache wraps, so code that must not use the
+// cache, such as reporting clients that need TLS verification, can reach it.
+func (t *transport) Unwrap() http.RoundTripper {
+	return t.next
+}
+
 // carriesIdentity reports whether req has a credential or browser-origin
 // field the cache key does not include. Header keys are compared
 // case-insensitively because a builder can store a non-canonical key.

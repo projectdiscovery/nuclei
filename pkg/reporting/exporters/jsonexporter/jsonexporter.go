@@ -38,13 +38,15 @@ func (exporter *Exporter) Export(event *output.ResultEvent) error {
 	exporter.mutex.Lock()
 	defer exporter.mutex.Unlock()
 
+	// Work on a copy: every exporter is handed the same event.
+	row := *event
 	if exporter.options.OmitRaw {
-		event.Request = ""
-		event.Response = ""
+		row.Request = ""
+		row.Response = ""
 	}
 
 	// Add the event to the rows
-	exporter.rows = append(exporter.rows, *event)
+	exporter.rows = append(exporter.rows, row)
 
 	return nil
 }

@@ -305,8 +305,10 @@ func TestMakeRequestFromModelUniqueInteractsh(t *testing.T) {
 
 	generator := request.newGenerator(false)
 
+	serverURL, httpClient := testutils.NewInteractshServer(t)
 	generator.options.Interactsh, err = interactsh.New(&interactsh.Options{
-		ServerURL:           options.InteractshURL,
+		ServerURL:           serverURL,
+		HTTPClient:          httpClient,
 		CacheSize:           options.InteractionsCacheSize,
 		Eviction:            time.Duration(options.InteractionsEviction) * time.Second,
 		CooldownPeriod:      time.Duration(options.InteractionsCoolDownPeriod) * time.Second,
@@ -314,6 +316,9 @@ func TestMakeRequestFromModelUniqueInteractsh(t *testing.T) {
 		DisableHttpFallback: true,
 	})
 	require.Nil(t, err, "could not create interactsh client")
+	t.Cleanup(func() {
+		generator.options.Interactsh.Close()
+	})
 
 	inputData, payloads, _ := generator.nextValue()
 	got, err := generator.Make(context.Background(), contextargs.NewWithInput(context.Background(), "https://example.com"), inputData, payloads, map[string]interface{}{})
@@ -346,8 +351,12 @@ func TestMakeSelfContainedRequestRendersPayloadInteractshMarker(t *testing.T) {
 		ID:   templateID,
 		Info: model.Info{SeverityHolder: severity.Holder{Severity: severity.Low}, Name: "test"},
 	})
+	_, httpClient := testutils.NewInteractshServer(t)
 	client, err := interactsh.New(&interactsh.Options{
-		ServerURL:           options.InteractshURL,
+		// the network policy resolves a self-contained host, so the generated
+		// URLs need a domain that resolves
+		ServerURL:           "http://oast.fun",
+		HTTPClient:          httpClient,
 		CacheSize:           options.InteractionsCacheSize,
 		Eviction:            time.Duration(options.InteractionsEviction) * time.Second,
 		CooldownPeriod:      time.Duration(options.InteractionsCoolDownPeriod) * time.Second,

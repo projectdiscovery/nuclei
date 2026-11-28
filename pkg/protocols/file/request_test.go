@@ -7,6 +7,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"strconv"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -136,6 +137,46 @@ func TestFileExecuteWithResults(t *testing.T) {
 	}
 }
 
+// max-size: no is documented to process the whole file. It used to fail to
+// compile, and -1 passed to io.LimitReader would have read nothing.
+func TestFileExecuteWithMaxSizeNo(t *testing.T) {
+	options := testutils.DefaultOptions
+	testutils.Init(options)
+	templateID := "testing-file-max-size-no"
+	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
+		ID:   templateID,
+		Info: model.Info{SeverityHolder: severity.Holder{Severity: severity.Low}, Name: "test"},
+	})
+
+	request := &Request{
+		ID:         templateID,
+		MaxSize:    "no",
+		Extensions: []string{"all"},
+		Operators: operators.Operators{
+			Matchers: []*matchers.Matcher{{
+				Name:  "test",
+				Part:  "raw",
+				Type:  matchers.MatcherTypeHolder{MatcherType: matchers.WordsMatcher},
+				Words: []string{"secret_key"},
+			}},
+		},
+		options: executerOpts,
+	}
+	require.NoError(t, request.Compile(executerOpts))
+
+	tempDir := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(tempDir, "config.txt"), []byte("secret_key=x\n"), permissionutil.TempFilePermission))
+
+	var finalEvent *output.InternalWrappedEvent
+	ctxArgs := contextargs.NewWithInput(context.Background(), tempDir)
+	err := request.ExecuteWithResults(ctxArgs, make(output.InternalEvent), make(output.InternalEvent), func(event *output.InternalWrappedEvent) {
+		finalEvent = event
+	})
+	require.NoError(t, err)
+	require.NotNil(t, finalEvent, "max-size: no must still match the file content")
+	require.Len(t, finalEvent.Results, 1)
+}
+
 func TestFileProtocolConcurrentExecution(t *testing.T) {
 	tempDir, err := os.MkdirTemp("", "nuclei-test-*")
 	require.NoError(t, err)
@@ -211,4 +252,50 @@ func TestFileProtocolConcurrentExecution(t *testing.T) {
 	// test 2: verify callback invocation timing shows concurrency
 	timesMutex.Lock()
 	defer timesMutex.Unlock()
+}
+
+// With -bs below 1 the file pool must still be built, so the request runs one
+// file at a time.
+//
+//nolint:exhaustruct,exhaustruct_v5,paralleltest // fixtures keep zero-value defaults; the test options are global
+func TestFileExecuteWithResultsBulkSizeBelowOne(t *testing.T) {
+	for _, bulkSize := range []int{0, -1} {
+		t.Run(strconv.Itoa(bulkSize), func(t *testing.T) {
+			options := testutils.DefaultOptions.Copy()
+			options.BulkSize = bulkSize
+			testutils.Init(options)
+			t.Cleanup(func() { testutils.Cleanup(options) })
+
+			executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
+				ID:   "testing-file",
+				Info: model.Info{SeverityHolder: severity.Holder{Severity: severity.Low}, Name: "test"},
+			})
+			request := &Request{
+				ID:         "testing-file",
+				MaxSize:    "1Gb",
+				Extensions: []string{"all"},
+				Matchers: []*matchers.Matcher{{
+					Name:  "test",
+					Part:  "raw",
+					Type:  matchers.MatcherTypeHolder{MatcherType: matchers.WordsMatcher},
+					Words: []string{"1.1.1.1"},
+				}},
+				options: executerOpts,
+			}
+			require.NoError(t, request.Compile(executerOpts))
+
+			tempDir := t.TempDir()
+			content := []byte("TEST\r\n1.1.1.1\r\n")
+			require.NoError(t, os.WriteFile(filepath.Join(tempDir, "config.yaml"), content, permissionutil.TempFilePermission))
+
+			var matched int
+
+			input := contextargs.NewWithInput(t.Context(), tempDir)
+			err := request.ExecuteWithResults(input, nil, nil, func(event *output.InternalWrappedEvent) {
+				matched += len(event.Results)
+			})
+			require.NoError(t, err)
+			require.Equal(t, 1, matched)
+		})
+	}
 }

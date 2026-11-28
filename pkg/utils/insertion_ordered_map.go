@@ -43,7 +43,14 @@ func (insertionOrderedStringMap *InsertionOrderedStringMap) UnmarshalYAML(unmars
 		if v.Key == nil {
 			continue
 		}
-		insertionOrderedStringMap.Set(v.Key.(string), toString(v.Value))
+		// Only string keys are valid here. A bare `1:` or `true:` key decodes to a
+		// non-string value, which previously panicked; reject it with an error
+		// instead of converting, so `1` and "1" are never merged into one entry.
+		key, ok := v.Key.(string)
+		if !ok {
+			return fmt.Errorf("invalid map key %v (%T): keys must be strings, quote the key to use it as a string", v.Key, v.Key)
+		}
+		insertionOrderedStringMap.Set(key, toString(v.Value))
 	}
 	return nil
 }
