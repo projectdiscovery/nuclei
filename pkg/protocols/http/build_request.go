@@ -90,6 +90,9 @@ type generatedRequest struct {
 	// requestURLPattern tracks unmodified request url pattern without values ( it is used for constant vuln_hash)
 	// ex: {{BaseURL}}/api/exp?param={{randstr}}
 	requestURLPattern string
+	// historyKeys are the numbered parts (status_code_1, ...) this request added
+	// to the history when request conditions are used.
+	historyKeys []string
 
 	fuzzGeneratedRequest fuzz.GeneratedRequest
 }
