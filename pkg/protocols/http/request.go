@@ -851,6 +851,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 	initialContext := dynamicValueContext{
 		values:   generators.CopyMap(dynamicValues),
 		previous: cloneInternalEvent(previous),
+		history:  make(map[int][]string),
 	}
 	dynamicValueContexts := []dynamicValueContext{initialContext}
 	if request.IterateAll {
@@ -859,6 +860,8 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 	var requestErr error
 
 	var skipped bool
+	// lastHistoryKeys holds the numbered parts the last executed request added.
+	var lastHistoryKeys []string
 	// skipRequest counts a request the execution does not send because its address is unresponsive.
 	skipRequest := func() {
 		skipped = true
@@ -870,6 +873,7 @@ executionLoop:
 	for {
 		executeFunc := func(data string, payloads, dynamicValue map[string]interface{}, previousEvent output.InternalEvent) (skipBranch, stop bool, extracted map[string][]string, err error) {
 			hasInteractMatchers := interactsh.HasMatchers(request.CompiledOperators)
+			lastHistoryKeys = nil
 
 			// A stop or an error ends the execution, and the requests it leaves
 			// unsent count as processed. This request counts once too: below once it
@@ -959,6 +963,7 @@ executionLoop:
 				// TODO: interactsh logic in nuclei needs to be refactored to avoid such situations
 				callback(event)
 			}, generator.currentIndex)
+			lastHistoryKeys = generatedHttpRequest.historyKeys
 
 			// A variable may be unresolved for one iterate-all branch while sibling
 			// branches remain executable.
@@ -1010,6 +1015,8 @@ executionLoop:
 		}
 
 		isOnceRequest := generator.hasMarker(inputData, Once)
+		// position of this request in the sequence, the N of its status_code_N
+		requestIndex := generator.currentIndex
 
 		if isOnceRequest {
 			var onceExtracted map[string][]string
@@ -1024,6 +1031,7 @@ executionLoop:
 
 				before := cloneInternalEvent(branch.previous)
 				after := cloneInternalEvent(branch.previous)
+				branch.dropHistoryFrom(requestIndex, after)
 				skipBranch, stop, extracted, gotErr := executeFunc(inputData, generators.CopyMap(payloads), branch.values, after)
 				if gotErr != nil {
 					if requestErr == nil {
@@ -1047,9 +1055,11 @@ executionLoop:
 				continue
 			}
 
+			onceHistoryKeys := lastHistoryKeys
 			nextDynamicValueContexts := make([]dynamicValueContext, 0, len(dynamicValueContexts))
 			for _, branch := range dynamicValueContexts {
 				maps.Copy(branch.previous, oncePreviousDelta)
+				branch.recordHistory(requestIndex, onceHistoryKeys)
 				nextDynamicValueContexts = append(nextDynamicValueContexts, expandDynamicValueContexts(branch, onceExtracted, request.IterateAll)...)
 			}
 			dynamicValueContexts = nextDynamicValueContexts
@@ -1064,6 +1074,7 @@ executionLoop:
 			default:
 			}
 
+			branch.dropHistoryFrom(requestIndex, branch.previous)
 			skipBranch, stop, extractedDynamicValues, gotErr := executeFunc(inputData, generators.CopyMap(payloads), branch.values, branch.previous)
 			if gotErr != nil {
 				if requestErr == nil {
@@ -1077,6 +1088,7 @@ executionLoop:
 			if skipBranch {
 				continue
 			}
+			branch.recordHistory(requestIndex, lastHistoryKeys)
 			nextDynamicValueContexts = append(nextDynamicValueContexts, expandDynamicValueContexts(branch, extractedDynamicValues, request.IterateAll)...)
 		}
 		dynamicValueContexts = nextDynamicValueContexts
@@ -1093,6 +1105,34 @@ type dynamicValueContext struct {
 	values   map[string]interface{}
 	seen     map[string]map[string]struct{}
 	previous output.InternalEvent
+	// history maps the position of a request in the sequence to the numbered
+	// parts (status_code_1, ...) it added to previous.
+	history map[int][]string
+}
+
+// dropHistoryFrom removes from event the numbered parts that the request at
+// index and the requests after it added in an earlier pass of the sequence. With
+// payloads the sequence restarts for every payload combination, and those parts
+// still hold the previous combination's responses. Parts of earlier requests
+// stay, so the responses of @once requests remain available.
+func (c dynamicValueContext) dropHistoryFrom(index int, event output.InternalEvent) {
+	for requestIndex, keys := range c.history {
+		if requestIndex < index {
+			continue
+		}
+		for _, key := range keys {
+			delete(event, key)
+		}
+		delete(c.history, requestIndex)
+	}
+}
+
+// recordHistory remembers the numbered parts the request at index added.
+func (c dynamicValueContext) recordHistory(index int, keys []string) {
+	if c.history == nil || len(keys) == 0 {
+		return
+	}
+	c.history[index] = keys
 }
 
 func expandDynamicValueContexts(parent dynamicValueContext, extracted map[string][]string, iterateAll bool) []dynamicValueContext {
@@ -1149,6 +1189,7 @@ func expandDynamicValueContexts(parent dynamicValueContext, extracted map[string
 			values:   generators.MergeMaps(parent.values, values),
 			seen:     seen,
 			previous: cloneInternalEvent(parent.previous),
+			history:  maps.Clone(parent.history),
 		})
 		return false
 	})
@@ -1909,22 +1950,13 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 
 		// Add to history the current request number metadata if asked by the user.
 		if request.NeedsRequestCondition() {
-			// With payloads the sequence starts again for every payload combination.
-			// The parts of the later requests still hold the previous combination's
-			// responses, so a matcher of this request could read them as its own.
-			for later := requestCount + 1; later <= len(request.Raw)+len(request.Path); later++ {
-				for k := range outputEvent {
-					key := fmt.Sprintf("%s_%d", k, later)
-					delete(previousEvent, key)
-					delete(finalEvent, key)
-				}
-			}
 			for k, v := range outputEvent {
 				key := fmt.Sprintf("%s_%d", k, requestCount)
 				if previousEvent != nil {
 					previousEvent[key] = v
 				}
 				finalEvent[key] = v
+				generatedRequest.historyKeys = append(generatedRequest.historyKeys, key)
 			}
 		}
 		// prune signature internal values if any
