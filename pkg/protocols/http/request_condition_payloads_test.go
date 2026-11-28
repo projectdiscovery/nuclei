@@ -150,6 +150,55 @@ func TestRequestConditionWithPayloadsFailedRequest(t *testing.T) {
 	require.Equal(t, int32(1), matched, "only the first combination, whose request 1 succeeded, matches")
 }
 
+// The parts of an @once request must stay available to every later payload
+// combination, also when the @once request comes after a request that reruns.
+//
+//nolint:paralleltest // testutils.Init state is shared
+func TestRequestConditionWithPayloadsOnceAfterPayloadRequest(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/once" {
+			w.WriteHeader(http.StatusTeapot)
+			return
+		}
+		if user, _, ok := r.BasicAuth(); ok && user == "admin" {
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+		w.WriteHeader(http.StatusUnauthorized)
+	}))
+	t.Cleanup(server.Close)
+
+	//nolint:exhaustruct,exhaustruct_v5 // fixtures keep zero-value defaults
+	request := &httpprotocol.Request{
+		ID: "req-condition-once-after",
+		Raw: []string{
+			"GET /login HTTP/1.1\r\nHost: {{Hostname}}\r\nAuthorization: Basic {{base64(username + ':' + password)}}\r\n\r\n",
+			"@once\r\nGET /once HTTP/1.1\r\nHost: {{Hostname}}\r\n\r\n",
+		},
+		AttackType: generators.AttackTypeHolder{Value: generators.PitchForkAttack},
+		Payloads:   map[string]any{"username": []string{"guest", "admin"}, "password": []string{"guest", "admin"}},
+		Operators: operators.Operators{
+			Matchers: []*matchers.Matcher{{
+				Type: matchers.MatcherTypeHolder{MatcherType: matchers.DSLMatcher},
+				DSL:  []string{"status_code_1 == 200 && status_code_2 == 418"},
+			}},
+		},
+	}
+	compileWithCache(t, request, newDownHostErrorsCache(false))
+
+	var matched atomic.Int32
+
+	err := request.ExecuteWithResults(contextargs.NewWithInput(context.Background(), server.URL),
+		make(output.InternalEvent), make(output.InternalEvent),
+		func(event *output.InternalWrappedEvent) {
+			if event.OperatorsResult != nil && event.OperatorsResult.Matched {
+				matched.Add(1)
+			}
+		})
+	require.NoError(t, err)
+	require.Equal(t, int32(1), matched.Load(), "the admin combination reads status_code_2 of the @once request")
+}
+
 // Parts that only some responses carry (headers, cookies) must not survive into
 // a later payload combination whose response doesn't send them.
 //

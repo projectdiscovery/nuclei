@@ -1055,11 +1055,12 @@ executionLoop:
 				continue
 			}
 
-			onceHistoryKeys := lastHistoryKeys
+			// The parts of an @once request are not recorded in the history: the request
+			// never runs again, so they can't go stale, and every later payload
+			// combination must keep reading them.
 			nextDynamicValueContexts := make([]dynamicValueContext, 0, len(dynamicValueContexts))
 			for _, branch := range dynamicValueContexts {
 				maps.Copy(branch.previous, oncePreviousDelta)
-				branch.recordHistory(requestIndex, onceHistoryKeys)
 				nextDynamicValueContexts = append(nextDynamicValueContexts, expandDynamicValueContexts(branch, onceExtracted, request.IterateAll)...)
 			}
 			dynamicValueContexts = nextDynamicValueContexts
@@ -1114,7 +1115,8 @@ type dynamicValueContext struct {
 // index and the requests after it added in an earlier pass of the sequence. With
 // payloads the sequence restarts for every payload combination, and those parts
 // still hold the previous combination's responses. Parts of earlier requests
-// stay, so the responses of @once requests remain available.
+// stay, and @once requests are never recorded, so their responses remain
+// available to every combination wherever they sit in the sequence.
 func (c dynamicValueContext) dropHistoryFrom(index int, event output.InternalEvent) {
 	for requestIndex, keys := range c.history {
 		if requestIndex < index {
