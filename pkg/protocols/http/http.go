@@ -583,7 +583,12 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 				break
 			}
 		}
-		if hasNamedInternalExtractor && hasMultipleRequests {
+		// Numbered response parts (status_code_1, body_2, ...) are recorded with the
+		// position of the request in the sequence, and later requests read them from
+		// the earlier ones. The parallel path sends every request of a payload
+		// combination on its own as request 0, so the numbered parts never exist.
+		needsRequestHistory := request.NeedsRequestCondition()
+		if (hasNamedInternalExtractor || needsRequestHistory) && hasMultipleRequests {
 			stats.Increment(SetThreadToCountZero)
 			request.Threads = 0
 		} else {
@@ -744,7 +749,7 @@ const (
 )
 
 func init() {
-	stats.NewEntry(SetThreadToCountZero, "Setting thread count to 0 for %d templates, dynamic extractors are not supported with payloads yet")
+	stats.NewEntry(SetThreadToCountZero, "Setting thread count to 0 for %d templates, dynamic extractors and numbered request conditions are not supported with parallel payloads yet")
 }
 
 // UpdateOptions replaces this request's options with a new copy

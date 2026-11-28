@@ -1909,6 +1909,16 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 
 		// Add to history the current request number metadata if asked by the user.
 		if request.NeedsRequestCondition() {
+			// With payloads the sequence starts again for every payload combination.
+			// The parts of the later requests still hold the previous combination's
+			// responses, so a matcher of this request could read them as its own.
+			for later := requestCount + 1; later <= len(request.Raw)+len(request.Path); later++ {
+				for k := range outputEvent {
+					key := fmt.Sprintf("%s_%d", k, later)
+					delete(previousEvent, key)
+					delete(finalEvent, key)
+				}
+			}
 			for k, v := range outputEvent {
 				key := fmt.Sprintf("%s_%d", k, requestCount)
 				if previousEvent != nil {
